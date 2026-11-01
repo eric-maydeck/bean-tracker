@@ -5,7 +5,7 @@
   import ImageSuggest from './ImageSuggest.svelte';
   import { enhance } from '$app/forms';
   import type { CoffeeRow } from '$lib/types';
-  import { COFFEE_ORIGIN_FIELDS, COFFEE_ORIGIN_LABELS } from '$lib/types';
+  import { COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
   import { clonePrefill, mergeStagedCoffee, stagedRoasterDefault, stagedRoasterWebsite } from '$lib/pendingChanges';
   import { pickCandidate, type Candidate, type SuggestResponse } from '$lib/imageSuggest';
@@ -376,6 +376,13 @@
     {/each}
   </datalist>
 
+  {#snippet detail(name: CoffeeOriginField)}
+    <div class="form-field field-{name}">
+      <label for={name}>{COFFEE_ORIGIN_LABELS[name]}</label>
+      <input id={name} {name} value={(coffee?.[name] ?? prefill?.[name]) ?? ''} autocomplete="off" />
+    </div>
+  {/snippet}
+
   {#snippet sizeChips()}
     <div class="form-field group-field">
       <span>Bag size</span>
@@ -391,8 +398,9 @@
     </div>
   {/snippet}
 
-  <div class="form-grid" class:has-sub={subscriptions}>
-  <div class="form-field product-url-field">
+  <div class="form-grid">
+  <div class="form-group">
+  <div class="form-field product-url-field span-all">
     <label for="product_url">Product page URL</label>
     <div class="inline-row">
       <input
@@ -452,129 +460,14 @@
     <input id="coffee_name" name="coffee_name" required oninput={syncImageFields} value={(coffee?.coffee_name ?? prefill?.coffee_name) ?? ''} />
   </div>
 
-  <div class="form-field field-origin">
-    <label for="origin">Origin</label>
-    <input id="origin" name="origin" value={(coffee?.origin ?? prefill?.origin) ?? ''} list="origin-suggestions" autocomplete="off" />
-  </div>
-
-  <div class="form-field field-roastlevel">
-    <label for="roast_level">Roast level</label>
-    <select id="roast_level" name="roast_level" onchange={roastLevelChanged}>
-      <option value="">—</option>
-      {#each roastLevels as level (level.roast_level)}
-        <option value={level.roast_level} selected={(coffee?.roast_level ?? prefill?.roast_level) === level.roast_level}>
-          {level.roast_level}
-        </option>
-      {/each}
-    </select>
-  </div>
-
-  <div class="form-field field-processing">
-    <label for="processing">Processing</label>
-    <input
-      id="processing"
-      name="processing"
-      value={(coffee?.processing ?? prefill?.processing) ?? ''}
-      list="processing-suggestions"
-      autocomplete="off"
-    />
-  </div>
-
-  <div class="form-field field-amount">
-    <label for="amount_g">Amount (g)</label>
-    <input id="amount_g" name="amount_g" type="number" step="1" value={(coffee?.amount_g ?? prefill?.amount_g) ?? ''} />
-  </div>
-
-  <fieldset class="field-details">
-    <legend>Origin details</legend>
-    {#each COFFEE_ORIGIN_FIELDS as name (name)}
-      <div class="form-field">
-        <label for={name}>{COFFEE_ORIGIN_LABELS[name]}</label>
-        <input id={name} {name} value={(coffee?.[name] ?? prefill?.[name]) ?? ''} autocomplete="off" />
-      </div>
-    {/each}
-  </fieldset>
-
-  <div class="form-field field-cost">
-    <label for="cost">Cost</label>
-    <input id="cost" name="cost" type="number" step="0.01" value={(coffee?.cost ?? prefill?.cost) ?? ''} />
-  </div>
-
-  {#if subscriptions}
-    <div class="form-field field-subscription">
-      <label for="subscription_id">Subscription</label>
-      <select id="subscription_id" name="subscription_id" onchange={fillCostFromPlan}>
-        <option value="">None</option>
-        {#each subscriptions as sub (sub.id)}
-          <option value={sub.id} selected={Number(coffee?.subscription_id) === sub.id}>{sub.label}</option>
-        {/each}
-      </select>
-    </div>
-  {/if}
-
-  <div class="form-field field-roastdate">
-    <label for="roast_date">Roast date</label>
-    <input id="roast_date" name="roast_date" type="date" value={(coffee?.roast_date ?? prefill?.roast_date) ?? ''} />
-  </div>
-
-  <div class="form-field field-frozenstart">
-    <label for="frozen_start_date">Frozen start date</label>
-    <input
-      id="frozen_start_date"
-      name="frozen_start_date"
-      type="date"
-      value={coffee?.frozen_start_date ?? ''}
-    />
-  </div>
-
-  <!-- Grouped (not two separate grid cells) so Decaf's position only ever
-       depends on Frozen end's own height, never on what the OTHER two
-       columns (Min/Max rest, Image URL) are doing — see the .form-grid
-       comment below for why that matters. -->
-  <div class="form-field-group group-frozenend">
-    <div class="form-field field-frozenend">
-      <label for="frozen_end_date">Frozen end date</label>
-      <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
-    </div>
-
     <div class="form-field form-field-checkbox field-decaf">
       <label for="decaf">
         <input id="decaf" name="decaf" type="checkbox" checked={(coffee?.decaf ?? prefill?.decaf) === 1} />
         Decaf
       </label>
     </div>
-  </div>
 
-  <div class="form-field field-rest">
-    <div class="rest-days-row">
-      <div class="rest-days-field">
-        <label for="rest_days_low">Min rest</label>
-        <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={(coffee?.rest_days_low ?? prefill?.rest_days_low) ?? ''} />
-      </div>
-      <div class="rest-days-field">
-        <label for="rest_days_high">Max rest</label>
-        <input
-          id="rest_days_high"
-          name="rest_days_high"
-          type="number"
-          step="1"
-          value={(coffee?.rest_days_high ?? prefill?.rest_days_high) ?? ''}
-        />
-      </div>
-    </div>
-    {#if restNote}
-      <p class="text-muted fill-note">{restNote}</p>
-    {/if}
-  </div>
-
-  <!-- Grouped (not two separate grid cells) so URL slug always renders
-       directly below Image URL's own content (input, buttons, and the
-       thumbnail once one loads) via ordinary flex-column flow, rather than
-       a fixed grid row next to fields in OTHER columns that a tall
-       thumbnail could grow past or leave a gap under — see the .form-grid
-       comment below. -->
-  <div class="form-field-group group-image">
-    <div class="form-field field-image">
+    <div class="form-field field-image span-all">
       <!-- A one-line label so the input lines up with its row's (a 2-line label
            pushed it down); the hint moves into the placeholder. -->
       <label for="image_url">Image URL</label>
@@ -664,6 +557,115 @@
         {/if}
       {/if}
     </div>
+  </div>
+
+  <fieldset class="form-group">
+    <legend>Origin</legend>
+  <div class="form-field field-origin">
+    <label for="origin">Origin</label>
+    <input id="origin" name="origin" value={(coffee?.origin ?? prefill?.origin) ?? ''} list="origin-suggestions" autocomplete="off" />
+  </div>
+
+    {@render detail('region')}
+    {@render detail('producer')}
+    {@render detail('farm')}
+    {@render detail('variety')}
+    <div class="form-field field-processing">
+      <label for="processing">Processing</label>
+      <input
+        id="processing"
+        name="processing"
+        value={(coffee?.processing ?? prefill?.processing) ?? ''}
+        list="processing-suggestions"
+        autocomplete="off"
+      />
+    </div>
+    {@render detail('elevation')}
+    {@render detail('harvest_time')}
+    {@render detail('certification')}
+  </fieldset>
+
+  <fieldset class="form-group">
+    <legend>Bag</legend>
+  <div class="form-field field-roastlevel">
+    <label for="roast_level">Roast level</label>
+    <select id="roast_level" name="roast_level" onchange={roastLevelChanged}>
+      <option value="">—</option>
+      {#each roastLevels as level (level.roast_level)}
+        <option value={level.roast_level} selected={(coffee?.roast_level ?? prefill?.roast_level) === level.roast_level}>
+          {level.roast_level}
+        </option>
+      {/each}
+    </select>
+  </div>
+
+  <div class="form-field field-amount">
+    <label for="amount_g">Amount (g)</label>
+    <input id="amount_g" name="amount_g" type="number" step="1" value={(coffee?.amount_g ?? prefill?.amount_g) ?? ''} />
+  </div>
+
+  <div class="form-field field-cost">
+    <label for="cost">Cost</label>
+    <input id="cost" name="cost" type="number" step="0.01" value={(coffee?.cost ?? prefill?.cost) ?? ''} />
+  </div>
+
+  {#if subscriptions}
+    <div class="form-field field-subscription span-all">
+      <label for="subscription_id">Subscription</label>
+      <select id="subscription_id" name="subscription_id" onchange={fillCostFromPlan}>
+        <option value="">None</option>
+        {#each subscriptions as sub (sub.id)}
+          <option value={sub.id} selected={Number(coffee?.subscription_id) === sub.id}>{sub.label}</option>
+        {/each}
+      </select>
+    </div>
+  {/if}
+  </fieldset>
+
+  <fieldset class="form-group">
+    <legend>Timing</legend>
+  <div class="form-field field-roastdate">
+    <label for="roast_date">Roast date</label>
+    <input id="roast_date" name="roast_date" type="date" value={(coffee?.roast_date ?? prefill?.roast_date) ?? ''} />
+  </div>
+
+  <div class="form-field field-rest">
+    <div class="rest-days-row">
+      <div class="rest-days-field">
+        <label for="rest_days_low">Min rest</label>
+        <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={(coffee?.rest_days_low ?? prefill?.rest_days_low) ?? ''} />
+      </div>
+      <div class="rest-days-field">
+        <label for="rest_days_high">Max rest</label>
+        <input
+          id="rest_days_high"
+          name="rest_days_high"
+          type="number"
+          step="1"
+          value={(coffee?.rest_days_high ?? prefill?.rest_days_high) ?? ''}
+        />
+      </div>
+    </div>
+    {#if restNote}
+      <p class="text-muted fill-note">{restNote}</p>
+    {/if}
+  </div>
+
+  <div class="form-field field-frozenstart">
+    <label for="frozen_start_date">Frozen start date</label>
+    <input
+      id="frozen_start_date"
+      name="frozen_start_date"
+      type="date"
+      value={coffee?.frozen_start_date ?? ''}
+    />
+  </div>
+
+    <div class="form-field field-frozenend">
+      <label for="frozen_end_date">Frozen end date</label>
+      <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
+    </div>
+  </fieldset>
 
     {#if coffee}
       <input type="hidden" name="id" value={coffee.id} />
@@ -696,7 +698,6 @@
       </div>
     {/if}
   </div>
-  </div>
 
   {#if showSubmit}
     <button class="button" type="submit" disabled={onstage ? !mounted : false}>{onstage ? 'Update' : 'Save'}</button>
@@ -710,131 +711,59 @@
 </form>
 
 <style>
-  /* Every field pins to a named cell (grid-template-areas) instead of
-     app.css's shared auto-fit .form-grid, so a tall cell (a Fill's
-     rest-days note, an image preview, a save-anyway prompt) only grows
-     ITS OWN row — everything else stays put. Scoped here (Svelte's
-     component-specific class keeps this off the shared .form-grid
-     elsewhere, e.g. subscriptions). Frozen end + Decaf and Image URL +
-     slug are each grouped into one flex-column cell (group-frozenend,
-     group-image below) rather than spanning grid rows: a row-SPANNING
-     cell distributes its extra height across every track it spans, which
-     would push unrelated fields in other columns down. Base rule first,
-     breakpoint override after (source-order cascade, docs/HANDOFF.md);
-     mobile is a full single-column re-order via its own
-     grid-template-areas, not a column-count tweak. */
+  /* The form follows the coffee page's order: a top group (like the page header), then the
+     Origin, Bag and Timing groups, then the URL slug. Each group is its own grid, so a tall
+     cell (a Fill's rest-days note, an image preview, a save-anyway prompt) only grows its
+     own row. Base rule first, breakpoint overrides after (source-order cascade, docs/HANDOFF.md). */
   .form-grid {
-    /* minmax(0, 1fr), not plain 1fr: an `fr` track's default minimum is
-       `auto` (its content's natural size), so without the explicit 0 floor
-       a wide item (e.g. the roast level select) makes its own column
-       wider than the other two instead of all three staying equal. */
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-areas:
-      'producturl producturl producturl'
-      'roaster coffee origin'
-      'roastlevel processing amount'
-      'details details details'
-      'cost roastdate frozenstart'
-      var(--sub-row, )
-      'image rest frozenend';
-  }
-  /* The Subscription field (admin edit only) is a full-width row right under Cost; each
-     breakpoint below sets --sub-row to its own column count, so no row is ever left half empty. */
-  .has-sub {
-    --sub-row: 'subscription subscription subscription';
-  }
-  .field-subscription {
-    grid-area: subscription;
-  }
-  /* Grid items default to min-width: auto (their content's natural size),
-     which fights the equal-column floor above — this lets each field
-     actually shrink to its cell instead of overflowing it. Applies to the
-     grouped cells' own wrapper too (form-field-group), not just plain
-     grid-item fields. */
-  .form-field,
-  .form-field-group {
-    min-width: 0;
-  }
-  /* The Frozen end + Decaf and Image URL + slug groups: a plain vertical
-     stack, so the second field always sits directly below however tall
-     the first one currently is. Gap matches the grid's own row-gap
-     (app.css's shared .form-grid: `gap: var(--space-2) var(--space-5)`)
-     so a grouped pair reads the same as two separate grid rows did. */
-  .form-field-group {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
+    gap: var(--space-3);
   }
-  /* Inline in a Coffees card, the grid follows the card's width, not the
-     viewport's, so fields stay >= ~150px: two columns under 500px (3 x 150 +
-     2 gaps), one under 330px. Before the phone rule below, which still wins
-     on phones (same specificity, later in source). */
+  .form-group {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: grid;
+    /* minmax(0, 1fr), not plain 1fr: an `fr` track's minimum is its content's natural
+       size, so a wide select would make its own column wider than the others. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2) var(--space-5);
+  }
+  .form-group legend {
+    padding: 0;
+    margin-bottom: var(--space-2);
+    font-weight: 600;
+    grid-column: 1 / -1;
+  }
+  /* Beside Roaster and Coffee: sits on the inputs' row, centered on them. */
+  .field-decaf {
+    align-self: end;
+    min-height: 2.4rem;
+  }
+  .span-all {
+    grid-column: 1 / -1;
+  }
+  /* Grid items default to min-width: auto, which fights the equal-column floor above. */
+  .form-field {
+    min-width: 0;
+  }
+  /* Inline in a Coffees card, the grid follows the card's width, not the viewport's, so
+     fields stay >= ~150px: two columns under 500px, one under 330px. */
   @container card (width < 500px) {
-    .form-grid {
+    .form-group {
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      grid-template-areas:
-        'producturl producturl'
-        'roaster coffee'
-        'origin roastlevel'
-        'processing amount'
-        'details details'
-        'cost roastdate'
-        var(--sub-row, )
-        'frozenstart frozenend'
-        'image rest';
-    }
-  }
-  @container card (width < 500px) {
-    .has-sub {
-      --sub-row: 'subscription subscription';
     }
   }
   @container card (width < 330px) {
-    .has-sub {
-      --sub-row: 'subscription';
-    }
-    .form-grid {
+    .form-group {
       grid-template-columns: 1fr;
-      grid-template-areas:
-        'producturl'
-        'roaster'
-        'coffee'
-        'origin'
-        'roastlevel'
-        'processing'
-        'amount'
-        'details'
-        'cost'
-        var(--sub-row, )
-        'roastdate'
-        'rest'
-        'frozenstart'
-        'frozenend'
-        'image';
     }
   }
   @media (max-width: 640px) {
-    .has-sub {
-      --sub-row: 'subscription';
-    }
-    .form-grid {
+    .form-group {
       grid-template-columns: 1fr;
-      grid-template-areas:
-        'producturl'
-        'roaster'
-        'coffee'
-        'origin'
-        'roastlevel'
-        'processing'
-        'amount'
-        'details'
-        'cost'
-        var(--sub-row, )
-        'roastdate'
-        'rest'
-        'frozenstart'
-        'frozenend'
-        'image';
     }
     /* Phone: the image row's buttons take the full row and grow to share each
        line instead of a ragged 2 + 1 at content widths. Same as
@@ -846,67 +775,6 @@
       flex: 1 1 auto;
       text-align: center;
     }
-  }
-  /* Each field's cell name, independent of source order (see the comment
-     on .form-grid above) — the same name maps to a different desktop vs.
-     mobile position purely via the two grid-template-areas above. */
-  .product-url-field {
-    grid-area: producturl;
-  }
-  .field-roaster {
-    grid-area: roaster;
-  }
-  .field-coffee {
-    grid-area: coffee;
-  }
-  .field-origin {
-    grid-area: origin;
-  }
-  .field-roastlevel {
-    grid-area: roastlevel;
-  }
-  .field-processing {
-    grid-area: processing;
-  }
-  .field-details {
-    grid-area: details;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-    gap: var(--space-2) var(--space-5);
-  }
-  .field-details legend {
-    padding: 0;
-    margin-bottom: var(--space-2);
-    font-weight: 600;
-    grid-column: 1 / -1;
-  }
-  .field-amount {
-    grid-area: amount;
-  }
-  .field-cost {
-    grid-area: cost;
-  }
-  .field-roastdate {
-    grid-area: roastdate;
-  }
-  .field-frozenstart {
-    grid-area: frozenstart;
-  }
-  /* Frozen end + Decaf and Image URL + slug are each one grid cell (see
-     .form-field-group above) — the group wrapper gets the grid-area, not
-     the individual fields inside it. */
-  .group-frozenend {
-    grid-area: frozenend;
-  }
-  .field-rest {
-    grid-area: rest;
-  }
-  .group-image {
-    grid-area: image;
   }
   .inline-row {
     display: flex;

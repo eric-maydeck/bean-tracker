@@ -363,7 +363,7 @@ async function expectBagOnOwnLine(page: Page) {
 async function expectFieldRowsAligned(page: Page) {
   const rows = await page.locator('form .form-grid').evaluate((grid) => {
     const byRow = new Map<number, [string, number][]>();
-    for (const cell of grid.children) {
+    for (const cell of [...grid.children].flatMap((g) => (g.matches('.form-group') ? [...g.children] : [g]))) {
       const input = [...cell.querySelectorAll('input:not([type="checkbox"]):not([type="hidden"]), select')].find((i) => (i as HTMLElement).offsetParent);
       if (!input) continue;
       const key = Math.round(cell.getBoundingClientRect().top);
@@ -1103,38 +1103,52 @@ export const STATES: State[] = [
       await expect(panel).toContainText(/\d+(st|nd|rd|th) of \d+/);
       await expectGridRowsFull(page, '[data-section="like"] .stat-grid');
     } },
-  // Origin details (Producer ... Certification): a form group between Processing and Cost; the coffee page adds one
-  // stat per filled field, after the existing ones. The seed fills them on brewNew only (Brew Seed Fresh Lot).
-  { name: 'form origin details', path: (s) => `/coffees/${s.slugs.brewNew}`,
+  // The coffee page's Origin and Bag sections and the edit form's groups share one order, so a field spotted on the
+  // page sits at about the same place in the form. The seed fills the origin details on brewNew only (Brew Seed Fresh Lot).
+  { name: 'form groups follow the page', path: (s) => `/coffees/${s.slugs.brewNew}`,
     act: async (page) => {
+      const texts = (l: Locator) => l.evaluateAll((els) => els.map((e) => e.textContent!.trim()));
+      const sections = await texts(page.locator('.detail-section[data-section] > h2'));
+      const pageLabels = (id: string) => texts(page.locator(`[data-section="${id}"] .stat-label`));
+      expect(sections.slice(0, 3)).toEqual(['Origin', 'Bag', 'Timing']);
+      expect(await pageLabels('origin')).toEqual(['Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
+      expect(await pageLabels('bag')).toEqual(['Roast level', 'Amount', 'Cost', 'Cost/gram', 'Subscription', 'Urgency']);
+      await expect(page.locator('[data-section="origin"] .stat', { hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       const box = (sel: string) => page.locator(sel).first().boundingBox().then((b) => b!);
-      const group = page.locator('fieldset.field-details');
-      await expect(group.locator('legend')).toHaveText('Origin details');
-      await expect(group.locator('label')).toHaveText(['Producer', 'Farm', 'Variety', 'Region', 'Elevation', 'Harvest', 'Certification']);
+      const groups = page.locator('.form-grid > .form-group');
+      await expect(groups.locator('> legend')).toHaveText(['Origin', 'Bag', 'Timing']);
+      // Origin: the page's nine, in its order (Amount (g) is the form's own label for the Bag's Amount).
+      await expect(groups.nth(1).locator('label')).toHaveText(['Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
+      await expect(groups.nth(2).locator('label')).toHaveText(['Roast level', 'Amount (g)', 'Cost', 'Subscription']);
+      await expect(groups.nth(3).locator('label')).toHaveText(['Roast date', 'Min rest', 'Max rest', 'Frozen start date', 'Frozen end date']);
+      await expect(groups.nth(0).locator('label')).toHaveText(['Product page URL', 'Roaster', 'Coffee', 'Decaf', 'Image URL']);
       await expect(page.locator('#producer')).toHaveValue('Ana Maria Gutierrez');
       await expect(page.locator('#certification')).toHaveValue('Organic');
-      const [proc, det, cost, grid] = [await box('.field-processing'), await box('fieldset.field-details'), await box('.field-cost'), await box('.form-grid')];
-      expect(det.y, 'below Processing').toBeGreaterThan(proc.y + proc.height - 1);
-      expect(cost.y, 'above Cost').toBeGreaterThan(det.y + det.height - 1);
-      expect(Math.abs(det.width - grid.width), 'full-width row').toBeLessThan(2);
-      expect(await page.evaluate(() => !!document.activeElement?.closest('fieldset.field-details')), 'no autofocus').toBe(false);
+      // Top to bottom: top group, Origin, Bag, Timing, then the slug.
+      const ys = await Promise.all(['#product_url', '#origin', '#roast_level', '#roast_date', '#slug'].map((q) => box(q).then((b) => b.y)));
+      expect(ys, 'groups run top to bottom').toEqual([...ys].sort((x, y) => x - y));
+      expect(await page.evaluate(() => !!document.activeElement?.closest('.form-group')), 'no autofocus').toBe(false);
     } },
   { name: 'coffee page with origin details', path: (s) => `/coffees/${s.slugs.brewNew}`,
     act: async (page) => {
-      const stats = page.locator('.stat-grid').first().locator('.stat');
-      await expect(stats.locator('.stat-label')).toHaveText(['Origin', 'Roast level', 'Processing', 'Amount', 'Cost', 'Cost/gram', 'Subscription', 'Urgency',
-        'Producer', 'Farm', 'Variety', 'Region', 'Elevation', 'Harvest', 'Certification']);
-      await expect(stats.filter({ hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
+      const origin = page.locator('[data-section="origin"] .stat');
+      await expect(origin.locator('.stat-label')).toHaveText(['Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
+      await expect(origin.filter({ hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
+      // Directly under the header: no larger gap than between the later sections.
+      const h = await page.locator('.detail-header').boundingBox();
+      const sec = await page.locator('[data-section="origin"]').boundingBox();
+      expect(sec!.y - (h!.y + h!.height), 'gap under the header').toBeLessThan(40);
     } },
   { name: 'stats stay put with no details', path: (s) => `/coffees/${s.slugs.long}`,
     act: async (page, s) => {
-      const cols = () => page.locator('.stat-grid').first().locator('.stat').evaluateAll((els) =>
+      const cols = (id: string) => page.locator(`[data-section="${id}"] .stat`).evaluateAll((els) =>
         els.map((e) => { const r = e.getBoundingClientRect(); return [e.querySelector('.stat-label')!.textContent, Math.round(r.x), Math.round(r.width)]; }));
-      const none = await cols();
-      expect(none.length, 'no extra stats on a coffee without details').toBe(8);
+      const none = await cols('bag');
+      expect(none.length).toBe(6);
+      expect((await cols('origin')).length, 'no extra stats on a coffee without details').toBe(2);
       await page.goto(`/coffees/${s.slugs.brewNew}`);
-      expect((await cols()).slice(0, 8), 'the same stats, same columns').toEqual(none);
+      expect(await cols('bag'), 'the same Bag stats, same columns').toEqual(none);
     } },
   // Favorite grind (Timing): one line per grinder, A to Z; wide it fills the last column over both stat rows, narrow it
   // sits below the grid at full width. Lab Bag 8 has two grinders, El Dorado one, the long-named Lab Bag none rated.
@@ -1155,9 +1169,9 @@ export const STATES: State[] = [
         expect(b.x + b.width, 'block reaches the grid right').toBeGreaterThan(g.x + g.width - 2);
         expect(Math.abs(rest.x - days.x) < 2 && rest.y > days.y, 'Recommended rest under Days since roast').toBe(true);
         expect(Math.abs(before.x - after.x) < 2 && before.y > after.y, 'Drink before under Drink after').toBe(true);
-        // The columns line up with the facts grid above (Origin, Roast level, Processing, Amount), the block starting at the 4th.
-        const fx = async (t: string) => (await page.locator('.stat-grid .stat', { hasText: t }).first().boundingBox())!.x;
-        for (const [x, t] of [[roast.x, 'Origin'], [days.x, 'Roast level'], [after.x, 'Processing'], [b.x, 'Amount']] as const)
+        // The columns line up with the Bag grid above (Roast level, Amount, Cost, Cost/gram), the block starting at the 4th.
+        const fx = async (t: string) => (await page.locator('[data-section="bag"] .stat', { hasText: t }).first().boundingBox())!.x;
+        for (const [x, t] of [[roast.x, 'Roast level'], [days.x, 'Amount'], [after.x, 'Cost'], [b.x, 'Cost/gram']] as const)
           expect(Math.abs(x - (await fx(t))), `Timing column of ${t} lines up with the facts grid`).toBeLessThan(1.5);
       } else {
         expect(b.y, 'block below the stats').toBeGreaterThanOrEqual(Math.max(before.y + before.height, rest.y + rest.height) - 1);

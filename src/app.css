@@ -707,10 +707,9 @@ input:focus-visible {
   flex-direction: row;
   align-items: center;
   gap: var(--space-2);
-  /* In CoffeeForm this field shares a flex column with Frozen end date
-     (.group-frozenend) — align-self: start keeps it anchored to that
-     column's own edge instead of stretching to fill it. Harmless where
-     this class isn't a grid/flex item (e.g. the login page). */
+  /* In CoffeeForm this field is a grid cell beside Roaster and Coffee — align-self: start keeps
+     it anchored to the cell's edge instead of stretching. Harmless where this class isn't a
+     grid/flex item (e.g. the login page). */
   align-self: start;
 }
 
