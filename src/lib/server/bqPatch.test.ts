@@ -213,4 +213,29 @@ describe('buildPatchPlan', () => {
     expect((r.main.BEANS as { attachments: string[] }[])[0].attachments).toEqual(['photo_a.jpg']);
     expect(plan({ photo: null }).plan.beans).toEqual([]);
   });
+
+  it('overwriting a non-blank BQ value needs settled; blank fills do not', () => {
+    const b = bean('u1', { cost: 5, url: '' });
+    const c = { cost: 9, product_url: 'https://x.test' };
+    const r = plan(c, b);
+    expect(r.unexpected).toEqual(['coffee 1: cost overwrites a Bean Conqueror value that is not settled']);
+    expect(r.plan.beans[0].set).toMatchObject({ cost: 9, url: 'https://x.test' });
+    expect(buildPatchPlan([site(c)], mainOf(b), {}, ['1:cost']).unexpected).toEqual([]);
+    expect(buildPatchPlan([site(c)], mainOf(b), { 1: ['cost'] }).unexpected).toEqual([]);
+  });
+
+  it('unsettled origin overwrite is unexpected', () => {
+    const b = bean('u1', { bean_information: [{ farm: 'Old' }] });
+    expect(plan({ farm: 'New' }, b).unexpected).toHaveLength(1);
+    expect(buildPatchPlan([site({ farm: 'New' })], mainOf(b), {}, ['1:farm']).unexpected).toEqual([]);
+  });
+
+  it('new bean beside an unlinked same-name export bean is unexpected, null dates match', () => {
+    const stray = bean('stray', { name: 'ALPHA!', roaster: 'R1', roastingDate: '' });
+    const nb = (d: string | null) => site({ id: 7, bean_uuid: null, roast_date: d });
+    expect(buildPatchPlan([nb('2026-03-01')], mainOf(stray), {}).unexpected).toHaveLength(1);
+    expect(buildPatchPlan([nb(null)], mainOf(bean('stray', { name: 'Alpha', roaster: 'r1', roastingDate: bqDateFromLocal('2026-03-01') })), {}).unexpected).toHaveLength(1);
+    const other = bean('stray', { name: 'Alpha', roaster: 'r1', roastingDate: bqDateFromLocal('2026-01-01') });
+    expect(buildPatchPlan([nb('2026-03-01')], mainOf(other), {}).unexpected).toEqual([]);
+  });
 });

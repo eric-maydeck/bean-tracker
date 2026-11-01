@@ -191,6 +191,10 @@ const ORIGIN: [string, keyof BeanOriginPatch][] = [
   ...COFFEE_ORIGIN_FIELDS.filter((f) => f !== 'producer').map((f): [string, keyof BeanOriginPatch] => [f, f])
 ];
 
+// A BQ value that is only the Bean constructor's default counts as blank.
+const bqBlank = (v: unknown) => blank(v) || v === 0 || v === false;
+const normName = (v: unknown) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
 const same = (kind: Kind, site: unknown, bq: unknown): boolean => {
   if (kind === 'num') return typeof bq === 'number' && Math.abs((site as number) - bq) < 0.005;
   if (kind === 'date') return bcRoastDate(bq) === site;
@@ -202,12 +206,15 @@ const fieldValue = (kind: Kind, v: unknown) => (kind === 'date' ? bqDateFromLoca
 export function buildPatchPlan(
   coffees: PatchCoffee[],
   main: Rec,
-  keep: Record<string, string[]>
+  keep: Record<string, string[]>,
+  settled: Iterable<string> = []
 ): { plan: PatchPlan; unexpected: string[]; untouchedBeans: string[] } {
   const bqBeans = new Map((main.BEANS as Rec[]).map((b) => [uuidOf(b)!, b]));
+  const settledKeys = new Set(settled);
   const unexpected: string[] = [];
   const plan: PatchPlan = { beans: [], newBeans: [] };
   const linked = new Set<string>();
+  const newFor: PatchCoffee[] = [];
   const now = Math.floor(Date.now() / 1000);
 
   for (const c of coffees) {
@@ -225,16 +232,26 @@ export function buildPatchPlan(
         unexpected.push(`${label}: linked bean ${c.bean_uuid} is not in the export`);
         continue;
       }
+      // Overwriting a value BQ already has needs a review decision (settled) or a keep.
+      const guard = (site: string, bq: unknown) => {
+        if (!bqBlank(bq) && !settledKeys.has(`${c.id}:${site}`)) {
+          unexpected.push(`${label}: ${site} overwrites a Bean Conqueror value that is not settled`);
+        }
+      };
       const set: Rec = {};
       for (const f of usable) {
         const v = f.get(c);
-        if (!same(f.kind, v, bean[f.key])) set[f.key] = fieldValue(f.kind, v);
+        if (same(f.kind, v, bean[f.key])) continue;
+        guard(f.keep, bean[f.key]);
+        set[f.key] = fieldValue(f.kind, v);
       }
       const info = ((bean.bean_information as Rec[]) ?? [])[0] ?? {};
       const origin: BeanOriginPatch = {};
       for (const [site, key] of originFields) {
         const v = c[site as keyof PatchCoffee] as string;
-        if (String(info[key] ?? '').trim() !== v.trim()) origin[key] = v;
+        if (String(info[key] ?? '').trim() === v.trim()) continue;
+        guard(site, info[key]);
+        origin[key] = v;
       }
       const p: BeanPatch = { uuid: c.bean_uuid };
       if (Object.keys(set).length) p.set = set;
@@ -249,6 +266,7 @@ export function buildPatchPlan(
       unexpected.push(`${label}: derived bean uuid ${uuid} is already in the export`);
       continue;
     }
+    newFor.push(c);
     const bean = structuredClone(NEW_BEAN_TEMPLATE);
     bean.config = { uuid, unix_timestamp: now };
     bean.roaster = c.roaster;
@@ -263,5 +281,17 @@ export function buildPatchPlan(
   }
 
   const untouchedBeans = [...bqBeans.keys()].filter((u) => !linked.has(u));
+  // A new bean next to an unlinked export bean of the same roaster and name is likely a duplicate.
+  // Unknown (null) roast dates match anything; two known dates must be equal.
+  for (const c of newFor) {
+    for (const u of untouchedBeans) {
+      const b = bqBeans.get(u)!;
+      const d = bcRoastDate(b.roastingDate);
+      if (normName(b.roaster) === normName(c.roaster) && normName(b.name) === normName(c.coffee_name)
+        && (d === null || c.roast_date === null || d === c.roast_date)) {
+        unexpected.push(`coffee ${c.id}: new bean would duplicate unlinked export bean ${u}`);
+      }
+    }
+  }
   return { plan, unexpected, untouchedBeans };
 }

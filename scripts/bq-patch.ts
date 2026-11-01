@@ -1,12 +1,12 @@
 // One-time tool: patch the BEANS key of a Bean Conqueror export without touching anything else.
 //   apply  --export <dir> --out <dir> [--plan <file.json>] [--max-age-hours 24]
 //   apply  --export <dir> --out <dir> --db <DB COPY> --images <images root> --keep <keep.json>
-//          [--dry-run]   (builds the plan from the site; --dry-run writes report.json and copies nothing)
+//          [--settled <settled.json>] [--dry-run]   (builds the plan from the site; --dry-run writes report.json and copies nothing)
 //   verify --zip <zip> --dump <dump.json>
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import {
-  existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync
+  existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, writeFileSync
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +30,7 @@ const { positionals, values: a } = parseArgs({
     db: { type: 'string' },
     images: { type: 'string' },
     keep: { type: 'string' },
+    settled: { type: 'string' },
     'dry-run': { type: 'boolean' },
     'max-age-hours': { type: 'string', default: '24' }
   }
@@ -44,13 +45,14 @@ async function apply() {
   const src = need(a.export, 'export');
   const out = resolve(need(a.out, 'out'));
   const zipPath = join(src, 'Beanconqueror.zip');
-  const ageH = (Date.now() - statSync(zipPath).mtimeMs) / 3.6e6;
+  const zip = await JSZip.loadAsync(readFileSync(zipPath));
+  const names = Object.keys(zip.files);
+  // File mtime says when the zip was copied; the entries say when BQ exported it.
+  const newest = Math.max(...names.map((n) => zip.files[n].date.getTime()));
+  const ageH = (Date.now() - newest) / 3.6e6;
   if (ageH > Number(a['max-age-hours'])) fail(`Export is ${ageH.toFixed(1)}h old; re-export first`);
   mkdirSync(out, { recursive: true });
   if (readdirSync(out).some((n) => n !== 'report.json')) fail(`${out} is not empty`); // a dry run leaves report.json
-
-  const zip = await JSZip.loadAsync(readFileSync(zipPath));
-  const names = Object.keys(zip.files);
   if (names.some((n) => /^Beanconqueror_Beans_\d+\.json$/.test(n))) {
     fail('Export has Beanconqueror_Beans_N.json entries; BEANS is split and not supported');
   }
@@ -62,7 +64,12 @@ async function apply() {
     const built = await planFromSite(main);
     plan = built.plan;
     for (const [u, p] of built.newPhotos) newPhotos.set(u, p);
-    extra = { unexpected: built.unexpected, warnings: built.warnings, untouchedBeans: built.untouchedBeans };
+    extra = {
+      unexpected: built.unexpected, warnings: built.warnings, untouchedBeans: built.untouchedBeans,
+      created: plan.newBeans.map((nb) => ({
+        uuid: (nb.config as { uuid: string }).uuid, name: nb.name, roaster: nb.roaster
+      }))
+    };
   }
 
   const photoNames: Record<string, string> = {};
@@ -129,6 +136,8 @@ async function planFromSite(main: Record<string, unknown>) {
   if (!existsSync(dbPath)) fail(`--db ${dbPath} does not exist`);
   const images = resolve(need(a.images, 'images'));
   const keep = JSON.parse(readFileSync(need(a.keep, 'keep'), 'utf8'));
+  if (!a.settled && !a['dry-run']) fail('--settled is required with --db unless --dry-run');
+  const settled: string[] = a.settled ? JSON.parse(readFileSync(a.settled, 'utf8')) : [];
   const { createDb } = await import('../src/lib/server/db.ts');
   const db = createDb(dbPath);
   const rows = db
@@ -152,7 +161,13 @@ async function planFromSite(main: Record<string, unknown>) {
     }
     return { ...c, photo };
   });
-  const built = buildPatchPlan(coffees, main, keep);
+  const built = buildPatchPlan(coffees, main, keep, settled);
+  if (!a.settled) {
+    // dry run without --settled: unsettled overwrites are warnings, not refusals
+    const isUnsettled = (m: string) => m.endsWith('is not settled');
+    warnings.push(...built.unexpected.filter(isUnsettled));
+    built.unexpected = built.unexpected.filter((m) => !isUnsettled(m));
+  }
   const newPhotos = new Map<string, string>();
   for (const c of coffees) if (!c.bean_uuid && c.photo) newPhotos.set(coffeeBeanUuid(c.id), c.photo);
   return { ...built, warnings, newPhotos };
