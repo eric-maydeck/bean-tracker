@@ -497,7 +497,7 @@ describe('derived bean uuid and blank filling', () => {
 
   it('import fills a blank and never replaces or blanks', () => {
     const db = createDb(':memory:');
-    const a = createCoffee(db, { ...input, origin: 'Kenya', farm: 'Mine' }).id;
+    const a = createCoffee(db, { ...input, origin: 'Kenya', farm: 'Mine', variety: 'Gesha' }).id;
     const data = {
       ...empty,
       beans: [bean({ id: coffeeBeanUuid(a), url: 'https://r.example/p' })],
@@ -506,8 +506,8 @@ describe('derived bean uuid and blank filling', () => {
     importBeanConquerorData(db, data);
     const row = db.prepare('SELECT * FROM coffees WHERE id = ?').get(a) as Record<string, unknown>;
     expect(row).toMatchObject({ origin: 'Kenya', farm: 'Mine', producer: 'Ana', product_url: 'https://r.example/p' });
-    expect(row.processing).toBeTruthy();
-    expect(row.variety ?? null).toBeNull();
+    expect(row.processing).toBe('Anaerobic Washed');
+    expect(row.variety).toBe('Gesha'); // blank BQ value doesn't blank the site's
     // second import changes nothing
     const slug = row.slug;
     importBeanConquerorData(db, data);
