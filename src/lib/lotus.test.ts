@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RECIPES, idealMl, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, loadWater, serializeWater, convertDrops, type Drops } from './lotus';
+import { RECIPES, idealMl, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, loadWater, serializeWater, dropAnchor, dropsFromAnchor, type Drops } from './lotus';
 
 const p = (q: string) => new URLSearchParams(q);
 const r = (slug: string) => RECIPES.find((x) => x.slug === slug)!;
@@ -159,11 +159,25 @@ describe('dropper tip', () => {
     expect(loadWater(serializeWater(p('tip=precision&ml=900')))).toEqual({ tip: 'precision', ml: 900 });
     expect(loadWater(JSON.stringify({ version: 1, params: 'ml=900' }))).toEqual({ ml: 900 });
   });
-  it('convertDrops: closest equivalent for the new tip', () => {
-    expect(convertDrops(d(4, 4, 2, 2), 'round', 'precision')).toEqual(d(7, 7, 4, 4));
-    expect(convertDrops(d(7, 7, 4, 4), 'precision', 'round')).toEqual(d(4, 4, 2, 2));
-    expect(convertDrops(d(0, 0, 0, 0), 'round', 'precision')).toEqual(d(0, 0, 0, 0));
-    expect(convertDrops(d(999, 600, 1, 0), 'round', 'precision')).toEqual(d(999, 999, 2, 0));
-    expect(convertDrops(d(3, 3, 3, 3), 'round', 'round')).toEqual(d(3, 3, 3, 3));
+  it('anchored drops: switching back and forth returns the entered numbers', () => {
+    const a1 = dropAnchor(1, 'round');
+    expect(dropsFromAnchor(a1, 'precision')).toBe(2);
+    expect(dropsFromAnchor(a1, 'round')).toBe(1);
+    const a2 = dropAnchor(1, 'precision');
+    expect(dropsFromAnchor(a2, 'round')).toBe(1);
+    expect(dropsFromAnchor(a2, 'precision')).toBe(1);
+    for (const n of [0, 1, 2, 3, 4, 7, 50, 200]) {
+      for (const [t, u] of [['round', 'precision'], ['precision', 'round']] as const) {
+        expect(dropsFromAnchor(dropAnchor(n, t), t), `${n} ${t}`).toBe(n);
+        expect(dropsFromAnchor(dropAnchor(n, t), u)).toBe(Math.round((n * (u === 'precision' ? 1 : 0.56)) / (t === 'precision' ? 1 : 0.56)));
+      }
+    }
+  });
+  it('anchored drops: 4 round -> 7 precision, 0 stays 0, clamps to 999, an edit re-anchors', () => {
+    expect(dropsFromAnchor(dropAnchor(4, 'round'), 'precision')).toBe(7);
+    expect(dropsFromAnchor(dropAnchor(0, 'round'), 'precision')).toBe(0);
+    expect(dropsFromAnchor(dropAnchor(999, 'round'), 'precision')).toBe(999);
+    // edit to 3 while on precision (shown 7 from 4 round), then back to round: from the new anchor
+    expect(dropsFromAnchor(dropAnchor(3, 'precision'), 'round')).toBe(2);
   });
 });

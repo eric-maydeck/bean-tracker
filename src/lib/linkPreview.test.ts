@@ -61,22 +61,32 @@ describe('coffeePreview', () => {
 
 describe('waterPreview', () => {
   it('recipe mode', () => {
-    expect(waterPreview({ mode: 'recipe', recipe: 'Holy Water', ml: 900, drops: { mg: 7, ca: 0, na: 1, k: 4 }, gh: 62.5, kh: 17.857, target: { gh: 60, kh: 20 }, idealMl: 800 })).toEqual({
+    expect(waterPreview({ tip: 'round', mode: 'recipe', recipe: 'Holy Water', ml: 900, drops: { mg: 7, ca: 0, na: 1, k: 4 }, gh: 62.5, kh: 17.857, target: { gh: 60, kh: 20 }, idealMl: 800 })).toEqual({
       title: 'Water: Holy Water',
-      description: 'Lotus drop calculator\nWater: 900mL (recipe 800mL)\nCa: 0 drops\nMg: 7 drops\nNa: 1 drop\nK: 4 drops\nGH: 62.5ppm (recipe 60ppm)\nKH: 17.9ppm (recipe 20ppm)'
+      description: 'Lotus drop calculator\nWater: 900mL (recipe 800mL)\nRound tip\nCa: 0 drops\nMg: 7 drops\nNa: 1 drop\nK: 4 drops\nGH: 62.5ppm (recipe 60ppm)\nKH: 17.9ppm (recipe 20ppm)'
     });
   });
   it('drops mode ignores the recipe', () => {
-    expect(waterPreview({ mode: 'drops', recipe: 'Holy Water', ml: 800, drops: { mg: 5, ca: 3, na: 0, k: 0 }, gh: 80.357, kh: 0 })).toEqual({
+    expect(waterPreview({ tip: 'round', mode: 'drops', recipe: 'Holy Water', ml: 800, drops: { mg: 5, ca: 3, na: 0, k: 0 }, gh: 80.357, kh: 0 })).toEqual({
       title: 'Water: Custom drops',
-      description: 'Lotus drop calculator\nWater: 800mL\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80.4ppm\nKH: 0ppm'
+      description: 'Lotus drop calculator\nWater: 800mL\nRound tip\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80.4ppm\nKH: 0ppm'
     });
   });
   it('target mode', () => {
-    expect(waterPreview({ mode: 'target', recipe: 'x', ml: 800, drops: { mg: 4, ca: 4, na: 0, k: 0 }, gh: 80.357, kh: 0, target: { gh: 80, kh: 0 } })).toEqual({
+    expect(waterPreview({ tip: 'round', mode: 'target', recipe: 'x', ml: 800, drops: { mg: 4, ca: 4, na: 0, k: 0 }, gh: 80.357, kh: 0, target: { gh: 80, kh: 0 } })).toEqual({
       title: 'Water: Custom target',
-      description: 'Lotus drop calculator\nWater: 800mL\nCa: 4 drops\nMg: 4 drops\nNa: 0 drops\nK: 0 drops\nGH: 80.4ppm (target 80ppm)\nKH: 0ppm (target 0ppm)'
+      description: 'Lotus drop calculator\nWater: 800mL\nRound tip\nCa: 4 drops\nMg: 4 drops\nNa: 0 drops\nK: 0 drops\nGH: 80.4ppm (target 80ppm)\nKH: 0ppm (target 0ppm)'
     });
+  });
+});
+
+describe('waterPreview tip', () => {
+  const base = { mode: 'drops' as const, recipe: 'x', ml: 800, drops: { mg: 7, ca: 7, na: 4, k: 4 }, gh: 80, kh: 20 };
+  it('names the tip in every mode', () => {
+    for (const mode of ['recipe', 'drops', 'target'] as const) {
+      expect(waterPreview({ ...base, mode, tip: 'precision' }).description).toContain('\nWater: 800mL\nPrecision\nCa: 7 drops');
+      expect(waterPreview({ ...base, mode, tip: 'round' }).description).toContain('\nWater: 800mL\nRound tip\nCa: 7 drops');
+    }
   });
 });
 

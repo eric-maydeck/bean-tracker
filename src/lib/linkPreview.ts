@@ -1,5 +1,5 @@
 import type { CoffeeRow, SubscriptionRow } from './types';
-import type { Drops, Mode } from './lotus';
+import { TIP_LABEL, type Drops, type Mode, type Tip } from './lotus';
 import type { StatusTab } from './coffeeViewState';
 import { formatBag, formatGrams } from './grams';
 import { originWithFlag } from './countryFlags';
@@ -42,7 +42,7 @@ export function coffeePreview(
   return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image };
 }
 
-export function waterPreview(w: { mode: Mode; recipe: string; ml: number; drops: Drops; gh: number; kh: number; target?: { gh: number; kh: number }; idealMl?: number }): Preview {
+export function waterPreview(w: { mode: Mode; tip: Tip; recipe: string; ml: number; drops: Drops; gh: number; kh: number; target?: { gh: number; kh: number }; idealMl?: number }): Preview {
   const title = w.mode === 'recipe' ? `Water: ${w.recipe}` : w.mode === 'drops' ? 'Water: Custom drops' : 'Water: Custom target';
   const d = w.drops;
   const drops = (n: number) => `${n} drop${n === 1 ? '' : 's'}`;
@@ -52,6 +52,7 @@ export function waterPreview(w: { mode: Mode; recipe: string; ml: number; drops:
   const lines = [
     'Lotus drop calculator',
     `Water: ${w.ml}mL${w.mode === 'recipe' ? aim(w.idealMl, 'mL') : ''}`,
+    TIP_LABEL[w.tip],
     `Ca: ${drops(d.ca)}`, `Mg: ${drops(d.mg)}`, `Na: ${drops(d.na)}`, `K: ${drops(d.k)}`,
     `GH: ${f1(w.gh)}ppm${aim(w.target?.gh, 'ppm')}`, `KH: ${f1(w.kh)}ppm${aim(w.target?.kh, 'ppm')}`
   ];

@@ -1328,11 +1328,14 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, string | RegExp][] = [
-        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\nWater: 800mL (recipe 800mL)\nCa: 4 drops\nMg: 4 drops\nNa: 2 drops\nK: 2 drops\nGH: 80.4ppm (recipe 80ppm)\nKH: 20.1ppm (recipe 20ppm)'],
-        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\nWater: 900mL (recipe 800mL)\nCa: 0 drops\nMg: 7 drops\nNa: 0 drops\nK: 4 drops\nGH: 62.5ppm (recipe 60ppm)\nKH: 17.9ppm (recipe 20ppm)'],
-        ['/water?recipe=lume-ultra-soft&ml=880', 'Water: Lume Ultra Soft', /\nWater: 880mL \(recipe 800mL\)\n[\s\S]*\nGH: 18\.3ppm \(recipe 20ppm\)\nKH: 4\.6ppm \(recipe 5ppm\)$/],
+        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\nWater: 800mL (recipe 800mL)\nRound tip\nCa: 4 drops\nMg: 4 drops\nNa: 2 drops\nK: 2 drops\nGH: 80.4ppm (recipe 80ppm)\nKH: 20.1ppm (recipe 20ppm)'],
+        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\nWater: 900mL (recipe 800mL)\nRound tip\nCa: 0 drops\nMg: 7 drops\nNa: 0 drops\nK: 4 drops\nGH: 62.5ppm (recipe 60ppm)\nKH: 17.9ppm (recipe 20ppm)'],
+        ['/water?recipe=lume-ultra-soft&ml=880', 'Water: Lume Ultra Soft', /\nWater: 880mL \(recipe 800mL\)\nRound tip\n[\s\S]*\nGH: 18\.3ppm \(recipe 20ppm\)\nKH: 4\.6ppm \(recipe 5ppm\)$/],
         ['/water?kettle=fellow-stagg-ekg', 'Water: Bright and Juicy', /\nWater: 900mL \(recipe 800mL\)\n/],
-        ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /Water: 800mL\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80\.4ppm\nKH: 0ppm/]
+        ['/water?tip=precision', 'Water: Bright and Juicy', /\nWater: 800mL \(recipe 900mL\)\nPrecision\nCa: 7 drops\nMg: 7 drops\nNa: 4 drops\nK: 4 drops\n/],
+        ['/water?mode=target&tip=precision&mg=40&ca=40&na=10&k=10', 'Water: Custom target', /\nPrecision\nCa: 7 drops\nMg: 7 drops\nNa: 4 drops\nK: 4 drops\n/],
+        ['/water?mode=drops&tip=precision&ca=3&mg=5', 'Water: Custom drops', /Water: 800mL\nPrecision\nCa: 3 drops\nMg: 5 drops/],
+        ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /Water: 800mL\nRound tip\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80\.4ppm\nKH: 0ppm/]
       ];
       for (const [path, title, desc] of cases) {
         const t = await previewTags(page, path);
@@ -1608,6 +1611,34 @@ export const STATES: State[] = [
       await expect(page.getByRole('spinbutton', { name: 'Na' })).toHaveValue('2');
       await expect(page).toHaveURL(/tip=precision/);
       await expect(page).toHaveURL(/mg=4/);
+      // No drift: Mg 1 on round -> 2 on precision -> 1 on round; and an edit re-anchors only that box.
+      await page.getByRole('button', { name: 'Round tip', exact: true }).click();
+      await page.getByRole('spinbutton', { name: 'Mg' }).fill('1');
+      await page.getByRole('button', { name: 'Precision', exact: true }).click();
+      await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('2');
+      await expect(page.getByRole('spinbutton', { name: 'Ca' })).toHaveValue('4');
+      await page.getByRole('button', { name: 'Round tip', exact: true }).click();
+      await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('1');
+      await expect(page.getByRole('spinbutton', { name: 'Ca' })).toHaveValue('2');
+    }
+  },
+  {
+    // Target mode follows the URL's tip and a tip switch leaves the typed targets alone; a saved Precision restores
+    // into a bare URL, so Share (which reads the location) carries tip= to the recipient.
+    name: 'water-tip-target-saved', viewports: 'two',
+    path: () => '/water?mode=target&tip=precision&ml=800&mg=40&ca=40&na=10&k=10',
+    act: async (page) => {
+      await expect(page.getByRole('listitem', { name: '7 Calcium' })).toBeVisible();
+      await page.getByRole('button', { name: 'Round tip', exact: true }).click();
+      await expect(page.getByRole('listitem', { name: '4 Calcium' })).toBeVisible();
+      await expect(page.getByRole('spinbutton', { name: 'Ca' })).toHaveValue('40');
+      await page.getByRole('button', { name: 'Precision', exact: true }).click();
+      await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('40');
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/insights"]')?.click());
+      await expect(page).toHaveURL(/\/insights/);
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/water"]')?.click());
+      await expect(page).toHaveURL(/tip=precision/);
+      await expect(page.getByRole('button', { name: 'Precision', exact: true })).toHaveAttribute('aria-pressed', 'true');
     }
   },
   {

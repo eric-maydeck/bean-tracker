@@ -8,7 +8,7 @@
   import { writeUrlParams } from '$lib/urlState';
   import {
     RECIPES, idealMl, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, MODES, MODE_LABEL, KETTLES, kettleFor, dropsFromPpm, ppmFromMgl,
-    minerals, lotusParams, parseLotus, loadWater, serializeWater, WATER_STORAGE_KEY, TIPS, TIP_LABEL, convertDrops, type Drops, type Mode, type Unit, type Tip
+    minerals, lotusParams, parseLotus, loadWater, serializeWater, WATER_STORAGE_KEY, TIPS, TIP_LABEL, dropAnchor, dropsFromAnchor, type Drops, type Mode, type Unit, type Tip
   } from '$lib/lotus';
 
   const SLIDER_MAX = 1200;
@@ -28,6 +28,9 @@
   let raw = $state(String(DEFAULT_ML));
   let dropsIn = $state<Fields>(blank());
   let targetIn = $state<Fields>(blank());
+  // Drops mode: each box's tip-independent anchor (see dropAnchor). In memory only: a reload re-anchors from the visible
+  // values and tip, so tip round trips are exact within a visit, not across a reload.
+  let anchors = $state<Partial<Record<keyof Drops, number>>>({});
 
   // Read the URL on entry and on every navigation (nav "Water" -> bare resets). A bare ?kettle=<slug>
   // fills its capacity; with an ml that differs, the kettle is dropped.
@@ -49,6 +52,7 @@
     ml = s.ml ?? KETTLES.find((k) => k.slug === s.kettle)?.ml;
     raw = String(ml ?? DEFAULT_ML);
     dropsIn = s.mode === 'drops' ? fromVals(s.vals) : blank();
+    anchors = Object.fromEntries(Object.entries(s.mode === 'drops' ? (s.vals ?? {}) : {}).map(([k, v]) => [k, dropAnchor(v, s.tip ?? 'round')]));
     targetIn = s.mode === 'target' ? fromVals(s.vals) : blank();
   }
   applyUrl();
@@ -89,7 +93,11 @@
 
   // Whole drops only: a decimal (or 4+ digits) is refused where it is typed, so the results never jump to 0.
   function setDrops(key: keyof Drops, el: HTMLInputElement) {
-    if (el.value === '' || INT.test(el.value)) dropsIn[key] = el.value;
+    if (el.value === '' || INT.test(el.value)) {
+      dropsIn[key] = el.value;
+      if (el.value === '') delete anchors[key];
+      else anchors[key] = dropAnchor(+el.value, tip);
+    }
     else el.value = dropsIn[key];
   }
 
@@ -100,8 +108,7 @@
       return;
     }
     if (mode === 'drops') {
-      const c = convertDrops(nums(dropsIn, INT), tip, t);
-      for (const k of Object.keys(dropsIn) as (keyof Drops)[]) if (INT.test(dropsIn[k])) dropsIn[k] = String(c[k]);
+      for (const k of Object.keys(anchors) as (keyof Drops)[]) if (INT.test(dropsIn[k])) dropsIn[k] = String(dropsFromAnchor(anchors[k]!, t));
     }
     tipPick = t;
   }
@@ -165,6 +172,7 @@
     ml = undefined;
     raw = String(DEFAULT_ML);
     dropsIn = blank();
+    anchors = {};
     targetIn = blank();
     sync();
   }
@@ -185,7 +193,7 @@
 <svelte:head>
   <title>Bean Tracker - Water</title>
 </svelte:head>
-<PreviewMeta preview={waterPreview({ mode, recipe: recipe.name, ml: volume, drops, gh: result.gh, kh: result.kh, target: mode === 'target' ? target : mode === 'recipe' ? { gh: recipe.ppm.mg + recipe.ppm.ca, kh: recipe.ppm.na + recipe.ppm.k } : undefined, idealMl: ideal })} />
+<PreviewMeta preview={waterPreview({ mode, tip, recipe: recipe.name, ml: volume, drops, gh: result.gh, kh: result.kh, target: mode === 'target' ? target : mode === 'recipe' ? { gh: recipe.ppm.mg + recipe.ppm.ca, kh: recipe.ppm.na + recipe.ppm.k } : undefined, idealMl: ideal })} />
 
 <div class="water-page">
 <div class="toolbar water-title">

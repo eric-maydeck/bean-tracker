@@ -48,11 +48,10 @@ export const TIPS: Tip[] = ['round', 'precision'];
 export const TIP_LABEL: Record<Tip, string> = { round: 'Round tip', precision: 'Precision' };
 const TIP_FACTOR: Record<Tip, number> = { round: 0.56, precision: 1 };
 
-// Switching tips in Drops mode: the closest whole drops for the new tip (0 stays 0; the box takes at most 3 digits).
-export function convertDrops(d: Drops, from: Tip, to: Tip): Drops {
-  const c = (v: number) => Math.min(999, Math.round((v * TIP_FACTOR[to]) / TIP_FACTOR[from]));
-  return { mg: c(d.mg), ca: c(d.ca), na: c(d.na), k: c(d.k) };
-}
+// Drops mode keeps each entered count as a tip-independent anchor (drops / factor = the mineral's strength), so
+// switching tips back and forth never drifts: a switch shows round(anchor x new factor) (box takes at most 3 digits).
+export const dropAnchor = (drops: number, tip: Tip): number => drops / TIP_FACTOR[tip];
+export const dropsFromAnchor = (anchor: number, tip: Tip): number => Math.min(999, Math.round(anchor * TIP_FACTOR[tip]));
 
 // Lotus rounding on target ppm as CaCO3 (Ca, Mg as GH; Na, K as KH).
 export function dropsFromPpm(ppm: Drops, ml: number, tip: Tip = 'round'): Drops {
