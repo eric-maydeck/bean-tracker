@@ -455,6 +455,10 @@
         <h2>Origin</h2>
         <div class="stat-grid">
           <div class="stat">
+            <span class="stat-label">Type</span>
+            <span class="stat-value">{data.coffee.blend ? 'Blend' : 'Single origin'}</span>
+          </div>
+          <div class="stat">
             <span class="stat-label">Origin</span>
             <span class="stat-value">{data.coffee.origin ? originWithFlag(data.coffee.origin) : '—'}</span>
           </div>

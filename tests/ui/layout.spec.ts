@@ -1111,18 +1111,32 @@ export const STATES: State[] = [
       const sections = await texts(page.locator('.detail-section[data-section] > h2'));
       const pageLabels = (id: string) => texts(page.locator(`[data-section="${id}"] .stat-label`));
       expect(sections.slice(0, 3)).toEqual(['Origin', 'Bag', 'Timing']);
-      expect(await pageLabels('origin')).toEqual(['Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
+      expect(await pageLabels('origin')).toEqual(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
       expect(await pageLabels('bag')).toEqual(['Roast level', 'Amount', 'Cost', 'Cost/gram', 'Subscription', 'Urgency']);
       await expect(page.locator('[data-section="origin"] .stat', { hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       const box = (sel: string) => page.locator(sel).first().boundingBox().then((b) => b!);
       const groups = page.locator('.form-grid > .form-group');
       await expect(groups.locator('> legend')).toHaveText(['Origin', 'Bag', 'Timing']);
-      // Origin: the page's nine, in its order (Amount (g) is the form's own label for the Bag's Amount).
-      await expect(groups.nth(1).locator('label')).toHaveText(['Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
+      // Origin: the page's ten, in its order (Amount (g) is the form's own label for the Bag's Amount).
+      await expect(groups.nth(1).locator('label')).toHaveText(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
       await expect(groups.nth(2).locator('label')).toHaveText(['Roast level', 'Amount (g)', 'Cost', 'Subscription']);
       await expect(groups.nth(3).locator('label')).toHaveText(['Roast date', 'Min rest', 'Max rest', 'Frozen start date', 'Frozen end date']);
       await expect(groups.nth(0).locator('label')).toHaveText(['Product page URL', 'Roaster', 'Coffee', 'Decaf', 'Image URL']);
+      // Type: first in Origin, same box as the Origin input beneath it, Blend fills only a blank Origin.
+      const [t, o] = await Promise.all([box('#blend'), box('#origin')]);
+      expect(Math.abs(t.height - o.height), 'Type select as tall as Origin (phones: its 44px tap target)').toBeLessThanOrEqual(t.height >= 44 ? 3 : 1);
+      expect(Math.abs(t.width - o.width), 'Type select as wide as Origin').toBeLessThanOrEqual(1);
+      expect(t.y < o.y - 1 || (Math.abs(t.y - o.y) <= 1 && t.x < o.x), 'Type comes first').toBe(true);
+      await page.locator('#blend').selectOption('1');
+      await expect(page.locator('#origin'), 'a typed Origin stays').not.toHaveValue('Blend');
+      await page.locator('#origin').fill('');
+      await page.locator('#blend').selectOption('0');
+      await page.locator('#blend').selectOption('1');
+      await expect(page.locator('#origin')).toHaveValue('Blend');
+      await page.locator('#blend').selectOption('0');
+      await expect(page.locator('#origin'), 'switching back changes nothing').toHaveValue('Blend');
+      await page.evaluate(() => (document.activeElement as HTMLElement).blur());
       await expect(page.locator('#producer')).toHaveValue('Ana Maria Gutierrez');
       await expect(page.locator('#certification')).toHaveValue('Organic');
       // Top to bottom: top group, Origin, Bag, Timing, then the slug.
@@ -1133,7 +1147,7 @@ export const STATES: State[] = [
   { name: 'coffee page with origin details', path: (s) => `/coffees/${s.slugs.brewNew}`,
     act: async (page) => {
       const origin = page.locator('[data-section="origin"] .stat');
-      await expect(origin.locator('.stat-label')).toHaveText(['Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
+      await expect(origin.locator('.stat-label')).toHaveText(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
       await expect(origin.filter({ hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
       // Directly under the header: no larger gap than between the later sections.
       const h = await page.locator('.detail-header').boundingBox();
@@ -1146,7 +1160,7 @@ export const STATES: State[] = [
         els.map((e) => { const r = e.getBoundingClientRect(); return [e.querySelector('.stat-label')!.textContent, Math.round(r.x), Math.round(r.width)]; }));
       const none = await cols('bag');
       expect(none.length).toBe(6);
-      expect((await cols('origin')).length, 'no extra stats on a coffee without details').toBe(2);
+      expect((await cols('origin')).length, 'no extra stats on a coffee without details (Type, Origin, Processing)').toBe(3);
       await page.goto(`/coffees/${s.slugs.brewNew}`);
       expect(await cols('bag'), 'the same Bag stats, same columns').toEqual(none);
     } },

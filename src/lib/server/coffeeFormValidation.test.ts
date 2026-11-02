@@ -74,6 +74,12 @@ describe('parseCoffeeForm', () => {
     expect(result.decaf).toBe(true);
   });
 
+  it('reads the Type select: blend only for "1"', () => {
+    expect(parseCoffeeForm(formData({ roaster: 'T', coffee_name: 'S', blend: '1' })).blend).toBe(true);
+    expect(parseCoffeeForm(formData({ roaster: 'T', coffee_name: 'S', blend: '0' })).blend).toBe(false);
+    expect(parseCoffeeForm(formData({ roaster: 'T', coffee_name: 'S' })).blend).toBe(false);
+  });
+
   it('treats a missing decaf field (unchecked checkbox) as false', () => {
     const result = parseCoffeeForm(formData({ roaster: 'Test', coffee_name: 'Sample' }));
     expect(result.decaf).toBe(false);

@@ -14,6 +14,7 @@ user. A blank is better than a guess. General rules only; this file holds no cof
   `{ "id": 1, "field": "producer", "value": "...", "source": "<url>" | "from name", "confidence": "high|medium|low", "note": "..." }`
 - `field` is one of: `producer`, `farm`, `variety`, `region`, `elevation`, `harvest_time`, `certification`, `origin`,
   `processing`, `product_url`, `coffee_name`, `roast_level`, `amount_g`, `cost`, `decaf`, `roast_date`.
+- Single origin / Blend (`blend`, BQ `beanMix`) is not gathered: it is set by hand on the site and sent to BQ.
 - Report a blank by omitting the row. Do not write rows with empty values.
 - `source` is the exact page the value is on, or `from name` when the value is part of the coffee's name. The checker fetches
   that page and looks for the value (or an alias) in its text, so cite the page that shows it, not the roaster home page.

@@ -79,7 +79,9 @@ export function mergeStagedCoffee(coffee: CoffeeRow, pendingFields: Record<strin
     // CoffeeForm's `checked={coffee?.decaf === 1}` comparison expects.
     // Presence of the key (regardless of its exact string value) means
     // it was checked when staged; absence means it was unchecked.
-    decaf: pendingFields.decaf != null ? 1 : 0
+    decaf: pendingFields.decaf != null ? 1 : 0,
+    // The Type select stages '1' (Blend) or '0'.
+    blend: pendingFields.blend === '1' ? 1 : 0
   } as CoffeeRow;
 }
 
@@ -88,8 +90,8 @@ export function mergeStagedCoffee(coffee: CoffeeRow, pendingFields: Record<strin
 // lifecycle dates, slug and id are per-bag, so the clone starts fresh
 // (a new backlog coffee; createCoffee de-duplicates the slug).
 export function clonePrefill(coffee: CoffeeRow): Partial<CoffeeRow> {
-  const { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, image_source_url, decaf } = coffee;
-  return { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, image_source_url, decaf, ...Object.fromEntries(COFFEE_ORIGIN_FIELDS.map((f) => [f, coffee[f]])) };
+  const { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, image_source_url, decaf, blend } = coffee;
+  return { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, image_source_url, decaf, blend, ...Object.fromEntries(COFFEE_ORIGIN_FIELDS.map((f) => [f, coffee[f]])) };
 }
 
 // "Set as roaster default" is staged like any field (CoffeeForm's hidden

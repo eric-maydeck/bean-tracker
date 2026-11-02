@@ -175,6 +175,12 @@ export function applySchema(db: DatabaseSync): void {
           OR processing LIKE '%decaf%' COLLATE NOCASE`
     );
   }
+  // Single origin / Blend: the only real blend (user, 2026-11-01). Runs only the moment the column is added.
+  if (ensureColumn(db, 'coffees', 'blend', 'INTEGER NOT NULL DEFAULT 0')) {
+    const ids = db.prepare(`SELECT id FROM coffees WHERE roaster = ? AND coffee_name = ?`)
+      .all('S&W Craft Roasting', "Teddy's Terror (blend)") as { id: number }[];
+    for (const { id } of ids) db.prepare(`UPDATE coffees SET blend = 1, origin = 'Blend' WHERE id = ?`).run(id);
+  }
   // Brew now: the user's own dripper/filter suggest from their own brews only. Once; a later edit sticks.
   if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('brew_now_own_data_2026_10c')) {
     // Unshipped wording changes: carry any earlier values over to the current strings.

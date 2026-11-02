@@ -26,6 +26,7 @@ export interface NewCoffeeInput extends CoffeeOriginFields {
   status?: 'backlog' | 'open' | 'archive';
   moved_date?: string | null;
   decaf?: boolean;
+  blend?: boolean;
 }
 
 const ORDER_BY_NAME = `ORDER BY c.roaster COLLATE NOCASE, c.coffee_name COLLATE NOCASE`;
@@ -127,6 +128,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
   const drank = status === 'archive' ? 1 : 0;
   const movedDate = status === 'archive' ? (input.moved_date ?? now) : null;
   const decaf = input.decaf ? 1 : 0;
+  const blend = input.blend ? 1 : 0;
   const slug = uniqueSlug(
     db,
     generateBaseSlug({
@@ -142,9 +144,9 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       `INSERT INTO coffees (
         roaster, coffee_name, origin, roast_level, processing,
         amount_g, cost, roast_date, frozen_start_date, frozen_end_date,
-        rest_days_low, rest_days_high, image_url, product_url, image_source_url, slug, drank, status, moved_date, decaf, subscription_id, created_at, updated_at,
+        rest_days_low, rest_days_high, image_url, product_url, image_source_url, slug, drank, status, moved_date, decaf, blend, subscription_id, created_at, updated_at,
         ${COFFEE_ORIGIN_FIELDS.join(', ')}
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${', ?'.repeat(COFFEE_ORIGIN_FIELDS.length)})`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${', ?'.repeat(COFFEE_ORIGIN_FIELDS.length)})`
     )
     .run(
       input.roaster,
@@ -167,6 +169,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       status,
       movedDate,
       decaf,
+      blend,
       input.subscription_id ?? null,
       now,
       now,
@@ -180,11 +183,12 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
   const oldSlug = (db.prepare(`SELECT slug FROM coffees WHERE id = ?`).get(id) as { slug: string } | undefined)?.slug;
   const now = new Date().toISOString();
   const decaf = input.decaf ? 1 : 0;
+  const blend = input.blend ? 1 : 0;
   db.prepare(
     `UPDATE coffees SET
       roaster = ?, coffee_name = ?, origin = ?, roast_level = ?, processing = ?,
       amount_g = ?, cost = ?, roast_date = ?, frozen_start_date = ?, frozen_end_date = ?,
-      rest_days_low = ?, rest_days_high = ?, image_url = ?, product_url = ?, image_source_url = ?, slug = ?, decaf = ?, updated_at = ?
+      rest_days_low = ?, rest_days_high = ?, image_url = ?, product_url = ?, image_source_url = ?, slug = ?, decaf = ?, blend = ?, updated_at = ?
     WHERE id = ?`
   ).run(
     input.roaster,
@@ -204,6 +208,7 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     sourceFor(db, input),
     slug,
     decaf,
+    blend,
     now,
     id
   );
@@ -244,7 +249,7 @@ export function applyCoffeeFix(db: DatabaseSync, f: CoffeeFix): string | null {
   if (!c) return 'coffee not found';
   if (f.roaster !== undefined && c.roaster !== f.roaster) return `roaster is '${c.roaster}', expected '${f.roaster}'`;
   if (c[f.field] !== f.from) return `${f.field} is '${c[f.field]}', expected '${f.from}'`;
-  const next = { ...c, [f.field]: f.to, decaf: f.field === 'decaf' ? f.to === 1 : c.decaf === 1 };
+  const next = { ...c, [f.field]: f.to, decaf: f.field === 'decaf' ? f.to === 1 : c.decaf === 1, blend: c.blend === 1 };
   const base = (x: { roaster: string; coffee_name: string; roast_date: string | null }) =>
     generateBaseSlug({ roaster: x.roaster, coffeeName: x.coffee_name, roastDate: x.roast_date, createdAt: c.created_at });
   const regen = base(next) !== base(c) && isAutoSlug(c.slug, base(c));

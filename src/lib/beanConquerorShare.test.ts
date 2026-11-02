@@ -31,6 +31,7 @@ function sampleCoffee(overrides: Partial<CoffeeRow> = {}): CoffeeRow {
     status: 'backlog',
     moved_date: null,
     decaf: 0,
+    blend: 0,
     subscription_id: null,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
@@ -171,17 +172,17 @@ describe('buildShareUrl', () => {
     expect(await imagesOf(null)).toEqual([]);
   });
 
-  it('sets beanMix to Blend when the name says blend (any case), else Single Origin', async () => {
+  it('sets beanMix from the blend column, not the name', async () => {
     const root = await protobuf.load(path.join(__dirname, 'beanconquerorBean.proto'));
     const BeanProto = root.lookupType('beanconqueror.BeanProto');
-    const mixOf = async (coffee_name: string) => {
-      const query = new URL(await buildShareUrl(sampleCoffee({ coffee_name }), roastLevels)).searchParams;
+    const mixOf = async (coffee_name: string, blend = 0) => {
+      const query = new URL(await buildShareUrl(sampleCoffee({ coffee_name, blend }), roastLevels)).searchParams;
       let base64 = '';
       for (let i = 0; query.get(`shareUserBean${i}`) != null; i++) base64 += query.get(`shareUserBean${i}`);
       return (BeanProto.decode(shareBytes(base64)) as unknown as { beanMix: number }).beanMix;
     };
-    expect(await mixOf('Holiday BLEND No. 2')).toBe(2);
-    expect(await mixOf('Espresso blend')).toBe(2);
+    expect(await mixOf('Holiday BLEND No. 2')).toBe(1);
+    expect(await mixOf('Espresso blend', 1)).toBe(2);
     expect(await mixOf('Ethiopia Guji')).toBe(1);
   });
 

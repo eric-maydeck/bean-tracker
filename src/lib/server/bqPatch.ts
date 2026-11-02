@@ -27,7 +27,7 @@ export type BeanChange = { uuid: string; name: string; field: string; from: unkn
 
 export const PATCHABLE_FIELDS: readonly string[] = [
   'url', 'attachments', 'name', 'roastingDate', 'roast_range', 'weight', 'cost',
-  'decaffeinated', 'finished', 'frozenDate', 'unfrozenDate'
+  'decaffeinated', 'finished', 'frozenDate', 'unfrozenDate', 'beanMix'
 ];
 
 type Rec = Record<string, unknown>;
@@ -124,6 +124,7 @@ export type PatchCoffee = {
   amount_g: number | null;
   cost: number | null;
   decaf: number | null;
+  blend: number; // 1 = BLEND, 0 = SINGLE_ORIGIN
   status: string;
   frozen_start_date: string | null;
   frozen_end_date: string | null;
@@ -173,7 +174,8 @@ export function bqDateFromLocal(date: string): string {
 
 type Kind = 'str' | 'num' | 'bool' | 'date';
 // keep = site field name (keep.json uses these); key = BQ bean key.
-const FIELDS: { keep: string; key: string; kind: Kind; get: (c: PatchCoffee) => unknown }[] = [
+// settledFree: the site is authoritative, so overwriting a filled BQ value needs no settled/keep.
+const FIELDS: { keep: string; key: string; kind: Kind; get: (c: PatchCoffee) => unknown; settledFree?: true }[] = [
   { keep: 'coffee_name', key: 'name', kind: 'str', get: (c) => c.coffee_name },
   { keep: 'product_url', key: 'url', kind: 'str', get: (c) => c.product_url },
   { keep: 'roast_date', key: 'roastingDate', kind: 'date', get: (c) => c.roast_date },
@@ -181,6 +183,7 @@ const FIELDS: { keep: string; key: string; kind: Kind; get: (c: PatchCoffee) => 
   { keep: 'amount_g', key: 'weight', kind: 'num', get: (c) => c.amount_g },
   { keep: 'cost', key: 'cost', kind: 'num', get: (c) => c.cost },
   { keep: 'decaf', key: 'decaffeinated', kind: 'bool', get: (c) => (c.decaf == null ? null : c.decaf === 1) },
+  { keep: 'blend', key: 'beanMix', kind: 'str', settledFree: true, get: (c) => (c.blend === 1 ? 'BLEND' : 'SINGLE_ORIGIN') },
   { keep: 'status', key: 'finished', kind: 'bool', get: (c) => c.status === 'archive' },
   { keep: 'frozen_start_date', key: 'frozenDate', kind: 'date', get: (c) => c.frozen_start_date },
   { keep: 'frozen_end_date', key: 'unfrozenDate', kind: 'date', get: (c) => c.frozen_end_date }
@@ -242,7 +245,7 @@ export function buildPatchPlan(
       for (const f of usable) {
         const v = f.get(c);
         if (same(f.kind, v, bean[f.key])) continue;
-        guard(f.keep, bean[f.key]);
+        if (!f.settledFree) guard(f.keep, bean[f.key]);
         set[f.key] = fieldValue(f.kind, v);
       }
       const info = ((bean.bean_information as Rec[]) ?? [])[0] ?? {};
@@ -271,7 +274,6 @@ export function buildPatchPlan(
     bean.config = { uuid, unix_timestamp: now };
     bean.roaster = c.roaster;
     bean.bean_roasting_type = 'FILTER';
-    bean.beanMix = /blend/i.test(c.coffee_name) ? 'BLEND' : 'SINGLE_ORIGIN';
     // every FIELDS value, keep or not: a new bean has nothing to protect
     for (const f of FIELDS) if (!blank(f.get(c))) bean[f.key] = fieldValue(f.kind, f.get(c));
     const info: Rec = {};

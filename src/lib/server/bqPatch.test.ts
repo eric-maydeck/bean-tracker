@@ -120,7 +120,7 @@ const bean = (uuid: string, extra: Record<string, unknown> = {}) => ({
 const mainOf = (...bs: Record<string, unknown>[]) => ({ BEANS: bs });
 const site = (o: Partial<PatchCoffee> = {}): PatchCoffee => ({
   id: 1, roaster: 'r1', coffee_name: 'Alpha', product_url: null, roast_date: null, roast_level: null,
-  degrees_of_roast: null, amount_g: null, cost: null, decaf: 0, status: 'open',
+  degrees_of_roast: null, amount_g: null, cost: null, decaf: 0, blend: 0, status: 'open',
   frozen_start_date: null, frozen_end_date: null, origin: null, processing: null, producer: null,
   farm: null, variety: null, region: null, elevation: null, harvest_time: null, certification: null,
   bean_uuid: 'u1', photo: null, ...o
@@ -173,7 +173,7 @@ describe('buildPatchPlan', () => {
     const nb = r.plan.newBeans[0];
     expect(Object.keys(nb).sort()).toEqual([...EXPORTED_BEAN_KEYS].sort());
     expect((nb.config as { uuid: string }).uuid).toBe(coffeeBeanUuid(7));
-    expect(nb).toMatchObject({ bean_roasting_type: 'FILTER', beanMix: 'BLEND', weight: 250, roaster: 'r1' });
+    expect(nb).toMatchObject({ bean_roasting_type: 'FILTER', beanMix: 'SINGLE_ORIGIN', weight: 250, roaster: 'r1' });
   });
 
   it('NULL site decaf writes nothing; 0 writes false; keep stops it', () => {
@@ -181,6 +181,28 @@ describe('buildPatchPlan', () => {
     expect(plan({ decaf: null }, b).plan.beans).toEqual([]);
     expect(plan({ decaf: 0 }, b).plan.beans[0].set).toEqual({ decaffeinated: false });
     expect(plan({ decaf: 0 }, b, { 1: ['decaf'] }).plan.beans).toEqual([]);
+  });
+
+  it('beanMix follows the site blend column: overwrites without settled, fills blanks, never from the name', () => {
+    const hs = plan({ blend: 0, coffee_name: 'Alpha Field Blend' }, bean('u1', { beanMix: 'BLEND', name: 'Alpha Field Blend' }));
+    expect(hs.plan.beans[0].set).toEqual({ beanMix: 'SINGLE_ORIGIN' });
+    expect(hs.unexpected).toEqual([]);
+    const blank = plan({ blend: 0 }, bean('u1', { beanMix: 'UNKNOWN' }));
+    expect(blank.plan.beans[0].set).toEqual({ beanMix: 'SINGLE_ORIGIN' });
+    const none = plan({ blend: 0 }, bean('u1', { beanMix: undefined }));
+    expect(none.plan.beans[0].set).toEqual({ beanMix: 'SINGLE_ORIGIN' });
+    const teddy = plan({ blend: 1 }, bean('u1'));
+    expect(teddy.plan.beans[0].set).toEqual({ beanMix: 'BLEND' });
+    expect(teddy.unexpected).toEqual([]);
+    expect(plan({ blend: 1 }, bean('u1'), { 1: ['blend'] }).plan.beans).toEqual([]);
+    expect(applyPatchPlan(mainOf(bean('u1', { beanMix: 'BLEND' })), hs.plan).changes)
+      .toEqual([expect.objectContaining({ field: 'beanMix', from: 'BLEND', to: 'SINGLE_ORIGIN' })]);
+  });
+
+  it('a new bean takes beanMix from blend, not the name', () => {
+    const nb = (o: Partial<PatchCoffee>) => buildPatchPlan([site({ bean_uuid: null, ...o })], mainOf(), {}).plan.newBeans[0].beanMix;
+    expect(nb({ coffee_name: 'House Blend', blend: 0 })).toBe('SINGLE_ORIGIN');
+    expect(nb({ coffee_name: 'Alpha', blend: 1 })).toBe('BLEND');
   });
 
   it('two bags stay two beans', () => {

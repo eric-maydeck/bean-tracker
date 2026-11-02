@@ -31,6 +31,8 @@ export interface CoffeeRow extends CoffeeOriginFields {
   status: 'backlog' | 'open' | 'archive';
   moved_date: string | null;
   decaf: number;
+  // 1 = blend, 0 = single origin (BQ beanMix). Set by hand; never inferred from the name.
+  blend: number;
   subscription_id: number | null;
   // List queries only (coffees.ts): 1 when a Bean Conqueror bean is linked.
   in_bean_conqueror?: number;

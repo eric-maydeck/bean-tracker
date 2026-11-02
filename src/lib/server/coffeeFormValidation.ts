@@ -19,6 +19,7 @@ export interface ValidatedCoffeeInput extends CoffeeOriginFields {
   // Machine-set hidden field (Suggest pick / Fill from URL); blank when the image was typed or cleared.
   image_source_url: string | null;
   decaf: boolean;
+  blend: boolean;
   // "Set as roaster default" (CoffeeForm): write image_url as the roaster's default on save.
   set_roaster_default: boolean;
   // Image Suggest pick: the roaster's website, written on save (hidden field).
@@ -124,6 +125,7 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     image_source_url: imageUrl ? sourceUrlField(formData) : null,
     // Unchecked checkboxes aren't submitted at all — presence means checked.
     decaf: formData.get('decaf') != null,
+    blend: formData.get('blend') === '1',
     // Meaningless without an image; the roaster is already required above.
     set_roaster_default: formData.get('set_roaster_default') === '1' && imageUrl != null,
     // Machine-set hidden field: an unusable value is dropped, not an error.

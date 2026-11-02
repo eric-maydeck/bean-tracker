@@ -204,6 +204,27 @@ describe('legacy data migration', () => {
     expect(afterSecondApply.decaf).toBe(0);
   });
 
+  it('marks only S&W Teddy\'s Terror as a blend when the column is added, once', () => {
+    const raw = new DatabaseSync(':memory:');
+    raw.exec(`CREATE TABLE coffees (id INTEGER PRIMARY KEY, roaster TEXT NOT NULL, coffee_name TEXT NOT NULL,
+      origin TEXT, processing TEXT, roast_date TEXT, slug TEXT, status TEXT NOT NULL DEFAULT 'backlog',
+      drank INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`);
+    const add = raw.prepare(`INSERT INTO coffees (roaster, coffee_name, origin, slug, created_at, updated_at) VALUES (?, ?, 'Various', ?, 'x', 'x')`);
+    add.run('S&W Craft Roasting', "Teddy's Terror (blend)", 'a');
+    add.run('Other', "Teddy's Terror (blend)", 'b');
+    add.run('S&W Craft Roasting', 'House Blend', 'c');
+    applySchema(raw);
+    const rows = () => raw.prepare(`SELECT slug, blend, origin FROM coffees ORDER BY slug`).all();
+    expect(rows()).toEqual([
+      { slug: 'a', blend: 1, origin: 'Blend' },
+      { slug: 'b', blend: 0, origin: 'Various' },
+      { slug: 'c', blend: 0, origin: 'Various' }
+    ]);
+    raw.exec(`UPDATE coffees SET blend = 0, origin = 'Mixed' WHERE slug = 'a'`);
+    applySchema(raw);
+    expect(raw.prepare(`SELECT blend, origin FROM coffees WHERE slug = 'a'`).get()).toEqual({ blend: 0, origin: 'Mixed' });
+  });
+
   it('adds the product_url column to a pre-existing coffees table', () => {
     const raw = new DatabaseSync(':memory:');
     // processing is included (unlike the brief's original snippet) because

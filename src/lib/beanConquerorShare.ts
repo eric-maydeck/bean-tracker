@@ -96,7 +96,7 @@ export async function buildShareUrl(coffee: CoffeeRow, roastLevels: RoastLevelRo
     // BQ HEADs each URL on import and saves a local copy, but only for image/jpeg and image/png; others are skipped.
     external_images: coffee.image_url?.startsWith('http') ? [coffee.image_url] : undefined,
     // BeanMix: BLEND (2) when the name says so, else SINGLE_ORIGIN (1).
-    beanMix: /blend/i.test(coffee.coffee_name) ? 2 : 1,
+    beanMix: coffee.blend === 1 ? 2 : 1,
     roast_range: degreeOfRoastFor(coffee.roast_level, roastLevels),
     // Always Filter (BeanRoastingType.FILTER): every coffee here is brewed as filter.
     bean_roasting_type: 1,

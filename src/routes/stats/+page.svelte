@@ -59,7 +59,9 @@
       amount_g: bean.weightG,
       cost: bean.cost,
       roast_date: bean.roastDate,
-      decaf: bean.decaffeinated ? 1 : 0
+      decaf: bean.decaffeinated ? 1 : 0,
+      // A new coffee is a blend only when BQ says so; a missing mix stays single origin.
+      blend: bean.blend === 'Blend' ? 1 : 0
     };
   }
 

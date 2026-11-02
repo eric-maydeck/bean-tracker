@@ -10,7 +10,7 @@ const today = '2026-09-25';
 const row = (o: Partial<CoffeeRow>): CoffeeRow => ({
   id: 1, roaster: 'R', coffee_name: 'C', origin: 'Kenya', roast_level: 'Light', processing: 'Washed', amount_g: 200, cost: 18,
   roast_date: '2026-06-01', frozen_start_date: null, frozen_end_date: null, rest_days_low: 10, rest_days_high: 20, image_url: null,
-  product_url: null, slug: 's', opened_date: null, drank: 0, status: 'backlog', moved_date: null, decaf: 0, subscription_id: null,
+  product_url: null, slug: 's', opened_date: null, drank: 0, status: 'backlog', moved_date: null, decaf: 0, blend: 0, subscription_id: null,
   created_at: '', updated_at: '', ...o
 });
 const rows = [

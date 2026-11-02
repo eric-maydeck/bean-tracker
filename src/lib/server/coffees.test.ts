@@ -75,6 +75,15 @@ describe('createCoffee', () => {
     expect(second.slug).toBe(`${first.slug}-2`);
   });
 
+  it('stores blend on create and update, default single origin', () => {
+    const a = createCoffee(db, sampleInput());
+    expect(getCoffeeById(db, a.id)?.blend).toBe(0);
+    const b = createCoffee(db, sampleInput({ blend: true }));
+    expect(getCoffeeById(db, b.id)?.blend).toBe(1);
+    updateCoffee(db, b.id, sampleInput({ blend: false }), b.slug);
+    expect(getCoffeeById(db, b.id)?.blend).toBe(0);
+  });
+
   it('defaults decaf to false when not specified', () => {
     const { id } = createCoffee(db, sampleInput());
     expect(getCoffeeById(db, id)?.decaf).toBe(0);

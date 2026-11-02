@@ -34,6 +34,7 @@ const baseCoffee: CoffeeRow = {
   status: 'backlog',
   moved_date: null,
   decaf: 0,
+  blend: 0,
   subscription_id: null,
   created_at: '2026-01-01T00:00:00.000Z',
   updated_at: '2026-01-01T00:00:00.000Z'
@@ -177,6 +178,13 @@ describe('mergeStagedCoffee', () => {
   });
 });
 
+describe('staged blend', () => {
+  it('maps the Type select value back to 0/1', () => {
+    expect(mergeStagedCoffee(baseCoffee, { blend: '1' }).blend).toBe(1);
+    expect(mergeStagedCoffee({ ...baseCoffee, blend: 1 }, { blend: '0' }).blend).toBe(0);
+  });
+});
+
 describe('clonePrefill', () => {
   const source: CoffeeRow = {
     ...baseCoffee,
@@ -206,7 +214,8 @@ describe('clonePrefill', () => {
       rest_days_high: 14,
       image_url: 'https://example.com/label.png',
       product_url: 'https://sey.coffee/products/guji',
-      decaf: 1
+      decaf: 1,
+      blend: 0
     });
   });
 

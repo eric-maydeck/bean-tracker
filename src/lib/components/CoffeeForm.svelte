@@ -169,6 +169,11 @@
     if (r.cost != null) setField('cost', r.cost);
   }
 
+  // Choosing Blend fills a blank Origin with "Blend"; a typed value stays, and going back changes nothing.
+  function typeChanged(e: Event) {
+    if ((e.currentTarget as HTMLSelectElement).value === '1' && !fieldValue('origin').trim()) setField('origin', 'Blend');
+  }
+
   function fieldValue(name: string): string {
     const el = formEl.elements.namedItem(name);
     return el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el.value : '';
@@ -561,6 +566,13 @@
 
   <fieldset class="form-group">
     <legend>Origin</legend>
+  <div class="form-field field-type">
+    <label for="blend">Type</label>
+    <select id="blend" name="blend" onchange={typeChanged}>
+      <option value="0" selected={(coffee?.blend ?? prefill?.blend) != 1}>Single origin</option>
+      <option value="1" selected={(coffee?.blend ?? prefill?.blend) == 1}>Blend</option>
+    </select>
+  </div>
   <div class="form-field field-origin">
     <label for="origin">Origin</label>
     <input id="origin" name="origin" value={(coffee?.origin ?? prefill?.origin) ?? ''} list="origin-suggestions" autocomplete="off" />
@@ -730,6 +742,13 @@
        size, so a wide select would make its own column wider than the others. */
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-2) var(--space-5);
+  }
+  /* The Type select is as tall as the Origin input beside it (a select's own height differs). Phones
+     keep the 44px touch-target minimum every select has. */
+  @media (min-width: 641px) {
+    .field-type select {
+      height: calc(1lh + 2 * var(--space-2) + 2px);
+    }
   }
   .form-group legend {
     padding: 0;
