@@ -414,12 +414,12 @@
               <span class="badge badge-frozen">Frozen</span>
             {/if}
           </h1>
-          <p class="text-muted">
-            {data.coffee.roaster}
-            {#if data.coffee.product_url}
-              · <a href="/coffees/{data.coffee.slug}/go?to=product" target="_blank" rel="noopener noreferrer">Product page ↗</a>
-            {/if}
-          </p>
+          <p class="detail-roaster">{data.coffee.roaster}</p>
+          {#if data.coffee.product_url}
+            <p class="text-muted">
+              <a href="/coffees/{data.coffee.slug}/go?to=product" target="_blank" rel="noopener noreferrer">Product page ↗</a>
+            </p>
+          {/if}
           <p class="text-muted">
             <small>Added {formatDate(data.coffee.created_at)} · Updated {formatUpdated(data.coffee.updated_at)}</small>
           </p>
@@ -657,6 +657,14 @@
     .has-extra > :global(.fave) { grid-area: 1 / 4 / span 3 / -1; }
   }
   /* Four stats: auto-fit so a wide screen has no blank fifth track. */
+  .detail-roaster {
+    margin: calc(var(--space-2) - var(--space-4)) 0 var(--space-3);
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
   [data-section='like'] .stat-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
