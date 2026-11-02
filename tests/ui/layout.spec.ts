@@ -2217,11 +2217,13 @@ export const STATES: State[] = [
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
       const after = await cols();
-      // Both modes share one icon grid: every icon column Edit mode uses is a column the non-edit row has (its extra
-      // icon lands to the right of them), and the non-edit row's first two columns stay (the 2x2 it used to be).
+      // Both modes are one row on one grid (user, 2026-11-02: Edit mode was a 2x2): Edit mode's icons share one top,
+      // and its first icons sit at the non-edit row's x positions (a backlog row's fifth lands to their right).
       const iconsAfter = await icons();
-      for (const y of iconsAfter) expect(iconsBefore.some((x) => Math.abs(y - x) <= 1), `edit icon at x=${y}`).toBe(true);
-      for (const x of [...iconsBefore].sort((p, q) => p - q).slice(0, 2)) expect(iconsAfter.some((y) => Math.abs(y - x) <= 1)).toBe(true);
+      const tops = await page.locator('table.data-table tbody tr').first().locator('td:last-child').locator('button, a.button').evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
+      expect(tops, 'Edit mode icons on one row').toHaveLength(1);
+      const xs = [...iconsBefore].sort((p, q) => p - q);
+      [...iconsAfter].sort((p, q) => p - q).slice(0, xs.length).forEach((y, i) => expect(Math.abs(y - xs[i]), `edit icon ${i}`).toBeLessThanOrEqual(1));
       expect(after).toHaveLength(before.length);
       after.forEach(([x, w], i) => { expect(Math.abs(x - before[i][0])).toBeLessThanOrEqual(1); expect(Math.abs(w - before[i][1])).toBeLessThanOrEqual(1); });
     }
@@ -10901,10 +10903,11 @@ test.describe('signed out', () => {
   });
   test('coffees-list-brew-button-signed-out', async ({ page }) => {
     await gotoReady(page, '/coffees?status=open&view=list');
+    // Brew now sits in the last (Actions) column, far right like the signed-in icons (user, 2026-11-02), never in the name cell.
     const row = page.locator('table.data-table tbody tr').filter({ has: page.getByRole('link', { name: 'Brew now' }) }).first();
-    const [name, brew] = [(await row.locator('td:nth-child(2) a').first().boundingBox())!, (await row.getByRole('link', { name: 'Brew now' }).boundingBox())!];
-    expect(brew.x - (name.x + name.width)).toBeLessThan(24); // right after the coffee name, as before the row change
-    expect(Math.abs(brew.y + brew.height / 2 - (name.y + name.height / 2))).toBeLessThan(name.height);
+    await expect(row.locator('td:last-child').getByRole('link', { name: 'Brew now' })).toHaveCount(1);
+    await expect(row.locator('td:nth-child(2)').getByRole('link', { name: 'Brew now' })).toHaveCount(0);
+    await expect(page.locator('table.data-table thead th').last()).toHaveText('Actions');
     await checkLayout(page);
   });
   test('insights-pours-signed-out', async ({ page }) => {

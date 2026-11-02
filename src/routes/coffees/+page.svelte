@@ -1174,16 +1174,15 @@
               >
             </button>
           </th>
-          {#if data.isAdmin}
-            <th class="col-actions">Actions</th>
-          {/if}
+          <!-- Signed out the column holds only Brew now, so it skips the admin width (col-actions). -->
+          <th class={data.isAdmin ? 'col-actions' : undefined}>Actions</th>
         </tr>
       </thead>
       <tbody>
         {#each sortedCoffees as coffee (coffee.id)}
           <tr>
             <td>{coffee.roaster}</td>
-            <td><div class="name-line"><a class="clamp2" use:labelTip={coffee.coffee_name} href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a>{#if !data.isAdmin}{@render brewButton(coffee)}{/if}</div></td>
+            <td><div class="name-line"><a class="clamp2" use:labelTip={coffee.coffee_name} href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a></div></td>
             <td class="origin-cell">{coffee.origin ? originWithFlag(coffee.origin) : '—'}</td>
             <td>
               <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
@@ -1208,7 +1207,9 @@
             <td style={urgencyColorStyle(coffee.urgency_rating)}>
               {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
             </td>
-            {#if data.isAdmin}
+            {#if !data.isAdmin}
+              <td><div class="action-buttons">{@render brewButton(coffee)}</div></td>
+            {:else}
               <td>
                 <div class="action-buttons">
                   {#if canEdit(coffee.id)}
@@ -1228,7 +1229,7 @@
           </tr>
           {#if canEdit(coffee.id) && openForms.has(coffee.id)}
             <tr>
-              <td colspan={data.isAdmin ? 14 : 13}>
+              <td colspan="14">
                 {@render expandedForm(coffee)}
                 <!-- Under the form, like Compact: on a phone the row above is off-screen. -->
                 <div class="action-buttons under-form">
