@@ -96,9 +96,9 @@ export function formatVariety(value: string): string {
   return items.length ? items.map(varietyItem).join(', ') : v;
 }
 
-const GESHA_FAMILY = new Set(['gesha 1931', 'orange gesha', 'inca gesha']);
+// Only Gesha 1931 folds into Gesha; Orange Gesha and Inca Gesha stay their own rows.
 export const varietyGroup = (token: string): string =>
-  GESHA_FAMILY.has(token.toLowerCase()) ? 'Gesha' : token;
+  token.toLowerCase() === 'gesha 1931' ? 'Gesha' : token;
 
 export const varietyGroups = (variety: string | null | undefined): string[] => [
   ...new Set((variety ?? '').split(',').map((t) => t.trim()).filter(Boolean).map(varietyGroup))

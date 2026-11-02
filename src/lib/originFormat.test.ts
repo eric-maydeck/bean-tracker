@@ -104,8 +104,9 @@ describe('origin helpers', () => {
     expect(formatVariety('Typica Mejorado')).toBe('Mejorado');
     expect(formatVariety('Pink Bourbon')).toBe('Pink Bourbon');
   });
-  it('varietyGroups: Gesha family folds, others stay, no empties, no duplicates', () => {
-    expect(varietyGroups('Gesha 1931, Orange Gesha, inca gesha')).toEqual(['Gesha']);
+  it('varietyGroups: Gesha 1931 folds, others stay, no empties, no duplicates', () => {
+    expect(varietyGroups('Gesha 1931, gesha 1931, Gesha')).toEqual(['Gesha']);
+    expect(varietyGroups('Gesha 1931, Orange Gesha, Inca Gesha')).toEqual(['Gesha', 'Orange Gesha', 'Inca Gesha']);
     expect(varietyGroups('Gesha, Gesha 1931, Pink Bourbon')).toEqual(['Gesha', 'Pink Bourbon']);
     expect(varietyGroups('SL28, , SL34 ')).toEqual(['SL28', 'SL34']);
     expect(varietyGroups(null)).toEqual([]);
