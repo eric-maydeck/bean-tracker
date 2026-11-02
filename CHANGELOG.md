@@ -1,3 +1,16 @@
+# [1.106.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.105.0...v1.106.0) (2026-11-02)
+
+
+### Bug Fixes
+
+* **scripts:** verify comma numbers and shopify json in the bean data check
+
+
+### Features
+
+* **coffees:** backfill origin details from the reviewed bean data
+* **coffees:** one format for elevation, harvest, variety and region
+
 # [1.105.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.104.0...v1.105.0) (2026-11-02)
 
 
