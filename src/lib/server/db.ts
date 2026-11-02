@@ -13,7 +13,7 @@ import { applySubscriptionLinks, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_
 import { applyImageSources } from './imageSourceFixes.ts';
 import { IMAGE_SOURCES_2026_10 } from './imageSourceData.ts';
 import { applyRecipeFixes, applyRecipeLengthFix } from './recipeFixes.ts';
-import { BEAN_CONQUEROR_PAIRS, PAIRS_2026_10B, PAIRS_2026_10B_MARKER, FIXES_2026_10B } from './beanConquerorPairs.ts';
+import { BEAN_CONQUEROR_PAIRS, PAIRS_2026_10B, PAIRS_2026_10B_MARKER, FIXES_2026_10B, PAIRS_2026_11, PAIRS_2026_11_MARKER } from './beanConquerorPairs.ts';
 import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
 import { applyRoasterImageDefaults } from './roasterImages.ts';
@@ -120,6 +120,7 @@ export function applySchema(db: DatabaseSync): void {
   }
   applyBeanConquerorPairs(db, BEAN_CONQUEROR_PAIRS); // own transaction, so after the COMMIT above
   applyBeanConquerorPairs(db, PAIRS_2026_10B, FIXES_2026_10B, PAIRS_2026_10B_MARKER);
+  applyBeanConquerorPairs(db, PAIRS_2026_11, [], PAIRS_2026_11_MARKER);
   applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS, ROASTER_IMAGE_DEFAULTS_MARKER);
   applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER);
   for (const b of PRODUCT_PAGE_BACKFILLS) applyCoffeeFixes(db, b); // own transaction each, after roaster defaults
