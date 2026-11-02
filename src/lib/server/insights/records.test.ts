@@ -254,6 +254,12 @@ describe('variety and producer records', () => {
     expect(run('leastVariety', [...rich, ...blend], richBags)!.holder.date).toBe('2026-09-20');
     expect(run('favoriteVariety', [...rich, ...blend], richBags)!.holder.date).toBe('2026-09-20');
   });
+  it('volume records follow a narrow Period', () => {
+    const dosed = rich.map((b) => ({ ...b, dose: b.variety === 'Bourbon' ? 50 : 10 }));
+    const at = (end: string) => tileOf(recordsTab(dosed, richBags, { ...CTX, period: { start: '2026-07-01', end } }), 'mostVariety')!.holder.label;
+    expect(at('2026-07-31')).toBe('Bourbon');
+    expect(at('2026-07-05')).toBe('Gesha'); // Bourbon is brewed on the 10th
+  });
   it('leastBrewed carries no rating mode', () => {
     expect(RECORDS.find((r) => r.key === 'leastBrewedVariety')!.rating).toBeUndefined();
     expect(RECORDS.find((r) => r.key === 'leastVariety')!.rating).toBe(true);

@@ -6569,7 +6569,7 @@ export const STATES: State[] = [
       }));
       expect(off).toEqual([]);
     } },
-  { name: 'insights-records-origin', viewports: 'two', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-records-origin', path: () => '/insights?tab=records&range=all',
     act: async (page) => {
       for (const k of ['favoriteVariety', 'favoriteProducer', 'mostVariety', 'mostProducer', 'leastVariety', 'leastProducer', 'leastBrewedVariety', 'leastBrewedProducer'])
         await expect(page.locator(`#record-${k}`)).toBeVisible();
