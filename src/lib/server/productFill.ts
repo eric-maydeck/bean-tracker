@@ -4,6 +4,7 @@ import type { FillHistoryRow } from './coffees';
 import type { CoffeeRow } from '../types';
 import { COFFEE_ORIGIN_FIELDS, type CoffeeOriginField } from '../types';
 import { conciseProcess } from '../processGroups';
+import { formatOriginField } from '../originFormat.ts';
 import { suggestRest } from '../coffeeFormFill';
 
 export interface UsdRates {
@@ -121,7 +122,7 @@ const ORIGIN_LABELS: Record<CoffeeOriginField, string[]> = {
 export function findOriginDetail(p: ProductData, field: CoffeeOriginField): string | null {
   for (const label of ORIGIN_LABELS[field]) {
     const v = p.attributes[label]?.trim();
-    if (v && v.length <= 60 && !/\.\s|\.$/.test(v)) return v;
+    if (v && v.length <= 60 && !/\.\s|\.$/.test(v)) return formatOriginField(field, v);
   }
   return null;
 }

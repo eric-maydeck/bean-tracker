@@ -191,3 +191,12 @@ describe('parseCoffeeForm origin details', () => {
     expect(v.farm).toBeNull();
   });
 });
+
+describe('parseCoffeeForm origin format', () => {
+  const base = { roaster: 'R', coffee_name: 'C' };
+  it('formats sent fields, clears blanks, leaves absent undefined', () => {
+    const r = parseCoffeeForm(formData({ ...base, elevation: '1500masl', variety: 'Geisha & SL-28', region: '', harvest_time: 'Sept 2025' }));
+    expect(r).toMatchObject({ elevation: '1,500 masl', variety: 'Gesha, SL28', region: null, harvest_time: 'September 2025' });
+    expect(r.farm).toBeUndefined();
+  });
+});

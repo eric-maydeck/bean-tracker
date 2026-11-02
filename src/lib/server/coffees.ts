@@ -5,6 +5,7 @@ import { generateBaseSlug, isAutoSlug, uniqueSlug } from './slug.ts';
 import { getRoasterImage } from './roasterImages.ts';
 import { hostMatchesRoaster } from '../imageSuggest.ts';
 import { localToday } from './localToday.ts';
+import { formatOriginField } from '../originFormat.ts';
 
 export interface NewCoffeeInput extends CoffeeOriginFields {
   subscription_id?: number | null;
@@ -249,7 +250,8 @@ export function applyCoffeeFix(db: DatabaseSync, f: CoffeeFix): string | null {
   if (!c) return 'coffee not found';
   if (f.roaster !== undefined && c.roaster !== f.roaster) return `roaster is '${c.roaster}', expected '${f.roaster}'`;
   if (c[f.field] !== f.from) return `${f.field} is '${c[f.field]}', expected '${f.from}'`;
-  const next = { ...c, [f.field]: f.to, decaf: f.field === 'decaf' ? f.to === 1 : c.decaf === 1, blend: c.blend === 1 };
+  const to = typeof f.to === 'string' ? formatOriginField(f.field, f.to) : f.to;
+  const next = { ...c, [f.field]: to, decaf: f.field === 'decaf' ? f.to === 1 : c.decaf === 1, blend: c.blend === 1 };
   const base = (x: { roaster: string; coffee_name: string; roast_date: string | null }) =>
     generateBaseSlug({ roaster: x.roaster, coffeeName: x.coffee_name, roastDate: x.roast_date, createdAt: c.created_at });
   const regen = base(next) !== base(c) && isAutoSlug(c.slug, base(c));

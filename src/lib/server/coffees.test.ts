@@ -758,3 +758,16 @@ describe('origin detail fields', () => {
     expect(getCoffeeById(db, id)).toMatchObject({ coffee_name: 'Fixed', ...all });
   });
 });
+
+describe('applyCoffeeFix origin format', () => {
+  it('stores the standard format for a rule field; a field with no rule is as before', () => {
+    const { id } = createCoffee(db, sampleInput({ elevation: '1500masl' }));
+    expect(applyCoffeeFix(db, { coffee_id: id, field: 'elevation', from: '1500masl', to: '1500 meters' })).toBeNull();
+    expect(getCoffeeById(db, id)!.elevation).toBe('1,500 masl');
+    expect(applyCoffeeFix(db, { coffee_id: id, field: 'producer', from: null, to: 'A - B' })).toBeNull();
+    expect(getCoffeeById(db, id)!.producer).toBe('A - B');
+    // idempotent: the stored value is its own fixed point
+    expect(applyCoffeeFix(db, { coffee_id: id, field: 'elevation', from: '1,500 masl', to: '1,500 masl' })).toBeNull();
+    expect(getCoffeeById(db, id)!.elevation).toBe('1,500 masl');
+  });
+});

@@ -1,4 +1,5 @@
 import { toOrigin } from './roasterWebsites';
+import { formatOriginField } from '../originFormat.ts';
 import { COFFEE_ORIGIN_FIELDS, type CoffeeOriginFields } from '../types.ts';
 
 export interface ValidatedCoffeeInput extends CoffeeOriginFields {
@@ -36,6 +37,8 @@ function textField(formData: FormData, key: string): string | null {
   const trimmed = raw.trim();
   return trimmed === '' ? null : trimmed;
 }
+
+const formatOrNull = (field: string, v: string | null) => v && formatOriginField(field, v);
 
 export function parseSlugField(formData: FormData): string | null {
   return textField(formData, 'slug');
@@ -132,6 +135,6 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     roaster_website: toOrigin(textField(formData, 'roaster_website')),
     ...(subscriptionId !== undefined && { subscription_id: subscriptionId }),
     // Only the fields the form sent; absent ones stay untouched on update.
-    ...Object.fromEntries(COFFEE_ORIGIN_FIELDS.filter((f) => formData.has(f)).map((f) => [f, textField(formData, f)]))
+    ...Object.fromEntries(COFFEE_ORIGIN_FIELDS.filter((f) => formData.has(f)).map((f) => [f, formatOrNull(f, textField(formData, f))]))
   };
 }

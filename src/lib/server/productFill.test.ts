@@ -392,3 +392,10 @@ describe('origin details and concise processing in fill', () => {
     expect(r.fields.processing).toBe('Washed');
   });
 });
+
+describe('findOriginDetail format', () => {
+  it('returns the standard format', () => {
+    expect(findOriginDetail(product({ attributes: { elevation: '1500masl' } }), 'elevation')).toBe('1,500 masl');
+    expect(findOriginDetail(product({ attributes: { variety: 'Geisha' } }), 'variety')).toBe('Gesha');
+  });
+});

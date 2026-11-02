@@ -3,7 +3,8 @@ import {
   importBeanConquerorData,
   getUnmatchedBeanConquerorBeans,
   countUnmatchedBeanConquerorBeans,
-  dismissBeanConquerorBean
+  dismissBeanConquerorBean,
+  fillBlankCoffeeFields
 } from './beanconqueror';
 import { createCoffee, getBacklogCoffees } from './coffees';
 import { coffeeBeanUuid } from './bqBeanUuid';
@@ -543,5 +544,23 @@ describe('derived bean uuid and blank filling', () => {
     const a = createCoffee(db, input).id;
     importBeanConquerorData(db, { ...empty, beanOrigins: [], beans: [bean({ id: coffeeBeanUuid(a) })] });
     expect(getBacklogCoffees(db)[0].in_bean_conqueror).toBe(1);
+  });
+});
+
+describe('fillBlankCoffeeFields origin format', () => {
+  it('fills the standard format, and a second run changes nothing', () => {
+    const db = createDb(':memory:');
+    const { id } = createCoffee(db, { roaster: 'R', coffee_name: 'C', origin: null, roast_level: null, processing: null, amount_g: null, cost: null, roast_date: null, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null });
+    importBeanConquerorData(db, {
+      beans: [{ id: 'b1', name: 'Bean', roaster: 'R', roastDate: null, roastType: null, degreeOfRoast: 2, customDegreeOfRoast: null, blend: 'Single Origin', weightG: 200, cost: 18, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: 7, bcCreatedAt: '2026-06-01T00:00:00.000Z', bcArchived: false }],
+      beanOrigins: [{ beanId: 'b1', componentNumber: 1, country: 'Ethiopia', region: 'Bench Maji \u2013 Oma', farm: null, farmer: null, elevation: '1500masl', variety: 'Geisha & SL-28', processing: null, certification: null, harvested: 'Sept 2025', percentage: null }],
+      methods: [], grinders: [], brews: []
+    });
+    db.prepare('UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?').run(id, 'b1');
+    expect(fillBlankCoffeeFields(db)).toBeGreaterThan(0);
+    const row = () => db.prepare('SELECT region, elevation, variety, harvest_time FROM coffees WHERE id = ?').get(id);
+    expect(row()).toEqual({ region: 'Bench Maji, Oma', elevation: '1,500 masl', variety: 'Gesha, SL28', harvest_time: 'September 2025' });
+    expect(fillBlankCoffeeFields(db)).toBe(0);
+    expect(row()).toEqual({ region: 'Bench Maji, Oma', elevation: '1,500 masl', variety: 'Gesha, SL28', harvest_time: 'September 2025' });
   });
 });
