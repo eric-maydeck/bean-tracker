@@ -96,3 +96,15 @@ describe('coffee_corrections_2026_11_a', () => {
       expect(formatOriginField('variety', String(f.from))).toBe(f.to);
   });
 });
+
+describe('coffee_corrections_2026_11_b', () => {
+  it('region rows only, roaster guard, formatter-stable `to`', () => {
+    const b = batch('coffee_corrections_2026_11_b');
+    expect(b.fixes.length).toBeGreaterThan(0);
+    for (const f of b.fixes) {
+      expect(f.field).toBe('region');
+      expect(f.roaster).toBeTruthy();
+      expect(formatOriginField('region', String(f.to))).toBe(f.to);
+    }
+  });
+});

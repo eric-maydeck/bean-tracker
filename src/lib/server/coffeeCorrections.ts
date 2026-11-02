@@ -112,5 +112,63 @@ export const COFFEE_CORRECTIONS: CoffeeFixBatch[] = [
     ],
     websites: [],
     tavilyCalls: []
+  },
+  {
+    // Bean origin insights (spec 2026-11-02): regions in one shape for the map tip. Top level per
+    // country = the level coffee origins use (Colombia department, Ethiopia zone, Kenya county, others
+    // their first-level division); a part below it gets its parent appended. Reviewed at preview; the
+    // table is in docs/backlog/bean-origin-insights.md. Every from and roaster is copied from prod
+    // (scripts/queries/region-review.sql).
+    marker: 'coffee_corrections_2026_11_b',
+    fixes: [
+      { coffee_id: 76, roaster: "Bean's Beans", field: 'region', from: 'Caranavi Province, La Paz Department', to: 'Caranavi Province, La Paz' }, // level suffix dropped
+      { coffee_id: 164, roaster: 'Shoebox', field: 'region', from: 'Campo Altos, Minas Girais, Brazil', to: 'Campos Altos, Minas Gerais, Brazil' }, // spelling (municipality Campos Altos, state Minas Gerais)
+      { coffee_id: 91, roaster: 'Flower Child', field: 'region', from: 'Murumvya', to: 'Muramvya' }, // spelling
+      { coffee_id: 169, roaster: 'Scenery', field: 'region', from: 'Gikungere, Butaganzwa, Kayanza Province', to: 'Gikungere, Butaganzwa, Kayanza' }, // level suffix dropped
+      { coffee_id: 5, roaster: 'H&S', field: 'region', from: 'Gigante', to: 'Gigante, Huila' }, // parent added: Gigante is in Huila
+      { coffee_id: 116, roaster: 'Shoebox', field: 'region', from: 'La Esperanza, La Plata, Colombia', to: 'La Esperanza, La Plata, Huila, Colombia' }, // parent added: La Plata is in Huila
+      { coffee_id: 123, roaster: 'Shoebox', field: 'region', from: 'Alto Cañada, La Plata, Colombia', to: 'Alto Cañada, La Plata, Huila, Colombia' }, // parent added: La Plata is in Huila
+      { coffee_id: 149, roaster: 'H&S', field: 'region', from: 'Quindio', to: 'Quindío' }, // accent
+      { coffee_id: 150, roaster: 'H&S', field: 'region', from: 'Quindio', to: 'Quindío' }, // accent
+      { coffee_id: 183, roaster: 'Shoebox', field: 'region', from: 'Narino', to: 'Nariño' }, // accent
+      { coffee_id: 192, roaster: 'Shoebox', field: 'region', from: 'Narino', to: 'Nariño' }, // accent
+      { coffee_id: 200, roaster: 'H&S', field: 'region', from: 'Gigante', to: 'Gigante, Huila' }, // parent added: Gigante is in Huila
+      { coffee_id: 211, roaster: 'H&S', field: 'region', from: 'Gigante', to: 'Gigante, Huila' }, // parent added: Gigante is in Huila
+      { coffee_id: 314, roaster: 'Luna', field: 'region', from: 'Urrao', to: 'Urrao, Antioquia' }, // parent added: Urrao is in Antioquia
+      { coffee_id: 25, roaster: 'H&S', field: 'region', from: 'Saraguro', to: 'Saraguro, Loja' }, // parent added: Saraguro is in Loja province
+      { coffee_id: 2, roaster: 'Scenery', field: 'region', from: 'Kamese Kebele, Galle, Limu Kossa Woreda, Jimma Zone', to: 'Kamese Kebele, Galle, Limu Kossa Woreda, Jimma' }, // level suffix dropped
+      { coffee_id: 51, roaster: 'Shoebox', field: 'region', from: 'Shakiso', to: 'Shakiso, Guji' }, // parent added: Shakiso woreda is in Guji zone
+      { coffee_id: 54, roaster: 'Shoebox', field: 'region', from: 'Chelbasa', to: 'Chelbesa, Gedeb, Gedeo' }, // spelling + parents: Chelbesa kebele, Gedeb woreda, Gedeo zone
+      { coffee_id: 83, roaster: 'Subtext', field: 'region', from: 'Gedeb', to: 'Gedeb, Gedeo' }, // parent added: Gedeb woreda is in Gedeo zone
+      { coffee_id: 177, roaster: 'walnuts', field: 'region', from: 'Gedeb', to: 'Gedeb, Gedeo' }, // parent added: Gedeb woreda is in Gedeo zone
+      { coffee_id: 243, roaster: 'Shoebox', field: 'region', from: 'Shakiso', to: 'Shakiso, Guji' }, // parent added: Shakiso woreda is in Guji zone
+      { coffee_id: 276, roaster: 'Scenery', field: 'region', from: 'Gora Kebele, Haro Wolabu, Guji Zone', to: 'Gora Kebele, Haro Wolabu, Guji' }, // level suffix dropped
+      { coffee_id: 315, roaster: 'Luna', field: 'region', from: 'Chelbesa, Gedeb', to: 'Chelbesa, Gedeb, Gedeo' }, // parent added: Gedeb woreda is in Gedeo zone
+      { coffee_id: 317, roaster: 'Luna', field: 'region', from: 'Gedeb', to: 'Gedeb, Gedeo' }, // parent added: Gedeb woreda is in Gedeo zone
+      { coffee_id: 233, roaster: 'Brainwave Roasters', field: 'region', from: 'Antigua Valley', to: 'Antigua Valley, Sacatepéquez' }, // parent added: Antigua is in Sacatepéquez
+      { coffee_id: 234, roaster: 'Brainwave Roasters', field: 'region', from: 'Antigua Valley', to: 'Antigua Valley, Sacatepéquez' }, // parent added: Antigua is in Sacatepéquez
+      { coffee_id: 235, roaster: 'Brainwave Roasters', field: 'region', from: 'Antigua Valley', to: 'Antigua Valley, Sacatepéquez' }, // parent added: Antigua is in Sacatepéquez
+      { coffee_id: 288, roaster: 'GWO', field: 'region', from: 'Santa Bárbara, Las Vegas', to: 'Las Vegas, Santa Bárbara' }, // order: municipality first, department last
+      { coffee_id: 302, roaster: 'Shoebox', field: 'region', from: 'Francisco Morazan', to: 'Francisco Morazán' }, // accent
+      { coffee_id: 306, roaster: 'PORT2050 COFFEE ROASTERS', field: 'region', from: 'Marcala', to: 'Marcala, La Paz' }, // parent added: Marcala is in La Paz department
+      { coffee_id: 23, roaster: 'Lume', field: 'region', from: 'Iveti', to: 'Iveti, Machakos' }, // parent added: Iveti hills are in Machakos county
+      { coffee_id: 181, roaster: 'walnuts', field: 'region', from: 'Kirinyaga County', to: 'Kirinyaga' }, // level suffix dropped
+      { coffee_id: 202, roaster: 'Big Sur', field: 'region', from: 'Embu County', to: 'Embu' }, // level suffix dropped
+      { coffee_id: 26, roaster: 'Shoebox', field: 'region', from: 'Volcan', to: 'Volcán, Chiriquí' }, // accent + parent added: Volcán is in Chiriquí
+      { coffee_id: 147, roaster: 'H&S', field: 'region', from: 'Boquete', to: 'Boquete, Chiriquí' }, // parent added: Boquete is in Chiriquí
+      { coffee_id: 231, roaster: 'Shoebox', field: 'region', from: 'Volcan', to: 'Volcán, Chiriquí' }, // accent + parent added: Volcán is in Chiriquí
+      { coffee_id: 265, roaster: 'Love Letters Charming Coffees', field: 'region', from: 'Boquete', to: 'Boquete, Chiriquí' }, // parent added: Boquete is in Chiriquí
+      { coffee_id: 122, roaster: 'H&S', field: 'region', from: 'Corazon de Chirinos', to: 'Corazon de Chirinos, Cajamarca' }, // parent added: Chirinos is in Cajamarca
+      { coffee_id: 205, roaster: 'H&S', field: 'region', from: 'Corazon de Chirinos', to: 'Corazon de Chirinos, Cajamarca' }, // parent added: Chirinos is in Cajamarca
+      { coffee_id: 219, roaster: 'H&S', field: 'region', from: 'Corazon de Chirinos', to: 'Corazon de Chirinos, Cajamarca' }, // parent added: Chirinos is in Cajamarca
+      { coffee_id: 3, roaster: 'Shoebox', field: 'region', from: 'Nyaruguru', to: 'Nyaruguru, Southern Province' }, // parent added
+      { coffee_id: 66, roaster: "Bean's Beans", field: 'region', from: 'Nyaruguru District', to: 'Nyaruguru District, Southern Province' }, // parent added
+      { coffee_id: 88, roaster: 'Sweet Bloom', field: 'region', from: 'Gakenke District', to: 'Gakenke District, Northern Province' }, // parent added
+      { coffee_id: 113, roaster: 'H&S', field: 'region', from: 'Nyamagabe', to: 'Nyamagabe, Southern Province' }, // parent added
+      { coffee_id: 175, roaster: 'H&S', field: 'region', from: 'Nyamasheke', to: 'Nyamasheke, Western Province' }, // parent added
+      { coffee_id: 216, roaster: 'Shoebox', field: 'region', from: 'Nyaruguru', to: 'Nyaruguru, Southern Province' } // parent added
+    ],
+    websites: [],
+    tavilyCalls: []
   }
 ];
