@@ -1,3 +1,35 @@
+# [1.105.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.104.0...v1.105.0) (2026-11-02)
+
+
+### Bug Fixes
+
+* **bq:** decaf null, script-relative db guard, dry-run with plan, missing images
+* **bq:** fill blank coffee fields by coffee id, not origin id
+* **bq:** report duplicate uuids and count gaps; resolve --out before temp zip
+* **coffee-form:** switching off blend removes only the auto-filled origin
+* **coffee:** size the share QR to at least 3px per square, within the panel
+* **scripts:** edit without a proposal, one review row per disagreement, keep on reject
+* **scripts:** merge into an existing keep.json instead of overwriting it
+* **scripts:** settled.json, stricter auto rule, shown approve value and format checks
+* **scripts:** word-boundary source check, one outcome per field, guarded input paths
+
+
+### Features
+
+* **bq-share:** send the coffee image so bq saves its own copy on import
+* **bq:** build the patch plan from the site
+* **bq:** patch beans in a BQ export without touching anything else
+* **bq:** refuse unsettled overwrites and new-bean duplicates in the patch plan
+* **bq:** send origin details to BQ and fill blanks from it
+* **coffee-form:** group fields as Origin, Bag and Timing in the page's order
+* **coffee:** show the roaster as its own heading line below the name
+* **coffee:** single origin / blend field, carried to bean conqueror as beanMix
+* **coffee:** split the stat grid into Origin and Bag sections
+* **coffees:** producer, farm, variety and other origin fields
+* **fill:** fill origin details and keep processing concise
+* **scripts:** input, contract and source check for the bean data backfill
+* **scripts:** review page and guarded batch for bean data
+
 # [1.104.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.103.0...v1.104.0) (2026-11-01)
 
 
