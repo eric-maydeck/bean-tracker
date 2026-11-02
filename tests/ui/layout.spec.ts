@@ -6217,7 +6217,10 @@ export const STATES: State[] = [
       expect(Object.values(low).every(Boolean)).toBe(true);
       await page.locator('[data-board="coffees"] .low-switch').click();
       await expect(page.locator('[data-board="coffees"] .low-switch')).toHaveAttribute('aria-pressed', 'false');
-      expect(await moves()).not.toEqual(low);
+      const high = await moves();
+      const shared = Object.keys(low).filter((k) => k in high); // each side shows its own top 10 of 11
+      expect(shared.length).toBeGreaterThan(0);
+      expect(shared.some((k) => low[k] !== high[k])).toBe(true);
     } },
   { name: 'insights-board-low-rank-prune', path: () => '/insights?tab=leaderboards&range=all&rank=brews&low=roasters,dripper',
     act: async (page) => {
