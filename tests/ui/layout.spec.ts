@@ -402,7 +402,10 @@ async function expectActionsUnderForm(page: Page) {
     await expect(b).toBeInViewport();
     const [m, r] = [(await marked.boundingBox())!, (await b.boundingBox())!];
     expect(r.y).toBeGreaterThan(m.y);
-    expect(r.y - m.y).toBeLessThan(page.viewportSize()!.height);
+    // The image group moved to the top of the form, so measure from the form's last field: nothing big sits between.
+    const lastField = page.locator('form').filter({ has: marked }).locator('input:visible, select:visible').last();
+    const last = (await lastField.boundingBox())!;
+    expect(r.y - (last.y + last.height)).toBeLessThan(page.viewportSize()!.height);
   }
   // ui-rules 23: the action icons start at the form's left edge, like its own buttons
   // (user report 2026-10-06: compact's sat 4px in).
