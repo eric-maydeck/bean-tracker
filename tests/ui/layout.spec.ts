@@ -6204,11 +6204,27 @@ export const STATES: State[] = [
       expect(await box()).toEqual(before);
       expect(fetched).toEqual([]);
     } },
-  { name: 'insights-board-low-compare', path: () => '/insights?tab=leaderboards&range=1m&compare=1&low=roasters',
+  { name: 'insights-board-low-compare', path: () => '/insights?tab=leaderboards&range=1m&compare=1&low=roasters,coffees',
     act: async (page) => {
       const rows = page.locator('[data-board="roasters"] .board-row:not(.placeholder)');
       await expect(rows.first()).toBeVisible();
       expect(await rows.locator('.move').count()).toBe(await rows.count());
+      // Coffees' move cells follow lowMove (ascending positions), so they differ from the same rows highest first.
+      const moves = () => page.locator('[data-board="coffees"] .board-row:not(.placeholder)').evaluateAll(
+        (rs) => Object.fromEntries(rs.map((r) => [r.querySelector('.who')!.textContent!.trim().split('\n')[0], r.querySelector('.move')?.textContent?.trim()]))
+      );
+      const low = await moves();
+      expect(Object.values(low).every(Boolean)).toBe(true);
+      await page.locator('[data-board="coffees"] .low-switch').click();
+      await expect(page.locator('[data-board="coffees"] .low-switch')).toHaveAttribute('aria-pressed', 'false');
+      expect(await moves()).not.toEqual(low);
+    } },
+  { name: 'insights-board-low-rank-prune', path: () => '/insights?tab=leaderboards&range=all&rank=brews&low=roasters,dripper',
+    act: async (page) => {
+      await page.getByLabel('Rank by').selectOption('spend');
+      // Dripper can't rank by spend: its Lowest first is dropped with it (like open), Roasters keeps its own.
+      await expect(page).toHaveURL(/[?&]low=roasters(&|$)/);
+      await expect(page.locator('[data-board="roasters"] .low-switch')).toHaveAttribute('aria-pressed', 'true');
     } },
   { name: 'insights-board-low-time', path: () => '/insights?tab=leaderboards&range=all&views=water-time&low=water',
     act: async (page) => {

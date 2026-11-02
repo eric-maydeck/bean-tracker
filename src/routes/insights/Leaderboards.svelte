@@ -315,7 +315,7 @@
       {:else}
         <ol class="board-rows" class:diverge={rank === 'like'}>
           {#each shown as r, i (r.key)}
-            {@const m = comparing ? move(r.move) : null}
+            {@const m = comparing ? move(isLow ? r.lowMove : r.move) : null}
             {@const half = rank === 'like' ? Math.abs(r.value) / span / 2 : 0}
             <li class="board-row bar" class:liked={r.like && rank !== 'like'} class:small-sample={r.sample?.small}
               style:--share={rank === 'like' ? half : top > 0 ? Math.max(0, r.value / top) : 0}
