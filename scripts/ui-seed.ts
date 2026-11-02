@@ -229,6 +229,11 @@ for (let k = 0; k < 8; k++) {
   labSlugs.push(c.slug);
   bean.run(`bean-lab-${k}`, name, 'Lab', daysAgo(first + 10), 250, 22, 0, isoDaysAgo(first), now);
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-lab-${k}`);
+  // Origin details for the Varieties / Producers boards: Lab Farmer A..C own two bags each, D one, Solo (k=7) one no other
+  // bag has; Kenya (odd k) regions include a 40+ character top level for the tip's ellipsis.
+  db.prepare(`UPDATE coffees SET producer = ?, variety = ?, region = ? WHERE id = ?`).run(
+    k === 7 ? 'Lab Farmer Solo' : `Lab Farmer ${'ABCD'[k >> 1]}`, k < 4 ? 'SL28, SL34' : 'Batian',
+    k === 7 ? "Kangema, Murang'a Highlands Smallholder Cooperative Zone" : k % 2 ? 'Nyeri' : 'Guji', c.id);
   for (let j = 0; j < 32; j++) {
     const temp = k < 2 && j === 31 ? 96 : TEMPS[j % 4];
     const dose = DOSES[j % 3], w = WATERS[(j + k) % 3], m = METHODS[(j + 2 * k) % 3], zp6 = k === 7 && j % 4 === 0;
@@ -251,6 +256,9 @@ for (let k = 0; k < 18; k++) {
   const c = coffee({ roaster, coffee_name: name, roast_level, processing, origin: 'Ethiopia', status: 'archive', roast_date: daysAgo(first + 10) });
   bean.run(`bean-dial-${k}`, name, roaster, daysAgo(first + 10), 250, 22, 0, isoDaysAgo(first), now);
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-dial-${k}`);
+  db.prepare(`UPDATE coffees SET producer = ?, variety = ?, region = ? WHERE id = ?`).run(
+    ['Tamiru Tadesse Tesema', 'Ture Waji', 'Haider Aba Mecha'][k % 3], ['Gesha 1931', 'Landrace', 'Gesha, Pink Bourbon', '74158'][k % 4],
+    ['Hambela, Guji', 'Gedeb, Gedeo', 'Sidama'][k % 3], c.id);
   for (let j = 0; j < 7; j++) timed.run(atLocal(first - j, 8, 30), `bean-dial-${k}`, slow ? 'm3' : 'm1', (slow ? (j < 3 ? 5 : 9) : 7.3) + up, null, now);
 }
 // Gear showcase: stored details for a dripper (many fields + photo on a backdrop) and a grinder (two fields), and a grinder

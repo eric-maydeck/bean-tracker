@@ -864,6 +864,7 @@
   <Leaderboards
     {part}
     boards={data.boards}
+    coverage={data.boardCoverage!}
     cut={data.boardsCut}
     rank={s.rank}
     avg={explicit.avg}

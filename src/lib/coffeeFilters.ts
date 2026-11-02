@@ -6,6 +6,8 @@ export type ColumnKey =
   | 'roaster'
   | 'coffee_name'
   | 'origin'
+  | 'producer'
+  | 'variety'
   | 'processing'
   | 'roast_level'
   | 'decaf'
@@ -36,6 +38,8 @@ export const COLUMNS: readonly Column[] = [
   { key: 'roaster', label: 'Roaster', short: 'Roaster', kind: 'text' },
   { key: 'coffee_name', label: 'Coffee name', short: 'Name', kind: 'text' },
   { key: 'origin', label: 'Origin', short: 'Origin', kind: 'text' },
+  { key: 'producer', label: 'Producer', short: 'Producer', kind: 'text' },
+  { key: 'variety', label: 'Variety', short: 'Variety', kind: 'text' },
   { key: 'processing', label: 'Processing', short: 'Process', kind: 'text' },
   { key: 'roast_level', label: 'Roast level', short: 'Roast', kind: 'text' },
   { key: 'decaf', label: 'Decaf', short: 'Decaf', kind: 'bool' },
@@ -154,7 +158,7 @@ export type Filter =
   | { column: ColumnKey; mode: 'overlaps'; a: string; b: string }
   | { column: ColumnKey; mode: 'plan'; value: PlanValue };
 
-type TextKey = 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'roast_level' | 'rest_state';
+type TextKey = 'roaster' | 'coffee_name' | 'origin' | 'producer' | 'variety' | 'processing' | 'roast_level' | 'rest_state';
 type DateKey = 'roast_date' | 'frozen_start_date' | 'frozen_end_date';
 
 export function isFrozen(c: Pick<CoffeeWithComputed, 'frozen_start_date' | 'frozen_end_date'>): boolean {

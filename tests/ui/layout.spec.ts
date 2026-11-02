@@ -243,7 +243,7 @@ async function expectEqualBoardHeights(page: Page) {
   const bands = await page.locator('.board-band').evaluateAll((bands) =>
     bands.map((band) => [...band.querySelectorAll(':scope > .board:not(.open)')].map((b) => [Math.round(b.getBoundingClientRect().top), b.getBoundingClientRect().height]))
   );
-  expect(bands).toHaveLength(3); // so the loop below can't pass vacuously
+  expect(bands).toHaveLength(4); // so the loop below can't pass vacuously
   for (const band of bands) for (const [top, h] of band) for (const [t2, h2] of band) if (Math.abs(top - t2) <= 1) expect(Math.abs(h - h2)).toBeLessThanOrEqual(1);
   const blank = await page.locator('.board-foot:not(:has(button))').count();
   expect(blank, 'no empty Show all footers').toBe(0);
@@ -5732,7 +5732,7 @@ export const STATES: State[] = [
     name: 'insights-leaderboards',
     path: () => '/insights?tab=leaderboards',
     act: async (page) => {
-      await expect(page.locator('.board')).toHaveCount(9);
+      await expect(page.locator('.board')).toHaveCount(11);
       await expectEqualBoardHeights(page);
       await expectBarHover(page);
       await expectSampleChips(page);
@@ -6069,13 +6069,39 @@ export const STATES: State[] = [
     act: async (page) => {
       // One jump link per board; a click lands the card's top just under the sticky bar.
       const links = page.locator('.board-jump a');
-      await expect(links).toHaveCount(9);
+      await expect(links).toHaveCount(11);
       await expectChipsInBar(page, links);
       await links.filter({ hasText: 'Origins' }).click();
       await expect(page).toHaveURL(/#leaderboard-origins$/);
       const gap = async () => (await page.evaluate(() => document.getElementById('leaderboard-origins')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
+    } },
+  { name: 'insights-board-varieties', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      for (const b of ['varieties', 'producers']) await expect(page.locator(`[data-board="${b}"] .board-row:not(.placeholder)`).first()).toBeVisible();
+      await expect(page.locator('[data-board="varieties"] .board-row', { hasText: 'Gesha' }).first()).toBeVisible();
+      await expect(page.locator('[data-board="varieties"] .like-note')).toHaveText(/\d+ of \d+ bags have a variety\./);
+      await expect(page.locator('[data-board="producers"] .like-note')).toHaveText(/\d+ of \d+ bags have a producer\./);
+      await expectEqualBoardHeights(page);
+    } },
+  { name: 'insights-board-producers-spend', path: () => '/insights?tab=leaderboards&range=all&rank=spend',
+    act: async (page) => {
+      for (const b of ['varieties', 'producers']) {
+        const rows = page.locator(`[data-board="${b}"] .board-row:not(.placeholder)`);
+        await expect(rows.first()).toBeVisible();
+        await expect(rows.first().locator('.val')).toContainText('$');
+      }
+      await expect(page.locator('[data-board="producers"] .like-note')).toHaveText(/\d+ of \d+ bags bought have a producer\./);
+      await expectEqualBoardHeights(page);
+    } },
+  { name: 'insights-board-origin-thin', path: () => '/insights?tab=leaderboards&range=all&roaster=Kurasu',
+    act: async (page) => {
+      // Kurasu's bags carry no origin details: both boards show their empty line, and the band has no empty space.
+      for (const b of ['varieties', 'producers']) await expect(page.locator(`[data-board="${b}"] .board-note`)).toBeVisible();
+      await expect(page.locator('[data-board="varieties"] .board-row, [data-board="producers"] .board-row')).toHaveCount(0);
+      const [v, p] = await Promise.all(['varieties', 'producers'].map((b) => page.locator(`[data-board="${b}"]`).boundingBox()));
+      if (Math.abs(v!.y - p!.y) <= 1) expect(Math.abs(v!.height - p!.height)).toBeLessThanOrEqual(1); // side by side: level and as tall
     } },
   { name: 'insights-chart-link', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {

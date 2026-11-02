@@ -1,7 +1,8 @@
 import { dialInIds, onceDialed } from './dialed';
 import { describe, it, expect } from 'vitest';
 import { RATINGS_SETTLED_FROM } from './ratings';
-import { boardSeries, cutBoards, hiddenRows, leaderboard, leaderboards, pageFilters, withMovement, type BoardRow } from './leaderboards';
+import { fromParams } from '$lib/coffeeViewState';
+import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboard, leaderboards, pageFilters, withMovement, type BoardRow } from './leaderboards';
 import { roastLevelLabels, type BrewFact, type BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -186,7 +187,7 @@ describe('coffees under k2 / adjusted: shrunk by brews', () => {
 describe('leaderboards', () => {
   it('every board, movement only with a compare window', () => {
     const all = leaderboards(BREWS, BAGS, SEPT, null, 'brews', 'all', 'raw');
-    expect(Object.keys(all)).toHaveLength(9);
+    expect(Object.keys(all)).toHaveLength(11);
     expect(all.roasters[0].move).toBeUndefined();
     const cmp = leaderboards(BREWS, BAGS, SEPT, AUG, 'brews', 'all', 'raw');
     // Aug: Moonwake #1 only. Sept: Sey #1 (new), Moonwake #2 (fell one).
@@ -364,5 +365,54 @@ describe('boardSeries', () => {
     const rated = [brew({ localDate: '2026-09-03', rating: 8 }), brew({ localDate: '2026-09-03', rating: 8 }), brew({ localDate: '2026-09-03', rating: 8 })];
     expect(boardSeries(rated, [], ctx, 'dripper', ['V60'], 'rating', 'all', 'raw').lines[0].values.slice(1, 5)).toEqual([null, expect.any(Number), null, null]);
     expect(boardSeries(bs, [], ctx, 'dripper', ['Kalita'], 'brews', 'all', 'raw', 2).lines[0].values[3]).toBe(0.5);
+  });
+});
+
+describe('varieties and producers boards', () => {
+  const G = 'Gesha, Gesha 1931, Pink Bourbon';
+  it('fans a bag once per group: a brew counts fully toward each variety', () => {
+    const brews = [brew({ coffeeId: 1, dose: 15, variety: G }), brew({ coffeeId: 2, dose: 20, variety: 'SL28' })];
+    const bags = [bag({ id: 1, variety: G }), bag({ id: 2, variety: 'SL28' })];
+    expect(vals(leaderboard(brews, bags, SEPT, 'varieties', 'grams', 'all', 'raw'))).toEqual([['SL28', 20], ['Gesha', 15], ['Pink Bourbon', 15]]);
+    expect(leaderboard(brews, bags, SEPT, 'varieties', 'grams', 'all', 'raw')[1].bags).toBe(1);
+  });
+  it('varieties: spend counts a multi-variety bag fully toward each; $/g is per bag', () => {
+    const bags = [bag({ id: 1, cost: 30, amountG: 300, variety: 'SL28, SL34' })];
+    expect(vals(leaderboard([], bags, SEPT, 'varieties', 'spend', 'all', 'raw'))).toEqual([['SL28', 30], ['SL34', 30]]);
+    expect(leaderboard([], bags, SEPT, 'varieties', 'ppg', 'all', 'raw').map((r) => r.value)).toEqual([0.1, 0.1]);
+  });
+  it('blank producer is skipped', () => {
+    const brews = [brew({ producer: '  ' }), brew({ coffeeId: 2, producer: null }), brew({ coffeeId: 3, producer: 'Ture Waji' })];
+    expect(leaderboard(brews, BAGS, SEPT, 'producers', 'brews', 'all', 'raw').map((r) => r.key)).toEqual(['Ture Waji']);
+  });
+  it('rating on a variety board: the fan-out does not change a bag\'s sample size', () => {
+    const rated = (variety: string, coffeeId: number) => [8, 9, 8, 9].map((rating) => brew({ coffeeId, rating, variety }));
+    const brews = [...rated('Gesha, SL28', 1), ...rated('Batian', 2)];
+    const bags = [bag({ id: 1, variety: 'Gesha, SL28' }), bag({ id: 2, variety: 'Batian' })];
+    const rows = leaderboard(brews, bags, SEPT, 'varieties', 'rating', 'all', 'raw');
+    const one = rows.find((r) => r.key === 'Batian')!, two = rows.find((r) => r.key === 'Gesha')!;
+    expect(two.brews).toBe(one.brews);
+    expect(two.bags).toBe(one.bags);
+    expect(two.sample).toEqual(one.sample);
+  });
+  it('rows link to /coffees by producer, and by every stored variety string in the group', () => {
+    const bags = [bag({ id: 1, variety: 'Gesha 1931' }), bag({ id: 2, variety: 'Gesha, SL28' })];
+    const brews = [brew({ coffeeId: 1, variety: 'Gesha 1931', producer: 'Ture Waji' }), brew({ coffeeId: 2, variety: 'Gesha, SL28' })];
+    const gesha = leaderboard(brews, bags, SEPT, 'varieties', 'brews', 'all', 'raw').find((r) => r.key === 'Gesha')!;
+    const f = fromParams(new URL(gesha.href!, 'http://x').searchParams).filters[0];
+    expect(f).toMatchObject({ column: 'variety', mode: 'any' });
+    expect([...(f as { values: string[] }).values].sort()).toEqual(['Gesha 1931', 'Gesha, SL28']);
+    expect(leaderboard(brews, bags, SEPT, 'producers', 'brews', 'all', 'raw')[0].href).toContain('producer=');
+  });
+  it('keys override the board\'s grouping', () => {
+    const rows = leaderboard(BREWS, BAGS, SEPT, 'producers', 'brews', 'all', 'raw', false, { brew: (b) => b.roaster, bag: (b) => b.roaster });
+    expect(rows.map((r) => r.key)).toEqual(['Sey', 'Moonwake']);
+  });
+  it('fieldCoverage counts bags in the period and those with the field', () => {
+    const bags = [bag({ id: 1, variety: 'SL28', producer: 'A' }), bag({ id: 2, variety: 'Batian' }), bag({ id: 3, variety: ' ' })];
+    const brews = [1, 2, 3].map((coffeeId) => brew({ coffeeId }));
+    expect(fieldCoverage(brews, bags, SEPT, 'brews')).toEqual({ varieties: { with: 2, of: 3 }, producers: { with: 1, of: 3 } });
+    // spend: bags bought in the period, brewed or not
+    expect(fieldCoverage([], [...bags, bag({ id: 4, purchaseDate: '2026-01-01', variety: 'X' })], SEPT, 'spend').varieties).toEqual({ with: 2, of: 3 });
   });
 });

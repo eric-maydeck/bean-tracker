@@ -9,6 +9,7 @@ import { ADJUSTED_K, RATINGS_SETTLED_FROM, bagSizes, countsForRating, ratedGroup
 import { likeGaps, roasterLikes, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
+import { varietyGroups } from '$lib/originFormat';
 import { pooled, shownBrews, single, type Sample } from '$lib/sample';
 
 export interface BoardRow {
@@ -43,7 +44,9 @@ export const BREW_KEY: Record<Board, (b: BrewFact) => string | null> = {
   water: (b) => b.water,
   dripper: (b) => b.dripper,
   filter: (b) => (b.filter === MIXED_FILTER ? null : b.filter),
-  grinder: (b) => b.grinder
+  grinder: (b) => b.grinder,
+  varieties: (b) => b.variety ?? null,
+  producers: (b) => b.producer?.trim() || null
 };
 // Spend and $/g group bags; only bag attributes have a key.
 const BAG_KEY: Partial<Record<Board, (b: BagFact) => string | null>> = {
@@ -51,10 +54,21 @@ const BAG_KEY: Partial<Record<Board, (b: BagFact) => string | null>> = {
   coffees: (b) => String(b.id),
   origins: (b) => country(b.origin),
   process: (b) => b.processGroup,
-  roast: (b) => b.roastLevel
+  roast: (b) => b.roastLevel,
+  varieties: (b) => b.variety ?? null,
+  producers: (b) => b.producer?.trim() || null
 };
 // Boards whose rows open the coffee list filtered to them.
-const FILTER_COLUMN: Partial<Record<Board, ColumnKey>> = { roasters: 'roaster', origins: 'origin', roast: 'roast_level' };
+const FILTER_COLUMN: Partial<Record<Board, ColumnKey>> = { roasters: 'roaster', origins: 'origin', roast: 'roast_level', producers: 'producer' };
+
+// The varieties board counts a brew (or bag) once toward each variety group of its coffee: one copy per group,
+// `variety` set to the group. Other boards pass through.
+export const boardBrews = <T extends { variety?: string | null }>(board: Board, xs: readonly T[]): T[] =>
+  board === 'varieties' ? xs.flatMap((x) => varietyGroups(x.variety).map((g) => ({ ...x, variety: g }))) : [...xs];
+
+// The distinct stored `variety` strings of the bags whose groups include `group` (a /coffees filter spells them out).
+export const varietyLabels = (bags: readonly BagFact[], group: string): string[] =>
+  [...new Set(bags.filter((b) => varietyGroups(b.variety).includes(group)).map((b) => b.variety!))];
 
 const byRank = (a: BoardRow, b: BoardRow) =>
   b.value - a.value || (b.atBest ?? 0) - (a.atBest ?? 0) || (b.mean ?? 0) - (a.mean ?? 0) || b.bags - a.bags || b.brews - a.brews || a.label.localeCompare(b.label);
@@ -96,6 +110,10 @@ function decorate(r: BoardRow, board: Board, rank: Rank, bags: readonly BagFact[
     const labels = processLabels(bags, r.key);
     return labels.length ? { ...r, href: listHref('processing', labels, statusFor(rank)) } : r;
   }
+  if (board === 'varieties') {
+    const labels = varietyLabels(bags, r.key);
+    return labels.length ? { ...r, href: listHref('variety', labels, statusFor(rank)) } : r;
+  }
   const column = FILTER_COLUMN[board];
   // Bags stored under an alias label (Light/Med) normalize to this row, so link them too.
   return column ? { ...r, href: listHref(column, board === 'roast' ? roastLevelLabels(r.key) : [r.key], statusFor(rank)) } : r;
@@ -103,7 +121,8 @@ function decorate(r: BoardRow, board: Board, rank: Rank, bags: readonly BagFact[
 
 export function leaderboard(
   brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, board: Board, rank: Rank, ratings: Ratings, avg: Avg,
-  like = true // false: callers that only count rows or read keys skip the like lines
+  like = true, // false: callers that only count rows or read keys skip the like lines
+  keys?: { brew: (b: BrewFact) => string | null; bag: (b: BagFact) => string | null } // overrides the board's grouping
 ): BoardRow[] {
   let rows: BoardRow[] = [];
   const inP = brews.filter((b) => inPeriod(b.localDate, p));
@@ -111,13 +130,14 @@ export function leaderboard(
   // Rated, linked brews of the view only (ratings / dial / coffees filter already applied by the caller).
   // Coffees rows carry the line under every rank (gate P4: under like the value already is it).
   const likeRows = () => inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0);
-  const sizes = bagSizes(inP, ratings);
+  const sizes = bagSizes(inP, ratings); // from the unfanned brews: a bag's size is its own
+  const fanned = boardBrews(board, inP);
   const likes = board === 'coffees' && (rank === 'like' || like) ? likeGaps(likeRows(), false, twinKeys(bags), sizes) : null;
   if (rank === 'spend' || rank === 'ppg') {
-    const key = BAG_KEY[board];
+    const key = keys?.bag ?? BAG_KEY[board];
     if (!key) return [];
     const g = new Map<string, { cost: number; grams: number; bags: number }>();
-    for (const b of bags) {
+    for (const b of boardBrews(board, bags)) {
       const k = key(b);
       if (k === null || b.cost === null || !b.purchaseDate || !inPeriod(b.purchaseDate, p)) continue;
       if (rank === 'ppg' && !b.amountG) continue;
@@ -132,7 +152,7 @@ export function leaderboard(
       ...(rank === 'spend' ? { value: x.cost } : { value: x.cost / x.grams, cost: x.cost, grams: x.grams })
     }));
   } else {
-    const key = BREW_KEY[board];
+    const key = keys?.brew ?? BREW_KEY[board];
     if (rank === 'like') {
       if (!LIKE_BOARDS.includes(board)) return [];
       rows = board === 'coffees'
@@ -141,14 +161,14 @@ export function leaderboard(
     } else if (rank === 'rating') {
       // Every bag counts, weighted by its brews (ratedGroups); Coffees rows are single bags, shrunk by brews.
       const coffees = board === 'coffees';
-      rows = ratedGroups(inP, key, ratings, avg, coffees).map((r) => ({
+      rows = ratedGroups(fanned, key, ratings, avg, coffees).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
         ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample }
           : { value: r.value, sample: r.sample, ...(coffees ? (ADJUSTED_K[avg] > 0 ? { mean: r.mean } : {}) : r.se !== undefined && !ADJUSTED_K[avg] ? { se: r.se } : {}) })
       }));
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
-      for (const b of inP) {
+      for (const b of fanned) {
         const k = key(b);
         if (k === null) continue;
         const x = g.get(k) ?? { brews: 0, grams: 0, bags: new Set<number>() };
@@ -163,6 +183,20 @@ export function leaderboard(
   if (likes && rank !== 'like') rows = rows.map((r) => { const l = likes.get(Number(r.key)); return l ? { ...r, like: { gap: l.gap, label: l.label } } : r; });
   const out = rows.map((r) => decorate(r, board, rank, bags, sizes));
   return (confident(rank, avg) ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
+}
+
+// Varieties and Producers notes: of the bags the board draws on (brewed in the Period; bought in it for spend and
+// $/g), how many carry the field.
+export function fieldCoverage(
+  brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank
+): Record<'varieties' | 'producers', { with: number; of: number }> {
+  const money = rank === 'spend' || rank === 'ppg';
+  const brewed = new Set(brews.filter((b) => inPeriod(b.localDate, p)).map((b) => b.coffeeId));
+  const of = bags.filter((b) => (money ? !!b.purchaseDate && inPeriod(b.purchaseDate, p) : brewed.has(b.id)));
+  return {
+    varieties: { with: of.filter((b) => varietyGroups(b.variety).length).length, of: of.length },
+    producers: { with: of.filter((b) => b.producer?.trim()).length, of: of.length }
+  };
 }
 
 // move = ranks climbed since the compare window (+ up, − down), 'new' if it wasn't ranked.

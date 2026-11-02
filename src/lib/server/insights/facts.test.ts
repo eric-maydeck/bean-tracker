@@ -124,6 +124,15 @@ describe('loadFacts', () => {
     expect(loadFacts(db).bags.map((b) => b.subscriptionId)).toEqual([planId, null]);
   });
 
+  it('carries producer, variety and region on a brew and its bag', () => {
+    const { db, coffeeId } = seed();
+    db.prepare(`UPDATE coffees SET producer = 'Ture Waji', variety = 'Gesha, SL28', region = 'Guji' WHERE id = ?`).run(coffeeId);
+    const { brews, bags } = loadFacts(db);
+    const want = { producer: 'Ture Waji', variety: 'Gesha, SL28', region: 'Guji' };
+    expect(brews[0]).toMatchObject(want);
+    expect(bags[0]).toMatchObject(want);
+  });
+
   function seed() {
     const db = createDb(':memory:');
     const now = '2026-10-09T00:00:00.000Z';

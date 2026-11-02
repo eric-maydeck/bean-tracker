@@ -150,10 +150,10 @@ export function pickNumber(p: URLSearchParams, name: string, min: number, max: n
 // What if inputs: [min, max] for the URL parser and the inputs.
 export const WHATIF_LIMITS = { drinkers: [1, 20], gpp: [1, 500], inflow: [0, 10000], bpd: [0.5, 20], dose: [5, 40] } as const;
 
-export const BOARDS = ['roasters', 'coffees', 'origins', 'process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const;
+export const BOARDS = ['roasters', 'coffees', 'origins', 'varieties', 'producers', 'process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const;
 export type Board = (typeof BOARDS)[number];
 // Spend and $/g are per bag: only boards of bag attributes rank by them.
-export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'process', 'roast'];
+export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'varieties', 'producers', 'process', 'roast'];
 // vs like coffees ranks coffees and their roasters only.
 export const LIKE_BOARDS: readonly Board[] = ['coffees', 'roasters'];
 // The small boards' List · Over time switch: views=roast-time,water-time-wide (absent = List; `wide`: the Over time card
@@ -596,7 +596,7 @@ export const resetInsights = (s: InsightsUrlState): InsightsUrlState =>
 
 // A board's rows, plural (the singular drops the s).
 export const BOARD_NOUN: Record<Board, string> = {
-  roasters: 'roasters', coffees: 'coffees', origins: 'origins', process: 'process groups', roast: 'roast levels',
+  roasters: 'roasters', coffees: 'coffees', origins: 'origins', varieties: 'varieties', producers: 'producers', process: 'process groups', roast: 'roast levels',
   water: 'waters', dripper: 'drippers', filter: 'filters', grinder: 'grinders'
 };
 const count = (n: number, plural: string) => `${n} ${n === 1 ? plural.slice(0, -1) : plural}`;

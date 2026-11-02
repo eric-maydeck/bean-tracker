@@ -6,7 +6,7 @@ import {
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
-import { boardSeries, cutBoards, hiddenRows, leaderboards, pageFilters } from '$lib/server/insights/leaderboards';
+import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboards, pageFilters } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
 import { spendTab } from '$lib/server/insights/spend';
@@ -138,6 +138,7 @@ export const load: PageServerLoad = ({ url }) => {
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     boards,
+    boardCoverage: boards ? fieldCoverage(scored, bags, period, s.rank) : null,
     // Over time: only the small boards switched to it (views=water-time); the others cost nothing.
     boardSeries: boards
       ? Object.fromEntries(VIEW_BOARDS.filter((b) => s.views?.[b]).map((b) => [b,

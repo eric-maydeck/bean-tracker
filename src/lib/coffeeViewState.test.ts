@@ -205,3 +205,14 @@ describe('subscription param', () => {
     expect(fromParams(new URLSearchParams('subscription=0')).filters).toEqual([]);
   });
 });
+
+describe('producer and variety filters', () => {
+  it('parse as any filters and round-trip', () => {
+    const s = fromParams(new URLSearchParams('producer=Ture%20Waji&variety=SL28'));
+    expect(s.filters).toEqual([
+      { column: 'producer', mode: 'any', values: ['Ture Waji'] },
+      { column: 'variety', mode: 'any', values: ['SL28'] }
+    ]);
+    expect(roundTrip(s).filters).toEqual(s.filters);
+  });
+});

@@ -6,7 +6,7 @@
 
   type Rows = NonNullable<PageData['boards']>;
   const TITLE = BOARD_TITLE;
-  const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
+  const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['varieties', 'producers'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
   export function jumpLinks(boards: Rows, cut: Board[], rank: Rank): JumpLink[] {
     // A whole tab with nothing to rank is one empty panel: no chips.
     if (!cut.length && BANDS.flat().every((b) => !boards[b].length)) return [];
@@ -40,11 +40,11 @@
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
 
   let {
-    boards, wholeKeys, cut, rank, avg, open, views, series, comparing, perPerson, placeTip, choose, link, part
+    boards, coverage, wholeKeys, cut, rank, avg, open, views, series, comparing, perPerson, placeTip, choose, link, part
   }: {
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
-    boards: Rows; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board[]; comparing: boolean; perPerson: boolean;
+    boards: Rows; coverage: PageData['boardCoverage'] & {}; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board[]; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
     // views: the small boards' Over time pick, `wide` when expanded (URL; absent = List); series: Over time's lines (server,
     // only boards on it).
@@ -53,7 +53,7 @@
   } = $props();
 
   // Top 10 where there are many items, top 5 for small sets (spec "Boards").
-  const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
+  const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' || b === 'varieties' || b === 'producers' ? 10 : 5);
 
   // Each board's Show all is its own: toggling one leaves the others as they are.
   const toggle = (b: Board) => {
@@ -268,6 +268,10 @@
       </div>
     {:else}<HeadingAnchor id="leaderboard-{b}">{TITLE[b]}</HeadingAnchor>{/if}
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
+    {#if (b === 'varieties' || b === 'producers') && rows.length}
+      {@const c = coverage[b]}
+      <p class="like-note">{#if b === 'varieties'}{rank === 'spend' || rank === 'ppg' ? 'A bag counts' : 'A brew counts'} toward each of its coffee's varieties. {/if}{c.with} of {c.of} bags{rank === 'spend' || rank === 'ppg' ? ' bought' : ''} have a {b === 'varieties' ? 'variety' : 'producer'}.</p>
+    {/if}
     <div class="board-body" class:time={view === 'time'}>
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap rows={rows.map((r) => ({ ...r, href: r.href && link(r.href) }))} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
       {#if unranked(b)}

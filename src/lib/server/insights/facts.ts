@@ -90,6 +90,9 @@ export interface BrewFact {
   dialRating?: number | null; // Once dialed (onceDialed): a dial-in brew's rating, its `rating` nulled; bagSizes counts it
   roaster: string | null;
   origin: string | null;
+  producer?: string | null; // origin details (optional: test factories omit them)
+  variety?: string | null;
+  region?: string | null;
   processGroup: ProcessGroup;
   roastLevel: string | null;
   decaf: boolean;
@@ -122,6 +125,9 @@ export interface BagFact {
   slug: string | null;
   processing: string | null; // raw label, for process-group links
   origin: string | null;
+  producer?: string | null;
+  variety?: string | null;
+  region?: string | null;
   processGroup: ProcessGroup;
   roastLevel: string | null;
   decaf: boolean;
@@ -140,14 +146,14 @@ interface BrewRow {
   id: number; bc_created_at: string; dose: number | null; rating: number | null; brew_time: string | null; bloom_time: string | null;
   method: string | null; tools: string | null; grinder: string | null; water: string | null; water_id: string | null;
   calcium: number | null; magnesium: number | null; sodium: number | null; potassium: number | null; chloride: number | null; sulfate: number | null; notes: string | null;
-  coffee_id: number | null; roaster: string | null; origin: string | null; processing: string | null; roast_level: string | null;
+  coffee_id: number | null; roaster: string | null; origin: string | null; producer: string | null; variety: string | null; region: string | null; processing: string | null; roast_level: string | null;
   decaf: number | null; roast_date: string | null; frozen_start_date: string | null; frozen_end_date: string | null;
   cost: number | null; amount_g: number | null; water_amount_g: number | null; grind_setting: string | null; style: string | null;
   brew_temperature: number | null;
 }
 
 interface BagRow {
-  id: number; status: BagFact['status']; roaster: string; coffee_name: string; slug: string | null; origin: string | null; processing: string | null;
+  id: number; status: BagFact['status']; roaster: string; coffee_name: string; slug: string | null; origin: string | null; producer: string | null; variety: string | null; region: string | null; processing: string | null;
   roast_level: string | null; decaf: number; roast_date: string | null; cost: number | null; amount_g: number | null;
   frozen_start_date: string | null; frozen_end_date: string | null; bag_rating: number | null;
   rest_days_low: number | null; rest_days_high: number | null; opened_date: string | null; subscription_id: number | null;
@@ -163,7 +169,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
               m.name AS method, m.preparation_tools AS tools, g.name AS grinder,
               COALESCE(w.name, b.water) AS water, w.id AS water_id,
               w.calcium, w.magnesium, w.sodium, w.potassium, w.chloride, w.sulfate,
-              c.id AS coffee_id, c.roaster, c.origin, c.processing, c.roast_level, c.decaf, c.roast_date,
+              c.id AS coffee_id, c.roaster, c.origin, c.producer, c.variety, c.region, c.processing, c.roast_level, c.decaf, c.roast_date,
               c.frozen_start_date, c.frozen_end_date, c.cost, c.amount_g,
               b.water_amount_g, b.grind_setting, b.notes, m.preparation_style AS style
        FROM beanconqueror_brews b
@@ -191,6 +197,9 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
       rating: r.rating,
       roaster: r.roaster,
       origin: r.origin,
+      producer: r.producer,
+      variety: r.variety,
+      region: r.region,
       processGroup: processGroup(r.processing),
       roastLevel: normalizeRoastLevel(r.roast_level),
       decaf: r.decaf === 1,
@@ -229,7 +238,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
   }
 
   const bagRows = db
-    .prepare(`SELECT id, status, roaster, coffee_name, slug, origin, processing, roast_level, decaf, roast_date, cost, amount_g, frozen_start_date, frozen_end_date,
+    .prepare(`SELECT id, status, roaster, coffee_name, slug, origin, producer, variety, region, processing, roast_level, decaf, roast_date, cost, amount_g, frozen_start_date, frozen_end_date,
             rest_days_low, rest_days_high, opened_date, subscription_id, (SELECT MAX(rating) FROM beanconqueror_beans WHERE coffee_id = coffees.id AND rating > 0) AS bag_rating FROM coffees`)
     .all() as unknown as BagRow[];
   const bags = bagRows.map((r): BagFact => ({
@@ -243,6 +252,9 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
     slug: r.slug,
     processing: r.processing,
     origin: r.origin,
+    producer: r.producer,
+    variety: r.variety,
+    region: r.region,
     processGroup: processGroup(r.processing),
     roastLevel: normalizeRoastLevel(r.roast_level),
     decaf: r.decaf === 1,
