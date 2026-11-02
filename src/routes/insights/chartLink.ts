@@ -104,9 +104,10 @@ export const recordAnchor = (key: string): string => `record-${key.replace(/[^a-
 
 const MEDAL = ['🥇', '🥈', '🥉'];
 // Header line, then one row per entry: a medal (top 3) or "4." and the value first.
-function ranked(header: string, rows: { value: string; name: string }[]): string {
+// `plain` (Lowest first): numbers only, the lowest row is no winner.
+function ranked(header: string, rows: { value: string; name: string }[], plain = false): string {
   const prefix = header + '\n';
-  const items = rows.slice(0, 5).map((r, i) => `${MEDAL[i] ?? `${i + 1}.`} ${r.value} · ${r.name}`);
+  const items = rows.slice(0, 5).map((r, i) => `${(!plain && MEDAL[i]) || `${i + 1}.`} ${r.value} · ${r.name}`);
   return prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length);
 }
 const holderRow = (h: Holder) => [h.sub, h.label].filter(Boolean).join(' · ');
@@ -120,10 +121,11 @@ export function insightsPreview(v: PreviewInput): Preview {
   const shown = board && (v.rank !== 'like' || LIKE_BOARDS.includes(board)) && !((v.rank === 'spend' || v.rank === 'ppg') && !BAG_BOARDS.includes(board));
   if (board && rows?.length && shown) {
     const whole = (v.rank === 'spend' || v.rank === 'ppg') && wholeUsd(rows.map((r) => r.value));
-    const header = `${v.rank === 'rating' ? 'Avg rating' : RANK_LABEL[v.rank]} · ${v.period}`;
+    const lowest = !!v.low?.includes(board);
+    const header = `${v.rank === 'rating' ? 'Avg rating' : RANK_LABEL[v.rank]} · ${v.period}${lowest ? ' · lowest first' : ''}`;
     return {
       title: `Insights: ${BOARD_TITLE[board]}`,
-      description: ranked(header, rows.map((r) => ({ value: boardValue(r.value, v.rank, v.perPerson, whole), name: board === 'origins' ? originWithFlag(r.label) : r.label })))
+      description: ranked(header, rows.map((r) => ({ value: boardValue(r.value, v.rank, v.perPerson, whole), name: board === 'origins' ? originWithFlag(r.label) : r.label })), lowest)
     };
   }
   const rec = v.records;

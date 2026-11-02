@@ -912,8 +912,12 @@ describe('low (Lowest first)', () => {
     expect(parseInsightsUrl(new URLSearchParams(''), []).low).toBeUndefined();
   });
   it('coffees board is exempt from the one-bag cut', () => {
-    const rows = [{ key: 'a', bags: 1 }, { key: 'b', bags: 1 }];
+    const rows = [{ key: 'a', bags: 1, value: 2 }, { key: 'b', bags: 1, value: 1 }];
     expect(lowFirst('coffees', rows).map((r) => r.key)).toEqual(['b', 'a']);
-    expect(lowFirst('roasters', [{ key: 'a', bags: 3 }, { key: 'b', bags: 1 }, { key: 'c', bags: 2 }]).map((r) => r.key)).toEqual(['c', 'a']);
+    expect(lowFirst('roasters', [{ key: 'a', bags: 3, value: 9 }, { key: 'b', bags: 1, value: 1 }, { key: 'c', bags: 2, value: 5 }]).map((r) => r.key)).toEqual(['c', 'a']);
+  });
+  it('ties keep the normal tie order', () => {
+    const rows = [{ key: 'a', bags: 2, value: 9 }, { key: 'b', bags: 2, value: 5 }, { key: 'c', bags: 2, value: 5 }, { key: 'd', bags: 2, value: 5 }];
+    expect(lowFirst('roasters', rows).map((r) => r.key)).toEqual(['b', 'c', 'd', 'a']);
   });
 });

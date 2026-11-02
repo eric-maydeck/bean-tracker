@@ -2,7 +2,7 @@ import { dialInIds, onceDialed } from './dialed';
 import { describe, it, expect } from 'vitest';
 import { RATINGS_SETTLED_FROM } from './ratings';
 import { fromParams } from '$lib/coffeeViewState';
-import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboard, leaderboards, pageFilters, topRegions, withMovement, type BoardRow } from './leaderboards';
+import { BREW_KEY, boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboard, leaderboards, pageFilters, topRegions, withMovement, type BoardRow } from './leaderboards';
 import { roastLevelLabels, type BrewFact, type BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -390,6 +390,11 @@ describe('varieties and producers boards', () => {
     const bags = [bag({ id: 1, variety: G }), bag({ id: 2, variety: 'SL28' })];
     expect(vals(leaderboard(brews, bags, SEPT, 'varieties', 'grams', 'all', 'raw'))).toEqual([['SL28', 20], ['Gesha', 15], ['Pink Bourbon', 15]]);
     expect(leaderboard(brews, bags, SEPT, 'varieties', 'grams', 'all', 'raw')[1].bags).toBe(1);
+  });
+  it('a blank variety is no group: BREW_KEY and BAG_KEY give null', () => {
+    expect(BREW_KEY.varieties(brew({ variety: '  ' }))).toBeNull();
+    expect(BREW_KEY.varieties(brew({ variety: ' SL28 ' }))).toBe('SL28');
+    expect(leaderboard([brew({ variety: ' ' })], [bag({ id: 1, variety: ' ' })], SEPT, 'varieties', 'brews', 'all', 'raw')).toEqual([]);
   });
   it('varieties: spend counts a multi-variety bag fully toward each; $/g is per bag', () => {
     const bags = [bag({ id: 1, cost: 30, amountG: 300, variety: 'SL28, SL34' })];

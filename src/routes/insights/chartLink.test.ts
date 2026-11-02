@@ -28,7 +28,7 @@ describe('insightsPreview', () => {
   it('Lowest first lists the lowest row first', () => {
     const roasters = [{ key: 'a', label: 'Sey', value: 8.5, bags: 4, brews: 9 }, { key: 'b', label: 'Onyx', value: 7.0, bags: 3, brews: 6 }, { key: 'c', label: 'One', value: 6, bags: 1, brews: 1 }] as BoardRow[];
     const d = insightsPreview({ ...base, boards: { ...none, roasters }, chart: 'leaderboard-roasters', low: ['roasters'] }).description;
-    expect(d).toBe('Avg rating · All time\n🥇 7.0 · Onyx\n🥈 8.5 · Sey');
+    expect(d).toBe('Avg rating · All time · lowest first\n1. 7.0 · Onyx\n2. 8.5 · Sey');
   });
   it('falls back to the page level', () => {
     expect(insightsPreview({ ...base, rank: 'like', chart: 'leaderboard-origins' })).toEqual(PAGE);

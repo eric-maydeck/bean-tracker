@@ -154,8 +154,9 @@ export const BOARDS = ['roasters', 'coffees', 'origins', 'varieties', 'producers
 export type Board = (typeof BOARDS)[number];
 // Lowest first: the descending rows reversed, one-bag groups dropped (a lone bag is noise at the bottom) except
 // on Coffees, where each row is one bag.
-export const lowFirst = <R extends { bags: number }>(board: Board, rows: readonly R[]): R[] =>
-  rows.filter((r) => board === 'coffees' || r.bags >= 2).reverse();
+// A stable ascending sort, so tied rows keep the board's normal tie order.
+export const lowFirst = <R extends { bags: number; value: number }>(board: Board, rows: readonly R[]): R[] =>
+  rows.filter((r) => board === 'coffees' || r.bags >= 2).sort((a, b) => a.value - b.value);
 // Spend and $/g are per bag: only boards of bag attributes rank by them.
 export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'varieties', 'producers', 'process', 'roast'];
 // vs like coffees ranks coffees and their roasters only.
