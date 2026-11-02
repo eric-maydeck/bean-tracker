@@ -39,12 +39,14 @@
   import CapItem from '$lib/components/CapItem.svelte';
 
   let {
-    t, wholeKeys, ratings, dial, brewer, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
+    t, wholeKeys, ratings, dial, brewer, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose, link: pageLink
   }: {
     t: RecordsTab; wholeKeys: BrewFilterKey[]; ratings: Ratings; dial: Dial; brewer: BrewerType | undefined; top: Top | undefined; topc: Top | undefined; perPerson: boolean;
     allRange: boolean; compareLabel: string;
-    ratingsHelp: Record<Ratings, string>; personHelp: string; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
+    ratingsHelp: Record<Ratings, string>; personHelp: string; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void; link: (href: string) => string;
   } = $props();
+  // Holder links to the Leaderboards carry the Period and filters; the rest are unchanged.
+  const into = (href?: string) => (href?.startsWith('/insights') ? pageLink(href) : href);
 
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
   const anchor = recordAnchor;
@@ -113,7 +115,7 @@
 {/snippet}
 
 <!-- Holders are coffees, brews, roasters, gear or dates: `text` colors only the coffee names in them. -->
-{#snippet link(h: Holder)}{#if h.href}<a href={h.href}><CoffeeName text={name(h)} /></a>{:else}<CoffeeName text={name(h)} />{/if}{/snippet}
+{#snippet link(h: Holder)}{#if h.href}<a href={into(h.href)}><CoffeeName text={name(h)} /></a>{:else}<CoffeeName text={name(h)} />{/if}{/snippet}
 
 {#snippet holderLine(q: string, p: RecordPick, fmt: Fmt)}
   <span class="hl-line" use:full>{q}: {plain(p, fmt)} · {@render link(p.holder)}</span>
@@ -123,7 +125,7 @@
 {#snippet tipList(id: string, head: string | null, rows: { name: string; side: string; href?: string }[])}
   <div class="mode-tip tip-list" id={id} popover onbeforetoggle={placeTip}>
     {#if head}<strong class="tip-title"><CoffeeName text={head} /></strong>{/if}
-    <ul>{#each rows as row, i (i)}<li><span>{#if row.href}<a href={row.href}><CoffeeName text={row.name} /></a>{:else}<CoffeeName text={row.name} />{/if}</span>{#if row.side}<small>{row.side}</small>{/if}</li>{/each}</ul>
+    <ul>{#each rows as row, i (i)}<li><span>{#if row.href}<a href={into(row.href)}><CoffeeName text={row.name} /></a>{:else}<CoffeeName text={row.name} />{/if}</span>{#if row.side}<small>{row.side}</small>{/if}</li>{/each}</ul>
   </div>
 {/snippet}
 
@@ -188,7 +190,7 @@
         <span class="rank">{i + 1}</span>
         <span class="top-rating">{row.score.toFixed(1)}</span>
         <span class="who">
-          {#if row.holder.href}<a href={row.holder.href} use:fit><CoffeeName text={row.holder.label} /></a>{:else}<span use:fit><CoffeeName text={row.holder.label} /></span>{/if}
+          {#if row.holder.href}<a href={into(row.holder.href)} use:fit><CoffeeName text={row.holder.label} /></a>{:else}<span use:fit><CoffeeName text={row.holder.label} /></span>{/if}
           <small use:fit><CoffeeName text={row.line} /></small>
 
           {#if row.like}<LikeLine like={row.like} />{/if}

@@ -1,7 +1,7 @@
 import { usd } from '$lib/money';
 import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
 import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
-import { BREW_KEY, leaderboard } from './leaderboards';
+import { BREW_KEY, boardBrews, leaderboard } from './leaderboards';
 import { likeGaps, twinKeys, type Like } from './likeGroup';
 import { isFinished } from './overview';
 import { bagSizes, countsForRating, ratedGroups } from './ratings';
@@ -239,7 +239,12 @@ const ratioIn = (b: BrewFact) => (b.dose && b.waterG ? `${g(b.dose)} to ${g(b.wa
 // Rated board groups with ≥3 bags, lowest adjusted rating, vs your average (the board's bag means, weighted by
 // bagWeight: what the adjustment shrinks toward); shown as the group's raw mean vs it (spec: Eymen −2.51). The
 // group's latest brew is its date.
-const least = (board: Board) => (c: RecCtx): Candidate[] => {
+// A holder's link to its board row's place: Leaderboards under the rank, Lowest first for the least ones.
+const boardHref = (board: Board, rank: 'rating' | 'grams', low = false) =>
+  `/insights?tab=leaderboards&rank=${rank}${low ? `&low=${board}` : ''}&chart=leaderboard-${board}#leaderboard-${board}`;
+const lastDate = (board: Board, c: RecCtx, key: string) =>
+  boardBrews(board, c.brews).filter((b) => BREW_KEY[board](b) === key).map((b) => b.localDate).sort().pop()!;
+const least = (board: Board, href?: string) => (c: RecCtx): Candidate[] => {
   const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg);
   const raw = lb('raw'), key = BREW_KEY[board];
   // ratedGroups' `overall`: every keyed bag in one group.
@@ -251,10 +256,16 @@ const least = (board: Board) => (c: RecCtx): Candidate[] => {
     .map((r) => ({
       value: r.value - avg, mean: rawMean.get(r.key)! - avg,
       holder: {
-        label: r.label, ...(r.href ? { href: r.href } : {}),
-        date: c.brews.filter((b) => BREW_KEY[board](b) === r.key).map((b) => b.localDate).sort().pop()!
+        label: r.label, ...((href ?? r.href) ? { href: href ?? r.href } : {}), date: lastDate(board, c, r.key)
       }
     }));
+};
+// Most or fewest grams brewed per board group (groups with ≥ minBags bags); a lone group decides nothing.
+const byGrams = (board: Board, minBags: 1 | 2, href: string) => (c: RecCtx): Candidate[] => {
+  const rows = leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'grams', c.ratings, 'raw', false).filter((r) => r.bags >= minBags);
+  return rows.length < 2 ? [] : rows.map((r) => ({
+    value: r.value, detail: plural(r.bags, 'bag'), holder: { label: r.label, href, date: lastDate(board, c, r.key) }
+  }));
 };
 
 // The brew filters (dripper, water, dose) don't narrow these: they read bags, or the brews of whole bags.
@@ -288,6 +299,8 @@ export const RECORDS: RecordDef[] = [
     perBag(c, 5, (s) => ({ value: s.sd!, detail: `${s.rated.length} brews at ${s.mean!.toFixed(2)}` }))),
   taste('bestDay', 'Best day', 'max', 'rating', dayMean),
   taste('mostTens', 'Most perfect ratings', 'max', 'count', (c) => tens(c)),
+  taste('favoriteVariety', 'Favorite variety', 'max', 'delta', least('varieties', boardHref('varieties', 'rating'))),
+  taste('favoriteProducer', 'Favorite producer', 'max', 'delta', least('producers', boardHref('producers', 'rating'))),
 
   volume('mostBrewedBag', 'Most-brewed bag', 'max', 'count', (c) => bagCount(c, (s) => s.brews.length)),
   volume('mostGramsBag', 'Most brewed from one bag', 'max', 'grams', (c) => bagCount(c, (s) => s.grams)),
@@ -305,6 +318,8 @@ export const RECORDS: RecordDef[] = [
         .filter((x) => !x.startsWith('0 ')).join(' · '),
       holder: bagHolder(c.bags, s.coffeeId, s.last)
     }))),
+  volume('mostVariety', 'Most-brewed variety', 'max', 'grams', byGrams('varieties', 1, boardHref('varieties', 'grams'))),
+  volume('mostProducer', 'Most-brewed producer', 'max', 'grams', byGrams('producers', 1, boardHref('producers', 'grams'))),
 
   fresh('fastestFinish', 'Fastest finish', 'min', 'days', (c) => lifeSpans(c, true)),
   fresh('drinkRate', 'Fastest drinking rate', 'max', 'gpd', (c) =>
@@ -374,6 +389,10 @@ export const RECORDS: RecordDef[] = [
   gentle('leastOrigin', 'Lowest-rated origin', 'min', 'delta', least('origins')),
   gentle('leastProcess', 'Lowest-rated process', 'min', 'delta', least('process')),
   gentle('leastRoast', 'Lowest-rated roast', 'min', 'delta', least('roast')),
+  gentle('leastVariety', 'Lowest-rated variety', 'min', 'delta', least('varieties', boardHref('varieties', 'rating', true))),
+  gentle('leastProducer', 'Lowest-rated producer', 'min', 'delta', least('producers', boardHref('producers', 'rating', true))),
+  gentle('leastBrewedVariety', 'Least-brewed variety', 'min', 'grams', byGrams('varieties', 2, boardHref('varieties', 'grams', true)), { rating: undefined }),
+  gentle('leastBrewedProducer', 'Least-brewed producer', 'min', 'grams', byGrams('producers', 2, boardHref('producers', 'grams', true)), { rating: undefined }),
   gentle('toughValue', 'Least value for money', 'min', 'value', (c) => value(c)),
   gentle('toughDay', 'Lowest-rated day', 'min', 'rating', dayMean)
 ];

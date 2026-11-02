@@ -6569,6 +6569,17 @@ export const STATES: State[] = [
       }));
       expect(off).toEqual([]);
     } },
+  { name: 'insights-records-origin', viewports: 'two', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      for (const k of ['favoriteVariety', 'favoriteProducer', 'mostVariety', 'mostProducer', 'leastVariety', 'leastProducer', 'leastBrewedVariety', 'leastBrewedProducer'])
+        await expect(page.locator(`#record-${k}`)).toBeVisible();
+      await expectGridRowsFull(page, '.record-grid');
+      // The holder opens the Varieties board Lowest first, Period and filters carried.
+      await page.locator('#record-leastVariety .hl-holder a').click();
+      await expect(page).toHaveURL(/tab=leaderboards/);
+      await expect(page).toHaveURL(/low=varieties/);
+      await expect(page.locator('#leaderboard-varieties')).toBeVisible();
+    } },
   { name: 'insights-records-decaf', path: () => '/insights?tab=records&range=all&caffeine=decaf',
     act: async (page) => {
       // Caffeine is page-wide now (the Coffees panel): an explicit Decaf shows as a chip.

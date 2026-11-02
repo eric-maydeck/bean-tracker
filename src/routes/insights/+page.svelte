@@ -910,6 +910,7 @@
     personHelp={PEOPLE_HELP.person}
     {placeTip}
     {choose}
+    {link}
   />
 {:else if s.tab === 'milestones' && data.milestones}
   <Milestones m={data.milestones} />

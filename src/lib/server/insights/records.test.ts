@@ -220,6 +220,51 @@ describe('gentle', () => {
   });
 });
 
+describe('variety and producer records', () => {
+  type F = 'variety' | 'producer';
+  const ids = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
+  // Each bag: 4 rated brews of `r`, on its own date (the day number), carrying the field value.
+  const mk = (f: F, v: string, bagIds: number[], r: number, day = '01') =>
+    bagIds.flatMap((id) => rated(id, [r, r, r, r], `2026-07-${day}`).map((b) => ({ ...b, [f]: v })));
+  const bagsOf = (n: number) => ids(1, n).map((id) => bag({ id, name: `Bag ${id}` }));
+  const rich = [...mk('variety', 'Gesha', ids(1, 3), 9), ...mk('variety', 'Bourbon', ids(4, 3), 5, '10'), ...mk('variety', 'Typica', ids(7, 3), 7)];
+  const richBags = bagsOf(10);
+
+  it('favorite and least variety: same candidates, max and min', () => {
+    const fav = run('favoriteVariety', rich, richBags)!, low = run('leastVariety', rich, richBags)!;
+    expect(fav.holder.label).toBe('Gesha');
+    expect(low.holder.label).toBe('Bourbon');
+    expect(fav.value).toBeGreaterThan(0);
+    expect(low.value).toBeLessThan(0);
+    expect(run('favoriteProducer', rich.map((b) => ({ ...b, producer: b.variety })), richBags)!.holder.label).toBe('Gesha');
+  });
+  const oneGroup = mk('producer', 'Solo', ids(1, 3), 8);
+  it('one qualifying group decides nothing', () => {
+    expect(run('favoriteProducer', oneGroup, bagsOf(3))).toBeNull();
+    expect(run('mostProducer', oneGroup, bagsOf(3))).toBeNull();
+  });
+  it('leastBrewedProducer: fewest grams among groups with ≥ 2 bags', () => {
+    const dose = (bs: BrewFact[], d: number) => bs.map((b) => ({ ...b, dose: d }));
+    const brews = [...dose(mk('producer', 'One', [1], 8), 1), ...dose(mk('producer', 'Two', [2, 3], 8), 10), ...dose(mk('producer', 'Three', [4, 5, 6], 8), 20)];
+    expect(run('leastBrewedProducer', brews, bagsOf(6))).toMatchObject({ holder: { label: 'Two' }, value: 80, detail: '2 bags' });
+    expect(run('mostProducer', brews, bagsOf(6))).toMatchObject({ holder: { label: 'Three' } });
+  });
+  it('a multi-variety brew dates both groups', () => {
+    const blend = rated(10, [5], '2026-09-20').map((b) => ({ ...b, variety: 'Bourbon, Gesha' }));
+    expect(run('leastVariety', [...rich, ...blend], richBags)!.holder.date).toBe('2026-09-20');
+    expect(run('favoriteVariety', [...rich, ...blend], richBags)!.holder.date).toBe('2026-09-20');
+  });
+  it('leastBrewed carries no rating mode', () => {
+    expect(RECORDS.find((r) => r.key === 'leastBrewedVariety')!.rating).toBeUndefined();
+    expect(RECORDS.find((r) => r.key === 'leastVariety')!.rating).toBe(true);
+  });
+  it('holder links to the board: rank set, low for the least ones', () => {
+    expect(run('leastVariety', rich, richBags)!.holder.href).toBe('/insights?tab=leaderboards&rank=rating&low=varieties&chart=leaderboard-varieties#leaderboard-varieties');
+    const prod = rich.map((b) => ({ ...b, producer: b.variety }));
+    expect(run('mostProducer', prod, richBags)!.holder.href).toBe('/insights?tab=leaderboards&rank=grams&chart=leaderboard-producers#leaderboard-producers');
+  });
+});
+
 describe('recordsTab', () => {
   const at = (id: number, date: string, ratings: number[]) => rated(id, ratings, date);
   const history = [...at(3, '2026-01-10', [10, 10, 10, 10]), ...at(2, '2026-02-10', [8, 8, 8, 8]), ...at(1, '2026-03-05', [9, 9, 9, 9])];
