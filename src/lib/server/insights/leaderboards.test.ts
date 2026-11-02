@@ -2,7 +2,7 @@ import { dialInIds, onceDialed } from './dialed';
 import { describe, it, expect } from 'vitest';
 import { RATINGS_SETTLED_FROM } from './ratings';
 import { fromParams } from '$lib/coffeeViewState';
-import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboard, leaderboards, pageFilters, withMovement, type BoardRow } from './leaderboards';
+import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboard, leaderboards, pageFilters, topRegions, withMovement, type BoardRow } from './leaderboards';
 import { roastLevelLabels, type BrewFact, type BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -430,4 +430,31 @@ describe('varieties and producers boards', () => {
     // spend: bags bought in the period, brewed or not
     expect(fieldCoverage([], [...bags, bag({ id: 4, purchaseDate: '2026-01-01', variety: 'X' })], SEPT, 'spend').varieties).toEqual({ with: 2, of: 3 });
   });
+});
+
+describe('topRegions', () => {
+  const co = (id: number, region: string | null, dose: number, o: Partial<BrewFact> = {}) =>
+    brew({ coffeeId: id, origin: 'Colombia', region, dose, ...o });
+  const cb = (id: number, region: string | null) => bag({ id, origin: 'Colombia', region });
+  const rbrews = [
+    co(1, 'Gigante, Huila', 30), co(2, 'Huila', 15), co(3, 'Nariño', 30), co(4, 'Cauca', 20), co(5, 'Tolima', 10),
+    brew({ coffeeId: 6, origin: 'Kenya', region: null, dose: 50 })
+  ];
+  const rbags = [1, 2, 3, 4, 5].map((i) => cb(i, ['Gigante, Huila', 'Huila', 'Nariño', 'Cauca', 'Tolima'][i - 1]));
+  it('top levels within each country, ranked like the board, at most 3', () => {
+    const m = topRegions(rbrews, rbags, SEPT, 'grams', 'all', 'raw');
+    expect(m.get('Colombia')).toEqual([{ label: 'Huila', value: 45 }, { label: 'Nariño', value: 30 }, { label: 'Cauca', value: 20 }]);
+    expect(m.has('Kenya')).toBe(false);
+  });
+  it('origins rows carry regions; per person divides them like the row', () => {
+    const b = leaderboards(rbrews, rbags, SEPT, null, 'grams', 'all', undefined, 2);
+    expect(b.origins.find((r) => r.key === 'Colombia')!.regions![0].value).toBe(22.5);
+    expect(b.origins.find((r) => r.key === 'Kenya')!.regions).toBeUndefined();
+  });
+  it('regions follow the confident cutoff under Average (3+ bags)', () => {
+    const rb = [1, 2, 3, 4].flatMap((i) => [0, 1, 2, 3].map(() => co(i, i < 4 ? 'Huila' : 'Cauca', 15, { rating: 8 })));
+    const m = topRegions(rb, [], SEPT, 'rating', 'all', 'min3');
+    expect(m.get('Colombia')!.map((r) => r.label)).toEqual(['Huila']);
+  });
+  it('skips Like', () => expect(topRegions(rbrews, rbags, SEPT, 'like', 'all', 'raw').size).toBe(0));
 });

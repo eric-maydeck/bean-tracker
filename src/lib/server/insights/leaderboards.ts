@@ -9,7 +9,7 @@ import { ADJUSTED_K, RATINGS_SETTLED_FROM, bagSizes, countsForRating, ratedGroup
 import { likeGaps, roasterLikes, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
-import { varietyGroups } from '$lib/originFormat';
+import { regionTop, varietyGroups } from '$lib/originFormat';
 import { pooled, shownBrews, single, type Sample } from '$lib/sample';
 
 export interface BoardRow {
@@ -30,6 +30,7 @@ export interface BoardRow {
   grams?: number;
   move?: number | 'new';
   lowMove?: number | 'new'; // the same under Lowest first (ascending positions, lowFirst's rows)
+  regions?: { label: string; value: number }[]; // origins: the country's top regions (map tip), best first, at most 3
 }
 
 // "N/A" is how a blend/unknown origin was typed; it's no country.
@@ -206,6 +207,25 @@ export function withMovement(now: BoardRow[], prev: BoardRow[]): BoardRow[] {
   return now.map((r, i) => ({ ...r, move: was.has(r.key) ? was.get(r.key)! - i : 'new' }));
 }
 
+// Each country's top 3 regions (broadest level), ranked as the Origins board ranks countries: one leaderboard() over
+// country+region keys. Always best first, whatever Lowest first says.
+export function topRegions(
+  brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg
+): Map<string, { label: string; value: number }[]> {
+  const out = new Map<string, { label: string; value: number }[]>();
+  if (rank === 'like') return out;
+  const key = (x: { origin: string | null; region?: string | null }) => {
+    const c = country(x.origin), r = regionTop(x.region, x.origin);
+    return c && r ? `${c}\u0000${r}` : null;
+  };
+  for (const r of leaderboard(brews, bags, p, 'origins', rank, ratings, avg, false, { brew: key, bag: key })) {
+    const [c, label] = r.key.split('\u0000');
+    const list = out.get(c) ?? out.set(c, []).get(c)!;
+    if (list.length < 3) list.push({ label, value: r.value });
+  }
+  return out;
+}
+
 // Every board for the page. Per person divides brews, grams and spend (an even split, like
 // the overview); rating and $/g don't change (its spend and grams do), and no order changes.
 // `avg`: the URL's Score, undefined = each board's default (boardAvg).
@@ -214,6 +234,7 @@ export function leaderboards(
   avg: Avg | undefined, size = 1
 ): Record<Board, BoardRow[]> {
   const split = size > 1 && (rank === 'brews' || rank === 'grams' || rank === 'spend');
+  const regions = topRegions(brews, bags, p, rank, ratings, boardAvg('origins', avg));
   return Object.fromEntries(
     BOARDS.map((board) => {
       const a = boardAvg(board, avg);
@@ -224,6 +245,10 @@ export function leaderboards(
         rows = withMovement(rows, before).map((r) => (low.has(r.key) ? { ...r, lowMove: low.get(r.key) } : r));
       }
       if (size > 1 && rank === 'ppg') rows = rows.map((r) => ({ ...r, cost: r.cost! / size, grams: r.grams! / size }));
+      if (board === 'origins') {
+        const div = split ? size : 1;
+        rows = rows.map((r) => { const g = regions.get(r.key); return g ? { ...r, regions: g.map((x) => ({ ...x, value: x.value / div })) } : r; });
+      }
       return [board, split ? rows.map((r) => ({ ...r, value: r.value / size })) : rows];
     })
   ) as Record<Board, BoardRow[]>;

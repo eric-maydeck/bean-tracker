@@ -12,13 +12,13 @@
   // `valueLabel`: the Rank by value's name, the tip's last row label.
   let {
     rows, rank, valueText, valueLabel
-  }: { rows: { key: string; label: string; value: number; bags: number; href?: string }[]; rank: Rank; valueText: (v: number) => string; valueLabel: string } =
+  }: { rows: { key: string; label: string; value: number; bags: number; href?: string; regions?: { label: string; value: number }[] }[]; rank: Rank; valueText: (v: number) => string; valueLabel: string } =
     $props();
 
   // Shade by the Rank-by value: a share (value ÷ the top value) for totals and $/g, min → max
   // for ratings, so the map and the list beside it never disagree.
   let byIso = $derived.by(() => {
-    const m = new Map<string, { label: string; rows: TipRow[]; text: string; tone: number; href?: string }>();
+    const m = new Map<string, { label: string; rows: TipRow[]; groups?: { title: string; rows: TipRow[] }[]; text: string; tone: number; href?: string }>();
     if (!rows.length) return m;
     const total = rows.reduce((s, r) => s + r.bags, 0);
     const vals = rows.map((r) => r.value);
@@ -29,7 +29,8 @@
       const tone = rank === 'rating' ? (hi === lo ? 1 : (r.value - lo) / (hi - lo)) : hi > 0 ? r.value / hi : 0;
       const share = `${total ? Math.round((100 * r.bags) / total) : 0}%`;
       const rows: TipRow[] = [['Coffees', `${r.bags}`], ['Share', share], [valueLabel, valueText(r.value)]];
-      m.set(iso, { label: r.label, rows, text: `${r.bags} coffee${r.bags === 1 ? '' : 's'} · ${share} · ${valueText(r.value)}`, tone, href: r.href });
+      const groups = r.regions?.length ? [{ title: 'Top regions', rows: r.regions.map((x): TipRow => [x.label, valueText(x.value)]) }] : undefined;
+      m.set(iso, { label: r.label, rows, groups, text: `${r.bags} coffee${r.bags === 1 ? '' : 's'} · ${share} · ${valueText(r.value)}`, tone, href: r.href });
     }
     return m;
   });
@@ -252,7 +253,7 @@
   </div>
   {#if hint}<p class="map-hint" style:--gh={ch < 560 ? '44px' : '140px'} role="status" aria-live="polite" out:fade={{ duration: fadeMs() }}>{hint}</p>{/if}
   {#if tip && anchor}
-    {#key tip.iso}{@const href = byIso.get(tip.iso)?.href}<FloatTip {anchor} onclose={close} placeKey={`${ax},${ay}`}><!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events (the tip body is a mouse-only extra: Escape closes it, the link is a real link) --><div class="tip-hover" onpointerenter={keep} onpointerleave={(e) => e.pointerType === 'mouse' && !pinned && later()} onclick={(e) => !(e.target as Element).closest('a') && close()}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} />{#if href}<a class="tip-link" href={href}>See coffees</a>{/if}</div></FloatTip>{/key}
+    {#key tip.iso}{@const href = byIso.get(tip.iso)?.href}<FloatTip {anchor} onclose={close} placeKey={`${ax},${ay}`}><!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events (the tip body is a mouse-only extra: Escape closes it, the link is a real link) --><div class="tip-hover" onpointerenter={keep} onpointerleave={(e) => e.pointerType === 'mouse' && !pinned && later()} onclick={(e) => !(e.target as Element).closest('a') && close()}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [], groups: byIso.get(tip.iso)?.groups }} />{#if href}<a class="tip-link" href={href}>See coffees</a>{/if}</div></FloatTip>{/key}
   {/if}
 </div>
 
@@ -294,6 +295,16 @@
     padding: 0.5rem 0.75rem;
     pointer-events: auto;
     cursor: default;
+  }
+  /* A long region name ellipsizes; the tip never grows past its max width. */
+  .tip-hover :global(.tip-rows) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .tip-hover :global(.tip-rows dt) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .tip-link {
     display: block;

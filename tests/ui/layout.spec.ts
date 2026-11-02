@@ -9156,7 +9156,7 @@ export const STATES: State[] = [
       const tip = page.locator('.cell-tip:popover-open');
       await expectDataTip(tip);
       await expectTipInView(page, tip);
-      await expect(tip.locator('dt')).toHaveText(['Coffees', 'Share', 'Brews']);
+      await expect(tip.locator('dl').first().locator('dt')).toHaveText(['Coffees', 'Share', 'Brews']);
       // The tip's link is the Ethiopia list row's own link; the pinned tip takes the click.
       const link = tip.getByRole('link', { name: 'See coffees' });
       await expect(link).toHaveAttribute('href', (await page.locator('.board-rows a[href*="origin=Ethiopia"]').first().getAttribute('href'))!);
@@ -9239,7 +9239,7 @@ export const STATES: State[] = [
       // A click on the tip's own body (not the link) closes a pinned tip.
       await page.mouse.click(x2, y2);
       await expect(tip).toBeVisible();
-      await tip.locator('.tip-title').click();
+      await tip.locator('.tip-title').first().click();
       await expect(tip).toHaveCount(0);
     }
   },
@@ -9327,6 +9327,42 @@ export const STATES: State[] = [
     }
   },
   {
+    // Top regions in the country tip: Ethiopia lists up to 3, Kenya's 40+ character region ellipsizes inside the tip's
+    // max width, a country with no region (Rwanda) has no group. Not `viewports: 'two'`: it runs at all 7 in the gate.
+    name: 'insights-map-regions',
+    path: () => '/insights?tab=leaderboards&range=all&rank=brews', // brews: the one-bag long Kenya region isn't cut by Average's 3+ bags
+    act: async (page) => {
+      const map = page.locator('.world-map');
+      await map.scrollIntoViewIfNeeded();
+      const tip = page.locator('.cell-tip:popover-open');
+      const tap = async (iso: string) => {
+        await page.keyboard.press('Escape'); // the last tip can cover the next country
+        await expect(tip).toHaveCount(0);
+        const barBottom = await page.evaluate(() => Math.max(0, ...[...document.querySelectorAll('.cbar-mini')]
+          .map((e) => e.getBoundingClientRect()).filter((r) => Math.abs(r.top) <= 1).map((r) => r.bottom)));
+        const [x, y] = await mapPoint(page, iso);
+        if (y < barBottom || y > page.viewportSize()!.height) throw new Error(`${iso} is outside the map's visible part`);
+        await (touch() ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
+      };
+      await tap('ET');
+      await expectDataTip(tip);
+      await expect(tip.locator('.tip-title').nth(1)).toHaveText('Top regions');
+      const n = await tip.locator('dl.tip-rows').nth(1).locator('dt').count();
+      expect(n).toBeGreaterThan(0);
+      expect(n).toBeLessThanOrEqual(3);
+      await tap('KE');
+      await expect(tip.locator('.tip-title').first()).toHaveText('Kenya');
+      const dts = tip.locator('dl.tip-rows').nth(1).locator('dt');
+      expect(await dts.evaluateAll((els) => els.some((e) => e.scrollWidth > e.clientWidth)), 'a long region name is ellipsized').toBe(true);
+      await expectTipInView(page, tip);
+      const w = (await tip.boundingBox())!.width;
+      expect(w - 0.5, 'the tip stays within its max width').toBeLessThanOrEqual(await tip.evaluate((e) => parseFloat(getComputedStyle(e).maxWidth) || Infinity));
+      await tap('CO');
+      await expect(tip.locator('.tip-title').first()).toHaveText('Colombia');
+      await expect(tip.getByText('Top regions')).toHaveCount(0);
+    }
+  },
+  {
     // A small country (Rwanda) is reachable at 8x: a drag pans without pinning, a tap then pins, and the pinned tip
     // follows its country and closes once the country leaves the map (Review Focus 3: a tap after a pan still pins).
     name: 'insights-map-zoom-tip',
@@ -9361,8 +9397,8 @@ export const STATES: State[] = [
       const [x, y] = await mapPoint(page, 'RW');
       await (touch() ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
       await expectDataTip(tip);
-      await expect(tip.locator('.tip-title')).toHaveText('Rwanda');
-      await expect(tip.locator('dt')).toHaveText(['Coffees', 'Share', 'Brews']);
+      await expect(tip.locator('.tip-title').first()).toHaveText('Rwanda');
+      await expect(tip.locator('dl').first().locator('dt')).toHaveText(['Coffees', 'Share', 'Brews']);
       await expect(tip.getByRole('link', { name: 'See coffees' })).toBeVisible();
       await expectTipInView(page, tip);
       const pinned = await vbAt(page, x, y);
@@ -9525,7 +9561,7 @@ export const STATES: State[] = [
       await expect.poll(() => big.length).toBeGreaterThan(0);
       await expect.poll(paths).toBeGreaterThan(n1);
       (await ctm()).forEach((v, i) => expect(Math.abs(v - before[i]), 'view unchanged across the swap').toBeLessThanOrEqual(0.01));
-      await expect(tip.locator('.tip-title')).toHaveText('Ethiopia');
+      await expect(tip.locator('.tip-title').first()).toHaveText('Ethiopia');
       // The focused country kept focus across the swap (same element), and across a zoom out.
       const focused = () => page.evaluate(() => (document.activeElement as unknown as { __probe?: number })?.__probe);
       expect(await focused()).toBe(1);
