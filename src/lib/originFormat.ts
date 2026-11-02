@@ -97,7 +97,8 @@ export function formatVariety(value: string): string {
 }
 
 const GESHA_FAMILY = new Set(['gesha 1931', 'orange gesha', 'inca gesha']);
-export const varietyGroup = (token: string): string => (GESHA_FAMILY.has(token.toLowerCase()) ? 'Gesha' : token);
+export const varietyGroup = (token: string): string =>
+  GESHA_FAMILY.has(token.toLowerCase()) ? 'Gesha' : token;
 
 export const varietyGroups = (variety: string | null | undefined): string[] => [
   ...new Set((variety ?? '').split(',').map((t) => t.trim()).filter(Boolean).map(varietyGroup))
@@ -107,7 +108,8 @@ export const formatRegion = (value: string): string => value.trim().replace(/\s+
 
 // The broadest region part: the last comma part that isn't the country.
 export function regionTop(region: string | null | undefined, country: string | null | undefined): string | null {
-  const parts = (region ?? '').split(',').map((p) => p.trim()).filter((p) => p && p.toLowerCase() !== (country ?? '').trim().toLowerCase());
+  const c = (country ?? '').trim().toLowerCase();
+  const parts = (region ?? '').split(',').map((p) => p.trim()).filter((p) => p && p.toLowerCase() !== c);
   return parts.at(-1) ?? null;
 }
 
