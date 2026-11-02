@@ -43,7 +43,9 @@ you, note it in `note` and propose nothing from it.
 - Fill only what a source states. Do not infer a variety from a country or a producer from a region.
 - A dead product URL: search for the listing or an archived copy, cite what you find, and propose `product_url` only if the
   new address returns 200.
-- Tavily search is metered: use it only when the product page and the coffee name fall short.
+- Read pages from the local cache the controller fetches (raw text, paced per host), never WebFetch: it hits 429s and paraphrases. Search with WebSearch; Tavily is metered and unused here.
+- A 404 may have moved: try the roaster's archive (`/blogs/coffee-archive`, `/collections/archive`) before calling it dead.
+- Standard formats are applied afterwards by `src/lib/originFormat.ts`, so copy values as the page writes them.
 
 ## Differences
 
