@@ -142,22 +142,28 @@ async function planFromSite(main: Record<string, unknown>) {
   const db = createDb(dbPath);
   const rows = db
     .prepare(
-      `SELECT c.*, rl.degrees_of_roast, b.id AS bean_uuid, ic.file AS image_file
+      `SELECT c.*, rl.degrees_of_roast, b.id AS bean_uuid, ic.file AS image_file, rc.file AS roaster_image_file
        FROM coffees c
        LEFT JOIN roast_levels rl ON rl.roast_level = c.roast_level
        LEFT JOIN beanconqueror_beans b ON b.coffee_id = c.id
        LEFT JOIN image_copies ic ON ic.url = c.image_url AND ic.kind = 'coffees'
+       LEFT JOIN roaster_images ri ON ri.roaster = c.roaster
+       LEFT JOIN image_copies rc ON rc.url = ri.image_url AND rc.kind = 'roasters'
        ORDER BY c.id`
     )
-    .all() as (PatchCoffee & { image_file: string | null })[];
+    .all() as (PatchCoffee & { image_file: string | null; roaster_image_file: string | null })[];
   db.close();
   const warnings: string[] = [];
-  const coffees = rows.map(({ image_file, ...c }) => {
+  const coffees = rows.map(({ image_file, roaster_image_file, ...c }) => {
     let photo: string | null = null;
-    if (image_file) {
-      const p = copyPath(images, 'coffees', image_file);
+    // No image of its own: the roaster's, as the site shows. ponytail: BQ then counts as having a
+    // photo, so a later patch won't replace it (attachments are only written when empty).
+    const kind = image_file ? 'coffees' : 'roasters';
+    const file = image_file ?? roaster_image_file;
+    if (file) {
+      const p = copyPath(images, kind, file);
       if (existsSync(p)) photo = p;
-      else warnings.push(`coffee ${c.id}: image file ${image_file} is missing, no photo`);
+      else warnings.push(`coffee ${c.id}: image file ${file} is missing, no photo`);
     }
     return { ...c, photo };
   });
