@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatOriginField as f } from './originFormat';
+import { formatOriginField as f, formatVariety, varietyGroups, regionTop } from './originFormat';
 
 const table = (field: string, rows: [string, string][]) =>
   it.each(rows)(`${field}: %s -> %s`, (input, out) => {
@@ -64,7 +64,7 @@ describe('formatOriginField', () => {
       ['Ruiru-11, Ruiru, Ruiri', 'Ruiru 11, Ruiru 11, Ruiru 11'],
       ['Mundo Nuvo', 'Mundo Novo'],
       ['Aji', 'Ají'],
-      ['Bourbon Aji', 'Bourbon Ají'],
+      ['Bourbon Aji', 'Ají'],
       ['JARC 74158', '74158'],
       ['JARC', 'JARC'],
       ['Heirloom', 'Landrace'],
@@ -75,8 +75,8 @@ describe('formatOriginField', () => {
       ['Local Bourbon varietals', 'Bourbon'],
       ['Rosado/Pink Bourbon', 'Pink Bourbon'],
       ['CATURRA, SL28, H1', 'Caturra, SL28, H1'],
-      ['Welicho', 'Welicho'],
-      ['Landrace, mostly 74158', 'Landrace, mostly 74158'],
+      ['Welicho', 'Wolisho'],
+      ['Landrace, mostly 74158', 'Landrace, 74158'],
       ['Caturra field blend', 'Caturra field blend']
     ]);
   });
@@ -90,5 +90,33 @@ describe('formatOriginField', () => {
     it('leaves other fields unchanged', () => {
       expect(f('producer', ' A - B ')).toBe(' A - B ');
     });
+  });
+});
+
+describe('origin helpers', () => {
+  it('variety aliases from the reviewed batch', () => {
+    expect(formatVariety('Welicho')).toBe('Wolisho');
+    expect(formatVariety('Field Blend')).toBe('Field blend');
+    expect(formatVariety('mostly 74158')).toBe('74158');
+    expect(formatVariety('Bourbon Sidra, Typica')).toBe('Sidra, Typica');
+    expect(formatVariety('Bourbon Aji')).toBe('Ají');
+    expect(formatVariety('Bourbon Ají')).toBe('Ají');
+    expect(formatVariety('Typica Mejorado')).toBe('Mejorado');
+    expect(formatVariety('Pink Bourbon')).toBe('Pink Bourbon');
+  });
+  it('varietyGroups: Gesha family folds, others stay, no empties, no duplicates', () => {
+    expect(varietyGroups('Gesha 1931, Orange Gesha, inca gesha')).toEqual(['Gesha']);
+    expect(varietyGroups('Gesha, Gesha 1931, Pink Bourbon')).toEqual(['Gesha', 'Pink Bourbon']);
+    expect(varietyGroups('SL28, , SL34 ')).toEqual(['SL28', 'SL34']);
+    expect(varietyGroups(null)).toEqual([]);
+    expect(varietyGroups('  ')).toEqual([]);
+  });
+  it('regionTop: last comma part, country skipped', () => {
+    expect(regionTop('Gigante, Huila', 'Colombia')).toBe('Huila');
+    expect(regionTop('Huila, Colombia', 'Colombia')).toBe('Huila');
+    expect(regionTop('Colombia', 'Colombia')).toBeNull();
+    expect(regionTop('', 'Kenya')).toBeNull();
+    expect(regionTop(null, 'Kenya')).toBeNull();
+    expect(regionTop('Nyeri', null)).toBe('Nyeri');
   });
 });

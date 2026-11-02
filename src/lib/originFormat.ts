@@ -68,7 +68,15 @@ const WHOLE: Record<string, string> = {
   'ruiru-11': 'Ruiru 11',
   ruiru: 'Ruiru 11',
   ruiri: 'Ruiru 11',
-  'mundo nuvo': 'Mundo Novo'
+  'mundo nuvo': 'Mundo Novo',
+  // reviewed 2026-11-02, spec bean origin insights
+  welicho: 'Wolisho',
+  'field blend': 'Field blend',
+  'mostly 74158': '74158',
+  'bourbon sidra': 'Sidra',
+  'bourbon aji': 'Ají',
+  'bourbon ají': 'Ají',
+  'typica mejorado': 'Mejorado'
 };
 
 const varietyItem = (item: string): string => {
@@ -88,7 +96,20 @@ export function formatVariety(value: string): string {
   return items.length ? items.map(varietyItem).join(', ') : v;
 }
 
+const GESHA_FAMILY = new Set(['gesha 1931', 'orange gesha', 'inca gesha']);
+export const varietyGroup = (token: string): string => (GESHA_FAMILY.has(token.toLowerCase()) ? 'Gesha' : token);
+
+export const varietyGroups = (variety: string | null | undefined): string[] => [
+  ...new Set((variety ?? '').split(',').map((t) => t.trim()).filter(Boolean).map(varietyGroup))
+];
+
 export const formatRegion = (value: string): string => value.trim().replace(/\s+[-\u2013]\s+/g, ', ');
+
+// The broadest region part: the last comma part that isn't the country.
+export function regionTop(region: string | null | undefined, country: string | null | undefined): string | null {
+  const parts = (region ?? '').split(',').map((p) => p.trim()).filter((p) => p && p.toLowerCase() !== (country ?? '').trim().toLowerCase());
+  return parts.at(-1) ?? null;
+}
 
 export function formatOriginField(field: string, value: string): string {
   switch (field) {

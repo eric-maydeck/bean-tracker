@@ -73,5 +73,44 @@ export const COFFEE_CORRECTIONS: CoffeeFixBatch[] = [
     ],
     websites: [],
     tavilyCalls: []
+  },
+  {
+    // Bean origin insights (spec 2026-11-02, reviewed table): consolidate producer, farm and variety
+    // spellings so the leaderboards group them. Every `from` and roaster copied from prod
+    // (scripts/queries/origin-fix-check.sql).
+    marker: 'coffee_corrections_2026_11_a',
+    fixes: [
+      // producers
+      { coffee_id: 244, roaster: 'Anamorphic', field: 'producer', from: 'Tamiru Tadesse', to: 'Tamiru Tadesse Tesema' },
+      { coffee_id: 245, roaster: 'Anamorphic', field: 'producer', from: 'Tamiru Tadesse', to: 'Tamiru Tadesse Tesema' },
+      { coffee_id: 143, roaster: 'XLIII', field: 'producer', from: 'Dwight Aguilar', to: 'Dwight Aguilar Masías' },
+      { coffee_id: 220, roaster: 'Scenery', field: 'producer', from: 'Yulisa Carhuallocllo Arévalo', to: 'Yulisa Carhuallocllo' },
+      { coffee_id: 21, roaster: 'The Picky Chemist', field: 'producer', from: 'Bernard Uhe, Finca El Dorado', to: 'Bernard Uhe' },
+      { coffee_id: 231, roaster: 'Shoebox', field: 'producer', from: 'Eyla365, Abner Caballero', to: 'Abner Caballero, Eyla365' },
+      { coffee_id: 276, roaster: 'Scenery', field: 'producer', from: 'Mayole Coffee (Ture Waji)', to: 'Ture Waji' },
+      { coffee_id: 48, roaster: 'Shoebox', field: 'producer', from: 'Mr. Tadese Teko', to: 'Tadese Teko' },
+      { coffee_id: 275, roaster: 'Wooly Lamb Coffee Roasters', field: 'producer', from: 'Mr. Tadese Teko', to: 'Tadese Teko' },
+      { coffee_id: 2, roaster: 'Scenery', field: 'producer', from: 'Haider Aba Mecha, Kebena Estate', to: 'Haider Aba Mecha' },
+      { coffee_id: 291, roaster: "Bean's Beans", field: 'producer', from: 'Giorgio & Gina Bressani', to: 'Bressani family' },
+      // farms
+      { coffee_id: 90, roaster: 'Flower Child', field: 'farm', from: 'El Paraiso', to: 'Finca El Paraiso' },
+      { coffee_id: 213, roaster: "Bean's Beans", field: 'farm', from: 'La Terraza', to: 'Finca La Terraza' },
+      { coffee_id: 209, roaster: "Bean's Beans", field: 'farm', from: 'Llactapata', to: 'Finca Llaqtapata' },
+      // varieties: formatVariety(from), found by the LIKE query (rows it leaves unchanged are omitted)
+      { coffee_id: 20, roaster: 'H&S', field: 'variety', from: 'Bourbon Ají', to: 'Ají' },
+      { coffee_id: 24, roaster: 'Lume', field: 'variety', from: 'Typica Mejorado', to: 'Mejorado' },
+      { coffee_id: 25, roaster: 'H&S', field: 'variety', from: 'Typica Mejorado', to: 'Mejorado' },
+      { coffee_id: 49, roaster: 'H&S', field: 'variety', from: 'Typica Mejorado', to: 'Mejorado' },
+      { coffee_id: 77, roaster: "Bean's Beans", field: 'variety', from: 'Typica Mejorado', to: 'Mejorado' },
+      { coffee_id: 128, roaster: 'Hydrangea', field: 'variety', from: 'Typica Mejorado', to: 'Mejorado' },
+      { coffee_id: 129, roaster: 'Hydrangea', field: 'variety', from: 'Typica Mejorado', to: 'Mejorado' },
+      { coffee_id: 229, roaster: 'H&S', field: 'variety', from: 'Typica Mejorado', to: 'Mejorado' },
+      { coffee_id: 58, roaster: "Bean's Beans", field: 'variety', from: 'Landrace, mostly 74158', to: 'Landrace, 74158' },
+      { coffee_id: 99, roaster: 'Sey', field: 'variety', from: 'Field Blend', to: 'Field blend' },
+      { coffee_id: 120, roaster: 'Luminous', field: 'variety', from: 'Bourbon Sidra', to: 'Sidra' },
+      { coffee_id: 300, roaster: 'delicate coffee roasters', field: 'variety', from: 'Kurume, Welicho', to: 'Kurume, Wolisho' }
+    ],
+    websites: [],
+    tavilyCalls: []
   }
 ];
