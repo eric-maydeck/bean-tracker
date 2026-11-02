@@ -1,4 +1,4 @@
-import { BOARDS, LIKE_BOARDS, boardAvg, type Avg, type Board, type By, type Caffeine, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
+import { BOARDS, LIKE_BOARDS, boardAvg, lowFirst, type Avg, type Board, type By, type Caffeine, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
 import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey, Filter } from '$lib/coffeeFilters';
 import type { LabFilters } from './lab';
@@ -29,6 +29,7 @@ export interface BoardRow {
   cost?: number; // $/g: the spend and grams behind it (detail line)
   grams?: number;
   move?: number | 'new';
+  lowMove?: number | 'new'; // the same under Lowest first (ascending positions, lowFirst's rows)
 }
 
 // "N/A" is how a blend/unknown origin was typed; it's no country.
@@ -217,7 +218,11 @@ export function leaderboards(
     BOARDS.map((board) => {
       const a = boardAvg(board, avg);
       let rows = leaderboard(brews, bags, p, board, rank, ratings, a);
-      if (prev) rows = withMovement(rows, leaderboard(brews, bags, prev, board, rank, ratings, a, false));
+      if (prev) {
+        const before = leaderboard(brews, bags, prev, board, rank, ratings, a, false);
+        const low = new Map(withMovement(lowFirst(board, rows), lowFirst(board, before)).map((r) => [r.key, r.move]));
+        rows = withMovement(rows, before).map((r) => (low.has(r.key) ? { ...r, lowMove: low.get(r.key) } : r));
+      }
       if (size > 1 && rank === 'ppg') rows = rows.map((r) => ({ ...r, cost: r.cost! / size, grams: r.grams! / size }));
       return [board, split ? rows.map((r) => ({ ...r, value: r.value / size })) : rows];
     })

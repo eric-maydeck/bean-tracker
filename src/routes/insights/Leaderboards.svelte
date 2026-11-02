@@ -31,7 +31,7 @@
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARDS, BOARD_NOUN, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
   import { RANK_LABEL, boardValue } from './chartLink';
   import { labelTip } from '$lib/components/labelTip';
@@ -40,11 +40,11 @@
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
 
   let {
-    boards, coverage, wholeKeys, cut, rank, avg, open, views, series, comparing, perPerson, placeTip, choose, link, part
+    boards, coverage, wholeKeys, cut, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part
   }: {
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
-    boards: Rows; coverage: PageData['boardCoverage'] & {}; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board[]; comparing: boolean; perPerson: boolean;
+    boards: Rows; coverage: PageData['boardCoverage'] & {}; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board[]; low: Board[]; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
     // views: the small boards' Over time pick, `wide` when expanded (URL; absent = List); series: Over time's lines (server,
     // only boards on it).
@@ -60,6 +60,12 @@
     const next = BOARDS.filter((x) => (x === b ? !open.includes(x) : open.includes(x)));
     choose({ open: next.length ? next : undefined });
   };
+  // Lowest first: the board's rows, lowest value first (one-bag groups left out), its own switch.
+  const toggleLow = (b: Board) => {
+    const next = BOARDS.filter((x) => (x === b ? !low.includes(x) : low.includes(x)));
+    choose({ low: next.length ? next : undefined });
+  };
+  const listed = (b: Board) => (low.includes(b) ? lowFirst(b, boards[b]) : boards[b]);
   const VIEWS = [['list', 'List'], ['time', 'Over time']] as const;
   const viewOf = (b: Board) => (views as Partial<Record<Board, BoardView>> | undefined)?.[b];
   // v: undefined = List. Switching to Over time keeps an expansion already there.
@@ -152,7 +158,7 @@
     return s[0].toUpperCase() + s.slice(1);
   };
   let help = $state<HTMLDialogElement>();
-  const footed = (band: Board[]) => band.some((x) => boards[x].length > SIZE(x) && !unranked(x));
+  const footed = (band: Board[]) => band.some((x) => listed(x).length > SIZE(x) && !unranked(x));
   const unranked = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () =>
     rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.'
@@ -175,9 +181,14 @@
       value={rank}
       onchange={(e) => {
         const r = e.currentTarget.value as Rank;
-        // A board that can't rank by the new Rank by is not shown, so it is not left open.
-        const keep = open.filter((b) => !(((r === 'spend' || r === 'ppg') && !BAG_BOARDS.includes(b)) || (r === 'like' && !LIKE_BOARDS.includes(b))));
-        choose({ rank: r, ...(keep.length < open.length ? { open: keep.length ? keep : undefined } : {}) });
+        // A board that can't rank by the new Rank by is not shown, so it is not left open (or Lowest first).
+        const gone = (b: Board) => ((r === 'spend' || r === 'ppg') && !BAG_BOARDS.includes(b)) || (r === 'like' && !LIKE_BOARDS.includes(b));
+        const keep = open.filter((b) => !gone(b)), keepLow = low.filter((b) => !gone(b));
+        choose({
+          rank: r,
+          ...(keep.length < open.length ? { open: keep.length ? keep : undefined } : {}),
+          ...(keepLow.length < low.length ? { low: keepLow.length ? keepLow : undefined } : {})
+        });
       }}
     >
       {#each RANKS as r (r)}<option value={r} title={RANK_HELP[r]}>{RANK_LABEL[r]}</option>{/each}
@@ -240,7 +251,12 @@
   <!-- One money format per board (ui-rules 46): whole dollars for all when any amount is $1,000+. -->
   {@const whole = (rank === 'spend' || rank === 'ppg') && wholeUsd(rows.map((r) => r.value))}
   {@const costWhole = rank === 'ppg' && wholeUsd(rows.map((r) => r.cost))}
-  {@const shown = isOpen ? rows : rows.slice(0, size)}
+  {@const isLow = low.includes(b)}
+  {@const ordered = isLow ? lowFirst(b, rows) : rows}
+  {@const shown = isOpen ? ordered : ordered.slice(0, size)}
+  {@const top = Math.max(...shown.map((r) => r.value), 0)}
+  <!-- Over time under Lowest first: the lowest groups' lines, lowest first (the server sends them best first). -->
+  {@const pool = !isLow ? (series?.[b]?.lines ?? []) : ordered.flatMap((r) => series?.[b]?.lines.find((l) => l.label === r.label) ?? [])}
   <!-- rank=like: a zero-centred bar, scaled to the board's largest |gap| (signed values, ui gate P4). -->
   {@const span = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9)}
   {@const switchable = (VIEW_BOARDS as readonly Board[]).includes(b) && !unranked(b) && rows.length > 0}
@@ -248,25 +264,30 @@
   {@const view = pick ? 'time' : 'list'}
   {@const wide = pick === 'wide'}
   <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:timeview={view === 'time'} class:wide data-board={b} style:--rows={size}
-    data-lines={view === 'time' ? (isOpen ? series?.[b]?.lines.length : Math.min(size, series?.[b]?.lines.length ?? 0)) : undefined}>
-    {#if switchable}
-      <div class="board-head">
-        <HeadingAnchor id="leaderboard-{b}">{TITLE[b]}</HeadingAnchor>
-        <div class="board-tools">
+    data-lines={view === 'time' ? (isOpen ? pool.length : Math.min(size, pool.length)) : undefined}>
+    <div class="board-head">
+      <HeadingAnchor id="leaderboard-{b}">{TITLE[b]}</HeadingAnchor>
+      <div class="board-tools">
+        <!-- First in the tools, one box pressed or not; gone (the head keeps its height) where there is nothing to order. -->
+        {#if rows.length && !unranked(b)}
+          <button class="icon-button low-switch" aria-pressed={isLow} aria-label="Lowest first" use:labelTip={'Lowest first'}
+            onclick={() => toggleLow(b)}><Icon name={isLow ? 'sort-ascending' : 'sort-descending'} /></button>
+        {/if}
+        {#if switchable}
           <div class="form-field group-field">
             <span class="sr-only">Shown as</span>
             <div class="tab-group tab-group-compact" role="group" aria-label="{TITLE[b]} shown as">
               {#each VIEWS as [v, label] (v)}<button aria-pressed={view === v} onclick={() => setView(b, v === 'list' ? undefined : (pick ?? 'time'))}>{label}</button>{/each}
             </div>
           </div>
-          <!-- Only where the band has columns to span (CSS hides it on a phone). -->
-          {#if view === 'time'}
-            <button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
-              onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>
-          {/if}
-        </div>
+          <!-- Only where the band has columns to span (CSS hides it on a phone). Under List it keeps its place unseen, so the
+               switch and the List / Over time pick don't move when the view changes. -->
+          <button class="icon-button expand" class:idle={view !== 'time'} aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
+            disabled={view !== 'time'} aria-hidden={view !== 'time'} tabindex={view === 'time' ? undefined : -1}
+            onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>
+        {/if}
       </div>
-    {:else}<HeadingAnchor id="leaderboard-{b}">{TITLE[b]}</HeadingAnchor>{/if}
+    </div>
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     {#if (b === 'varieties' || b === 'producers') && rows.length}
       {@const c = coverage[b]}
@@ -281,7 +302,7 @@
       {:else if view === 'time'}
         {@const sr = series?.[b]}
         <!-- The server sends every group's line, best first (colors follow that order, so Show all keeps the top ones'). -->
-        {@const lines = isOpen ? (sr?.lines ?? []) : (sr?.lines ?? []).slice(0, size)}
+        {@const lines = isOpen ? pool : pool.slice(0, size)}
         {#if sr && lines.length && sr.labels.length}
           <!-- The chart fills the List's body height, so neither switching views nor Show all resizes the card (the legend grows
                inside it). -->
@@ -289,7 +310,7 @@
             <Chart type="line" labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
               series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height="fill" />
           </div>
-          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === sr.lines.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `top ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
+          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === pool.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `${isLow ? 'lowest' : 'top'} ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
         {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}
       {:else}
         <ol class="board-rows" class:diverge={rank === 'like'}>
@@ -297,7 +318,7 @@
             {@const m = comparing ? move(r.move) : null}
             {@const half = rank === 'like' ? Math.abs(r.value) / span / 2 : 0}
             <li class="board-row bar" class:liked={r.like && rank !== 'like'} class:small-sample={r.sample?.small}
-              style:--share={rank === 'like' ? half : rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}
+              style:--share={rank === 'like' ? half : top > 0 ? Math.max(0, r.value / top) : 0}
               style:--left={rank === 'like' ? (r.value < 0 ? 0.5 - half : 0.5) : undefined}
               style:--bar-color={rank === 'like' ? deltaColor(r.value) : undefined}>
               <span class="rank">{i + 1}</span>
@@ -320,13 +341,14 @@
           {/each}
         </ol>
       {/if}
+      {#if isLow && !unranked(b) && ordered.length < rows.length}<p class="chart-note">Groups with one bag are left out.</p>{/if}
     </div>
     <!-- The footer exists only for a Show all button. A band with one reserves that space in its other cards (.has-foot,
          CSS), so cards are level by their own content, not by stretching: a card that opens can't resize the others. -->
-    {#if rows.length > size && !unranked(b)}
+    {#if ordered.length > size && !unranked(b)}
       <footer class="board-foot">
         <button class="button button-ghost" aria-expanded={isOpen} onclick={(e) => bottomInView(e.currentTarget.closest('.board-foot'), () => toggle(b))}
-          >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button
+          >{isOpen ? `Show top ${size}` : `Show all (${ordered.length})`}</button
         >
       </footer>
     {/if}
@@ -438,6 +460,23 @@
       height: 2.25rem;
     }
   }
+  .expand.idle {
+    visibility: hidden;
+  }
+  .low-switch {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+  .low-switch[aria-pressed='true'] {
+    background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface));
+    border-color: var(--color-accent);
+  }
+  @media (max-width: 640px) {
+    .low-switch {
+      width: 44px;
+      height: 44px;
+    }
+  }
   .board-tools {
     display: flex;
     align-items: center;
@@ -450,6 +489,12 @@
     justify-content: space-between;
     gap: var(--space-2);
     margin-bottom: var(--space-3);
+    min-height: 2.25rem;
+  }
+  @media (max-width: 640px) {
+    .board-head {
+      min-height: 44px;
+    }
   }
   .board-head :global(h2),
   .board-head :global(.form-field) {

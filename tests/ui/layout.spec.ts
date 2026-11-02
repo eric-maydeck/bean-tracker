@@ -6164,6 +6164,64 @@ export const STATES: State[] = [
       expect(await page.evaluate(() => (window as unknown as { __jump?: number }).__jump)).toBe(1);
     }
   })),
+  // Lowest first (spec Task 4): the switch is one box, pressed or not, in List or Over time.
+  { name: 'insights-board-low', path: () => '/insights?tab=leaderboards&range=all&rank=brews&low=roasters,varieties,water',
+    act: async (page) => {
+      // The switch's box relative to its card (right and top edges), width and height.
+      const box = (b: string) => page.locator(`[data-board="${b}"]`).evaluate((card) => {
+        const r = card.querySelector('.low-switch')!.getBoundingClientRect(), c = card.getBoundingClientRect();
+        return [Math.round(c.right - r.right), Math.round(r.top - c.top), Math.round(r.width), Math.round(r.height)];
+      });
+      await expect(page.locator('[data-board="varieties"] .low-switch')).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('[data-board="producers"] .low-switch')).toHaveAttribute('aria-pressed', 'false');
+      const pressed = await box('varieties'), idle = await box('producers');
+      for (let i = 0; i < 4; i++) expect(Math.abs(pressed[i] - idle[i]), `box ${i}: ${pressed} vs ${idle}`).toBeLessThanOrEqual(1);
+      // Lowest first: ascending values (Varieties' first row is at most its last).
+      const vals = await page.locator('[data-board="varieties"] .board-row:not(.placeholder) .val').allInnerTexts();
+      expect(vals.length).toBeGreaterThan(1);
+      expect(parseFloat(vals[0])).toBeLessThanOrEqual(parseFloat(vals.at(-1)!));
+      // A board that cut a one-bag row says so; one that cut none does not say it.
+      const notes = await page.locator('.board .chart-note', { hasText: 'Groups with one bag are left out.' }).count();
+      const cut = await page.evaluate(() => [...document.querySelectorAll('.board-band .board')].filter((b) => b.querySelector('.low-switch[aria-pressed=true]')).length);
+      expect(notes).toBeGreaterThan(0);
+      expect(notes).toBeLessThanOrEqual(cut);
+      await expect(page.locator('[data-board="producers"] .chart-note', { hasText: 'one bag' })).toHaveCount(0);
+      await expectEqualBoardHeights(page);
+    } },
+  { name: 'insights-board-low-toggle', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      const fetched: string[] = [];
+      page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
+      const btn = page.locator('[data-board="producers"] .low-switch');
+      const box = () => btn.evaluate((e) => { const r = e.getBoundingClientRect(), c = e.closest('.board')!.getBoundingClientRect(); return [Math.round(c.right - r.right), Math.round(r.y - c.y), Math.round(r.width), Math.round(r.height)]; });
+      const before = await box();
+      await btn.click();
+      await expect(page).toHaveURL(/[?&]low=producers(&|$)/);
+      await expect(btn).toHaveAttribute('aria-pressed', 'true');
+      expect(await box()).toEqual(before);
+      await btn.click();
+      await expect(page).not.toHaveURL(/low=/);
+      expect(await box()).toEqual(before);
+      expect(fetched).toEqual([]);
+    } },
+  { name: 'insights-board-low-compare', path: () => '/insights?tab=leaderboards&range=1m&compare=1&low=roasters',
+    act: async (page) => {
+      const rows = page.locator('[data-board="roasters"] .board-row:not(.placeholder)');
+      await expect(rows.first()).toBeVisible();
+      expect(await rows.locator('.move').count()).toBe(await rows.count());
+    } },
+  { name: 'insights-board-low-time', path: () => '/insights?tab=leaderboards&range=all&views=water-time&low=water',
+    act: async (page) => {
+      const card = page.locator('[data-board="water"]');
+      await expect(card.locator('canvas')).toBeVisible();
+      const sw = card.locator('.low-switch');
+      await expect(sw).toHaveAttribute('aria-pressed', 'true');
+      const box = () => sw.evaluate((e) => { const r = e.getBoundingClientRect(), c = e.closest('.board')!.getBoundingClientRect(); return [Math.round(r.x - c.x), Math.round(r.y - c.y), Math.round(r.width), Math.round(r.height)]; });
+      const inTime = await box();
+      await card.getByRole('button', { name: 'List' }).click();
+      await expect(card.locator('canvas')).toHaveCount(0);
+      expect(await box()).toEqual(inTime);
+    } },
   { name: 'insights-board-time', path: () => '/insights?tab=leaderboards&range=12m&views=dripper-time',
     act: async (page) => {
       const card = page.locator('.board[data-board=dripper]');

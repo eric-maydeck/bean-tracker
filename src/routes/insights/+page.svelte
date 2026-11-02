@@ -56,7 +56,7 @@
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
   // to the URL with replaceState: no refetch, no re-render of the other tiles. `local` holds them until the next real
   // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
-  const LOCAL_KEYS = ['open', 'views', 'card', 'chart', 'retired', 'gear', 'spendView', 'spendSeries', 'rcSort', 'rcDir', 'rcTop', 'waitBy', 'recipeBy', 'pourThin', 'recipeVs'] as const;
+  const LOCAL_KEYS = ['open', 'low', 'views', 'card', 'chart', 'retired', 'gear', 'spendView', 'spendSeries', 'rcSort', 'rcDir', 'rcTop', 'waitBy', 'recipeBy', 'pourThin', 'recipeVs'] as const;
   let local = $state<Pick<InsightsUrlState, (typeof LOCAL_KEYS)[number]> | null>(null);
   const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
   let s = $derived(withDefaults(explicit));
@@ -536,7 +536,7 @@
   preview={insightsPreview({
     tab: s.tab, owner: ownerName(page.url.host), tabLabel: TAB_LABEL[s.tab], period: periodLabel, brews: data.tiles.brews, avgRating: data.tiles.avgRating,
     filters: [...coffeeChips.map(([, v]) => v), ...brewChips.map((k) => brewFilterText(k, s[k]!))],
-    chart: s.chart, rank: s.rank, perPerson: perPersonOn, boards: data.boards, records: data.records,
+    chart: s.chart, rank: s.rank, low: s.low, perPerson: perPersonOn, boards: data.boards, records: data.records,
     line: data.onHand ? `${plural(data.onHand.tiles.bagsWaiting, 'bag')} waiting · ${formatGrams(data.onHand.tiles.gramsWaiting)} · ${usd(data.onHand.tiles.tiedUp)} tied up` : !data.spend ? undefined : `Spent ${usd(data.spend.tiles.spent)} · ${plural(data.spend.tiles.bags, 'bag')}${data.spend.tiles.avgPpg === null ? '' : ` · ${usd(data.spend.tiles.avgPpg)}/g avg`}`
   })}
 />
@@ -869,6 +869,7 @@
     rank={s.rank}
     avg={explicit.avg}
     open={s.open ?? []}
+    low={s.low ?? []}
     views={s.views}
     series={data.boardSeries}
     comparing={!!data.previousPeriod}

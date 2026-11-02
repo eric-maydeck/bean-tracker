@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  lowFirst,
   parseInsightsUrl, insightsParams, boardAvg, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
   BREW_FILTERS_ON, activeBrewFilters, wholeNote, brewSelectsOn,
   parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
@@ -900,5 +901,19 @@ describe('gear trophy params', () => {
     expect(brewSelectsOn('gear')).toEqual(['dripper', 'filter', 'water', 'brewDose', 'brewTemp']);
     expect(brewSelectsOn('water')).toEqual(BREW_FILTERS_ON.water);
     expect(activeBrewFilters(withDefaults({ tab: 'gear', dripper: 'V60' }))).toEqual({});
+  });
+});
+
+describe('low (Lowest first)', () => {
+  it('low: comma list in board order, case-insensitive, junk dropped, round trip; bare = off', () => {
+    const s = parseInsightsUrl(new URLSearchParams('low=Producers,roasters,nope'), []);
+    expect(s.low).toEqual(['roasters', 'producers']);
+    expect(insightsParams({ low: s.low }).toString()).toBe('low=roasters%2Cproducers');
+    expect(parseInsightsUrl(new URLSearchParams(''), []).low).toBeUndefined();
+  });
+  it('coffees board is exempt from the one-bag cut', () => {
+    const rows = [{ key: 'a', bags: 1 }, { key: 'b', bags: 1 }];
+    expect(lowFirst('coffees', rows).map((r) => r.key)).toEqual(['b', 'a']);
+    expect(lowFirst('roasters', [{ key: 'a', bags: 3 }, { key: 'b', bags: 1 }, { key: 'c', bags: 2 }]).map((r) => r.key)).toEqual(['c', 'a']);
   });
 });

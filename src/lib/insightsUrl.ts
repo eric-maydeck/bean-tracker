@@ -152,6 +152,10 @@ export const WHATIF_LIMITS = { drinkers: [1, 20], gpp: [1, 500], inflow: [0, 100
 
 export const BOARDS = ['roasters', 'coffees', 'origins', 'varieties', 'producers', 'process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const;
 export type Board = (typeof BOARDS)[number];
+// Lowest first: the descending rows reversed, one-bag groups dropped (a lone bag is noise at the bottom) except
+// on Coffees, where each row is one bag.
+export const lowFirst = <R extends { bags: number }>(board: Board, rows: readonly R[]): R[] =>
+  rows.filter((r) => board === 'coffees' || r.bags >= 2).reverse();
 // Spend and $/g are per bag: only boards of bag attributes rank by them.
 export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'varieties', 'producers', 'process', 'roast'];
 // vs like coffees ranks coffees and their roasters only.
@@ -232,6 +236,7 @@ export interface InsightsUrlState {
   tab?: Tab;
   rank?: Rank;
   open?: Board[];
+  low?: Board[]; // Leaderboards: the boards listing lowest value first (absent = highest first)
   views?: BoardViews; // Leaderboards: each small board's view (absent = List)
   measure?: Measure;
   unit?: Unit;
@@ -295,10 +300,10 @@ export interface InsightsUrlState {
 }
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
-type Optional = 'avg' | 'trend' | 'gearBy' | 'gearView' | 'waterView' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
+type Optional = 'avg' | 'trend' | 'gearBy' | 'gearView' | 'waterView' | 'open' | 'low' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
   | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'chart' | 'retired' | 'gear' | 'spendView' | 'spendSeries' | 'rcSort' | 'rcDir' | 'rcTop' | 'waitBy' | 'recipeBy' | 'pourThin' | 'recipeVs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  avg?: Avg; trend?: Trend; gearBy?: 'grinder'; gearView?: 'lines'; waterView?: 'lines'; open?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
+  avg?: Avg; trend?: Trend; gearBy?: 'grinder'; gearView?: 'lines'; waterView?: 'lines'; open?: Board[]; low?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
   tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; chart?: string; retired?: 'open'; gear?: GearKind; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top; waitBy?: WaitBy; recipeBy?: 'process' | 'roaster'; pourThin?: 'open'; recipeVs?: (typeof RECIPE_VS)[number];
@@ -412,6 +417,7 @@ export function parseInsightsUrl(
     // used on its own tab); a by the range doesn't offer is dropped.
     rank: pickOne(p, 'rank', RANKS),
     open: parseList(p, 'open', BOARDS),
+    low: parseList(p, 'low', BOARDS),
     views: parseViews(p.get('views')),
     measure: pickOne(p, 'measure', MEASURES),
     unit: pickOne(p, 'unit', UNITS),
@@ -509,6 +515,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.tab) p.set('tab', s.tab);
   if (s.rank) p.set('rank', s.rank);
   if (s.open?.length) p.set('open', s.open.join(','));
+  if (s.low?.length) p.set('low', s.low.join(','));
   if (s.views && Object.keys(s.views).length) p.set('views', viewsText(s.views));
   if (s.measure) p.set('measure', s.measure);
   if (s.unit) p.set('unit', s.unit);
@@ -651,6 +658,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     tab: s.tab ?? DEFAULTS.tab,
     rank: s.rank ?? DEFAULTS.rank,
     open: s.open,
+    low: s.low,
     views: s.views,
     measure: s.measure ?? DEFAULTS.measure,
     unit: s.unit ?? DEFAULTS.unit,

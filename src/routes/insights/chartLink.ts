@@ -1,5 +1,5 @@
 import { getContext, setContext } from 'svelte';
-import { BAG_BOARDS, BOARDS, LIKE_BOARDS, MON, type Board, type Rank, type Tab } from '$lib/insightsUrl';
+import { BAG_BOARDS, BOARDS, LIKE_BOARDS, MON, lowFirst, type Board, type Rank, type Tab } from '$lib/insightsUrl';
 import { DESCRIPTION_MAX, fitList, plural, type Preview } from '$lib/linkPreview';
 import { originWithFlag } from '$lib/countryFlags';
 import { formatGrams } from '$lib/grams';
@@ -97,7 +97,7 @@ const TAB_SUMMARY: Record<Tab, (n: string) => string> = {
 
 interface PreviewInput {
   tab: Tab; owner: string; tabLabel: string; period: string; brews: number; avgRating: number | null; filters: string[]; chart?: string; line?: string; // line: replaces the brews/rating line
-  rank: Rank; perPerson: boolean; boards: Record<Board, BoardRow[]> | null; records: RecordsTab | null;
+  rank: Rank; low?: Board[]; perPerson: boolean; boards: Record<Board, BoardRow[]> | null; records: RecordsTab | null;
 }
 // A Records tile's own element id (#record-…): keys like "grindFine:A4Z (Femobook)" slugged.
 export const recordAnchor = (key: string): string => `record-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
@@ -114,7 +114,8 @@ const holderRow = (h: Holder) => [h.sub, h.label].filter(Boolean).join(' · ');
 export function insightsPreview(v: PreviewInput): Preview {
   const chart = v.chart ?? '';
   const board = BOARDS.find((b) => chart === `leaderboard-${b}`);
-  const rows = board && v.boards?.[board];
+  const all = board && v.boards?.[board];
+  const rows = all && board && v.low?.includes(board) ? lowFirst(board, all) : all;
   // The board shows under this rank (hidden by rank=like, or unranked: spend/$ per g on a non-bag board).
   const shown = board && (v.rank !== 'like' || LIKE_BOARDS.includes(board)) && !((v.rank === 'spend' || v.rank === 'ppg') && !BAG_BOARDS.includes(board));
   if (board && rows?.length && shown) {

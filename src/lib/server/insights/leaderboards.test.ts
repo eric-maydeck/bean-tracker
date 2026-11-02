@@ -193,6 +193,21 @@ describe('leaderboards', () => {
     // Aug: Moonwake #1 only. Sept: Sey #1 (new), Moonwake #2 (fell one).
     expect(cmp.roasters.map((r) => r.move)).toEqual(['new', -1]);
   });
+  it('lowMove reads ascending positions', () => {
+    const b = (coffeeId: number, roaster: string, localDate: string, dose: number) => brew({ coffeeId, roaster, localDate, dose });
+    const bg = (id: number, roaster: string, purchaseDate: string) => bag({ id, roaster, purchaseDate, name: `n${id}`, slug: `s${id}` });
+    // Grams. Sept: X 20, Y 60, Z 50 (2 bags). Aug: X 20, Y 40, Z 50 (1 bag: cut from Lowest first).
+    const brews = [
+      b(1, 'X', '2026-08-10', 10), b(2, 'X', '2026-08-11', 10), b(3, 'Y', '2026-08-10', 20), b(4, 'Y', '2026-08-11', 20), b(5, 'Z', '2026-08-10', 50),
+      b(1, 'X', '2026-09-10', 10), b(2, 'X', '2026-09-11', 10), b(3, 'Y', '2026-09-10', 30), b(4, 'Y', '2026-09-11', 30), b(5, 'Z', '2026-09-10', 25), b(6, 'Z', '2026-09-11', 25)
+    ];
+    const bags = [bg(1, 'X', '2026-01-01'), bg(2, 'X', '2026-01-01'), bg(3, 'Y', '2026-01-01'), bg(4, 'Y', '2026-01-01'), bg(5, 'Z', '2026-01-01'), bg(6, 'Z', '2026-01-01')];
+    const cmp = leaderboards(brews, bags, SEPT, AUG, 'grams', 'all', 'raw');
+    const low = Object.fromEntries(cmp.roasters.map((r) => [r.label, r.lowMove]));
+    // Lowest first, Sept: X, Z, Y; Aug: X, Y. X holds, Y slips a place, Z is new.
+    expect(low).toEqual({ X: 0, Y: -1, Z: 'new' });
+    expect(leaderboards(brews, bags, SEPT, null, 'grams', 'all', 'raw').roasters[0].lowMove).toBeUndefined();
+  });
   it('per person divides totals only', () => {
     expect(vals(leaderboards(BREWS, BAGS, SEPT, null, 'grams', 'all', 'raw', 2).roasters)).toEqual([['Moonwake', 20], ['Sey', 15]]);
     expect(vals(leaderboards(RATED, BAGS, SEPT, null, 'rating', 'all', 'raw', 2).roasters)[0]).toEqual(['Moonwake', expect.closeTo(7)]); // rating isn't split
