@@ -157,6 +157,20 @@ describe('buildShareUrl', () => {
     expect(decoded.roast_range).toBe(5);
   });
 
+  it('sends the image as external_images only when it is a web URL', async () => {
+    const root = await protobuf.load(path.join(__dirname, 'beanconquerorBean.proto'));
+    const BeanProto = root.lookupType('beanconqueror.BeanProto');
+    const imagesOf = async (image_url: string | null) => {
+      const query = new URL(await buildShareUrl(sampleCoffee({ image_url }), roastLevels)).searchParams;
+      let base64 = '';
+      for (let i = 0; query.get(`shareUserBean${i}`) != null; i++) base64 += query.get(`shareUserBean${i}`);
+      return (BeanProto.decode(shareBytes(base64)) as unknown as { external_images: string[] }).external_images;
+    };
+    expect(await imagesOf('https://example.com/a.jpg')).toEqual(['https://example.com/a.jpg']);
+    expect(await imagesOf('/local/a.webp')).toEqual([]);
+    expect(await imagesOf(null)).toEqual([]);
+  });
+
   it('sets beanMix to Blend when the name says blend (any case), else Single Origin', async () => {
     const root = await protobuf.load(path.join(__dirname, 'beanconquerorBean.proto'));
     const BeanProto = root.lookupType('beanconqueror.BeanProto');
