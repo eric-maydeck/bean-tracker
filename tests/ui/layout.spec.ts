@@ -1138,7 +1138,11 @@ export const STATES: State[] = [
       await page.locator('#blend').selectOption('1');
       await expect(page.locator('#origin')).toHaveValue('Blend');
       await page.locator('#blend').selectOption('0');
-      await expect(page.locator('#origin'), 'switching back changes nothing').toHaveValue('Blend');
+      await expect(page.locator('#origin'), 'switching back removes the fill').toHaveValue('');
+      await page.locator('#blend').selectOption('1');
+      await page.locator('#origin').fill('Blend of Kenya');
+      await page.locator('#blend').selectOption('0');
+      await expect(page.locator('#origin'), 'an edited fill stays').toHaveValue('Blend of Kenya');
       await page.evaluate(() => (document.activeElement as HTMLElement).blur());
       await expect(page.locator('#producer')).toHaveValue('Ana Maria Gutierrez');
       await expect(page.locator('#certification')).toHaveValue('Organic');

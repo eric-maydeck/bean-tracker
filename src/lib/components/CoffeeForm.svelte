@@ -169,9 +169,17 @@
     if (r.cost != null) setField('cost', r.cost);
   }
 
-  // Choosing Blend fills a blank Origin with "Blend"; a typed value stays, and going back changes nothing.
+  // Choosing Blend fills a blank Origin with "Blend"; going back removes only that fill. A typed value always stays.
+  let originAutoFilled = false;
   function typeChanged(e: Event) {
-    if ((e.currentTarget as HTMLSelectElement).value === '1' && !fieldValue('origin').trim()) setField('origin', 'Blend');
+    const blend = (e.currentTarget as HTMLSelectElement).value === '1';
+    if (blend && !fieldValue('origin').trim()) {
+      setField('origin', 'Blend');
+      originAutoFilled = true;
+    } else if (!blend && originAutoFilled) {
+      if (fieldValue('origin') === 'Blend') setField('origin', '');
+      originAutoFilled = false;
+    }
   }
 
   function fieldValue(name: string): string {
