@@ -16,6 +16,7 @@ describe('recapsUrl', () => {
   });
   it('parseRecapUrl: slide, people, preview; bad values dropped', () => {
     expect(parseRecapUrl(q('slide=Streak'), 2)).toEqual({ slide: 'streak' });
+    expect(parseRecapUrl(q('slide=cover'), 2)).toEqual({ slide: 'cover' }); // the title slide
     expect(parseRecapUrl(q('slide=a b'), 2)).toEqual({});
     expect(parseRecapUrl(q('slide=' + 'x'.repeat(41)), 2)).toEqual({});
     expect(parseRecapUrl(q('people=PERSON'), 2)).toEqual({ people: 'person' });

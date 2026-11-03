@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { replaceState } from '$app/navigation';
-  import { POSTER_ID } from '$lib/recapsUrl';
+  import { POSTER_ID, recapHref } from '$lib/recapsUrl';
+  import type { Slide as SlideT } from '$lib/server/recaps/types';
   import Slide from './Slide.svelte';
   import Poster from './Poster.svelte';
 
@@ -9,7 +10,10 @@
   const r = $derived(data.recap);
   // data.recap.preview, not data.state.preview: the route echoes ?preview=1 even when it resolved false.
   const people = $derived(data.state.people);
-  const ids = $derived([...r.slides.map((s) => s.id), POSTER_ID]);
+  const ids = $derived(['cover', ...r.slides.map((s) => s.id), POSTER_ID]);
+  // The title slide is not a fact: no score, never selected, no poster tile.
+  const cover = $derived<SlideT>({ id: 'cover', category: 'amounts', lead: '', big: r.cover.title, context: r.cover.sub, tone: 'espresso',
+    link: { tab: '', section: '', href: '' }, card: { big: '', label: '' } });
 
   let reel: HTMLElement;
   let cur = $state(0);
@@ -55,7 +59,7 @@
 <svelte:head><title>{r.poster.title}</title></svelte:head>
 <svelte:window onkeydown={key} />
 
-<nav class="recap-progress" data-layout-ignore="story progress segments; ui-rules rule 4 exemption pending user ruling (recaps gate 1)" class:solid={onPoster()} style:--pfg={pfg || undefined} aria-label="Slides">
+<nav class="recap-progress" data-layout-ignore="story progress segments: ui-rules rule 4 exemption (user, 2026-11-02)" class:solid={onPoster()} style:--pfg={pfg || undefined} aria-label="Slides">
   {#each ids as id, i (id)}
     <button type="button" class:done={i <= cur} aria-current={i === cur ? 'true' : undefined} aria-label="Go to slide {i + 1}" onclick={() => go(i)}><span></span></button>
   {/each}
@@ -63,8 +67,9 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <div class="recap-reel" bind:this={reel} onclick={tap} role="presentation">
+  <Slide cover slide={cover} shareHref={recapHref(r.year, { people, ...(r.preview && { preview: true as const }) })} year={r.year} {people} preview={r.preview} index={0} total={ids.length} />
   {#each r.slides as s, i (s.id)}
-    <Slide slide={s} year={r.year} {people} preview={r.preview} index={i} total={ids.length} />
+    <Slide slide={s} year={r.year} {people} preview={r.preview} index={i + 1} total={ids.length} />
   {/each}
   <Poster slides={r.slides} poster={r.poster} year={r.year} {people} preview={r.preview} total={ids.length} />
 </div>
