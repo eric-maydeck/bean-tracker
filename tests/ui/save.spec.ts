@@ -427,13 +427,14 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
       await gotoReady(page, '/coffees');
       await expect(banner).toContainText(`Your ${Y} recap is ready`);
       const b = (await banner.boundingBox())!;
-      expect(b.x).toBeGreaterThanOrEqual(0);
+      const m = (await page.locator('main').boundingBox())!;
+      expect(b.x).toBeGreaterThanOrEqual(m.x - 0.5);
       expect(b.x + b.width).toBeLessThanOrEqual(width);
-      expect(b.y).toBeGreaterThanOrEqual(0);
-      const tabs = page.locator('.bottom-tabs');
-      const limit = (await tabs.isVisible()) ? (await tabs.boundingBox())!.y : height;
-      expect(b.y + b.height).toBeLessThanOrEqual(limit + 0.5);
-      expect(b.height).toBeLessThanOrEqual(height / 3); // landscape: never covers most of the page
+      // In flow, not floating: scrolls with the page (not fixed), and is the first thing in the content, above the heading.
+      expect(await banner.evaluate((el) => getComputedStyle(el).position)).toBe('static');
+      const h1 = (await page.locator('main h1').first().boundingBox())!;
+      expect(b.y + b.height, 'above the first heading, no overlap').toBeLessThanOrEqual(h1.y + 0.5);
+      expect(b.height).toBeLessThanOrEqual(height / 3);
       await checkLayout(page);
     }
     await page.getByRole('button', { name: 'Dismiss' }).click();

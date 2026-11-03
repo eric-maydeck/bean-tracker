@@ -216,9 +216,9 @@
 {/if}
 
 <main class={recapPage ? undefined : 'container'}>
+  {#if data.recapReady && !recapPage && page.route.id !== '/recaps'}<RecapBanner year={data.recapReady} />{/if}
   {@render children()}
   <Toast />
-  {#if data.recapReady && !recapPage && page.route.id !== '/recaps'}<RecapBanner year={data.recapReady} />{/if}
   {#if !recapPage}
   <footer class="site-footer">
     <AiNote email={data.contactEmail} />
