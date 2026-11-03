@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDb, setHouseholdSize } from '$lib/server/db';
 import { localToday } from '$lib/server/localToday';
-import { recap } from './recap';
+import { recap, recapTiles } from './recap';
 import { freezeIds, frozenIds } from './store';
 
 function seed(db: ReturnType<typeof createDb>, years: number[]) {
@@ -46,6 +46,22 @@ describe('recap', () => {
     const h = recap(db, 2025, { today: '2026-02-01', preview: false })!, p = recap(db, 2025, { today: '2026-02-01', preview: false, people: 'person' })!;
     expect(p.householdSize).toBe(2);
     expect(p.slides[0].big).not.toBe(h.slides[0].big);
+  });
+});
+
+describe('recapTiles', () => {
+  it('public sees open years only; admin also the current year as preview', () => {
+    const db = createDb(':memory:');
+    seed(db, [2026, 2027]);
+    const pub = recapTiles(db, '2027-07-01', false);
+    expect(pub.map((t) => [t.year, t.preview, t.href])).toEqual([[2026, false, '/recaps/2026']]);
+    expect(frozenIds(db, 2027)).toBeNull();
+    const adm = recapTiles(db, '2027-07-01', true);
+    expect(adm.map((t) => [t.year, t.preview, t.href])).toEqual([[2027, true, '/recaps/2027?preview=1'], [2026, false, '/recaps/2026']]);
+    expect(frozenIds(db, 2027)).toBeNull(); // a preview never freezes
+    expect(adm[1].headlines.length).toBeGreaterThanOrEqual(2);
+    expect(adm[1].headlines[0]).toEqual({ big: '20', label: 'brews' });
+    expect(recapTiles(db, '2026-06-01', false)).toEqual([]);
   });
 });
 

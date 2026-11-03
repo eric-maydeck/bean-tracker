@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Recaps from './Recaps.svelte';
   import WholeNote from './WholeNote.svelte';
   import { labelTip } from '$lib/components/labelTip';
   import { setting, plainText } from '$lib/settingName';
@@ -226,7 +227,9 @@
     rangeDialog?.close();
   }
 
-  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', onhand: 'On hand', spend: 'Spend', sweetspots: 'Sweet spots', brewing: 'Brewing', pours: 'Pours', water: 'Water', gear: 'Gear' };
+  // The Recaps group appears only while there is a recap to open.
+  const groups = $derived(TAB_GROUPS.filter((g) => data.recapsTab || g.label !== 'Recaps'));
+  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', onhand: 'On hand', spend: 'Spend', sweetspots: 'Sweet spots', brewing: 'Brewing', pours: 'Pours', water: 'Water', gear: 'Gear', recaps: 'Recaps' };
   // A rail link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
   function tabHref(tab: Tab) {
     const qs = insightsParams({ ...explicit, tab }).toString();
@@ -524,6 +527,7 @@
     if (s.tab === 'gear' && data.gear) return gearLinks(data.gear, data.trophies);
     if (s.tab === 'onhand' && data.onHand) return onHandLinks(data.onHand);
     if (s.tab === 'spend' && data.spend) return spendLinks(data.spend);
+    if (s.tab === 'recaps') return [];
     return [['overview-totals', 'Totals'], ['overview-averages', 'Averages'], ['overview-consumption', 'Consumption'], ['overview-right-now', 'Right now'], data.recent && ['overview-recent', 'Recent']];
   });
 </script>
@@ -545,7 +549,7 @@
      navigate like choose({ tab }): replace the entry, keep the scroll and focus. -->
 <div class="rail-layout">
 <nav class="insights-rail" aria-label="Insights sections">
-  {#each TAB_GROUPS as g (g.label)}
+  {#each groups as g (g.label)}
     <div class="rail-group" role="group" aria-labelledby="rail-{g.label}">
       <span class="rail-caption" id="rail-{g.label}">{g.label}</span>
       {#each g.tabs as t (t)}
@@ -573,7 +577,7 @@
   <label class="form-field group-field" style={cell('view')}>
     <span>View</span>
     <select class="ctl-select" aria-label="View" value={s.tab} onchange={(e) => choose({ tab: e.currentTarget.value as Tab })}>
-      {#each TAB_GROUPS as g (g.label)}
+      {#each groups as g (g.label)}
         <optgroup label={g.label}>{#each g.tabs as t (t)}<option value={t}>{TAB_LABEL[t]}</option>{/each}</optgroup>
       {/each}
     </select>
@@ -944,6 +948,8 @@
   <OnHand t={data.onHand} {link} runway={runwayPanel} {placeTip} unit={s.unit} waitBy={s.waitBy} {choose}>
     {#snippet tiles()}{@render panel('On the shelf', ONHAND, data.onHand!.tiles, null)}{/snippet}
   </OnHand>
+{:else if s.tab === 'recaps' && data.recaps}
+  <Recaps tiles={data.recaps} />
 {:else if s.tab === 'spend' && data.spend}
   <Spend t={data.spend} {choose} {placeTip} spendView={s.spendView} spendSeries={s.spendSeries} rcSort={s.rcSort} rcDir={s.rcDir} rcTop={s.rcTop} {compareLabel} {compareDates} {link}>
     {#snippet tiles()}{@render panel('Spending', SPEND, data.spend!.tiles, data.spend!.deltas)}{/snippet}

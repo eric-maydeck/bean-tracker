@@ -92,7 +92,8 @@ const TAB_SUMMARY: Record<Tab, (n: string) => string> = {
   brewing: (n) => `How ${n} dials in brews`,
   pours: (n) => `How ${n}'s recipes and pours compare`,
   water: (n) => `How water affects ${n}'s ratings`,
-  gear: (n) => `How ${n}'s gear compares`
+  gear: (n) => `How ${n}'s gear compares`,
+  recaps: (n) => `${n}'s year in coffee, one recap per year`
 };
 
 interface PreviewInput {

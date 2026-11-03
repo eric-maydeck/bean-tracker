@@ -22,6 +22,20 @@ const seed = (): Seed => (cached ??= JSON.parse(readFileSync('.ui-test/seed.json
 
 // the local calendar year, as scripts/ui-seed.ts computes the seeded years.
 const recapYear = () => Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric' }).format(new Date()));
+// Every Recaps tile: its year, 2-3 headline numbers with labels, tone background, inside the page; same order as `years`.
+async function expectRecapTiles(page: Page, years: string[]) {
+  const tiles = page.locator('.recap-tile');
+  await expect(tiles).toHaveCount(years.length);
+  for (const [i, y] of years.entries()) {
+    const t = tiles.nth(i);
+    await expect(t.locator('h2')).toHaveText(y);
+    const n = await t.locator('li').count();
+    expect(n, `${y} headlines`).toBeGreaterThanOrEqual(2);
+    expect(n).toBeLessThanOrEqual(3);
+    for (const li of await t.locator('li').all()) for (const part of [li.locator('b'), li.locator('span')]) expect((await part.textContent())!.trim()).not.toBe('');
+    expect((await t.boundingBox())!.height, `${y} tile is a poster, not a row`).toBeGreaterThan(180);
+  }
+}
 
 interface State {
   name: string;
@@ -886,6 +900,25 @@ export const STATES: State[] = [
       await reloadReady(page);
       await page.locator('#poster header').getByRole('button', { name: 'Share' }).click();
       await expect.poll(() => page.evaluate(() => (window as unknown as { shared?: string[] }).shared?.[0] ?? '')).toMatch(new RegExp(`/recaps/${recapYear() - 1}\\?slide=poster$`));
+    } },
+  // Recaps tab and index: one tile per open year plus the admin's current-year preview (the thin seed has the prior year).
+  { name: 'insights-recaps', path: () => '/insights?tab=recaps',
+    act: async (page) => {
+      await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
+      await expectGridRowsFull(page, '.recap-tiles');
+      await expect(page.locator('.recap-tile .badge')).toHaveText(['Preview']);
+      const vp = page.viewportSize()!;
+      const rail = page.locator('nav.insights-rail a');
+      if (vp.width >= 1000 && vp.height >= 500) await expect(rail.last()).toHaveText('Recaps');
+      else expect(await page.getByRole('combobox', { name: 'View' }).locator('option').allTextContents()).toContain('Recaps');
+    } },
+  { name: 'recaps-index', path: () => '/recaps',
+    act: async (page) => {
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Recaps');
+      await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
+      await expectGridRowsFull(page, '.recap-tiles');
+      await page.locator('.recap-tile').nth(1).click();
+      await expect(page).toHaveURL(new RegExp(`/recaps/${recapYear() - 1}$`));
     } },
   // /coffees status is a multi-select: Backlog + Open lit together, the list is their union.
   { name: 'coffees-status-multi', viewports: 'two', path: () => '/coffees?status=backlog&status=open&view=cards',
@@ -11149,6 +11182,13 @@ test.describe('signed out', () => {
     expect(await status(`/recaps/${recapYear()}?preview=1`), 'preview is admin-only').toBe(404);
     expect(await status(`/recaps/${recapYear() + 1}`), 'a year with no brews').toBe(404);
     expect(await status(`/recaps/${recapYear() - 1}`), 'an opened year is public').toBe(200);
+  });
+  test('insights-recaps-public', { tag: ['@insights', '@insights:recaps', '@two'] }, async ({ page }) => {
+    await gotoReady(page, '/insights?tab=recaps');
+    await expectRecapTiles(page, [String(recapYear() - 1)]);
+    await expect(page.locator('.recap-tile .badge')).toHaveCount(0);
+    await expectGridRowsFull(page, '.recap-tiles');
+    await checkLayout(page);
   });
   test('account-signed-out', async ({ page }) => {
     await page.goto('/account');

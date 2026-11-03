@@ -1,4 +1,6 @@
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { hasRecaps, recapTiles } from '$lib/server/recaps/recap';
 import { getDb, getHouseholdSize } from '$lib/server/db';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
@@ -25,7 +27,7 @@ import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, VIEW_BOARDS, boardAvg
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
-export const load: PageServerLoad = ({ url }) => {
+export const load: PageServerLoad = ({ url, locals }) => {
   const db = getDb();
   const { brews: everyBrew, bags: everyBag } = loadFacts(db);
   const householdSize = getHouseholdSize(db);
@@ -45,6 +47,14 @@ export const load: PageServerLoad = ({ url }) => {
     drippers: opts.drippers, filters: opts.filters, waters: opts.waters, doses: opts.doses, temps: opts.temps
   });
   const s = withDefaults(explicit);
+  // The Recaps tab exists only while there is a recap to show (an admin's preview counts); otherwise the bare page.
+  const isAdmin = !!locals?.isAdmin;
+  const recapsTab = hasRecaps(db, today, isAdmin);
+  if (s.tab === 'recaps' && !recapsTab) {
+    const u = new URL(url);
+    u.searchParams.delete('tab');
+    redirect(307, `${u.pathname}${u.search}`);
+  }
   const lab = (LAB_TABS as readonly string[]).includes(s.tab) ? opts : null;
   const grinder = lab ? (lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? null : null;
   const period = periodBounds(s.range, today);
@@ -214,6 +224,8 @@ export const load: PageServerLoad = ({ url }) => {
     pours: poursData,
     water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,
     gear: s.tab === 'gear' ? gearTab(scored, labCtx) : null,
+    recapsTab,
+    recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin) : null,
     recent: s.tab === 'overview' ? recent(brews, bags, 50) : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {

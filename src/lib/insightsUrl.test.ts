@@ -655,6 +655,11 @@ describe('brewing lab params', () => {
 });
 
 describe('TAB_GROUPS', () => {
+  it('tab=recaps parses and is in a rail group', () => {
+    expect(parseInsightsUrl(new URLSearchParams('tab=RECAPS'), [2026]).tab).toBe('recaps');
+    expect(TAB_GROUPS.flatMap((g) => g.tabs)).toContain('recaps');
+    expect(TAB_GROUPS.at(-1)).toEqual({ label: 'Recaps', tabs: ['recaps'] });
+  });
   it('Lab lists sweetspots, brewing, pours, water, gear', () => {
     expect(TAB_GROUPS.find((g) => g.label === 'Lab')!.tabs).toEqual(['sweetspots', 'brewing', 'pours', 'water', 'gear']);
   });
@@ -698,7 +703,7 @@ describe('spend tab params', () => {
     expect(resetInsights({ tab: 'onhand', waitBy: 'roast' })).toEqual({ tab: 'onhand' });
   });
   it('On hand is second in Summary, Spend last in Habits (no Spend group); ratings menu on', () => {
-    expect(TAB_GROUPS.map((g) => g.label)).toEqual(['Summary', 'Habits', 'Highlights', 'Lab']);
+    expect(TAB_GROUPS.map((g) => g.label)).toEqual(['Summary', 'Habits', 'Highlights', 'Lab', 'Recaps']);
     expect(TAB_GROUPS[0].tabs).toEqual(['overview', 'onhand', 'leaderboards']);
     expect(TAB_GROUPS[1].tabs).toEqual(['habits', 'consumption', 'spend']);
     expect(ratingsMenuOn({ tab: 'spend', rank: 'rating', measure: 'brews', trend: undefined })).toBe(true);
@@ -840,6 +845,7 @@ describe('brew filters', () => {
     expect(Object.keys(BREW_FILTERS_ON).sort()).toEqual([...TABS].sort());
     expect(BREW_FILTERS_ON.sweetspots).toEqual([]);
     expect(BREW_FILTERS_ON.milestones).toEqual([]);
+    expect(BREW_FILTERS_ON.recaps).toEqual([]);
     expect(BREW_FILTERS_ON.brewing).toEqual(['dripper', 'filter', 'water']);
     expect(BREW_FILTERS_ON.pours).toEqual(['dripper', 'filter', 'water']);
     expect(BREW_FILTERS_ON.water).toEqual(['dripper', 'filter', 'brewDose', 'brewTemp']);

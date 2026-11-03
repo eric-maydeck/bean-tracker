@@ -1,12 +1,13 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { getHouseholdSize } from '$lib/server/db';
 import type { People } from '$lib/insightsUrl';
+import { recapHref, recapYears } from '$lib/recapsUrl';
 import { fmtInt } from '$lib/recapFormat';
 import { md, POOL } from './pool';
 import { personality } from './traits';
 import { order, select, tonesFor } from './select';
-import { freezeIds, frozenIds } from './store';
-import type { Slide } from './types';
+import { brewYears, freezeIds, frozenIds } from './store';
+import type { Slide, Tone } from './types';
 import { loadYear } from './year';
 
 export interface Recap {
@@ -43,4 +44,24 @@ export function recap(db: DatabaseSync, year: number, o: { today: string; previe
       footer: `Picked from ${fmtInt(y.brews.length)} brews across ${fmtInt(bags)} bags and ${fmtInt(roasters)} roasters.`
     }
   };
+}
+
+export interface RecapTileData { year: number; href: string; tone: Tone; preview: boolean; headlines: { big: string; label: string }[] }
+
+// The Recaps tab/index years: open years newest first; an admin also gets the current year as a preview.
+const tileYears = (db: DatabaseSync, today: string, isAdmin: boolean): { year: number; preview: boolean }[] => {
+  const ys = brewYears(db), cur = Number(today.slice(0, 4));
+  return [...(isAdmin && ys.includes(cur) ? [{ year: cur, preview: true }] : []), ...recapYears(ys, today).map((year) => ({ year, preview: false }))]
+    .sort((a, b) => b.year - a.year);
+};
+export const hasRecaps = (db: DatabaseSync, today: string, isAdmin: boolean): boolean => tileYears(db, today, isAdmin).length > 0;
+
+// A public viewer never gets a preview year. An open year may freeze on this first view, exactly as opening its recap does.
+export function recapTiles(db: DatabaseSync, today: string, isAdmin: boolean): RecapTileData[] {
+  return tileYears(db, today, isAdmin).flatMap(({ year, preview }) => {
+    const r = recap(db, year, { today, preview });
+    // Total first, then the next fact(s) in the reel's order: 3 headlines (the personality slide only fills a short recap).
+    return r ? [{ year, preview, tone: 'espresso' as const, // the cover's tone (recaps/[year]/+page.svelte)
+      href: recapHref(year, preview ? { preview: true } : {}), headlines: r.slides.slice(0, 3).map((s) => s.card) }] : [];
+  });
 }

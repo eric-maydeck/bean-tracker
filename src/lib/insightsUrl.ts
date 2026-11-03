@@ -86,7 +86,7 @@ export type WaitBy = (typeof WAIT_BYS)[number];
 export const RECIPE_BYS = ['roast', 'process', 'roaster'] as const;
 // Pours: what Recipe × coffee compares a cell with (absent = the same bags).
 export const RECIPE_VS = ['group', 'recipe', 'avg'] as const;
-export const TABS = ['overview', 'onhand', 'leaderboards', 'habits', 'consumption', 'spend', 'records', 'milestones', 'insights', ...LAB_TABS] as const;
+export const TABS = ['overview', 'onhand', 'leaderboards', 'habits', 'consumption', 'spend', 'records', 'milestones', 'insights', ...LAB_TABS, 'recaps'] as const;
 export const RC_COLS = ['roaster', 'bags', 'spent', 'ppg', 'rating', 'like', 'last'] as const;
 export type RcCol = (typeof RC_COLS)[number];
 export type Tab = (typeof TABS)[number];
@@ -95,7 +95,8 @@ export const TAB_GROUPS: readonly { label: string; tabs: readonly Tab[] }[] = [
   { label: 'Summary', tabs: ['overview', 'onhand', 'leaderboards'] },
   { label: 'Habits', tabs: ['habits', 'consumption', 'spend'] },
   { label: 'Highlights', tabs: ['records', 'milestones', 'insights'] },
-  { label: 'Lab', tabs: LAB_TABS }
+  { label: 'Lab', tabs: LAB_TABS },
+  { label: 'Recaps', tabs: ['recaps'] }
 ];
 // Habits: one Measure for every chart. Consumption: grams or bags, bucketed by day/week/month
 // (absent = auto from the tracked span, time.ts autoBy).
@@ -584,7 +585,7 @@ export const BREW_FILTERS_ON: Record<Tab, readonly BrewFilterKey[]> = {
   overview: BREW_FILTER_KEYS, leaderboards: BREW_FILTER_KEYS, insights: BREW_FILTER_KEYS,
   habits: ['dripper', 'brewDose'], consumption: ['dripper', 'brewDose'], records: ['dripper', 'water', 'brewDose'],
   milestones: [], onhand: [], spend: [], sweetspots: [], brewing: ['dripper', 'filter', 'water'], pours: ['dripper', 'filter', 'water'],
-  water: ['dripper', 'filter', 'brewDose', 'brewTemp'], gear: ['water', 'brewDose', 'brewTemp']
+  water: ['dripper', 'filter', 'brewDose', 'brewTemp'], gear: ['water', 'brewDose', 'brewTemp'], recaps: []
 };
 // Gear's Dripper and Filter selects pick trophy cards, so they are offered there but filter nothing (activeBrewFilters).
 export const GEAR_PICKS: readonly BrewFilterKey[] = ['dripper', 'filter'];

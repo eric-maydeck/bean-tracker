@@ -45,6 +45,11 @@ describe('/insights load', () => {
     expect(d.tileKinds.brews).toBe('total');
   });
 
+  it('tab=recaps: no recap to show redirects to the bare page; the tab flag follows', () => {
+    expect(run().recapsTab).toBe(false);
+    expect(() => run('?tab=recaps&range=all')).toThrowError(expect.objectContaining({ status: 307, location: '/insights?range=all' }));
+  });
+
   it('reads the URL and counts the period', () => {
     seed([[today, 15]]);
     const d = run('?range=ALL&ratings=all');
