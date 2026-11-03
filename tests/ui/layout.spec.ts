@@ -877,7 +877,7 @@ export const STATES: State[] = [
         // A word unit follows its number with a space (1,522 brews); a symbol unit does not.
         for (const bigEl of await sl.locator('.big:has(.unit)').all()) {
           const [txt, unit] = await bigEl.evaluate((e) => [e.textContent ?? '', [...e.querySelectorAll('.unit')].at(-1)!.textContent ?? '']);
-          if (/^[A-Za-z]{2,}/.test(unit)) expect(txt, `slide ${i} word unit spaced`).toMatch(new RegExp(`\\S ${unit}$`));
+          if (/^[A-Za-z]{2,}/.test(unit)) expect(txt, `slide ${i} word unit spaced`).toMatch(new RegExp(`\\S[ \u00a0]${unit}$`));
         }
         // A big value's unit never breaks mid-word: it sits on one line.
         for (const u of await sl.locator('.big .unit:not(.gap)').all()) expect(await u.evaluate((e) => e.getClientRects().length), `slide ${i} unit on one line`).toBe(1);
