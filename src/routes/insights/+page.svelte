@@ -937,7 +937,7 @@
 {:else if s.tab === 'onhand' && data.onHand}
   {#snippet runwayChart()}
     <RunwayChart t={data.onHand!} today={data.today} paces={[...(s.range === 'all' ? [] : [{ name: paceName, days: data.onHand!.runway.days }]), { name: 'all-time pace', days: data.onHand!.runwayAll.days }]} />
-    <p class="chart-note">{#if perPersonOn}Per person divides the pace, so the same shelf lasts longer. {/if}<a href={link('/insights?tab=insights&chart=insights-what-if#insights-what-if')}>Plan it: What if</a></p>
+    <p class="chart-note">{#if perPersonOn}Per person divides the pace, so the same shelf lasts longer.{' '}{/if}<a href={link('/insights?tab=insights&chart=insights-what-if#insights-what-if')}>Plan it: What if</a></p>
   {/snippet}
   {#snippet runwayPanel()}{@render panel('Runway at your pace', RUNWAY, { paceDays: data.onHand!.runway.days, paceOut: data.onHand!.runway.days, pacePerDay: data.onHand!.runway.perDay, allDays: data.onHand!.runwayAll.days, allOut: data.onHand!.runwayAll.days, allPerDay: data.onHand!.runwayAll.perDay }, null, undefined, runwayChart)}{/snippet}
   <OnHand t={data.onHand} {link} runway={runwayPanel} {placeTip} unit={s.unit} waitBy={s.waitBy} {choose}>

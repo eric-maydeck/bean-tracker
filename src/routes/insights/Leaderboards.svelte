@@ -280,18 +280,13 @@
               {#each VIEWS as [v, label] (v)}<button aria-pressed={view === v} onclick={() => setView(b, v === 'list' ? undefined : (pick ?? 'time'))}>{label}</button>{/each}
             </div>
           </div>
-          <!-- Only where the band has columns to span (CSS hides it on a phone). Under List it keeps its place unseen, so the
-               switch and the List / Over time pick don't move when the view changes. -->
-          <button class="icon-button expand" class:idle={view !== 'time'} aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
-            disabled={view !== 'time'} aria-hidden={view !== 'time'} tabindex={view === 'time' ? undefined : -1}
-            onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>
         {/if}
       </div>
     </div>
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     {#if (b === 'varieties' || b === 'producers') && rows.length}
       {@const c = coverage[b]}
-      <p class="like-note">{#if b === 'varieties'}{rank === 'spend' || rank === 'ppg' ? 'A bag counts' : 'A brew counts'} toward each of its coffee's varieties. {/if}{c.with} of {c.of} bags{rank === 'spend' || rank === 'ppg' ? ' bought' : ''} have a {b === 'varieties' ? 'variety' : 'producer'}.</p>
+      <p class="like-note">{#if b === 'varieties'}{rank === 'spend' || rank === 'ppg' ? 'A bag counts' : 'A brew counts'} toward each of its coffee's varieties.{' '}{/if}{c.with} of {c.of} bags{rank === 'spend' || rank === 'ppg' ? ' bought' : ''} have a {b === 'varieties' ? 'variety' : 'producer'}.</p>
     {/if}
     <div class="board-body" class:time={view === 'time'}>
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap rows={rows.map((r) => ({ ...r, href: r.href && link(r.href) }))} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
@@ -307,6 +302,10 @@
           <!-- The chart fills the List's body height, so neither switching views nor Show all resizes the card (the legend grows
                inside it). -->
           <div class="time-chart">
+            <!-- In the chart's top-right corner, not the head: the head is the same in List and Over time and never wraps for it.
+                 Only where the band has columns to span (CSS hides it on a phone). -->
+            <button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
+              onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>
             <Chart type="line" labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
               series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height="fill" />
           </div>
@@ -449,19 +448,20 @@
   .board-band:has(.board.wide) {
     grid-auto-flow: dense;
   }
-  /* Expand / Shrink: only where the band has more than one column. */
+  /* Expand / Shrink (inside .time-chart, over its top-right corner): only where the band has more than one column. */
   .expand {
     display: none;
   }
   @media (min-width: 641px) {
     .expand {
       display: inline-flex;
+      position: absolute;
+      top: 0;
+      right: 0;
+      z-index: 1;
       width: 2.25rem;
       height: 2.25rem;
     }
-  }
-  .expand.idle {
-    visibility: hidden;
   }
   .low-switch {
     width: 2.25rem;
@@ -480,14 +480,14 @@
   .board-tools {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 2px;
   }
   .board-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-2);
+    gap: var(--space-1);
     margin-bottom: var(--space-3);
     min-height: 2.25rem;
   }
@@ -506,11 +506,13 @@
   .board-head :global(.tab-group button) {
     min-height: 2.25rem;
     margin: 0;
+    padding-inline: 0.3rem;
   }
   @media (max-width: 640px) {
     .board-head :global(.tab-group button) {
       min-height: 44px;
       min-width: 44px;
+      padding-inline: 0.15rem;
     }
   }
   /* A value's tip (TextTip) sits over the row's stretched link, so hover and tap reach it (ui-rules 41). */

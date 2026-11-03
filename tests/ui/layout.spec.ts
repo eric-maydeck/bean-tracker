@@ -6083,10 +6083,24 @@ export const STATES: State[] = [
     act: async (page) => {
       for (const b of ['varieties', 'producers']) await expect(page.locator(`[data-board="${b}"] .board-row:not(.placeholder)`).first()).toBeVisible();
       await expect(page.locator('[data-board="varieties"] .board-row', { hasText: 'Gesha' }).first()).toBeVisible();
-      await expect(page.locator('[data-board="varieties"] .like-note')).toHaveText(/\d+ of \d+ bags have a variety\./);
+      await expect(page.locator('[data-board="varieties"] .like-note')).toHaveText(/toward each of its coffee's varieties\. \d+ of \d+ bags have a variety\./);
       await expect(page.locator('[data-board="producers"] .like-note')).toHaveText(/\d+ of \d+ bags have a producer\./);
       await expectEqualBoardHeights(page);
     } },
+  // No board head wraps: its children share a top, in List and Over time, Lowest first on and off, for every board.
+  ...[false, true].flatMap((low) => [false, true].map((time) => ({
+    name: `insights-board-head-one-row-${low ? 'low' : 'high'}-${time ? 'time' : 'list'}`,
+    path: () => `/insights?tab=leaderboards&range=all${time ? '&views=process-time,roast-time,water-time,dripper-time,filter-time,grinder-time' : ''}${low ? '&low=roasters,coffees,origins,varieties,producers,process,roast,water,dripper,filter,grinder' : ''}`,
+    act: async (page: Page) => {
+      await expect(page.locator('.board-head')).toHaveCount(11);
+      // One row: the title and every tool are centred on the same line (they're align-items: center, so tops differ by height).
+      const mids = await page.locator('.board-head').evaluateAll((heads) => heads.map((h) => {
+        const m = [...h.querySelectorAll(':scope > *, .board-tools > *')].filter((c) => c.getBoundingClientRect().width > 0).map((c) => { const r = c.getBoundingClientRect(); return [c.className || c.tagName, Math.round(r.x), Math.round(r.width), r.top + r.height / 2] as const; });
+        const ys = m.map((c) => c[3]);
+        return [h.querySelector('h2')?.textContent ?? '', Math.max(...ys) - Math.min(...ys), Math.round(h.getBoundingClientRect().width) + ' ' + JSON.stringify(m.map((c) => c.slice(0, 3)))] as const;
+      }));
+      for (const [title, spread, boxes] of mids) expect(spread, `${title}: head wraps ${boxes}`).toBeLessThanOrEqual(2);
+    } }))),
   { name: 'insights-board-producers-spend', path: () => '/insights?tab=leaderboards&range=all&rank=spend',
     act: async (page) => {
       for (const b of ['varieties', 'producers']) {
