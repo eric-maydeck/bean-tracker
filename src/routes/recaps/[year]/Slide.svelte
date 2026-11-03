@@ -7,8 +7,8 @@
   import RecapViz from './RecapViz.svelte';
 
   // One fact: a full-screen story slide (`section`), or a tile on the poster (`tile`).
-  let { slide, year, people, preview, index, total, tile = false }: {
-    slide: Slide; year: number; people?: People; preview: boolean; index: number; total: number; tile?: boolean;
+  let { slide, year, people, preview, index, total, tile = false, span = 1, cover = false, shareHref }: {
+    slide: Slide; year: number; people?: People; preview: boolean; index: number; total: number; tile?: boolean; span?: number; cover?: boolean; shareHref?: string;
   } = $props();
 
   // Dark ink on the light tones, the site's text color on cream; cream text everywhere else.
@@ -17,24 +17,24 @@
 </script>
 
 {#snippet body()}
-  <p class="lead"><CoffeeName text={slide.lead} /></p>
+  {#if slide.lead}<p class="lead"><CoffeeName text={slide.lead} /></p>{/if}
   <p class="big" class:long={slide.big.length > 7}><CoffeeName text={slide.big} />{#if slide.unit} <span class="unit">{slide.unit}</span>{/if}</p>
   <p class="context"><CoffeeName text={slide.context} /></p>
   {#if slide.viz}<div class="vizwrap"><RecapViz viz={slide.viz} /></div>{/if}
   {#if slide.traits}
     <ul class="traits">{#each slide.traits as t (t.label)}<li><b>{t.value}</b> {t.label}</li>{/each}</ul>
   {/if}
-  <a class="more" href={slide.link.href} aria-label="See more in {slide.link.section}">{slide.link.section} <span aria-hidden="true">→</span></a>
+  {#if !cover}<a class="more" href={slide.link.href} aria-label="See more in {slide.link.section}">{slide.link.section} <span aria-hidden="true">→</span></a>{/if}
 {/snippet}
 
 {#if tile}
-  <article class="tone tile" class:wide={slide.wide} data-id={slide.id} data-tone={tone} style:--bg="var(--t-{tone})" style:--fg={INK[tone]}>{@render body()}</article>
+  <article class="tone tile" class:wide={span > 1} style:grid-column="span {span}" data-id={slide.id} data-tone={tone} style:--bg="var(--t-{tone})" style:--fg={INK[tone]}>{@render body()}</article>
 {:else}
-  <section class="tone slide" id={slide.id} data-id={slide.id} data-tone={tone} aria-label="{index + 1} of {total}" style:--bg="var(--t-{tone})" style:--fg={INK[tone]}>
-    {#if index === 0}<a class="home" href="/">Bean Tracker</a>{/if}
-    <div class="share"><ShareButton path={recapHref(year, { slide: slide.id, people, ...(preview && { preview: true as const }) })} /></div>
+  <section class="tone slide" class:cover id={slide.id} data-id={slide.id} data-tone={tone} aria-label="{index + 1} of {total}" style:--bg="var(--t-{tone})" style:--fg={INK[tone]}>
+    {#if cover}<a class="home" href="/">Bean Tracker</a>{/if}
+    <div class="share"><ShareButton path={shareHref ?? recapHref(year, { slide: slide.id, people, ...(preview && { preview: true as const }) })} /></div>
     <div class="inner">{@render body()}</div>
-    {#if index === 0}<p class="hint">Swipe or tap to continue</p>{/if}
+    {#if cover}<p class="hint">Swipe or tap to continue</p>{/if}
   </section>
 {/if}
 
@@ -56,10 +56,11 @@
 
   /* Story slides: one fact per screen. */
   .slide { height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; display: grid; place-items: center; padding: 56px 20px 28px; cursor: pointer; }
-  .inner { width: 100%; max-width: 34rem; display: flex; flex-direction: column; gap: clamp(14px, 2.6vh, 32px); }
+  .inner { width: 100%; max-width: 34rem; display: flex; flex-direction: column; gap: clamp(12px, 1.6vh, 28px); }
   .slide .big { font-size: clamp(4.5rem, min(24vw, 12vh), 8.5rem); }
   .slide .big.long { font-size: clamp(3rem, min(15vw, 8vh), 5.6rem); }
   .slide[data-id='you'] .big { font-size: clamp(2.6rem, 11vw, 4.2rem); line-height: 1; }
+  .slide[data-id='cover'] .big { font-size: clamp(3.4rem, min(19vw, 11vh), 7rem); line-height: 1; }
   .slide .lead { font-size: clamp(1.15rem, 2.1vh, 1.4rem); }
   .slide .context { font-size: clamp(1.15rem, 2.1vh, 1.4rem); }
   .slide .vizwrap { margin-top: clamp(6px, 2vh, 24px); font-size: clamp(0.9rem, 1.7vh, 1.1rem); }
@@ -68,18 +69,32 @@
   .share :global(.share-button) { min-height: 44px; padding: 0 14px; border: 1.5px solid currentColor; border-radius: 22px; background: transparent; color: inherit; font: 600 0.9rem var(--font-sans); }
   .hint { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; font-size: 0.85rem; opacity: 0.7; margin: 0; }
   .home { position: absolute; top: 30px; left: 12px; min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; color: inherit; font-weight: 600; font-size: 0.9rem; }
+  /* Phone portrait and tablet: with a chart, the block fills the slide: text on top, the chart centered in what is
+     left, the link at the bottom (no dead band). */
+  @media (max-width: 899px) and (min-height: 641px) {
+    .slide { padding-top: 84px; }
+    .slide .vizwrap :global(svg) { max-height: 46vh; }
+    .inner:has(.vizwrap) { height: 100%; max-height: 52rem; }
+    .slide .vizwrap :global(.sbar) { height: clamp(34px, 6.5vh, 64px); }
+    .slide .vizwrap :global(.split) { gap: clamp(10px, 2.4vh, 28px); }
+    .slide .vizwrap { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+    .slide .vizwrap :global(.hlist) { row-gap: clamp(8px, 1.8vh, 18px); }
+  }
   /* Desktop: text left, the chart or traits right, the whole block centered and filling the slide. */
   @media (min-width: 900px) {
-    .inner { max-width: min(76rem, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); column-gap: clamp(32px, 5vw, 96px); row-gap: clamp(12px, 2vh, 24px); align-items: center; align-content: center; }
+    .inner { max-width: min(84rem, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); column-gap: clamp(32px, 4vw, 80px); row-gap: clamp(12px, 2vh, 24px); align-items: center; align-content: center; }
     .inner:not(:has(.vizwrap, .traits)) { max-width: 46rem; grid-template-columns: minmax(0, 1fr); }
     .inner > .lead, .inner > .big, .inner > .context, .inner > .more { grid-column: 1; }
     .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
-    .slide .big { font-size: clamp(5rem, min(11vw, 22vh), 11rem); }
-    .slide .big.long { font-size: clamp(3.5rem, min(7vw, 14vh), 7rem); }
+    .slide .big { font-size: clamp(5rem, min(13vw, 26vh), 13rem); }
+    .slide .big.long { font-size: clamp(3.5rem, min(8vw, 16vh), 8rem); }
     .slide[data-id='you'] .big { font-size: clamp(2.6rem, min(5vw, 10vh), 5rem); }
-    .slide .lead { font-size: clamp(1.15rem, 1.6vw, 1.6rem); }
-    .slide .context { font-size: clamp(1.15rem, 1.6vw, 1.6rem); max-width: 38ch; }
-    .slide .vizwrap { font-size: clamp(1rem, 1.4vw, 1.4rem); margin-top: 0; }
+    .slide[data-id='cover'] .big { font-size: clamp(4rem, min(10vw, 20vh), 9rem); }
+    .slide[data-id='cover'] .inner { max-width: 60rem; }
+    .slide .lead { font-size: clamp(1.15rem, 2vw, 2rem); }
+    .slide .context { font-size: clamp(1.15rem, 1.9vw, 1.9rem); max-width: 38ch; }
+    .slide .vizwrap { font-size: clamp(1.05rem, 1.7vw, 1.7rem); margin-top: 0; }
+    .slide .vizwrap :global(.hlist) { row-gap: clamp(10px, 2.4vh, 26px); }
     .slide .traits { gap: 28px 32px; }
     .slide .traits b { font-size: clamp(1.7rem, 3vw, 3rem); }
   }
@@ -94,8 +109,10 @@
     .inner { max-width: 56rem; display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; row-gap: 8px; align-items: center; }
     .inner > .lead, .inner > .big, .inner > .context { grid-column: 1; }
     .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
-    .slide .vizwrap :global(svg) { max-height: 58vh; }
+    .slide .vizwrap :global(svg) { max-height: 72vh; }
     .slide[data-id='you'] .big { font-size: clamp(2rem, 13vh, 3rem); }
+    .slide[data-id='cover'] .big { font-size: clamp(2.6rem, 17vh, 4.5rem); }
+    .slide[data-id='cover'] .inner { max-width: 40rem; grid-template-columns: minmax(0, 1fr); }
     .slide .traits { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; }
     .slide .traits b { font-size: 1.4rem; }
   }
@@ -108,12 +125,12 @@
   .tile .lead { font-size: 1rem; }
   .tile .context { font-size: 0.95rem; max-width: 46ch; }
   .tile .vizwrap { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; padding-top: 4px; }
-  .tile .vizwrap :global(.hlist) { flex: 1; align-content: space-evenly; }
+  .tile .vizwrap :global(.hlist) { flex: 1; grid-auto-rows: minmax(1.7em, 1fr); max-height: 16rem; }
+  .tile .vizwrap :global(.hlist .track) { height: clamp(10px, 45%, 22px); }
   .tile .more { font-size: 0.85rem; padding: 6px 0 2px; align-self: flex-start; }
   .tile[data-id='you'] .traits { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
-  /* Wide tiles span 2 only in the 3-column grid; with 1 or 2 columns they would sit alone on a row. */
+  /* The poster picks each tile's span (so every row closes); a tile spanning 2+ puts its chart beside its text. */
   @media (min-width: 900px) {
-    .tile.wide { grid-column: span 2; }
     .tile.wide:has(.vizwrap) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); grid-template-rows: auto auto 1fr auto; column-gap: 24px; }
     .tile.wide:has(.vizwrap) > * { grid-column: 1; }
     .tile.wide:has(.vizwrap) > .vizwrap { grid-column: 2; grid-row: 1 / -1; align-self: center; padding: 0; }

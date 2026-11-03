@@ -688,8 +688,6 @@ async function previewTags(page: Page, path: string): Promise<Record<string, str
   }
 }
 
-const oneColumn = (page: Page) => page.locator('.recap-grid').evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length === 1);
-
 export const STATES: State[] = [
   // Year in review: /recaps/<Y> is the current local year's recap, an admin's ?preview=1; Y - 1 is the thin public seed year.
   { name: 'recaps-cover', path: () => `/recaps/${recapYear()}?preview=1`,
@@ -702,8 +700,13 @@ export const STATES: State[] = [
         expect(b.y, `${sel} inside the slide`).toBeGreaterThanOrEqual(box.y - 1);
         expect(b.y + b.height, `${sel} inside the slide`).toBeLessThanOrEqual(box.y + box.height + 1);
       }
+      await expect(slide).toHaveAttribute('id', 'cover');
       await expect(slide.getByRole('link', { name: 'Bean Tracker' })).toBeVisible();
       await expect(slide.getByText('Swipe or tap to continue')).toBeVisible();
+      await expect(slide.locator('.big')).toHaveText(`${recapYear()} in coffee`);
+      // The home link and hint live on the cover only.
+      await expect(page.getByRole('link', { name: 'Bean Tracker' })).toHaveCount(1);
+      await expect(page.getByText('Swipe or tap to continue')).toHaveCount(1);
       await expect(page.locator('.bottom-tabs')).toBeHidden();
       await expect(page.locator('nav.site-nav')).toHaveCount(0);
       // Keyword-colored names and signed deltas take the slide's text color on a tone.
@@ -802,15 +805,40 @@ export const STATES: State[] = [
   { name: 'recaps-poster', path: () => `/recaps/${recapYear()}?preview=1#poster`,
     act: async (page) => {
       await expect(page.locator('.recap-progress.solid')).toHaveCount(1);
-      const facts = await page.locator('.recap-reel > section.slide').count();
+      const facts = await page.locator('.recap-reel > section.slide:not(.cover)').count();
       await expect(page.locator('.recap-grid > article.tile')).toHaveCount(facts);
-      await expectGridRowsFull(page, '.recap-grid', await oneColumn(page)); // one tile per row is the 1-column layout
+      await expectGridRowsFull(page, '.recap-grid', true); // a lone full-width tile is allowed; holes and ragged ends are not
+      // The personality tile is the last tile and takes the grid's full width.
+      const [youW, gridW] = await page.locator('.recap-grid').evaluate((g) => {
+        const y = g.lastElementChild as HTMLElement, cs = getComputedStyle(g);
+        return [y.getBoundingClientRect().width, g.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)];
+      });
+      expect(await page.locator('.recap-grid > :last-child').getAttribute('data-id')).toBe('you');
+      expect(Math.abs(youW - gridW), 'you tile spans the full grid width').toBeLessThanOrEqual(1);
+    } },
+  { name: 'recaps-turn-legend', path: () => `/recaps/${recapYear()}?preview=1`,
+    act: async (page) => {
+      // A legend swatch matches the segment it names (a.k.a. no white dot for a green bar).
+      const bad = await page.locator('.recap-reel > section.slide .split').evaluateAll((splits) => splits.flatMap((sp) =>
+        [...sp.querySelectorAll('.legend i.seg')].flatMap((i) => {
+          const k = ['a', 'b', 'c'].find((c) => i.classList.contains(c));
+          const seg = k && sp.querySelector(`.sbar .seg.${k}`);
+          return seg && getComputedStyle(i).backgroundColor !== getComputedStyle(seg).backgroundColor ? [k] : [];
+        })));
+      expect(bad, 'legend swatches off their segment colour').toEqual([]);
     } },
   { name: 'recaps-poster-thin', path: () => `/recaps/${recapYear() - 1}#poster`,
     act: async (page) => {
-      const facts = await page.locator('.recap-reel > section.slide').count();
+      const facts = await page.locator('.recap-reel > section.slide:not(.cover)').count();
       await expect(page.locator('.recap-grid > article.tile')).toHaveCount(facts);
-      await expectGridRowsFull(page, '.recap-grid', await oneColumn(page)); // one tile per row is the 1-column layout
+      await expectGridRowsFull(page, '.recap-grid', true); // a lone full-width tile is allowed; holes and ragged ends are not
+      // The personality tile is the last tile and takes the grid's full width.
+      const [youW, gridW] = await page.locator('.recap-grid').evaluate((g) => {
+        const y = g.lastElementChild as HTMLElement, cs = getComputedStyle(g);
+        return [y.getBoundingClientRect().width, g.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)];
+      });
+      expect(await page.locator('.recap-grid > :last-child').getAttribute('data-id')).toBe('you');
+      expect(Math.abs(youW - gridW), 'you tile spans the full grid width').toBeLessThanOrEqual(1);
     } },
   { name: 'recaps-poster-share', viewports: 'two', path: () => `/recaps/${recapYear() - 1}#poster`,
     act: async (page) => {

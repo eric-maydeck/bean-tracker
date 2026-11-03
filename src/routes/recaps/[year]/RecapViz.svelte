@@ -7,6 +7,12 @@
   let { viz }: { viz: Viz } = $props();
 
   const cut = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
+  // SVG text can't wrap: up to two lines of n characters, broken at a space, the second cut only if it still overflows.
+  const wrap = (s: string, n: number): string[] => {
+    if (s.length <= n) return [s];
+    const at = s.lastIndexOf(' ', n);
+    return at < 1 ? [cut(s, n)] : [s.slice(0, at), cut(s.slice(at + 1), n)];
+  };
 
   // bars
   const BW = 300, BH = 90;
@@ -50,11 +56,13 @@
   // dots
   const dots = $derived.by(() => {
     if (viz.kind !== 'dots') return null;
-    const stack = !!viz.stack, lx = stack ? 8 : 104, rowH = stack ? 36 : 22, thin = stack ? 0 : 20, best = Math.max(...viz.rows.map((r) => r.value));
+    const stack = !!viz.stack, lx = stack ? 8 : 104, n = stack ? 46 : 17, thin = stack ? 0 : 20, best = Math.max(...viz.rows.map((r) => r.value));
+    const lines = viz.rows.map((r) => wrap(r.label, n)), extra = lines.some((l) => l.length > 1) ? (stack ? 11 : 6) : 0;
+    const rowH = (stack ? 36 : 22) + extra, top = (stack ? 26 : 12) + extra;
     const x = (v: number) => lx + ((v - viz.lo) / (viz.hi - viz.lo)) * (300 - 46 - lx);
     return { stack, lx, h: viz.rows.length * rowH + (stack ? 6 : 16), rows: viz.rows.map((r, i) => {
-      const y = i * rowH + (stack ? 26 : 12);
-      return { ...r, y, cx: x(r.value), best: r.value === best, thin: r.brews < thin, label: cut(r.label, stack ? 48 : 18), tip: `${r.label}: ${r.value.toFixed(2)} avg over ${r.brews} brews` };
+      const y = i * rowH + top;
+      return { ...r, y, cx: x(r.value), best: r.value === best, thin: r.brews < thin, lines: lines[i], tip: `${r.label}: ${r.value.toFixed(2)} avg over ${r.brews} brews` };
     }) };
   });
 </script>
@@ -120,13 +128,15 @@
     {/each}
     {#each cal.months as m (m.x)}<text class="ax" x={m.x} y={7 * CS + 12}>{m.m}</text>{/each}
   </svg>
-  <p class="legend key"><span><i class="c streak"></i>Streak</span><span><i class="c on"></i>Brewed</span><span><i class="c miss"></i>No brew</span></p>
+  <p class="legend key"><span><i class="key streak"></i>Streak</span><span><i class="key on"></i>Brewed</span><span><i class="key miss"></i>No brew</span></p>
 {:else if viz.kind === 'dots' && dots}
   <svg class="viz dots" viewBox="0 0 300 {dots.h}" role="img">
     {#each dots.rows as r, i (i)}
       <g class:hi={r.best} class:thin={r.thin}>
         <title>{r.tip}</title>
-        <text class="ax" x="0" y={dots.stack ? r.y - 12 : r.y + 4}>{r.label}</text>
+        {#each r.lines as ln, k (k)}
+          <text class="ax" x="0" y={(dots.stack ? r.y - 12 : r.y + 4 - (r.lines.length - 1) * 5.5) + (k - (r.lines.length - 1) * (dots.stack ? 1 : 0)) * 11}>{ln}</text>
+        {/each}
         <line x1={dots.lx} x2="262" y1={r.y} y2={r.y} />
         <circle cx={r.cx} cy={r.y} r={r.best ? 7 : 5} />
         <text x="300" y={r.y + 4} text-anchor="end">{r.value.toFixed(2)}</text>
@@ -171,9 +181,9 @@
   .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: 0.8rem; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend.key { margin-top: 6px; }
-  .legend i.c { width: 10px; height: 10px; border-radius: 2px; background: var(--fg); }
-  .legend i.c.on { opacity: 0.4; }
-  .legend i.c.miss { background: none; border: 1px solid var(--fg); opacity: 0.6; box-sizing: border-box; }
+  .legend i.key { width: 10px; height: 10px; border-radius: 2px; background: var(--fg); }
+  .legend i.key.on { opacity: 0.4; }
+  .legend i.key.miss { background: none; border: 1px solid var(--fg); opacity: 0.6; box-sizing: border-box; }
   .legend i.seg { width: 12px; height: 12px; padding: 0; border-radius: 3px; }
   @container (max-width: 360px) { .seg b { display: none; } }
   /* Narrow homes (tiles, 360 phones): a multi-value list puts its bar on its own line under the label and values. */
