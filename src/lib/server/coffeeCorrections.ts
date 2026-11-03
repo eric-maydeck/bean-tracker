@@ -166,7 +166,17 @@ export const COFFEE_CORRECTIONS: CoffeeFixBatch[] = [
       { coffee_id: 88, roaster: 'Sweet Bloom', field: 'region', from: 'Gakenke District', to: 'Gakenke District, Northern Province' }, // parent added
       { coffee_id: 113, roaster: 'H&S', field: 'region', from: 'Nyamagabe', to: 'Nyamagabe, Southern Province' }, // parent added
       { coffee_id: 175, roaster: 'H&S', field: 'region', from: 'Nyamasheke', to: 'Nyamasheke, Western Province' }, // parent added
-      { coffee_id: 216, roaster: 'Shoebox', field: 'region', from: 'Nyaruguru', to: 'Nyaruguru, Southern Province' } // parent added
+      { coffee_id: 216, roaster: 'Shoebox', field: 'region', from: 'Nyaruguru', to: 'Nyaruguru, Southern Province' }, // parent added
+      { coffee_id: 301, roaster: 'H&S', field: 'region', from: 'Palestina', to: 'Palestina, Huila' }, // parent added: Palestina is in Huila
+      { coffee_id: 322, roaster: 'Ceto', field: 'region', from: 'Palestina', to: 'Palestina, Huila' }, // parent added: Palestina is in Huila
+      { coffee_id: 323, roaster: 'Ceto', field: 'region', from: 'Palestina', to: 'Palestina, Huila' }, // parent added: Palestina is in Huila
+      { coffee_id: 310, roaster: 'Noumenon Coffee', field: 'region', from: 'Danche', to: 'Danche, Gedeb, Gedeo' }, // parents added: Danche is in Gedeb woreda, Gedeo zone
+      { coffee_id: 114, roaster: 'H&S', field: 'region', from: 'Bani Ofair, Maghrib Ans', to: 'Bani Ofair, Maghrib Ans, Dhamar' }, // parent added: Dhamar governorate
+      { coffee_id: 272, roaster: 'Scenery', field: 'region', from: 'San Jerónimo de San Pedro, Brunca', to: 'San Jerónimo, Pérez Zeledón, San José' }, // rewritten: district, canton, province
+      { coffee_id: 47, roaster: 'The Picky Chemist', field: 'region', from: 'Cañas Verdes', to: 'Cañas Verdes, Boquete, Chiriquí' }, // parents added: district Boquete, province Chiriquí
+      { coffee_id: 29, roaster: 'The Picky Chemist', field: 'region', from: 'Bench Maji, Oma', to: 'Oma, Bench Maji' }, // order: part first, zone last
+      { coffee_id: 81, roaster: 'The Picky Chemist', field: 'region', from: 'Bench Maji, Oma', to: 'Oma, Bench Maji' }, // order: part first, zone last
+      { coffee_id: 80, roaster: 'The Picky Chemist', field: 'region', from: 'Bench Maji, Surma', to: 'Surma, Bench Maji' } // order only: the zone is the top level (the 2021 zone split is unsettled in sources)
     ],
     websites: [],
     tavilyCalls: []

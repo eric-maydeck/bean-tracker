@@ -105,6 +105,9 @@ describe('coffee_corrections_2026_11_b', () => {
       expect(f.field).toBe('region');
       expect(f.roaster).toBeTruthy();
       expect(formatOriginField('region', String(f.to))).toBe(f.to);
+      expect(f.to).not.toBe(f.from);
     }
+    const ids = b.fixes.map((f) => f.coffee_id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
