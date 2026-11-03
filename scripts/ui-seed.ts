@@ -270,7 +270,7 @@ const priorYear = Number(daysAgo(0).slice(0, 4)) - 1;
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-prior-${k}`);
   for (let j = 0; j < 10; j++) { // 4 days for one bag, 4 for the other, 2-3 brews a day
     const d = String(2 + 3 * (j % 4) + k).padStart(2, '0'), h = 7 + Math.round((j * 14) / 9);
-    timed.run(`${priorYear}-06-${d}T${String(h).padStart(2, '0')}:${String(10 + j).padStart(2, '0')}:00.000Z`, `bean-prior-${k}`, k ? 'm3' : 'm1', 7 + (j % 3) * 0.5, null, now);
+    timed.run(`${priorYear}-06-${d}T${String(h).padStart(2, '0')}:${String(10 + j).padStart(2, '0')}:00.000Z`, `bean-prior-${k}`, k ? 'm3' : 'm1', null, null, now); // unrated: the rated-brew lab/sweet-spot states stay as they were
   }
 });
 // Gear showcase: stored details for a dripper (many fields + photo on a backdrop) and a grinder (two fields), and a grinder

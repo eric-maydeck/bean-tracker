@@ -109,8 +109,8 @@ export async function checkLayout(page: Page): Promise<void> {
           const b = els[j].getBoundingClientRect();
           // >1px overlap: stacked lines of a wrapped caption touch at a sub-pixel edge, not a row.
           const sameRow = a.top < b.bottom - 1 && b.top < a.bottom - 1;
-          // (.see-all: the See all note's tap targets on two wrapped lines, likewise.) Mode words on two lines of a wrapping caption (.stat-label.wrap): their 44px tap areas overlap, they are not a row.
-          if (sameRow && Math.abs(a.top - b.top) > 8 && els[i].closest('.stat-label.wrap, .see-all') && els[i].closest('.stat-label.wrap, .see-all') === els[j].closest('.stat-label.wrap, .see-all')) continue;
+          // (.see-all: the See all note's tap targets on two wrapped lines, likewise; nav.ruler: a column of overlapping ticks, a year of months in a short landscape.) Mode words on two lines of a wrapping caption (.stat-label.wrap): their 44px tap areas overlap, they are not a row.
+          if (sameRow && Math.abs(a.top - b.top) > 8 && els[i].closest('.stat-label.wrap, .see-all, nav.ruler') && els[i].closest('.stat-label.wrap, .see-all, nav.ruler') === els[j].closest('.stat-label.wrap, .see-all, nav.ruler')) continue;
           if (sameRow && (Math.abs(a.top - b.top) > 1 || Math.abs(a.height - b.height) > 1)) {
             out.push(`row misaligned (top ${a.top.toFixed(0)}/${b.top.toFixed(0)}, height ${a.height.toFixed(0)}/${b.height.toFixed(0)}): ` +
               `${describe(els[i])} vs ${describe(els[j])}`);

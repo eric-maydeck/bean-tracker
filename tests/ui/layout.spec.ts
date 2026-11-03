@@ -6340,7 +6340,8 @@ export const STATES: State[] = [
       await gotoReady(page, page.url().replace('&rank=brews', ''));
       await expect(page.locator('.board .chart-note').filter({ hasText: /Dashed: \w+s with no data/ }).first()).toBeVisible();
     } },
-  { name: 'insights-board-time-size', path: () => '/insights?tab=leaderboards&range=all&avg=raw',
+  // range=6m, not all: all now spans the seed's prior year, so the chart goes monthly and the new drippers' gaps vanish.
+  { name: 'insights-board-time-size', path: () => '/insights?tab=leaderboards&range=6m&avg=raw',
     act: async (page) => {
       // List and Over time are the same card size; Show all (Over time) only adds lines: no card changes height.
       const row = '.board-band:has(.board[data-board=dripper]) > .board';
