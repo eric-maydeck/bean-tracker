@@ -704,6 +704,10 @@ export const STATES: State[] = [
       await expect(slide.getByText('Swipe or tap to continue')).toBeVisible();
       await expect(page.locator('.bottom-tabs')).toBeHidden();
       await expect(page.locator('nav.site-nav')).toHaveCount(0);
+      // Keyword-colored names and signed deltas take the slide's text color on a tone.
+      const off = await page.locator('.recap-reel > section.slide').evaluateAll((sl) => sl.flatMap((s) => [...s.querySelectorAll('.coffee-name, .ink-better, .ink-worse')]
+        .filter((e) => getComputedStyle(e).color !== getComputedStyle(s).color).map((e) => e.textContent)));
+      expect(off, 'names/deltas off the slide text color').toEqual([]);
     } },
   { name: 'recaps-slide-nav', path: () => `/recaps/${recapYear()}?preview=1`,
     act: async (page) => {

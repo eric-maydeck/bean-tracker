@@ -40,6 +40,8 @@
 
 <style>
   .tone { --fg: #faf7f2; background: var(--bg); color: var(--fg); position: relative; overflow: hidden; }
+  /* Coffee-name keyword colors and signed deltas are unreadable on a tone: the slide's own text color. */
+  .tone :global(.coffee-name), .tone :global(.ink-better), .tone :global(.ink-worse) { color: inherit !important; }
   .lead { font-size: 1.15rem; font-weight: 600; margin: 0; opacity: 0.9; }
   .big { font-family: var(--font-display); font-weight: 700; line-height: 0.92; letter-spacing: -0.035em; margin: 0.1em 0 0.2em -0.04em;
     font-variant-numeric: lining-nums; overflow-wrap: anywhere; }

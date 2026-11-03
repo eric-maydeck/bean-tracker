@@ -9,7 +9,7 @@
   --color-label: #5c3a24; /* "Espresso": bold labels (record tile names), apart from accent links */
   --t-espresso: #5c3a24; --t-red: #b23b3b; --t-sun: #f5c518; --t-plum: #8f456b; --t-brown: #8a5a3b;
   --t-green: #4a7c59; --t-blue: #2e6f9e; --t-teal: #2f7d6b; --t-amber: #e8a95c; --t-violet: #6a5acd;
-  --t-gold: #a8650a; --t-ink: #2b211b; --t-cream: #f2ebe1; /* recap slide tones */
+  --t-gold: #a2600a; --t-ink: #2b211b; --t-cream: #f2ebe1; /* recap slide tones */
   --color-accent-contrast: #ffffff;
   --button-shade: #000000;
   --color-urgent: #c0392b;

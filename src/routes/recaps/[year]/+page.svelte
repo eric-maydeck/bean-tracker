@@ -55,7 +55,7 @@
 <svelte:head><title>{r.poster.title}</title></svelte:head>
 <svelte:window onkeydown={key} />
 
-<nav class="recap-progress" data-layout-ignore="story progress: one segment per slide, so each is narrower than 44px and shares the top edge with the share button (the mockup)" class:solid={onPoster()} style:--pfg={pfg || undefined} aria-label="Slides">
+<nav class="recap-progress" data-layout-ignore="story progress segments; ui-rules rule 4 exemption pending user ruling (recaps gate 1)" class:solid={onPoster()} style:--pfg={pfg || undefined} aria-label="Slides">
   {#each ids as id, i (id)}
     <button type="button" class:done={i <= cur} aria-current={i === cur ? 'true' : undefined} aria-label="Go to slide {i + 1}" onclick={() => go(i)}><span></span></button>
   {/each}
