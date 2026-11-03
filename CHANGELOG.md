@@ -1,3 +1,31 @@
+# [1.107.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.106.0...v1.107.0) (2026-11-03)
+
+
+### Bug Fixes
+
+* **coffees:** inca gesha is SL9
+* **coffees:** list icons in one row at the far right
+* **coffees:** more region rows in the region batch
+* **data:** consolidate producer, variety and farm spellings
+* **data:** region spellings and top levels for the map tip
+* **insights:** a hover map tip the pointer lands on stays open until pinned
+* **insights:** board heads stay one row, expand moves into the chart, notes keep their space
+* **insights:** lowest first previews, blank varieties and tie order
+* **insights:** lowest first reads lowMove, tighter compare and prune states
+* **insights:** orange and inca gesha are their own variety rows
+* **insights:** singular hidden-groups note, expand button clear of the plot, sturdier head checks
+
+
+### Features
+
+* **bq:** patch uses the roaster image when a coffee has none
+* **insights:** lowest first on every leaderboard
+* **insights:** the hidden-groups note offers the way back to the default Score
+* **insights:** top regions in the world map tip
+* **insights:** varieties and producers leaderboards
+* **insights:** variety and producer records
+* **insights:** variety and producer records follow their board, boards offer the hidden groups
+
 # [1.106.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.105.0...v1.106.0) (2026-11-02)
 
 
