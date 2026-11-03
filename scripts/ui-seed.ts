@@ -261,6 +261,18 @@ for (let k = 0; k < 18; k++) {
     ['Hambela, Guji', 'Gedeb, Gedeo', 'Sidama'][k % 3], c.id);
   for (let j = 0; j < 7; j++) timed.run(atLocal(first - j, 8, 30), `bean-dial-${k}`, slow ? 'm3' : 'm1', (slow ? (j < 3 ? 5 : 9) : 7.3) + up, null, now);
 }
+// Thin prior year (recaps): 2 bags, 2 roasters, 20 brews on 8 June days of last local year, 07:00-21:00. Makes /recaps/<Y-1>
+// public and gives the thin case. Pushes dataStart back a year (range=all spans it).
+const priorYear = Number(daysAgo(0).slice(0, 4)) - 1;
+[['Prior Roasters', 'Ethiopia Yore Natural', 'Ethiopia'], ['Yesteryear Coffee', 'Colombia Old Crop', 'Colombia']].forEach(([roaster, name, origin], k) => {
+  const c = coffee({ roaster, coffee_name: name, origin, status: 'archive', roast_date: `${priorYear}-05-25` });
+  bean.run(`bean-prior-${k}`, name, roaster, `${priorYear}-05-25`, 250, 22, 0, `${priorYear}-06-01T08:00:00.000Z`, now);
+  db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-prior-${k}`);
+  for (let j = 0; j < 10; j++) { // 4 days for one bag, 4 for the other, 2-3 brews a day
+    const d = String(2 + 3 * (j % 4) + k).padStart(2, '0'), h = 7 + Math.round((j * 14) / 9);
+    timed.run(`${priorYear}-06-${d}T${String(h).padStart(2, '0')}:${String(10 + j).padStart(2, '0')}:00.000Z`, `bean-prior-${k}`, k ? 'm3' : 'm1', 7 + (j % 3) * 0.5, null, now);
+  }
+});
 // Gear showcase: stored details for a dripper (many fields + photo on a backdrop) and a grinder (two fields), and a grinder
 // with a 2-line name and no rated brew (one unrated brew on the unlinked decaf bean, so no coffee page's brew count moves).
 const GEAR_IMG = 'data:image/svg+xml,' + encodeURIComponent(
