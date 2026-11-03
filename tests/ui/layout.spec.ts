@@ -752,6 +752,35 @@ async function expectNoMidWord(page: Page, sel: string, fit?: string, words: str
     expect(await check(), `${sel} with "${word}"`).toEqual([]);
   }
 }
+// Chart value labels never touch a mark or each other (user, gate 2): every SVG <text> box in the recap charts is clear of
+// the other texts, of bars/circles (boxes), and of every line/polyline (sampled along its stroke).
+async function expectChartLabelsClear(page: Page, scope = '.slide, .tile') {
+  const found = await page.evaluate((scope) => {
+    const out: string[] = [];
+    let charts = 0;
+    for (const svg of document.querySelectorAll(`:is(${scope}) svg.viz`)) {
+      charts++;
+      // A text's box is its ink: the central 70% of the line box (ascender/descender slack is not ink).
+      const texts = [...svg.querySelectorAll('text')].map((t) => { const b = (t as SVGGraphicsElement).getBBox(); return { t, b: { x: b.x, width: b.width, y: b.y + b.height * 0.15, height: b.height * 0.7 } as SVGRect }; }).filter((x) => x.b.width > 0);
+      const hit = (a: DOMRect | SVGRect, b: DOMRect | SVGRect) => a.x < b.x + b.width - 0.5 && b.x < a.x + a.width - 0.5 && a.y < b.y + b.height - 0.5 && b.y < a.y + a.height - 0.5;
+      texts.forEach((a, i) => {
+        for (const b of texts.slice(i + 1)) if (hit(a.b, b.b)) out.push(`"${a.t.textContent}" overlaps "${b.t.textContent}" (${svg.getAttribute('class')})`);
+        for (const m of svg.querySelectorAll('rect, circle')) if (hit(a.b, (m as SVGGraphicsElement).getBBox())) out.push(`"${a.t.textContent}" overlaps a ${m.tagName} (${svg.getAttribute('class')})`);
+        for (const l of svg.querySelectorAll('line, polyline')) {
+          const g = l as unknown as SVGGeometryElement;
+          const len = g.getTotalLength();
+          for (let d = 0; d <= len; d += 2) {
+            const p = g.getPointAtLength(d);
+            if (p.x >= a.b.x && p.x <= a.b.x + a.b.width && p.y >= a.b.y && p.y <= a.b.y + a.b.height) { out.push(`"${a.t.textContent}" sits on a ${l.tagName} (${svg.getAttribute('class')})`); break; }
+          }
+        }
+      });
+    }
+    return { out, charts };
+  }, scope);
+  expect(found.charts, 'no chart to check').toBeGreaterThan(0);
+  expect(found.out).toEqual([]);
+}
 const LONG_NAMES = ['Origami', 'Kalita Wave 185', 'Hario Switch', 'Chemex Eight Cup Classic', 'Supercalifragilistic', '22–30d', '22-30d', '114–118d+'];
 
 export const STATES: State[] = [
@@ -811,6 +840,8 @@ export const STATES: State[] = [
         expect(r, `slide ${i}`).toMatchObject({ belowProgress: true, apart: true, hits: 0, inView: true });
       }
     } },
+  { name: 'recaps-chart-labels', path: () => `/recaps/${recapYear()}?preview=1`,
+    act: async (page) => { await expectChartLabelsClear(page); } },
   { name: 'recaps-no-midword', path: () => `/recaps/${recapYear() - 1}`,
     act: async (page) => {
       await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context, .hlist .k');

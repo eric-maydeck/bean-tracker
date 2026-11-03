@@ -26,11 +26,12 @@
   });
 
   // spark
-  const SW = 300, SH = 70, SP = 8;
+  // The first and last value sit outside the plot (left and right of their points), so no label is ever on the line.
+  const SW = 300, SH = 70, SP = 8, SM = 46;
   const spark = $derived.by(() => {
     if (viz.kind !== 'spark') return null;
     const { values: v } = viz, min = Math.min(...v), max = Math.max(...v);
-    return v.map((x, i): [number, number] => [SP + (i * (SW - 2 * SP)) / Math.max(1, v.length - 1), SP + 6 + (1 - (x - min) / (max - min || 1)) * (SH - 2 * SP - 6)]);
+    return v.map((x, i): [number, number] => [v.length === 1 ? SW / 2 : SM + (i * (SW - 2 * SM)) / (v.length - 1), SP + 6 + (1 - (x - min) / (max - min || 1)) * (SH - 2 * SP - 6)]);
   });
 
   // hlist
@@ -89,10 +90,12 @@
     {#each spark as [cx, cy], i (i)}
       <circle {cx} {cy} r={i === 0 || i === spark.length - 1 ? 5 : 3}><title>{viz.labels[i]}: {viz.texts[i]}</title></circle>
     {/each}
-    <text x={spark[0][0]} y={spark[0][1] - 10} text-anchor="start">{viz.texts[0]}</text>
-    {#if spark.length > 1}<text x={spark.at(-1)![0]} y={spark.at(-1)![1] - 10} text-anchor="end">{viz.texts.at(-1)}</text>{/if}
-    <text class="ax" x={SP} y={SH + 14}>{viz.labels[0]}</text>
-    {#if spark.length > 1}<text class="ax" x={SW - SP} y={SH + 14} text-anchor="end">{viz.labels.at(-1)}</text>{/if}
+    {#if spark.length > 1}
+      <text x={spark[0][0] - 10} y={spark[0][1] + 4} text-anchor="end">{viz.texts[0]}</text>
+      <text x={spark.at(-1)![0] + 10} y={spark.at(-1)![1] + 4} text-anchor="start">{viz.texts.at(-1)}</text>
+    {:else}<text x={spark[0][0]} y={spark[0][1] - 12} text-anchor="middle">{viz.texts[0]}</text>{/if}
+    <text class="ax" x={spark[0][0]} y={SH + 14} text-anchor="middle">{viz.labels[0]}</text>
+    {#if spark.length > 1}<text class="ax" x={spark.at(-1)![0]} y={SH + 14} text-anchor="middle">{viz.labels.at(-1)}</text>{/if}
   </svg>
 {:else if viz.kind === 'hlist' && hl}
   <ol class="viz hlist" class:multi={hl.cols > 1} style:--vcols={hl.cols}>
