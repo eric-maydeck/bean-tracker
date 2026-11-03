@@ -9,6 +9,9 @@ import { countsForRating } from '$lib/server/insights/ratings';
 import type { Board } from '$lib/insightsUrl';
 import { pick, RECORDS } from '$lib/server/insights/records';
 import { addDays } from '$lib/server/insights/time';
+import { sweetSpotsTab } from '$lib/server/insights/lab';
+import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
+import { recipeBand, restBand } from '$lib/server/insights/pours';
 import type { FactDef, Viz } from './types';
 import type { YearCtx } from './year';
 
@@ -309,5 +312,126 @@ const price: FactDef = {
   }
 };
 
-export const POOL: FactDef[] = [total, streak, hour, decaf, roaster, origin, producer, producerRoasters, turn, record, price];
+// ---- Brewing: recipe, ratio, rest ------------------------------------------------------------
+type Month = { m: number; bs: BrewFact[] };
+const byMonth = (bs: readonly BrewFact[]): Month[] => {
+  const g = new Map<number, BrewFact[]>();
+  for (const b of bs) { const m = Number(b.localDate.slice(5, 7)) - 1; (g.get(m) ?? g.set(m, []).get(m)!).push(b); }
+  return [...g].sort((a, b) => a[0] - b[0]).map(([m, bs]) => ({ m, bs }));
+};
+const avg = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
+const spark = (months: Month[], v: (m: Month) => number, text: (v: number) => string): Viz => {
+  const values = months.map(v);
+  return { kind: 'spark', values, labels: months.map((x) => MON[x.m]), texts: values.map(text) };
+};
+// Mean of `f` per month for months with at least `min` values.
+const monthMeans = (y: YearCtx, f: (b: BrewFact) => number | null, min: number) =>
+  byMonth(y.brews).map(({ m, bs }) => ({ m, bs: bs.filter((b) => f(b) !== null) })).filter((x) => x.bs.length >= min);
+
+const recipe: FactDef = {
+  id: 'recipe', category: 'brewing',
+  run: (y) => {
+    const band = recipeBand(y.pours.facts, y.pours.recipes);
+    const label = (b: BrewFact) => { const l = band(b)?.label; return l && l !== 'No recipe' ? l : null; };
+    const months = byMonth(y.brews).filter((x) => x.bs.length >= 20);
+    if (months.length < 3) return null;
+    const share = (x: Month, r: string) => x.bs.filter((b) => label(b) === r).length / x.bs.length;
+    const names = new Set(y.brews.map(label).filter((l): l is string => l !== null));
+    let best: { r: string; rise: number; peak: Month; first: number; top: number } | null = null;
+    for (const r of [...names].sort()) {
+      const shares = months.map((x) => share(x, r)), top = shares.indexOf(Math.max(...shares));
+      const rise = shares[top] - shares[0];
+      if (!best || rise > best.rise) best = { r, rise, peak: months[top], first: shares[0], top: shares[top] };
+    }
+    if (!best || best.rise < 0.3) return null;
+    const { r, peak } = best;
+    const counts = new Map<string, number>();
+    for (const b of y.brews) { const l = label(b); if (l) counts.set(l, (counts.get(l) ?? 0) + 1); }
+    const [topName, topN] = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+    let context = `of ${MONTH(peak.m)}'s brews, from ${pct(best.first)} in ${MONTH(months[0].m)}.`;
+    if (topName !== r) context += ` ${topName} is still the year's most-used recipe: ${pct(topN / y.brews.length)} of all brews (${fmtInt(topN)}).`;
+    return {
+      id: 'recipe', category: 'brewing', lead: `${r} took over:`, big: pct(best.top), context,
+      viz: spark(months, (x) => Math.round(share(x, r) * 100), (v) => `${v}%`),
+      link: { tab: 'Lab', section: 'Lab · Pours', href: seeMoreHref(y.year, 'pours') },
+      wide: true, card: { big: pct(best.top), label: `${r} brews` }, score: best.rise
+    };
+  }
+};
+
+// The simplest of halves to fifths within 3 points of `s`: "2 in 3"; null when none is close.
+const simpleFraction = (s: number) => {
+  let best: [number, number] | null = null;
+  for (let m = 2; m <= 5; m++) for (let k = 1; k < m; k++) if (Math.abs(k / m - s) <= 0.03 && (!best || Math.abs(k / m - s) < Math.abs(best[0] / best[1] - s) - 1e-9)) best = [k, m];
+  return best;
+};
+
+const ratio: FactDef = {
+  id: 'ratio', category: 'brewing',
+  run: (y) => {
+    const withRatio = y.brews.filter((b) => b.ratio !== null);
+    if (withRatio.length < 30) return null;
+    const c = new Map<number, number>();
+    for (const b of withRatio) { const r = Math.round(b.ratio!); c.set(r, (c.get(r) ?? 0) + 1); }
+    const [mode, n] = [...c].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+    const share = n / withRatio.length;
+    if (share < 0.4) return null;
+    const f = simpleFraction(share);
+    let context = `1g of coffee to ${mode}g of water, in ${fmtInt(n)} of ${fmtInt(withRatio.length)} brews.`;
+    let viz: Viz | undefined;
+    const tm = monthMeans(y, (b) => b.tempC, 10);
+    if (tm.length >= 3) {
+      const t = tm.map((x) => avg(x.bs.map((b) => b.tempC!))), drift = t.at(-1)! - t[0];
+      if (Math.abs(drift) >= 1) {
+        context += ` And the kettle ${drift < 0 ? 'cooled off' : 'warmed up'} all year: ${t[0].toFixed(1)}°C on average in ${MONTH(tm[0].m)}, ${t.at(-1)!.toFixed(1)}°C in ${MONTH(tm.at(-1)!.m)}.`;
+        viz = spark(tm, (x) => avg(x.bs.map((b) => b.tempC!)), (v) => `${v.toFixed(1)}°C`);
+      }
+    }
+    return {
+      id: 'ratio', category: 'brewing',
+      lead: f ? `${f[0]} in ${f[1]} brews used a` : `${pct(share)} of brews used a`, big: `1:${mode}`, unit: 'brew ratio', context, ...(viz && { viz }),
+      link: { tab: 'Lab', section: 'Lab · Brewing', href: seeMoreHref(y.year, 'brewing', { temp: 'exact' }) },
+      card: { big: `1:${mode}`, label: 'brew ratio' }, score: share
+    };
+  }
+};
+
+const dLabel = (l: string) => l.replace(/(\d+)(\+)?$/, '$1d$2');
+
+const rest: FactDef = {
+  id: 'rest', category: 'brewing',
+  run: (y) => {
+    const link = { tab: 'Lab', section: 'Lab · Sweet spots', href: seeMoreHref(y.year, 'sweetspots') };
+    const spot = sweetSpotsTab(y.scored, y.bags, { period: y.period, ratings: 'current', grinder: null, filters: {}, all: y.scored }).cards.find((c) => c.key === 'rest')?.spot;
+    if (spot?.verdict === 'win' && spot.best) {
+      // Plain mean rating per rest band over the settled ratings (tier 1's band values are same-bag deltas).
+      const rated = y.scored.filter((b) => countsForRating(b, 'current'));
+      const stat = (label: string) => { const r = rated.filter((b) => restBand(b)?.label === label); return r.length ? { label, mean: avg(r.map((b) => b.rating!)), brews: r.length } : null; };
+      const best = stat(spot.best.label), vs = stat(spot.usual.label !== spot.best.label ? spot.usual.label : spot.next?.label ?? '');
+      if (best && vs && best.mean > vs.mean) {
+        const rows = spot.bands.map((b) => stat(b.label)).filter((x) => x !== null).map((x) => ({ label: dLabel(x.label), value: x.mean, brews: x.brews }));
+        const vals = rows.map((r) => r.value);
+        return {
+          id: 'rest', category: 'brewing', lead: 'Rest sweet spot', big: dLabel(best.label),
+          context: `${best.mean.toFixed(2)} average since ${MONTH(Number(RATINGS_SETTLED_FROM.slice(5, 7)) - 1)}, against ${vs.mean.toFixed(2)} at ${dLabel(vs.label)}.`,
+          viz: { kind: 'dots', rows, lo: Math.floor(Math.min(...vals) * 10) / 10, hi: Math.ceil(Math.max(...vals) * 10) / 10 },
+          link, card: { big: dLabel(best.label), label: 'rest sweet spot' }, score: Math.min(1, (best.mean - vs.mean) / 0.5)
+        };
+      }
+    }
+    const ms = monthMeans(y, (b) => b.restDays, 10);
+    if (ms.length < 2) return null;
+    const v = ms.map((x) => avg(x.bs.map((b) => b.restDays!))), shift = v.at(-1)! - v[0];
+    if (Math.abs(shift) < 14) return null;
+    const d = `${Math.round(v.at(-1)!)}d`;
+    return {
+      id: 'rest', category: 'brewing', lead: 'Your beans now wait', big: d,
+      context: `on average, ${shift > 0 ? 'up' : 'down'} from ${Math.round(v[0])}d in ${MONTH(ms[0].m)}.`,
+      viz: spark(ms, (x) => Math.round(avg(x.bs.map((b) => b.restDays!))), (n) => `${n}d`),
+      link, card: { big: d, label: 'average rest' }, score: Math.min(1, Math.abs(shift) / 60)
+    };
+  }
+};
+
+export const POOL: FactDef[] = [total, streak, hour, decaf, roaster, origin, producer, producerRoasters, turn, record, price, recipe, ratio, rest];
 export const fact = (id: string) => POOL.find((f) => f.id === id)!;

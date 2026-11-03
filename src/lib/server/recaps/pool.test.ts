@@ -21,6 +21,9 @@ const days = (from: string, n: number, hh = '09') => Array.from({ length: n }, (
 // 1,489 brews Feb 9 to Oct 28, May the peak at 226; hours cycle with 1pm three times in 18.
 const MONTHLY = [8, 177, 221, 226, 142, 175, 190, 170, 180];
 const HOURS = [7, 8, 9, 10, 11, 12, 13, 13, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+const SHARE = [0, 1, 3, 4, 5, 7, 6, 7, 7]; // recipe 1's tenths of each month's brews; recipe 2 takes the last two tenths
+const TEMP = [92.3, 92.1, 91.2, 91.5, 90.8, 90.9, 90.8, 90.6, 90.6];
+const pourFacts = new Map<number, any>();
 const rich = (() => {
   const out: BrewFact[] = [];
   MONTHLY.forEach((n, mi) => {
@@ -30,8 +33,11 @@ const rich = (() => {
       const mm = String((out.length * 7) % 60).padStart(2, '0');
       out.push(brew({
         at: `2026-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(h).padStart(2, '0')}:${mm}`,
-        dose: 17.89, waterG: 293.5, decaf: h >= 19 && out.length % 20 !== 0
+        dose: 17.89, waterG: 293.5, decaf: h >= 19 && out.length % 20 !== 0,
+        ratio: out.length % 3 ? 17 : 15, tempC: TEMP[mi], restDays: 30 + mi * 8
       }));
+      const t = out.length % 10, nb = out.at(-1)!;
+      if (t < SHARE[mi] || t >= 8) pourFacts.set(nb.id, { recipeId: t >= 8 ? 2 : 1, reading: null });
     }
   });
   return out.sort((a, b) => a.localTime.localeCompare(b.localTime));
@@ -65,7 +71,8 @@ const shelf = (() => {
   if (bb.roaster === other.roaster) other.roaster = 'Elsewhere', brews.forEach((b) => b.coffeeId === 187 && (b.roaster = 'Elsewhere'));
   return { brews, bags };
 })();
-const full = (o: Partial<YearCtx> = {}) => ctx(shelf.brews, { bags: shelf.bags, ...o });
+const RECIPES = [{ id: 1, name: 'Standard' }, { id: 2, name: 'Shoebox QC' }];
+const full = (o: Partial<YearCtx> = {}) => ctx(shelf.brews, { bags: shelf.bags, pours: { facts: pourFacts, recipes: RECIPES }, ...o } as Partial<YearCtx>);
 
 describe('total', () => {
   it('counts, kg, litres, peak month', () => {
@@ -229,6 +236,43 @@ describe('coffees facts', () => {
     const some = days('2026-03-01', 12).map((b, i) => ({ ...b, coffeeId: 1, costPerBrew: i < 9 ? 2 : null }));
     expect(fact('price').run(ctx(some, { bags: shelf.bags }))).toBeNull();
     expect(fact('price').run(ctx(some.map((b) => ({ ...b, costPerBrew: 2 })), { bags: shelf.bags }))).not.toBeNull();
+  });
+});
+
+describe('recipe, ratio, rest', () => {
+  it('recipe: the biggest riser, with the year-long leader when different', () => {
+    const s = fact('recipe').run(full())!;
+    expect(s.lead).toBe('Standard took over:');
+    expect(s.big).toBe('70%');
+    expect(s.context).toMatch(/^of \w+'s brews, from 10% in March\./);
+    expect(s.viz).toMatchObject({ kind: 'spark' });
+    expect(s.link.href).toMatch(/tab=pours/);
+  });
+  it('recipe: null without matches, with few months or a small rise', () => {
+    expect(fact('recipe').run(ctx(rich, { pours: { facts: new Map(), recipes: [] } } as any))).toBeNull();
+    expect(fact('recipe').run(ctx(days('2026-03-01', 25), { pours: { facts: pourFacts, recipes: RECIPES } } as any))).toBeNull();
+  });
+  it('ratio: 1:17 brew ratio; temperature sentence only with a 1.0C drift', () => {
+    const s = fact('ratio').run(full())!;
+    expect(`${s.big} ${s.unit}`).toBe('1:17 brew ratio');
+    expect(s.lead).toBe('2 in 3 brews used a');
+    expect(s.context).toMatch(/^1g of coffee to 17g of water, in [\d,]+ of 1,489 brews\. And the kettle cooled off all year: 92\.1°C on average in March, 90\.6°C in October\.$/);
+    expect(s.viz).toMatchObject({ kind: 'spark' });
+    const flat = rich.map((b) => ({ ...b, tempC: 91 }));
+    const f = fact('ratio').run(ctx(flat))!;
+    expect(f.context).not.toMatch(/°C/);
+    expect(f.viz).toBeUndefined();
+    expect(fact('ratio').run(ctx(days('2026-03-01', 29).map((b) => ({ ...b, ratio: 17 }))))).toBeNull();
+    expect(fact('ratio').run(ctx(rich.map((b, i) => ({ ...b, ratio: 10 + (i % 4) }))))).toBeNull(); // mode under 40%
+  });
+  it('rest: without a win, the backup copy; null under a 14 day shift', () => {
+    const s = fact('rest').run(ctx(rich))!;
+    expect(s.lead).toBe('Your beans now wait');
+    expect(s.big).toBe('94d');
+    expect(s.context).toBe('on average, up from 38d in March.');
+    expect(s.score).toBeCloseTo(56 / 60);
+    expect(fact('rest').run(ctx(rich.map((b) => ({ ...b, restDays: 40 }))))).toBeNull();
+    expect(fact('rest').run(ctx(rich.map((b, i) => ({ ...b, restDays: i % 2 ? 100 : 20, localDate: b.localDate.slice(0, 5) + (b.localDate.slice(5, 7) < '04' ? '02' : '03') + b.localDate.slice(7) }))))).toBeNull();
   });
 });
 
