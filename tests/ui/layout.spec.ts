@@ -688,6 +688,8 @@ async function previewTags(page: Page, path: string): Promise<Record<string, str
   }
 }
 
+const oneColumn = (page: Page) => page.locator('.recap-grid').evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length === 1);
+
 export const STATES: State[] = [
   // Year in review: /recaps/<Y> is the current local year's recap, an admin's ?preview=1; Y - 1 is the thin public seed year.
   { name: 'recaps-cover', path: () => `/recaps/${recapYear()}?preview=1`,
@@ -796,6 +798,28 @@ export const STATES: State[] = [
       const id = await second.getAttribute('id');
       await second.getByRole('button', { name: 'Share' }).click();
       await expect.poll(() => page.evaluate(() => (window as unknown as { shared?: string[] }).shared?.[0] ?? '')).toMatch(new RegExp(`/recaps/${recapYear()}\\?slide=${id}&preview=1$`));
+    } },
+  { name: 'recaps-poster', path: () => `/recaps/${recapYear()}?preview=1#poster`,
+    act: async (page) => {
+      await expect(page.locator('.recap-progress.solid')).toHaveCount(1);
+      const facts = await page.locator('.recap-reel > section.slide').count();
+      await expect(page.locator('.recap-grid > article.tile')).toHaveCount(facts);
+      await expectGridRowsFull(page, '.recap-grid', await oneColumn(page)); // one tile per row is the 1-column layout
+    } },
+  { name: 'recaps-poster-thin', path: () => `/recaps/${recapYear() - 1}#poster`,
+    act: async (page) => {
+      const facts = await page.locator('.recap-reel > section.slide').count();
+      await expect(page.locator('.recap-grid > article.tile')).toHaveCount(facts);
+      await expectGridRowsFull(page, '.recap-grid', await oneColumn(page)); // one tile per row is the 1-column layout
+    } },
+  { name: 'recaps-poster-share', viewports: 'two', path: () => `/recaps/${recapYear() - 1}#poster`,
+    act: async (page) => {
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'share', { configurable: true, value: async (d: { url: string }) => { ((window as unknown as { shared: string[] }).shared ??= []).push(d.url); } });
+      });
+      await reloadReady(page);
+      await page.locator('#poster header').getByRole('button', { name: 'Share' }).click();
+      await expect.poll(() => page.evaluate(() => (window as unknown as { shared?: string[] }).shared?.[0] ?? '')).toMatch(new RegExp(`/recaps/${recapYear() - 1}\\?slide=poster$`));
     } },
   // /coffees status is a multi-select: Backlog + Open lit together, the list is their union.
   { name: 'coffees-status-multi', viewports: 'two', path: () => '/coffees?status=backlog&status=open&view=cards',

@@ -87,7 +87,6 @@
 
   /* Poster tiles. */
   .tile { border-radius: 14px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 10px; }
-  .tile.wide { grid-column: span 2; }
   .tile .big { font-size: clamp(2.8rem, 5vw, 4.2rem); }
   .tile .big.long { font-size: clamp(2.2rem, 4vw, 3.2rem); }
   .tile[data-id='you'] .big { font-size: clamp(2rem, 4vw, 3rem); line-height: 1; }
@@ -96,7 +95,7 @@
   .tile .vizwrap { margin-top: auto; padding-top: 4px; }
   .tile.wide .vizwrap { max-width: 560px; }
   .tile .more { font-size: 0.85rem; padding: 6px 0 2px; align-self: flex-start; }
-  .tile[data-id='you'] { grid-column: 1 / -1; }
   .tile[data-id='you'] .traits { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
-  @media (max-width: 620px) { .tile.wide { grid-column: auto; } }
+  /* Wide tiles span 2 only in the 3-column grid; with 1 or 2 columns they would sit alone on a row. */
+  @media (min-width: 900px) { .tile.wide { grid-column: span 2; } }
 </style>

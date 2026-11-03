@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { replaceState } from '$app/navigation';
-  import { POSTER_ID, recapHref } from '$lib/recapsUrl';
-  import ShareButton from '$lib/components/ShareButton.svelte';
+  import { POSTER_ID } from '$lib/recapsUrl';
   import Slide from './Slide.svelte';
+  import Poster from './Poster.svelte';
 
   let { data } = $props();
   const r = $derived(data.recap);
@@ -66,21 +66,7 @@
   {#each r.slides as s, i (s.id)}
     <Slide slide={s} year={r.year} {people} preview={r.preview} index={i} total={ids.length} />
   {/each}
-  <section class="poster" id={POSTER_ID} aria-label="{ids.length} of {ids.length}">
-    <div class="page">
-      <header>
-        <h2>{r.poster.title}</h2>
-        <p>{r.poster.sub}</p>
-        <div class="posterShare"><ShareButton path={recapHref(r.year, { slide: POSTER_ID, people, ...(r.preview && { preview: true as const }) })} /></div>
-      </header>
-      <div class="poster-grid">
-        {#each r.slides as s, i (s.id)}
-          <Slide tile slide={s} year={r.year} {people} preview={r.preview} index={i} total={ids.length} />
-        {/each}
-      </div>
-      <footer>{r.poster.footer}</footer>
-    </div>
-  </section>
+  <Poster slides={r.slides} poster={r.poster} year={r.year} {people} preview={r.preview} total={ids.length} />
 </div>
 
 <style>
@@ -95,13 +81,4 @@
   .recap-progress button span { display: block; height: 4px; border-radius: 2px; background: currentColor; opacity: 0.3; transition: opacity 0.2s; }
   .recap-progress button.done span { opacity: 1; }
   .recap-progress button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
-
-  /* Last slide: every fact on one page (scrolls inside its snap area). */
-  .poster { min-height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; }
-  .page { max-width: 1240px; margin: 0 auto; padding: 84px 16px 48px; }
-  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; margin-bottom: 20px; }
-  h2 { font-family: var(--font-display); font-size: clamp(2.6rem, 9vw, 5.5rem); line-height: 0.9; letter-spacing: -0.035em; margin: 0; }
-  header p { margin: 0; color: var(--color-text-muted); max-width: 36ch; }
-  .poster-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); grid-auto-flow: dense; }
-  footer { margin-top: 20px; color: var(--color-text-muted); font-size: 0.9rem; }
 </style>
