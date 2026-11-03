@@ -767,6 +767,30 @@ export const STATES: State[] = [
         .filter((e) => getComputedStyle(e).color !== getComputedStyle(s).color).map((e) => e.textContent)));
       expect(off, 'names/deltas off the slide text color').toEqual([]);
     } },
+  // The top-left nav (Back, All recaps): 44px targets, clear of the progress segments, the Share button and the slide's text, on every slide.
+  { name: 'recaps-nav', path: () => `/recaps/${recapYear() - 1}`,
+    act: async (page) => {
+      const links = page.locator('.recap-nav a');
+      await expect(links).toHaveText(['Back', 'All recaps']);
+      await expect(links.nth(1)).toHaveAttribute('href', '/insights?tab=recaps');
+      const n = await page.locator('.recap-reel > section.slide').count();
+      for (let i = 0; i <= n; i++) {
+        await page.locator('.recap-progress button').nth(i).click();
+        await expect(page.locator('.recap-progress button').nth(i)).toHaveAttribute('aria-current', 'true');
+        await page.waitForTimeout(500);
+        const r = await page.evaluate(() => {
+          const rect = (e: Element) => e.getBoundingClientRect();
+          const navs = [...document.querySelectorAll('.recap-nav a')].map(rect);
+          const prog = rect(document.querySelector('.recap-progress')!).bottom;
+          const cur = [...document.querySelectorAll('.recap-reel > section')].find((s) => Math.abs(rect(s).top) < 4);
+          const others = cur ? [...cur.querySelectorAll('.share-button, .lead, .big, .names, .inner > *, .page > header > *')].map(rect).filter((x) => x.width > 0) : [];
+          const hit = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+          return { sizes: navs.map((x) => [Math.round(x.width), Math.round(x.height)]), belowProgress: navs.every((x) => x.top >= prog - 1), apart: navs[0].right <= navs[1].left, hits: others.filter((o) => navs.some((nv) => hit(nv, o))).length, inView: navs.every((x) => x.left >= 0 && x.right <= innerWidth) };
+        });
+        for (const [w, h] of r.sizes) { expect(h, `slide ${i}: nav target height`).toBeGreaterThanOrEqual(44); expect(w).toBeGreaterThanOrEqual(44); }
+        expect(r, `slide ${i}`).toMatchObject({ belowProgress: true, apart: true, hits: 0, inView: true });
+      }
+    } },
   { name: 'recaps-no-midword', path: () => `/recaps/${recapYear() - 1}`,
     act: async (page) => {
       await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context');

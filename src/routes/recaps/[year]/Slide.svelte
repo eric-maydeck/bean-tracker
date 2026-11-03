@@ -39,10 +39,9 @@
   <article class="tone tile" class:wide={spans[2] > 1} style:--s1={spans[0]} style:--s2={spans[1]} style:--s3={spans[2]} data-id={slide.id} data-tone={tone} style:--bg="var(--t-{tone})" style:--fg={INK[tone]}>{@render body()}</article>
 {:else}
   <section class="tone slide" class:cover id={slide.id} data-id={slide.id} data-tone={tone} aria-label="{index + 1} of {total}" style:--bg="var(--t-{tone})" style:--fg={INK[tone]}>
-    {#if cover}<a class="home" href="/">Bean Tracker</a>{/if}
     <div class="share"><ShareButton path={shareHref ?? recapHref(year, { slide: slide.id, people, ...(preview && { preview: true as const }) })} /></div>
     <div class="inner">{@render body()}</div>
-    {#if cover}<p class="hint">Swipe or tap to continue</p>{/if}
+    {#if cover}<footer class="cover-foot"><a class="home" href="/">Bean Tracker</a><p class="hint">Swipe or tap to continue</p></footer>{/if}
   </section>
 {/if}
 
@@ -86,8 +85,9 @@
   .slide .more { align-self: flex-start; font-size: 0.95rem; padding: 10px 0; }
   .share { position: absolute; top: 30px; right: 12px; z-index: 1; }
   .share :global(.share-button) { min-height: 44px; padding: 0 14px; border: 1.5px solid currentColor; border-radius: 22px; background: transparent; color: inherit; font: 600 0.9rem var(--font-sans); }
-  .hint { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; font-size: 0.85rem; opacity: 0.7; margin: 0; }
-  .home { position: absolute; top: 30px; left: 12px; min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; color: inherit; font-weight: 600; font-size: 0.9rem; }
+  .cover-foot { position: absolute; bottom: 8px; left: 12px; right: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .hint { text-align: right; font-size: 0.85rem; opacity: 0.7; margin: 0; }
+  .home { min-height: 44px; display: inline-flex; align-items: center; color: inherit; font-weight: 600; font-size: 0.9rem; }
   /* Phone portrait and tablet: one centered block; charts keep their natural size, rows and bars grow a little. */
   @media (max-width: 899px) and (min-height: 641px) {
     .slide { padding-top: 84px; }
@@ -119,7 +119,7 @@
     .slide .traits b { font-size: clamp(1.7rem, 3vw, 3rem); }
   }
   @media (max-height: 640px) {
-    .slide { padding: 52px 20px 30px; }
+    .slide { padding: 70px 20px 22px; }
     .inner { gap: 8px; }
     .slide .big { font-size: clamp(3rem, 18vh, 6rem); }
     .slide .big.long { font-size: clamp(2.4rem, 13vh, 4rem); }
@@ -132,12 +132,13 @@
     .inner { max-width: 56rem; display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; row-gap: 8px; align-items: center; }
     .inner > .lead, .inner > .big, .inner > .sub, .inner > .context { grid-column: 1; }
     .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 5; align-self: center; }
-    .slide .vizwrap :global(svg) { max-height: 62vh; }
-    .slide[data-id='you'] .big { font-size: clamp(2rem, 13vh, 3rem); }
+    .slide .vizwrap :global(svg) { max-height: 54vh; }
+    .slide .context { line-height: 1.3; }
+    .slide[data-id='you'] .big { font-size: clamp(1.6rem, 10vh, 2.4rem); }
     .slide[data-id='cover'] .big { font-size: clamp(2.6rem, 17vh, 4.5rem); }
     .slide[data-id='cover'] .inner { max-width: 40rem; grid-template-columns: minmax(0, 1fr); }
     .slide .traits { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; }
-    .slide .traits b { font-size: 1.4rem; }
+    .slide .traits b { font-size: 1.2rem; }
   }
 
   /* Poster tiles. */

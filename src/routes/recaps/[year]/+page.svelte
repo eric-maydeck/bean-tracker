@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { replaceState } from '$app/navigation';
+  import { afterNavigate, replaceState } from '$app/navigation';
   import { POSTER_ID, recapHref } from '$lib/recapsUrl';
   import type { Slide as SlideT } from '$lib/server/recaps/types';
   import Slide from './Slide.svelte';
@@ -18,6 +18,15 @@
   let reel: HTMLElement;
   let cur = $state(0);
   let pfg = $state('');
+
+  // Back is the browser's back whenever an in-app page came before (as the coffee page's Back); otherwise a plain link to the Recaps tab.
+  let cameFromApp = $state(false);
+  afterNavigate(({ from }) => { cameFromApp = !!from; });
+  function back(e: MouseEvent) {
+    if (!cameFromApp || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    history.back();
+  }
 
   const go = (i: number) => reel.children[Math.max(0, Math.min(ids.length - 1, i))].scrollIntoView();
   const onPoster = () => cur === ids.length - 1;
@@ -65,6 +74,11 @@
   {/each}
 </nav>
 
+<nav class="recap-nav" class:solid={onPoster()} style:--pfg={pfg || undefined} aria-label="Recaps">
+  <a href="/insights?tab=recaps" onclick={back}>Back</a>
+  <a href="/insights?tab=recaps">All recaps</a>
+</nav>
+
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <div class="recap-reel" bind:this={reel} onclick={tap} role="presentation">
   <Slide cover slide={cover} shareHref={recapHref(r.year, { people, ...(r.preview && { preview: true as const }) })} year={r.year} {people} preview={r.preview} index={0} total={ids.length} />
@@ -81,6 +95,11 @@
 
   /* Progress: one button per slide, a 4px bar inside a taller hit area. */
   .recap-progress { position: fixed; z-index: 3; top: 0; left: 0; right: 0; display: flex; gap: 4px; padding: 0 16px; color: var(--pfg, #faf7f2); }
+  /* Top left, under the progress segments, in the Share button's row. On the poster it is a solid bar over the scrolling tiles. */
+  .recap-nav { position: fixed; z-index: 3; top: 24px; left: 12px; display: flex; gap: 8px; color: var(--pfg, #faf7f2); }
+  .recap-nav.solid { top: 24px; left: 0; right: 0; padding: 4px 12px; background: var(--color-bg); }
+  .recap-nav a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border: 1.5px solid currentColor; border-radius: 22px; color: inherit; font: 600 0.9rem var(--font-sans); text-decoration: none; }
+  .recap-nav a:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
   .recap-progress.solid { background: var(--color-bg); }
   .recap-progress button { flex: 1; min-width: 0; height: 24px; padding: 10px 0; border: 0; background: none; cursor: pointer; color: inherit; }
   .recap-progress button span { display: block; height: 4px; border-radius: 2px; background: currentColor; opacity: 0.3; transition: opacity 0.2s; }
