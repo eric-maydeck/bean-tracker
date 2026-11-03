@@ -29,7 +29,8 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
-  import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
+  import { MediaQuery } from 'svelte/reactivity';
+  import { hiddenLine, BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
   import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
@@ -165,6 +166,8 @@
     : rank === 'like' ? 'No coffees with a like group to compare in this period.' : 'No brews in this period.';
   // A board the confident cutoff emptied says what its rows lacked, not "No brews" (every other Score shows every
   // rated group, each bag weighted by its brews).
+  // The Expand button (CSS: wider than 640) sits over the chart's corner; the plot starts below it.
+  const roomy = new MediaQuery('min-width: 641px');
   const need = (b: Board) => `${b === 'coffees' ? `${BAG_MIN_BREWS}+ rated brews` : `${POOLED_MIN_BAGS}+ bags and ${POOLED_MIN_BREWS}+ rated brews`}`;
   const boardEmpty = (b: Board) =>
     cut.includes(b) ? `No ${BOARD_NOUN[b]} with ${need(b)} in this period.` : emptyText();
@@ -172,7 +175,8 @@
   // with the way to show them (a Score that keeps every group, each with its Low confidence chip). Every card of a band
   // reserves the band's longest such line, so the cards stay level.
   const SHOW_ALL_AVG: Avg = 'adjusted';
-  const smallText = (b: Board) => (small[b] ? `Ranks ${BOARD_NOUN[b]} with ${need(b)}; ${small[b]} more are hidden. Show them` : '');
+  const smallLine = (b: Board) => hiddenLine(BOARD_NOUN[b], need(b), small[b] ?? 0);
+  const smallText = (b: Board) => (small[b] ? smallLine(b).lead + smallLine(b).show : '');
   const bandNote = (b: Board) => {
     const band = BANDS.find((x) => x.includes(b))!;
     return band.map(smallText).reduce((a, t) => (t.length > a.length ? t : a), '');
@@ -314,7 +318,7 @@
                  Only where the band has columns to span (CSS hides it on a phone). -->
             <button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
               onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>
-            <Chart type="line" labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
+            <Chart type="line" padTop={roomy.current ? 36 : 0} labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
               series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height="fill" />
           </div>
           <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === pool.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `${isLow ? 'lowest' : 'top'} ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
@@ -352,7 +356,7 @@
       {#if bandNote(b) && !unranked(b)}
         <!-- The hidden twin holds the band's longest line, so a card without the note (or with a shorter one) is as tall. -->
         <p class="chart-note small-note"><span class="twin" aria-hidden="true">{bandNote(b)}</span>
-          {#if small[b]}<span class="real">{smallText(b).slice(0, -'Show them'.length)}<button class="link-like" onclick={() => choose({ avg: rank === 'like' ? 'raw' : SHOW_ALL_AVG })}>Show them</button></span>{/if}</p>
+          {#if small[b]}<span class="real">{smallLine(b).lead}<button class="link-like" onclick={() => choose({ avg: rank === 'like' ? 'raw' : SHOW_ALL_AVG })}>{smallLine(b).show}</button></span>{/if}</p>
       {/if}
     </div>
     <!-- The footer exists only for a Show all button. A band with one reserves that space in its other cards (.has-foot,

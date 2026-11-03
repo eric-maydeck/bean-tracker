@@ -63,3 +63,9 @@ export const sampleField = (s: Sample, paired = false) => (s.small ? { sample: {
 // The one legend line, wherever a help popover explains the chip (TipBody renders the chip and the swatch).
 export const SAMPLE_NOTE = `Low confidence: under ${POOLED_MIN_BAGS} bags or ${POOLED_MIN_BREWS} rated brews (${BAG_MIN_BREWS} for one coffee).`;
 export const SAMPLE_HELP = `${CHIP_EXAMPLE}: ${SAMPLE_NOTE}`; // the chip's text follows its first ": " (LabHead, TipBody, ValueMap show the chip itself)
+
+// The Leaderboards line under a board the confident cutoff trimmed: `lead` reads the count, `show` is the link text.
+export const hiddenLine = (noun: string, need: string, n: number) => ({
+  lead: `Ranks ${noun} with ${need}; ${n} more ${n === 1 ? 'is' : 'are'} hidden. `,
+  show: n === 1 ? 'Show it' : 'Show them'
+});

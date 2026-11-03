@@ -191,6 +191,7 @@ describe('coffees under k2 / adjusted: shrunk by brews', () => {
     const hid = smallHidden(def, bs2, [], SEPT, 'rating', 'all', undefined);
     for (const b of BOARDS) expect(hid[b] ?? 0, b).toBe(def[b].length ? Math.max(0, raw[b].length - def[b].length) : 0);
     expect(Object.keys(hid), 'the fixture hides something').not.toHaveLength(0);
+    expect(hid.roasters).toBe(1); // Tiny: 1 bag, 2 brews, under min3
     expect(hid.coffees).toBeUndefined(); // Coffees' default k2 cuts nothing
     expect(smallHidden(raw, bs2, [], SEPT, 'rating', 'all', 'raw')).toEqual({});
     expect(smallHidden(def, bs2, [], SEPT, 'brews', 'all', undefined)).toEqual({});

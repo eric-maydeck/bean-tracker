@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pooled, single, sampleTip, sampleField, TIP_TITLE, chipLabel, SAMPLE_HELP, withinNoise, scoredLine } from './sample';
+import { pooled, single, sampleTip, sampleField, TIP_TITLE, chipLabel, SAMPLE_HELP, withinNoise, scoredLine, hiddenLine } from './sample';
 import { plainText } from './settingName';
 
 describe('withinNoise', () => {
@@ -76,5 +76,12 @@ describe('fractional bag counts (settle shares)', () => {
     expect(t.rows[0]).toEqual(['Bags', '0.8']);
     expect(chipLabel(pooled(5 / 6, 5))).toBe('Only 0.8 bags');
     expect(sampleTip(pooled(2, 5)).rows[0]).toEqual(['Bags', '2']);
+  });
+});
+
+describe('hiddenLine', () => {
+  it('one is singular, more are plural', () => {
+    expect(hiddenLine('producers', '3+ bags', 1)).toEqual({ lead: 'Ranks producers with 3+ bags; 1 more is hidden. ', show: 'Show it' });
+    expect(hiddenLine('producers', '3+ bags', 41)).toEqual({ lead: 'Ranks producers with 3+ bags; 41 more are hidden. ', show: 'Show them' });
   });
 });

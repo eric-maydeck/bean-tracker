@@ -6111,6 +6111,16 @@ export const STATES: State[] = [
         return [h.querySelector('h2')?.textContent ?? '', Math.max(...ys) - Math.min(...ys), Math.round(h.getBoundingClientRect().width) + ' ' + JSON.stringify(m.map((c) => c.slice(0, 3)))] as const;
       }));
       for (const [title, spread, boxes] of mids) expect(spread, `${title}: head wraps ${boxes}`).toBeLessThanOrEqual(2);
+      // The Lowest first switch and the List / Over time group keep their x and width when the view flips.
+      const rects = () => page.locator('.board').evaluateAll((cards) => Object.fromEntries(cards.flatMap((c) => {
+        const o = c.getBoundingClientRect(), r = (sel: string) => { const e = c.querySelector(sel)?.getBoundingClientRect(); return e ? [Math.round(e.x - o.x), Math.round(e.width)] : null; };
+        return c.querySelector('.group-field') ? [[c.getAttribute('data-board')!, [r('.low-switch'), r('.group-field')]]] : [];
+      })));
+      const before = await rects();
+      expect(Object.keys(before).length).toBeGreaterThan(0);
+      for (const b of Object.keys(before)) await page.locator(`[data-board="${b}"] .group-field button`).getByText(time ? 'List' : 'Over time', { exact: true }).click();
+      const after = await rects();
+      for (const [b, rs] of Object.entries(before)) rs.forEach((r, i) => { if (r) for (let k = 0; k < 2; k++) expect(Math.abs(r[k] - after[b][i]![k]), `${b} ${i ? 'view group' : 'low switch'} ${k ? 'width' : 'x'}: ${r} vs ${after[b][i]}`).toBeLessThanOrEqual(1); });
     } }))),
   { name: 'insights-board-producers-spend', path: () => '/insights?tab=leaderboards&range=all&rank=spend',
     act: async (page) => {

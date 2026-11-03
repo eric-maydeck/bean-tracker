@@ -65,6 +65,7 @@
     values,
     datasetLabel = '',
     height = 320,
+    padTop = 0,
     valueAxisMax,
     trendValues,
     trendLabel = '',
@@ -92,6 +93,7 @@
     labels: string[];
     values: (number | null)[];
     datasetLabel?: string;
+    padTop?: number; // px of empty space above the plot (a control laid over the corner)
     height?: number | 'fill'; // 'fill': the parent's height (a definite one)
     // Bar charts only: pins the value axis's upper bound so it doesn't
     // rescale as the data changes. A suggestedMax, not a hard max, so
@@ -470,7 +472,7 @@
         // The arrow everywhere on a chart: the help cursor is for help text and icons (user, 2026-10-26).
         // Leaves room on the right so the value-label plugin's text doesn't
         // get clipped when a bar's own value already reaches the chart edge.
-        layout: type === 'bar' && !vertical ? { padding: { right: 48 } } : undefined,
+        layout: type === 'bar' && !vertical ? { padding: { right: 48 } } : padTop ? { padding: { top: padTop } } : undefined,
         plugins: {
           legend: { display: legend || type === 'doughnut' || !!trendValues || series.length > 0, position: 'bottom', labels: { color: textColor } },
           ...({ valueLabels: { format } } as object), // the horizontal-bar value labels' text (valueLabelsPlugin)
