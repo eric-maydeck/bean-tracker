@@ -6,6 +6,7 @@
   import { invalidateAll } from '$app/navigation';
   import type { AlertRow } from '$lib/types';
   import AiNote from '$lib/components/AiNote.svelte';
+  import RecapBanner from '$lib/components/RecapBanner.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
   import { formatUpdated } from '$lib/formatDate';
@@ -217,6 +218,7 @@
 <main class={recapPage ? undefined : 'container'}>
   {@render children()}
   <Toast />
+  {#if data.recapReady && !recapPage}<RecapBanner year={data.recapReady} />{/if}
   {#if !recapPage}
   <footer class="site-footer">
     <AiNote email={data.contactEmail} />

@@ -412,3 +412,36 @@ test.describe('recipes', { tag: '@account' }, () => {
     await expect(p.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
   });
 });
+
+// The admin "recap ready" banner. ui-seed marks every open year seen, so delete the key to show it, then restore.
+// Geometry at the run's viewports (phone portrait + landscape in the push gate); dismiss records it.
+test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ page }) => {
+  const Y = new Date().getFullYear() - 1;
+  const key = `recap_seen_${Y}`;
+  const run = (sql: string) => { const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 }); try { db.prepare(sql).run(key); } finally { db.close(); } };
+  run(`DELETE FROM app_meta WHERE key = ?`);
+  try {
+    const banner = page.locator('.recap-banner');
+    for (const [width, height] of [[480, 909], [1003, 333]]) { // the phone, portrait and landscape
+      await page.setViewportSize({ width, height });
+      await gotoReady(page, '/coffees');
+      await expect(banner).toContainText(`Your ${Y} recap is ready`);
+      const b = (await banner.boundingBox())!;
+      expect(b.x).toBeGreaterThanOrEqual(0);
+      expect(b.x + b.width).toBeLessThanOrEqual(width);
+      expect(b.y).toBeGreaterThanOrEqual(0);
+      const tabs = page.locator('.bottom-tabs');
+      const limit = (await tabs.isVisible()) ? (await tabs.boundingBox())!.y : height;
+      expect(b.y + b.height).toBeLessThanOrEqual(limit + 0.5);
+      expect(b.height).toBeLessThanOrEqual(height / 3); // landscape: never covers most of the page
+      await checkLayout(page);
+    }
+    await page.getByRole('button', { name: 'Dismiss' }).click();
+    await expect(banner).toHaveCount(0);
+    await expect.poll(read(`SELECT value FROM app_meta WHERE key = ?`, key)).toEqual({ value: '1' });
+    await page.reload();
+    await expect(page.locator('.recap-banner')).toHaveCount(0);
+  } finally {
+    run(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`);
+  }
+});

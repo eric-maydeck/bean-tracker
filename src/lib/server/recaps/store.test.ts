@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from '$lib/server/db';
-import { brewYears, freezeIds, frozenIds, markRecapSeen, recapSeen } from './store';
+import { brewYears, freezeIds, frozenIds, markRecapSeen, recapReadyYear, recapSeen } from './store';
 
 describe('store', () => {
   it('freezeIds keeps the first write', () => {
@@ -17,5 +17,17 @@ describe('store', () => {
     for (const d of ['2024-03-01T10:00:00.000Z', '2026-01-05T10:00:00.000Z', '2026-02-05T10:00:00.000Z'])
       db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES (?, ?)`).run(d, d);
     expect(brewYears(db)).toEqual([2024, 2026]);
+  });
+  it('recapReadyYear: newest unseen open year, admin only', () => {
+    const db = createDb(':memory:');
+    expect(recapReadyYear(db, '2026-11-01', true)).toBeNull();
+    for (const d of ['2024-03-01T10:00:00.000Z', '2025-03-01T10:00:00.000Z', '2026-03-01T10:00:00.000Z'])
+      db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES (?, ?)`).run(d, d);
+    expect(recapReadyYear(db, '2026-11-01', true)).toBe(2025);
+    expect(recapReadyYear(db, '2026-11-01', false)).toBeNull();
+    markRecapSeen(db, 2025);
+    expect(recapReadyYear(db, '2026-11-01', true)).toBe(2024);
+    markRecapSeen(db, 2024);
+    expect(recapReadyYear(db, '2026-11-01', true)).toBeNull();
   });
 });
