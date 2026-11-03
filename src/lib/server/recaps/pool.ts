@@ -8,7 +8,10 @@ import { bagStats } from '$lib/server/insights/records';
 import { countsForRating } from '$lib/server/insights/ratings';
 import type { Board } from '$lib/insightsUrl';
 import { pick, RECORDS } from '$lib/server/insights/records';
-import { addDays } from '$lib/server/insights/time';
+import { addDays, daysBetween } from '$lib/server/insights/time';
+import { isFinished } from '$lib/server/insights/overview';
+import { spendTiles } from '$lib/server/insights/spend';
+import { wholeUsd } from '$lib/money';
 import { sweetSpotsTab } from '$lib/server/insights/lab';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
 import { recipeBand } from '$lib/server/insights/pours';
@@ -446,5 +449,102 @@ const rest: FactDef = {
   }
 };
 
-export const POOL: FactDef[] = [total, streak, hour, decaf, roaster, origin, producer, producerRoasters, turn, record, price, recipe, ratio, rest];
+// ---- Amounts and money, extra --------------------------------------------------------------------
+const busiestDay: FactDef = {
+  id: 'busiestDay', category: 'amounts',
+  run: (y) => {
+    const by = new Map<string, number>();
+    for (const b of y.brews) by.set(b.localDate, (by.get(b.localDate) ?? 0) + 1);
+    const [day, n] = [...by].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+    const usual = y.brews.length / by.size;
+    if (n < 5 || n < 2 * usual) return null;
+    const start = addDays(day, -dow(day));
+    const week = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+    const values = week.map((d) => Math.round((by.get(d) ?? 0) / y.per));
+    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const big = fmtInt(n / y.per);
+    return {
+      id: 'busiestDay', category: 'amounts',
+      lead: 'On your busiest day you brewed', big, unit: 'brews',
+      context: `That was ${md(day)}. A usual brew day has ${fmtInt(usual / y.per)}.`,
+      viz: { kind: 'bars', values, labels, tips: week.map((d, i) => `${labels[i]} ${md(d)}: ${values[i]} brews`), hi: dow(day), hiText: String(values[dow(day)]) },
+      link: { tab: 'Habits', section: 'Habits · Brew days', href: seeMoreHref(y.year, 'habits') },
+      perPerson: true, card: { big, label: 'brews on your busiest day' }, score: Math.min(1, n / usual / 4)
+    };
+  }
+};
+
+const bagsFinished: FactDef = {
+  id: 'bagsFinished', category: 'amounts',
+  run: (y) => {
+    const done = y.bags.filter((b) => isFinished(b) && b.firstBrew && b.lastBrew!.startsWith(`${y.year}-`));
+    if (done.length < 3) return null;
+    const fast = done.reduce((a, b) => (daysBetween(b.firstBrew!, b.lastBrew!) < daysBetween(a.firstBrew!, a.lastBrew!) ? b : a));
+    const days = daysBetween(fast.firstBrew!, fast.lastBrew!) + 1;
+    const m0 = Number(y.brews[0].localDate.slice(5, 7)) - 1, m1 = Number(y.brews.at(-1)!.localDate.slice(5, 7)) - 1;
+    const values = Array<number>(m1 - m0 + 1).fill(0);
+    for (const b of done) values[Number(b.lastBrew!.slice(5, 7)) - 1 - m0]++;
+    const labels = values.map((_, i) => MON[m0 + i]), hi = values.indexOf(Math.max(...values));
+    const big = fmtInt(done.length);
+    return {
+      id: 'bagsFinished', category: 'amounts',
+      lead: 'You finished', big, unit: 'bags',
+      context: `The fastest went in ${days} days: ${fast.roaster} · ${fast.name}.`,
+      viz: { kind: 'bars', values, labels, tips: values.map((v, i) => `${labels[i]}: ${nBags(v)}`), hi, hiText: String(values[hi]) },
+      link: { tab: 'Habits', section: 'Habits · Consumption', href: seeMoreHref(y.year, 'consumption') },
+      card: { big, label: 'bags finished' }, score: Math.min(1, done.length / 52)
+    };
+  }
+};
+
+const spend: FactDef = {
+  id: 'spend', category: 'money',
+  run: (y) => {
+    const inYear = y.bags.filter((b) => b.purchaseDate?.startsWith(`${y.year}-`));
+    if (inYear.filter((b) => (b.cost ?? 0) > 0).length < 3) return null;
+    const t = spendTiles(y.bags, [], y.period, y.per);
+    const by = new Map<string, number>();
+    for (const b of inYear) by.set(b.roaster, (by.get(b.roaster) ?? 0) + (b.cost ?? 0) / y.per);
+    const top = [...by].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3);
+    const whole = wholeUsd(top.map((x) => x[1]));
+    const big = usd(t.spent);
+    return {
+      id: 'spend', category: 'money',
+      lead: 'You spent', big,
+      context: `on ${nBags(t.bags)}, ${usd(t.avgPpg! * 100)}/100g on average.`,
+      viz: { kind: 'hlist', rows: top.map(([label, value]) => ({ label, value, texts: [usd(value, whole)] })) },
+      link: { tab: 'Habits', section: 'Habits · Spend', href: seeMoreHref(y.year, 'spend') },
+      perPerson: true, card: { big, label: 'spent' }, score: 0.3
+    };
+  }
+};
+
+const bestValue: FactDef = {
+  id: 'bestValue', category: 'money',
+  run: (y) => {
+    const def = RECORDS.find((r) => r.key === 'bestValue')!;
+    const cands = def.run({ brews: y.scored, bags: y.bags, ratings: 'current', today: y.today }).sort((a, b) => b.value - a.value);
+    const win = pick(cands, 'max');
+    if (!win) return null;
+    const bagOf = (h: { href?: string; label: string; sub?: string }) =>
+      y.bags.find((b) => (h.href ? h.href === `/coffees/${b.slug}` : b.name === h.label && b.roaster === h.sub));
+    const stats = bagStats(y.scored, 'current');
+    const top = cands.slice(0, 3).map((c) => ({ c, bag: bagOf(c.holder) }));
+    if (top.some((x) => !x.bag)) return null;
+    const vals = top.map((x) => x.c.mean!), second = cands[1]?.value;
+    return {
+      id: 'bestValue', category: 'money', lead: 'Your best value bag was', big: win.holder.label, roaster: win.holder.sub,
+      sub: `${usd(win.per100!)}/100g · ${win.mean!.toFixed(2)} average`, context: '',
+      viz: {
+        kind: 'dots',
+        rows: top.map(({ c, bag }) => ({ label: `${bag!.roaster} · ${bag!.name}`, value: c.mean!, brews: stats.get(bag!.id)!.rated.length })),
+        lo: Math.floor((Math.min(...vals) - 0.1) * 10) / 10, hi: Math.ceil((Math.max(...vals) + 0.05) * 10) / 10
+      },
+      link: { tab: 'Habits', section: 'Habits · Spend', href: seeMoreHref(y.year, 'spend') },
+      card: { big: `${win.holder.sub} · ${win.holder.label}`, label: 'best value' }, score: second === undefined ? 1 : Math.min(1, (win.value - second) / win.value)
+    };
+  }
+};
+
+export const POOL: FactDef[] = [total, streak, hour, decaf, roaster, origin, producer, producerRoasters, turn, record, price, recipe, ratio, rest, busiestDay, bagsFinished, spend, bestValue];
 export const fact = (id: string) => POOL.find((f) => f.id === id)!;

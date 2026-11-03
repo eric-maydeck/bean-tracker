@@ -22,7 +22,7 @@ const rich = (() => {
   MONTHLY.forEach((n, mi) => {
     const m = mi + 2, first = mi === 0 ? 9 : 1, last = mi === 0 ? 16 : mi === 8 ? 28 : new Date(Date.UTC(2026, m, 0)).getUTCDate();
     for (let i = 0; i < n; i++) {
-      const h = HOURS[out.length % HOURS.length], day = first + (i % (last - first + 1));
+      const h = HOURS[out.length % HOURS.length], day = mi === 1 && i < 25 ? 14 : first + (i % (last - first + 1)); // a spike: 25 March brews on the 14th
       const mm = String((out.length * 7) % 60).padStart(2, '0');
       out.push(brew({
         at: `2026-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(h).padStart(2, '0')}:${mm}`,
@@ -60,6 +60,10 @@ const shelf = (() => {
     }
     at += s.n;
   });
+  for (const bg of bags) {
+    const mine = brews.filter((b) => b.coffeeId === bg.id).map((b) => b.localDate).sort();
+    Object.assign(bg, { firstBrew: mine[0], lastBrew: mine.at(-1), purchaseDate: mine[0] });
+  }
   const bb = bags.find((b) => b.id === 186)!, other = bags.find((b) => b.id === 187)!;
   if (bb.roaster === other.roaster) other.roaster = 'Elsewhere', brews.forEach((b) => b.coffeeId === 187 && (b.roaster = 'Elsewhere'));
   // Yoiner also grew bags at three more small roasters (five in all), so producer-roasters shows.
@@ -316,6 +320,47 @@ describe('rest card figures', () => {
   it('non-win verdicts: backup copy on a big shift, null on a small one', () => {
     expect(run(t2({ verdict: 'tie' }))!.lead).toBe('Your beans now wait');
     expect(run(t2({ verdict: 'early' }), rich.map((b) => ({ ...b, restDays: 40 })))).toBeNull();
+  });
+});
+
+describe('busiestDay, bagsFinished, spend, bestValue', () => {
+  const noBags = (o: Partial<YearCtx> = {}) => full({ bags: [], ...o });
+  it('busiestDay: the spike, its week, and a usual day', () => {
+    const s = fact('busiestDay').run(full())!;
+    expect(s).toMatchObject({ lead: 'On your busiest day you brewed', unit: 'brews', perPerson: true });
+    expect(s.context).toMatch(/^That was Mar 14\. A usual brew day has \d+\.$/);
+    expect(Number(s.big)).toBeGreaterThan(25);
+    expect((s.viz as any).values).toHaveLength(7);
+    expect((s.viz as any).values[(s.viz as any).hi]).toBe(Number(s.big));
+    expect(fact('busiestDay').run(full({ per: 2 }))!.big).toBe(String(Math.round(Number(s.big) / 2)));
+  });
+  it('busiestDay: null when the busiest day is ordinary', () => {
+    expect(fact('busiestDay').run(ctx(days('2026-03-01', 20)))).toBeNull();
+  });
+  it('bagsFinished: counts bags whose last brew is in the year, names the fastest', () => {
+    const s = fact('bagsFinished').run(full())!;
+    expect(s).toMatchObject({ lead: 'You finished', big: '121', unit: 'bags' });
+    expect(s.context).toMatch(/^The fastest went in \d+ days: .+ · Bag \d+\.$/);
+    expect((s.viz as any).values.reduce((a: number, b: number) => a + b, 0)).toBe(121);
+    expect(fact('bagsFinished').run(noBags())).toBeNull();
+  });
+  it('spend: per person divides dollars, not bags', () => {
+    const one = fact('spend').run(full())!, two = fact('spend').run(full({ per: 2 }))!;
+    const num = (t: string) => Number(t.replace(/[$,]/g, ''));
+    expect(one.lead).toBe('You spent');
+    expect(one.context).toMatch(/^on 121 bags, \$[\d.,]+\/100g on average\.$/);
+    expect(two.context).toBe(one.context);
+    expect(Math.abs(num(two.big) - num(one.big) / 2)).toBeLessThanOrEqual(0.5);
+    expect((one.viz as any).rows).toHaveLength(3);
+    expect(fact('spend').run(noBags())).toBeNull();
+  });
+  it('bestValue: names the bag and its roaster, null without prices', () => {
+    const s = fact('bestValue').run(full())!;
+    expect(s).toMatchObject({ lead: 'Your best value bag was', big: expect.stringMatching(/^Bag \d+$/) });
+    expect(s.roaster).toBeTruthy();
+    expect(s.sub).toMatch(/^\$[\d.,]+\/100g · \d+\.\d\d average$/);
+    expect((s.viz as any).rows.length).toBeLessThanOrEqual(3);
+    expect(fact('bestValue').run(full({ bags: shelf.bags.map((b) => ({ ...b, cost: null })) }))).toBeNull();
   });
 });
 
