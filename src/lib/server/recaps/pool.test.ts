@@ -166,7 +166,7 @@ describe('coffees facts', () => {
   });
   it('unlinked brews never name a roaster or origin', () => {
     const blank = days('2026-03-01', 40).map((b) => ({ ...b, coffeeId: null, roaster: null, origin: 'N/A', producer: null }));
-    const mixed = [...shelf.brews, ...blank];
+    const mixed = [...shelf.brews, ...blank].sort((a, b) => a.localTime.localeCompare(b.localTime));
     const strings = (v: unknown): string[] => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : []);
     for (const id of ['roaster', 'origin', 'producer', 'turn']) {
       const x = fact(id).run(ctx(mixed, { bags: shelf.bags }));
