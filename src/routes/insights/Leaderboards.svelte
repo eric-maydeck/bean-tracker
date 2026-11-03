@@ -30,7 +30,7 @@
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { MediaQuery } from 'svelte/reactivity';
-  import { hiddenLine, BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
+  import { allShownLine, hiddenLine, BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
   import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
@@ -175,7 +175,9 @@
   // with the way to show them (a Score that keeps every group, each with its Low confidence chip). Every card of a band
   // reserves the band's longest such line, so the cards stay level.
   const SHOW_ALL_AVG: Avg = 'adjusted';
-  const smallLine = (b: Board) => hiddenLine(BOARD_NOUN[b], need(b), small[b] ?? 0);
+  // Under the board's default Score the line offers the hidden groups; under another one it says all are shown and offers the way back.
+  const showingAll = (b: Board) => boardAvg(b, avg) !== boardAvg(b, undefined);
+  const smallLine = (b: Board) => showingAll(b) ? allShownLine(BOARD_NOUN[b], need(b), boards[b].length) : hiddenLine(BOARD_NOUN[b], need(b), small[b] ?? 0);
   const smallText = (b: Board) => (small[b] ? smallLine(b).lead + smallLine(b).show : '');
   const bandNote = (b: Board) => {
     const band = BANDS.find((x) => x.includes(b))!;
@@ -353,12 +355,12 @@
         </ol>
       {/if}
       {#if isLow && !unranked(b) && ordered.length < rows.length}<p class="chart-note">Groups with one bag are left out.</p>{/if}
-      {#if bandNote(b) && !unranked(b)}
-        <!-- The hidden twin holds the band's longest line, so a card without the note (or with a shorter one) is as tall. -->
-        <p class="chart-note small-note"><span class="twin" aria-hidden="true">{bandNote(b)}</span>
-          {#if small[b]}<span class="real">{smallLine(b).lead}<button class="link-like" onclick={() => choose({ avg: rank === 'like' ? 'raw' : SHOW_ALL_AVG })}>{smallLine(b).show}</button></span>{/if}</p>
-      {/if}
     </div>
+    {#if bandNote(b) && rows.length && !unranked(b)}
+      <!-- The hidden twin holds the band's longest line, so a card without the note (or with a shorter one) is as tall. -->
+      <p class="chart-note small-note"><span class="twin" aria-hidden="true">{bandNote(b)}</span>
+        {#if small[b]}<span class="real">{smallLine(b).lead}<button class="link-like" onclick={() => choose({ avg: showingAll(b) ? undefined : rank === 'like' ? 'raw' : SHOW_ALL_AVG })}>{smallLine(b).show}</button></span>{/if}</p>
+    {/if}
     <!-- The footer exists only for a Show all button. A band with one reserves that space in its other cards (.has-foot,
          CSS), so cards are level by their own content, not by stretching: a card that opens can't resize the others. -->
     {#if ordered.length > size && !unranked(b)}

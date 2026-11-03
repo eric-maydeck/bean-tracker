@@ -69,3 +69,9 @@ export const hiddenLine = (noun: string, need: string, n: number) => ({
   lead: `Ranks ${noun} with ${need}; ${n} more ${n === 1 ? 'is' : 'are'} hidden. `,
   show: n === 1 ? 'Show it' : 'Show them'
 });
+
+// The same line once a Score showing every group is on: `lead` says what shows, `show` is the way back to the default.
+export const allShownLine = (noun: string, need: string, total: number) => ({
+  lead: total === 1 ? 'Showing the only group, small sample marked. ' : `Showing all ${total} ${noun}, small samples marked. `,
+  show: `Show only ${need} again`
+});

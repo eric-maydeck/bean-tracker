@@ -193,7 +193,7 @@ describe('coffees under k2 / adjusted: shrunk by brews', () => {
     expect(Object.keys(hid), 'the fixture hides something').not.toHaveLength(0);
     expect(hid.roasters).toBe(1); // Tiny: 1 bag, 2 brews, under min3
     expect(hid.coffees).toBeUndefined(); // Coffees' default k2 cuts nothing
-    expect(smallHidden(raw, bs2, [], SEPT, 'rating', 'all', 'raw')).toEqual({});
+    expect(smallHidden(raw, bs2, [], SEPT, 'rating', 'all', 'raw')).toEqual(hid); // the same count under a Score that shows them (the way back)
     expect(smallHidden(def, bs2, [], SEPT, 'brews', 'all', undefined)).toEqual({});
   });
 });

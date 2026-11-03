@@ -6094,9 +6094,20 @@ export const STATES: State[] = [
       const note = page.locator('.board .small-note .real').first();
       await expect(note).toHaveText(/^Ranks .+ with 3\+ bags and 10\+ rated brews; \d+ more are hidden\. Show them$/);
       await expectEqualBoardHeights(page);
-      await note.getByRole('button', { name: 'Show them' }).click();
+      // Show them, then the way back in the same spot: the URL returns to what it was, the line stays put (±2px).
+      const board = await note.evaluate((e) => e.closest('.board')!.getAttribute('data-board'));
+      const line = page.locator(`[data-board="${board}"] .small-note`);
+      const top = () => line.evaluate((e) => e.getBoundingClientRect().top + scrollY); // document y: the click may scroll
+      const url0 = new URL(page.url()), y0 = await top();
+      await note.getByRole('button', { name: /^Show (them|it)$/ }).click();
       await expect(page).toHaveURL(/avg=adjusted/);
-      await expect(page.locator('.board .small-note .real')).toHaveCount(0);
+      await expect(line.locator('.real')).toHaveText(/^Showing all \d+ .+, small samples marked\. Show only 3\+ bags and 10\+ rated brews again$/);
+      expect(Math.abs((await top()) - y0)).toBeLessThanOrEqual(2);
+      await line.getByRole('button', { name: /^Show only .+ again$/ }).click();
+      await expect(page).not.toHaveURL(/avg=/);
+      expect([...new URL(page.url()).searchParams].sort()).toEqual([...url0.searchParams].sort());
+      await expect(line.locator('.real')).toHaveText(/more (is|are) hidden\. Show (it|them)$/);
+      expect(Math.abs((await top()) - y0)).toBeLessThanOrEqual(2);
     } },
   // No board head wraps: its children share a top, in List and Over time, Lowest first on and off, for every board.
   ...[false, true].flatMap((low) => [false, true].map((time) => ({
@@ -6345,7 +6356,7 @@ export const STATES: State[] = [
       await card.getByRole('button', { name: /^Show all/ }).click();
       await expect(page).toHaveURL(/open=dripper/);
       await expect.poll(lines).toBe('7');
-      await expect(card.locator('.chart-note')).toContainText('all 7');
+      await expect(card.locator('.chart-note:not(.small-note)')).toContainText('all 7');
       expect(await heights()).toEqual(list);
       // Every line with a gap is dashed across it, the 6th and 7th included (Chart.js's own segment styles, per line).
       const dashed = ((await card.locator('canvas').getAttribute('data-dashed-segments')) ?? '').split(',').map(Number);

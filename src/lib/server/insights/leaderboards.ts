@@ -263,16 +263,19 @@ export function cutBoards(
   return BOARDS.filter((b) => confident(rank, boardAvg(b, avg)) && !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
 }
 
-// Per board that still shows rows: how many more groups the confident cutoff hides (the board's note offers them).
-// ponytail: one extra leaderboard() call per board with rows under a cutoff; memoize if a board gets slow.
+// Per board that shows rows: how many groups its default Score hides (the confident cutoff). Under the default Score they are
+// the rows the board lacks; under another Score the board shows them, and its note offers the way back.
+// ponytail: up to two extra leaderboard() calls per board with rows; memoize if a board gets slow.
 export function smallHidden(
   boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg | undefined
 ): Partial<Record<Board, number>> {
   const out: Partial<Record<Board, number>> = {};
   for (const b of BOARDS) {
-    if (!boards[b].length || !confident(rank, boardAvg(b, avg))) continue;
-    const n = leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length - boards[b].length;
-    if (n > 0) out[b] = n;
+    const def = boardAvg(b, undefined);
+    if (!boards[b].length || !confident(rank, def)) continue;
+    const all = leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length;
+    const kept = boardAvg(b, avg) === def ? boards[b].length : leaderboard(brews, bags, p, b, rank, ratings, def, false).length;
+    if (all - kept > 0) out[b] = all - kept;
   }
   return out;
 }

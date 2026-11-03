@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pooled, single, sampleTip, sampleField, TIP_TITLE, chipLabel, SAMPLE_HELP, withinNoise, scoredLine, hiddenLine } from './sample';
+import { pooled, single, sampleTip, sampleField, TIP_TITLE, chipLabel, SAMPLE_HELP, withinNoise, scoredLine, hiddenLine, allShownLine } from './sample';
 import { plainText } from './settingName';
 
 describe('withinNoise', () => {
@@ -83,5 +83,12 @@ describe('hiddenLine', () => {
   it('one is singular, more are plural', () => {
     expect(hiddenLine('producers', '3+ bags', 1)).toEqual({ lead: 'Ranks producers with 3+ bags; 1 more is hidden. ', show: 'Show it' });
     expect(hiddenLine('producers', '3+ bags', 41)).toEqual({ lead: 'Ranks producers with 3+ bags; 41 more are hidden. ', show: 'Show them' });
+  });
+});
+
+describe('allShownLine', () => {
+  it('names the count, singular-safe, one space between sentences', () => {
+    expect(allShownLine('producers', '3+ bags', 64)).toEqual({ lead: 'Showing all 64 producers, small samples marked. ', show: 'Show only 3+ bags again' });
+    expect(allShownLine('producers', '3+ bags', 1).lead).toBe('Showing the only group, small sample marked. ');
   });
 });
