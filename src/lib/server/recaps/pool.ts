@@ -251,7 +251,7 @@ const turn: FactDef = {
       lead: `Since ${MONTH(m1 - k + 1)}, your most brewed origin is`, big: B, context,
       viz: { kind: 'split', periods: [seg(wE, ke), seg(wL, kl)], keys },
       // ponytail: Leaderboards has no origin over-time view yet (VIEW_BOARDS), so this opens the Origins board.
-      link: { tab: 'Leaderboards', section: 'Leaderboards · Origins over time', href: seeMoreHref(y.year, 'leaderboards', { open: 'origins' }) },
+      link: { tab: 'Leaderboards', section: 'Leaderboards · Origins', href: seeMoreHref(y.year, 'leaderboards', { open: 'origins' }) },
       wide: true, card: { big: B, label: `since ${MONTH(m1 - k + 1)}` }, score: pl - pe
     };
   }

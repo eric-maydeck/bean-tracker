@@ -167,9 +167,11 @@ describe('coffees facts', () => {
   it('unlinked brews never name a roaster or origin', () => {
     const blank = days('2026-03-01', 40).map((b) => ({ ...b, coffeeId: null, roaster: null, origin: 'N/A', producer: null }));
     const mixed = [...shelf.brews, ...blank];
+    const strings = (v: unknown): string[] => (typeof v === 'string' ? [v] : v && typeof v === 'object' ? Object.values(v).flatMap(strings) : []);
     for (const id of ['roaster', 'origin', 'producer', 'turn']) {
       const x = fact(id).run(ctx(mixed, { bags: shelf.bags }));
-      if (x) expect([x.big, x.context, x.lead, ...((x.viz as any)?.rows ?? []).flatMap((r: any) => [r.label, ...r.texts])].join('|')).not.toMatch(/null|N\/A|undefined/);
+      expect(x, id).not.toBeNull();
+      expect(strings(x).join('|'), id).not.toMatch(/\bnull\b|N\/A|undefined/);
     }
     expect(fact('roaster').run(ctx(blank))).toBeNull();
   });
