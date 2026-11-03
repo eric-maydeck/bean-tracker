@@ -2,9 +2,12 @@
   // "Your <year> recap is ready", admin only. Looks like a toast, sits above the phone tab bar; never takes focus.
   import { goto, invalidateAll } from '$app/navigation';
   let { year }: { year: number } = $props();
+  let hidden = $state(false);
 
   async function seen() {
-    await fetch('/api/recaps/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ year }) });
+    try { // a failed save must not block Open or Dismiss; the banner just returns next load
+      await fetch('/api/recaps/seen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ year }) });
+    } catch { /* offline */ }
   }
   async function open() {
     await seen();
@@ -12,10 +15,12 @@
   }
   async function dismiss() {
     await seen();
+    hidden = true;
     await invalidateAll();
   }
 </script>
 
+{#if !hidden}
 <div class="recap-banner" role="status">
   <span>Your {year} recap is ready</span>
   <div class="actions" data-button-row>
@@ -23,6 +28,7 @@
     <button type="button" onclick={dismiss}>Dismiss</button>
   </div>
 </div>
+{/if}
 
 <style>
   .recap-banner {

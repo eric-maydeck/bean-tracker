@@ -26,5 +26,5 @@ export const load: LayoutServerLoad = ({ locals, url }) => {
   const names = db.prepare('SELECT coffee_name AS n FROM coffees UNION SELECT name FROM beanconqueror_beans').all() as { n: string }[];
   const coloredNames = names.map((r) => r.n).filter((n) => nameColor(n));
   return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts, coloredNames, contactEmail: contactEmailFor(url.host),
-    recapReady: recapReadyYear(db, localToday(), locals.isAdmin) };;
+    recapReady: recapReadyYear(db, localToday(), locals.isAdmin) };
 };

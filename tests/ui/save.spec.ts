@@ -441,6 +441,9 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     await expect.poll(read(`SELECT value FROM app_meta WHERE key = ?`, key)).toEqual({ value: '1' });
     await page.reload();
     await expect(page.locator('.recap-banner')).toHaveCount(0);
+    run(`DELETE FROM app_meta WHERE key = ?`); // unseen again: still no banner over the recap itself
+    await gotoReady(page, `/recaps/${Y}`);
+    await expect(page.locator('.recap-banner')).toHaveCount(0);
   } finally {
     run(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`);
   }
