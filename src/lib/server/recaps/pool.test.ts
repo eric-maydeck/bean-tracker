@@ -22,7 +22,10 @@ const rich = (() => {
   MONTHLY.forEach((n, mi) => {
     const m = mi + 2, first = mi === 0 ? 9 : 1, last = mi === 0 ? 16 : mi === 8 ? 28 : new Date(Date.UTC(2026, m, 0)).getUTCDate();
     for (let i = 0; i < n; i++) {
-      const h = HOURS[out.length % HOURS.length], day = mi === 1 && i < 25 ? 14 : first + (i % (last - first + 1)); // a spike: 25 March brews on the 14th
+      const h = HOURS[out.length % HOURS.length];
+      const wk = Array.from({ length: last - first + 1 }, (_, d) => first + d).filter((d) => [0, 6].includes(new Date(Date.UTC(2026, m - 1, d)).getUTCDay()));
+      // a spike (25 March brews on the 14th) and a weekend lean (every 12th brew from the 7th lands on a weekend)
+      const day = mi === 1 && i < 25 ? 14 : i % 12 === 6 && wk.length ? wk[((i - 6) / 12) % wk.length] : first + (i % (last - first + 1));
       const mm = String((out.length * 7) % 60).padStart(2, '0');
       out.push(brew({
         at: `2026-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(h).padStart(2, '0')}:${mm}`,
@@ -53,10 +56,10 @@ const shelf = (() => {
     const id = 100 + k, t = at / rich.length, o = (t < 1 / 3 ? EARLY : t < 2 / 3 ? MID : LATE)[k % 10];
     const best = k === 86, producer = best ? 'Yoiner' : k === 87 ? 'Yoiner' : `Producer ${k % 40}`;
     bags.push({ id, roaster: s.r, name: `Bag ${k}`, slug: `bag-${k}`, processing: best ? 'Anaerobic Natural' : 'Washed', origin: o, producer, cost: best ? 200 : 20 + (k % 5) * 5, amountG: 250, status: 'archive' } as unknown as BagFact);
-    for (const b of rich.slice(at, at + s.n)) {
+    for (const [j, b] of rich.slice(at, at + s.n).entries()) {
       const i = brews.length;
-      const rating = best ? (i % 2 ? 9 : 10) : 7 + ((k * 7) % 15) / 10 + ((i % 3) - 1) * 0.3;
-      brews.push({ ...b, coffeeId: id, roaster: s.r, origin: o, producer, rating, processGroup: k % 2 && t > 0.6 ? 'Natural' : 'Washed', costPerBrew: (b.dose! * (best ? 200 : 20 + (k % 5) * 5)) / 250 });
+      const rating = best ? (i % 2 ? 9 : 10) : 7 + ((k * 7) % 15) / 10 + ((i % 3) - 1) * 0.3 - (j === 0 ? 0.8 : 0); // first brews of a bag rate lower
+      brews.push({ ...b, brewIndex: j + 1, coffeeId: id, roaster: s.r, origin: o, producer, rating, processGroup: k % 2 && t > 0.6 ? 'Natural' : 'Washed', costPerBrew: (b.dose! * (best ? 200 : 20 + (k % 5) * 5)) / 250 });
     }
     at += s.n;
   });
@@ -78,7 +81,9 @@ const shelf = (() => {
   return { brews, bags };
 })();
 const RECIPES = [{ id: 1, name: 'Standard' }, { id: 2, name: 'Shoebox QC' }];
-const full = (o: Partial<YearCtx> = {}) => ctx(shelf.brews, { bags: shelf.bags, pours: { facts: pourFacts, recipes: RECIPES }, ...o } as Partial<YearCtx>);
+const DRIPPERS = [['V60', 600, 8.4], ['Kalita', 500, 8.1], ['Origami', 389, 8.2]];
+const trophies = DRIPPERS.map(([name, brews, rating]) => ({ kind: 'dripper', name, brews, rating, sample: { small: false } }));
+const full = (o: Partial<YearCtx> = {}) => ctx(shelf.brews, { bags: shelf.bags, trophies, prevBrews: [], pours: { facts: pourFacts, recipes: RECIPES }, ...o } as Partial<YearCtx>);
 
 describe('total', () => {
   it('counts, kg, litres, peak month', () => {
@@ -361,6 +366,44 @@ describe('busiest-day, bags-finished, spend, best-value', () => {
     expect(s.sub).toMatch(/^\$[\d.,]+\/100g · \d+\.\d\d average$/);
     expect((s.viz as any).rows.length).toBeLessThanOrEqual(3);
     expect(fact('best-value').run(full({ bags: shelf.bags.map((b) => ({ ...b, cost: null })) }))).toBeNull();
+  });
+});
+
+describe('consistent, dial-in, weekend, top-dripper', () => {
+  it('consistent: names the steadiest bag with its range', () => {
+    const s = fact('consistent').run(full())!;
+    expect(s).toMatchObject({ lead: 'Your most consistent bag was', big: expect.stringMatching(/^Bag \d+$/) });
+    expect(s.roaster).toBeTruthy();
+    expect(s.sub).toMatch(/^±0\.\d\d over \d+ brews$/);
+    expect(s.context).toMatch(/^All within [\d.]+–[\d.]+\.$/);
+    expect(fact('consistent').run(ctx(days('2026-03-01', 3)))).toBeNull();
+  });
+  it('dial-in: the first-brew gap, null for a thin year', () => {
+    const s = fact('dial-in').run(full())!;
+    expect(s.lead).toBe('The first brews of a bag rate');
+    expect(s.big).toMatch(/^[-+−]0\.\d\d$/);
+    expect(s.context).toMatch(/^against the rest; by brew \S+ you're at your best\.$/);
+    expect(fact('dial-in').run(ctx(days('2026-03-01', 5), { prevBrews: [] }))).toBeNull();
+  });
+  it('weekend: the lean, null for an even week', () => {
+    const s = fact('weekend').run(full())!;
+    expect(s.lead).toBe('On weekends you brew');
+    expect(s.big).toMatch(/^\d+% more$/);
+    expect(s.context).toMatch(/^[\d.]+ brews a day on weekends, [\d.]+ on weekdays\.$/);
+    expect((s.viz as any).values).toHaveLength(7);
+    expect(fact('weekend').run(ctx(days('2026-03-02', 70), { prevBrews: [] }))).toBeNull();
+  });
+  it('top-dripper: the go-to dripper, null under 2 drippers or 25%', () => {
+    const s = fact('top-dripper').run(full())!;
+    expect(s).toMatchObject({ lead: 'Your go-to dripper was', big: 'V60', context: '40% of brews, out of 3 drippers. It averaged 8.40.' });
+    expect((s.viz as any).rows).toHaveLength(3);
+    expect(fact('top-dripper').run(full({ trophies: trophies.slice(0, 1) as any }))).toBeNull();
+    expect(fact('top-dripper').run(full({ trophies: [...trophies, ...trophies, ...trophies, ...trophies].map((t, i) => ({ ...t, name: `D${i}`, brews: 100 })) as any }))).toBeNull();
+  });
+  it('pool has 22 facts with unique ids', () => {
+    expect(POOL).toHaveLength(22);
+    expect(new Set(POOL.map((f) => f.id)).size).toBe(22);
+    expect(POOL.every((f) => /^[a-z][a-z0-9-]*$/.test(f.id))).toBe(true);
   });
 });
 

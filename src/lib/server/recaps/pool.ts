@@ -16,7 +16,8 @@ import { sweetSpotsTab } from '$lib/server/insights/lab';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
 import { recipeBand } from '$lib/server/insights/pours';
 import type { FactDef, Viz } from './types';
-import type { YearCtx } from './year';
+import { dialinCurve, weekendVsWeekday } from '$lib/server/insights/insightGenerators';
+import { toGenCtx, type YearCtx } from './year';
 
 export const md = (d: string) => `${MON[Number(d.slice(5, 7)) - 1]} ${Number(d.slice(8))}`;
 const h12 = (h: number) => `${h % 12 || 12}${h < 12 ? 'am' : 'pm'}`;
@@ -546,5 +547,80 @@ const bestValue: FactDef = {
   }
 };
 
-export const POOL: FactDef[] = [total, streak, hour, decaf, roaster, origin, producer, producerRoasters, turn, record, price, recipe, ratio, rest, busiestDay, bagsFinished, spend, bestValue];
+// ---- Extra facts B: consistency, dial-in, weekends, dripper -----------------------------------------
+const consistent: FactDef = {
+  id: 'consistent', category: 'coffees',
+  run: (y) => {
+    const def = RECORDS.find((r) => r.key === 'consistent')!;
+    const win = pick(def.run({ brews: y.scored, bags: y.bags, ratings: 'current', today: y.today }), 'min');
+    if (!win || win.value > 0.5) return null;
+    const bag = y.bags.find((b) => (win.holder.href ? win.holder.href === `/coffees/${b.slug}` : b.name === win.holder.label && b.roaster === win.holder.sub));
+    const rated = bag && bagStats(y.scored, 'current').get(bag.id)?.rated;
+    if (!bag || !rated) return null;
+    const lo = Math.min(...rated), hi = Math.max(...rated), at = (r: number) => rated.filter((x) => x === r).length;
+    const rows = [...new Set(rated)].sort((a, b) => a - b).map((r) => ({ label: String(r), value: r, brews: at(r) }));
+    return {
+      id: 'consistent', category: 'coffees', lead: 'Your most consistent bag was', big: bag.name, roaster: bag.roaster,
+      sub: `±${win.value.toFixed(2)} over ${rated.length} brews`, context: `All within ${+lo.toFixed(2)}–${+hi.toFixed(2)}.`,
+      viz: { kind: 'dots', rows, lo: Math.floor(lo * 2) / 2 - 0.5, hi: Math.ceil(hi * 2) / 2 + 0.5 },
+      link: { tab: 'Highlights', section: 'Highlights · Taste', href: seeMoreHref(y.year, 'records') },
+      card: { big: `${bag.roaster} · ${bag.name}`, label: 'most consistent' }, score: 1 - win.value / 0.5
+    };
+  }
+};
+
+const dialIn: FactDef = {
+  id: 'dial-in', category: 'brewing',
+  run: (y) => {
+    const found = dialinCurve(toGenCtx(y));
+    const f = Array.isArray(found) ? found[0] : found;
+    if (!f?.value || !f.series?.length || (f.strength !== 'solid' && f.strength !== 'hint')) return null;
+    const best = f.series.reduce((a, b) => (b.value > a.value ? b : a));
+    return {
+      id: 'dial-in', category: 'brewing', lead: 'The first brews of a bag rate', big: f.value,
+      context: `against the rest; by brew ${best.label} you're at your best.`,
+      viz: { kind: 'spark', values: f.series.map((x) => x.value), labels: f.series.map((x) => x.label), texts: f.series.map((x) => `${x.value > 0 ? '+' : ''}${x.value.toFixed(2)}`) },
+      link: { tab: 'Lab', section: 'Lab · Dial-in', href: seeMoreHref(y.year, 'brewing', {}) + '#brewing-dialin' },
+      card: { big: f.value, label: 'first brews vs the rest' }, score: Math.min(1, Math.abs(f.z ?? 0) / 4)
+    };
+  }
+};
+
+const weekend: FactDef = {
+  id: 'weekend', category: 'habits',
+  run: (y) => {
+    const f = weekendVsWeekday({ ...toGenCtx(y), brews: y.brews }) as ReturnType<typeof weekendVsWeekday> & { sides?: { value: string }[]; series?: { label: string; value: number }[] };
+    if (!f || Array.isArray(f) || !f.sides || !f.series) return null;
+    const b = Number(f.sides[0].value), a = Number(f.sides[1].value), ratio = a / b;
+    if (!(ratio > 0) || (ratio >= 0.9 && ratio <= 1.1)) return null;
+    const big = `${Math.round(Math.abs(ratio - 1) * 100)}% ${ratio > 1 ? 'more' : 'fewer'}`;
+    const values = f.series.map((x) => +x.value.toFixed(1)), hi = values.indexOf(Math.max(...values));
+    return {
+      id: 'weekend', category: 'habits', lead: 'On weekends you brew', big,
+      context: `${a.toFixed(1)} brews a day on weekends, ${b.toFixed(1)} on weekdays.`,
+      viz: { kind: 'bars', values, labels: f.series.map((x) => x.label), tips: f.series.map((x, i) => `${x.label}: ${values[i]} brews a day`), hi, hiText: String(values[hi]) },
+      link: { tab: 'Habits', section: 'Habits · By day of week', href: seeMoreHref(y.year, 'habits') },
+      card: { big, label: 'on weekends' }, score: Math.min(1, Math.abs(ratio - 1))
+    };
+  }
+};
+
+const topDripper: FactDef = {
+  id: 'top-dripper', category: 'brewing',
+  run: (y) => {
+    const ds = y.trophies.filter((t) => t.kind === 'dripper').sort((a, b) => b.brews - a.brews || a.name.localeCompare(b.name));
+    if (ds.length < 2) return null;
+    const top = ds[0], share = top.brews / y.brews.length;
+    if (share < 0.25) return null;
+    return {
+      id: 'top-dripper', category: 'brewing', lead: 'Your go-to dripper was', big: top.name,
+      context: `${pct(share)} of brews, out of ${ds.length} drippers.${!top.sample.small && top.rating !== null ? ` It averaged ${top.rating.toFixed(2)}.` : ''}`,
+      viz: { kind: 'hlist', rows: ds.slice(0, 4).map((d) => ({ label: d.name, value: d.brews, texts: [pct(d.brews / y.brews.length), `${fmtInt(d.brews)} brews`] })) },
+      link: { tab: 'Lab', section: 'Lab · Ratings by dripper', href: seeMoreHref(y.year, 'gear') },
+      card: { big: top.name, label: 'go-to dripper' }, score: share
+    };
+  }
+};
+
+export const POOL: FactDef[] = [total, streak, hour, decaf, roaster, origin, producer, producerRoasters, turn, record, price, recipe, ratio, rest, busiestDay, bagsFinished, spend, bestValue, consistent, dialIn, weekend, topDripper];
 export const fact = (id: string) => POOL.find((f) => f.id === id)!;
