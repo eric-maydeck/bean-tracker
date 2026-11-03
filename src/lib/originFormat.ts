@@ -76,7 +76,9 @@ const WHOLE: Record<string, string> = {
   'bourbon sidra': 'Sidra',
   'bourbon aji': 'Ají',
   'bourbon ají': 'Ají',
-  'typica mejorado': 'Mejorado'
+  'typica mejorado': 'Mejorado',
+  // genetic tests put Peru's Inca Gesha at SL9 (user, 2026-11-02)
+  'inca gesha': 'SL9'
 };
 
 const varietyItem = (item: string): string => {
@@ -93,10 +95,10 @@ const varietyItem = (item: string): string => {
 export function formatVariety(value: string): string {
   const v = value.trim().replace(/rosado\/pink bourbon/gi, 'Pink Bourbon');
   const items = v.split(/\s*(?:,|&|\s+and\s+|\s+\/\s+)\s*/i).filter(Boolean);
-  return items.length ? items.map(varietyItem).join(', ') : v;
+  return items.length ? [...new Set(items.map(varietyItem))].join(', ') : v;
 }
 
-// Only Gesha 1931 folds into Gesha; Orange Gesha and Inca Gesha stay their own rows.
+// Only Gesha 1931 folds into Gesha; Orange Gesha stays its own row (Inca Gesha is stored as SL9).
 export const varietyGroup = (token: string): string =>
   token.toLowerCase() === 'gesha 1931' ? 'Gesha' : token;
 

@@ -108,7 +108,10 @@ export const COFFEE_CORRECTIONS: CoffeeFixBatch[] = [
       { coffee_id: 58, roaster: "Bean's Beans", field: 'variety', from: 'Landrace, mostly 74158', to: 'Landrace, 74158' },
       { coffee_id: 99, roaster: 'Sey', field: 'variety', from: 'Field Blend', to: 'Field blend' },
       { coffee_id: 120, roaster: 'Luminous', field: 'variety', from: 'Bourbon Sidra', to: 'Sidra' },
-      { coffee_id: 300, roaster: 'delicate coffee roasters', field: 'variety', from: 'Kurume, Welicho', to: 'Kurume, Wolisho' }
+      { coffee_id: 300, roaster: 'delicate coffee roasters', field: 'variety', from: 'Kurume, Welicho', to: 'Kurume, Wolisho' },
+      { coffee_id: 61, roaster: 'Aviary', field: 'variety', from: 'Inca Gesha', to: 'SL9' }, // genetic tests: Peru's Inca Gesha is SL9
+      { coffee_id: 143, roaster: 'XLIII', field: 'variety', from: 'Inca Gesha', to: 'SL9' },
+      { coffee_id: 34, roaster: 'norml coffee ppl', field: 'variety', from: 'SL9, Inca Gesha', to: 'SL9' } // deduped
     ],
     websites: [],
     tavilyCalls: []

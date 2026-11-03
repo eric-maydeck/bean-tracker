@@ -60,8 +60,8 @@ describe('formatOriginField', () => {
       ['A, B, & C', 'A, B, C'],
       ['Geisha', 'Gesha'],
       ['Geisha 1931', 'Gesha 1931'],
-      ['SL-28, SL-34, SL-09, SL09', 'SL28, SL34, SL9, SL9'],
-      ['Ruiru-11, Ruiru, Ruiri', 'Ruiru 11, Ruiru 11, Ruiru 11'],
+      ['SL-28, SL-34, SL-09, SL09', 'SL28, SL34, SL9'],
+      ['Ruiru-11, Ruiru, Ruiri', 'Ruiru 11'],
       ['Mundo Nuvo', 'Mundo Novo'],
       ['Aji', 'Ají'],
       ['Bourbon Aji', 'Ají'],
@@ -103,10 +103,13 @@ describe('origin helpers', () => {
     expect(formatVariety('Bourbon Ají')).toBe('Ají');
     expect(formatVariety('Typica Mejorado')).toBe('Mejorado');
     expect(formatVariety('Pink Bourbon')).toBe('Pink Bourbon');
+    expect(formatVariety('Inca Gesha')).toBe('SL9');
+    expect(formatVariety('inca GESHA')).toBe('SL9');
+    expect(formatVariety('SL9, Inca Gesha')).toBe('SL9'); // deduped
   });
   it('varietyGroups: Gesha 1931 folds, others stay, no empties, no duplicates', () => {
     expect(varietyGroups('Gesha 1931, gesha 1931, Gesha')).toEqual(['Gesha']);
-    expect(varietyGroups('Gesha 1931, Orange Gesha, Inca Gesha')).toEqual(['Gesha', 'Orange Gesha', 'Inca Gesha']);
+    expect(varietyGroups('Gesha 1931, Orange Gesha, SL9')).toEqual(['Gesha', 'Orange Gesha', 'SL9']);
     expect(varietyGroups('Gesha, Gesha 1931, Pink Bourbon')).toEqual(['Gesha', 'Pink Bourbon']);
     expect(varietyGroups('SL28, , SL34 ')).toEqual(['SL28', 'SL34']);
     expect(varietyGroups(null)).toEqual([]);
