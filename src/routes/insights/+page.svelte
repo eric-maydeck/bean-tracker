@@ -866,6 +866,7 @@
     boards={data.boards}
     coverage={data.boardCoverage!}
     cut={data.boardsCut}
+    small={data.boardsSmall}
     rank={s.rank}
     avg={explicit.avg}
     open={s.open ?? []}

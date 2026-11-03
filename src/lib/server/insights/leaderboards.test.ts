@@ -2,7 +2,8 @@ import { dialInIds, onceDialed } from './dialed';
 import { describe, it, expect } from 'vitest';
 import { RATINGS_SETTLED_FROM } from './ratings';
 import { fromParams } from '$lib/coffeeViewState';
-import { BREW_KEY, boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboard, leaderboards, pageFilters, topRegions, withMovement, type BoardRow } from './leaderboards';
+import { BOARDS } from '$lib/insightsUrl';
+import { BREW_KEY, boardSeries, cutBoards, fieldCoverage, smallHidden, hiddenRows, leaderboard, leaderboards, pageFilters, topRegions, withMovement, type BoardRow } from './leaderboards';
 import { roastLevelLabels, type BrewFact, type BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -181,6 +182,18 @@ describe('coffees under k2 / adjusted: shrunk by brews', () => {
     expect(def.roasters.map((r) => r.value)).toEqual([expect.closeTo((0.75 * 9 + 0.8 * 7 + (1 / 3) * 10) / (0.75 + 0.8 + 1 / 3))]);
     expect(leaderboards(bs, [], SEPT, null, 'rating', 'all', 'min3').coffees.map((r) => r.key)).toEqual(['2', '3']);
     expect(cutBoards(def, bs, [], SEPT, 'rating', 'all', undefined)).not.toContain('coffees');
+  });
+  it('smallHidden: groups the cutoff hides on boards that still show rows; none where nothing is cut', () => {
+    const tiny = [brew({ coffeeId: 9, roaster: 'Tiny', rating: 9 }), brew({ coffeeId: 9, roaster: 'Tiny', rating: 8 })];
+    const bs2 = [...bs, ...tiny];
+    const def = leaderboards(bs2, [], SEPT, null, 'rating', 'all', undefined);
+    const raw = leaderboards(bs2, [], SEPT, null, 'rating', 'all', 'raw');
+    const hid = smallHidden(def, bs2, [], SEPT, 'rating', 'all', undefined);
+    for (const b of BOARDS) expect(hid[b] ?? 0, b).toBe(def[b].length ? Math.max(0, raw[b].length - def[b].length) : 0);
+    expect(Object.keys(hid), 'the fixture hides something').not.toHaveLength(0);
+    expect(hid.coffees).toBeUndefined(); // Coffees' default k2 cuts nothing
+    expect(smallHidden(raw, bs2, [], SEPT, 'rating', 'all', 'raw')).toEqual({});
+    expect(smallHidden(def, bs2, [], SEPT, 'brews', 'all', undefined)).toEqual({});
   });
 });
 

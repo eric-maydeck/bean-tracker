@@ -40,11 +40,11 @@
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
 
   let {
-    boards, coverage, wholeKeys, cut, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part
+    boards, coverage, wholeKeys, cut, small, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part
   }: {
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
-    boards: Rows; coverage: PageData['boardCoverage'] & {}; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board[]; low: Board[]; comparing: boolean; perPerson: boolean;
+    boards: Rows; coverage: PageData['boardCoverage'] & {}; wholeKeys: BrewFilterKey[]; cut: Board[]; small: Partial<Record<Board, number>>; rank: Rank; avg: Avg | undefined; open: Board[]; low: Board[]; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
     // views: the small boards' Over time pick, `wide` when expanded (URL; absent = List); series: Over time's lines (server,
     // only boards on it).
@@ -165,10 +165,18 @@
     : rank === 'like' ? 'No coffees with a like group to compare in this period.' : 'No brews in this period.';
   // A board the confident cutoff emptied says what its rows lacked, not "No brews" (every other Score shows every
   // rated group, each bag weighted by its brews).
+  const need = (b: Board) => `${b === 'coffees' ? `${BAG_MIN_BREWS}+ rated brews` : `${POOLED_MIN_BAGS}+ bags and ${POOLED_MIN_BREWS}+ rated brews`}`;
   const boardEmpty = (b: Board) =>
-    cut.includes(b)
-      ? `No ${BOARD_NOUN[b]} with ${b === 'coffees' ? `${BAG_MIN_BREWS}+ rated brews` : `${POOLED_MIN_BAGS}+ bags and ${POOLED_MIN_BREWS}+ rated brews`} in this period.`
-      : emptyText();
+    cut.includes(b) ? `No ${BOARD_NOUN[b]} with ${need(b)} in this period.` : emptyText();
+  // A board the confident cutoff trimmed (some rows left): one line under the rows saying what it ranks and how many are hidden,
+  // with the way to show them (a Score that keeps every group, each with its Low confidence chip). Every card of a band
+  // reserves the band's longest such line, so the cards stay level.
+  const SHOW_ALL_AVG: Avg = 'adjusted';
+  const smallText = (b: Board) => (small[b] ? `Ranks ${BOARD_NOUN[b]} with ${need(b)}; ${small[b]} more are hidden. Show them` : '');
+  const bandNote = (b: Board) => {
+    const band = BANDS.find((x) => x.includes(b))!;
+    return band.map(smallText).reduce((a, t) => (t.length > a.length ? t : a), '');
+  };
   const emptyLine = useEmptyLine();
 </script>
 
@@ -341,6 +349,11 @@
         </ol>
       {/if}
       {#if isLow && !unranked(b) && ordered.length < rows.length}<p class="chart-note">Groups with one bag are left out.</p>{/if}
+      {#if bandNote(b) && !unranked(b)}
+        <!-- The hidden twin holds the band's longest line, so a card without the note (or with a shorter one) is as tall. -->
+        <p class="chart-note small-note"><span class="twin" aria-hidden="true">{bandNote(b)}</span>
+          {#if small[b]}<span class="real">{smallText(b).slice(0, -'Show them'.length)}<button class="link-like" onclick={() => choose({ avg: rank === 'like' ? 'raw' : SHOW_ALL_AVG })}>Show them</button></span>{/if}</p>
+      {/if}
     </div>
     <!-- The footer exists only for a Show all button. A band with one reserves that space in its other cards (.has-foot,
          CSS), so cards are level by their own content, not by stretching: a card that opens can't resize the others. -->
@@ -600,6 +613,33 @@
   .time-chart :global(.chart-container) {
     position: absolute;
     inset: 0;
+  }
+  .small-note {
+    display: grid;
+  }
+  .small-note > * {
+    grid-area: 1 / 1;
+  }
+  .small-note .twin {
+    visibility: hidden;
+  }
+  .link-like {
+    all: unset;
+    cursor: pointer;
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+  /* Phones: padding grows the target to 44 (rule 4), the negative margin keeps the line as it was. */
+  @media (max-width: 640px) {
+    .link-like {
+      display: inline-block;
+      padding: 13px 8px;
+      margin: -13px -8px;
+    }
+  }
+  .link-like:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
   .has-foot > .board:not(:has(.board-foot))::after {
     content: '';

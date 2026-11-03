@@ -263,6 +263,20 @@ export function cutBoards(
   return BOARDS.filter((b) => confident(rank, boardAvg(b, avg)) && !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
 }
 
+// Per board that still shows rows: how many more groups the confident cutoff hides (the board's note offers them).
+// ponytail: one extra leaderboard() call per board with rows under a cutoff; memoize if a board gets slow.
+export function smallHidden(
+  boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg | undefined
+): Partial<Record<Board, number>> {
+  const out: Partial<Record<Board, number>> = {};
+  for (const b of BOARDS) {
+    if (!boards[b].length || !confident(rank, boardAvg(b, avg))) continue;
+    const n = leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length - boards[b].length;
+    if (n > 0) out[b] = n;
+  }
+  return out;
+}
+
 // The See all note (gate 3): rows each board gains at avg=raw, ratings=all, dial=all, and which settings hid
 // them (each step relaxes one: Score, then Ratings, then Brews). `scored`: the brews the boards were built from;
 // `all`: the brews before Once dialed (brew filters already applied; every board applies every filter, its own dimension included). Boards that gain none are left out. `cut`: cutBoards' list (only the confident

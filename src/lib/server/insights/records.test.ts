@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { pick, RECORDS, recordsTab, type RecordsCtx } from './records';
 import type { BrewFact, BagFact } from './facts';
-import type { Ratings } from '$lib/insightsUrl';
+import { lowFirst, type Ratings } from '$lib/insightsUrl';
+import { leaderboard } from './leaderboards';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: null, rating: null, roaster: null, origin: null,
@@ -237,6 +238,18 @@ describe('variety and producer records', () => {
     expect(fav.value).toBeGreaterThan(0);
     expect(low.value).toBeLessThan(0);
     expect(run('favoriteProducer', rich.map((b) => ({ ...b, producer: b.variety })), richBags)!.holder.label).toBe('Gesha');
+  });
+  it('favorite and least producer/variety are the linked board\u2019s first row (default Score, and Lowest first)', () => {
+    // A: 3 bags of 4 brews at 9 (12 brews: adjusted pulls it toward your average); B: 3 bags of 10 brews at 8.8; C: lowest.
+    const ten = (f: F, v: string, bagIds: number[], r: number) => bagIds.flatMap((id) => rated(id, Array(10).fill(r)).map((b) => ({ ...b, [f]: v })));
+    for (const f of ['variety', 'producer'] as const) {
+      const brews = [...mk(f, 'A', ids(1, 3), 9), ...ten(f, 'B', ids(4, 3), 8.8), ...mk(f, 'C', ids(7, 3), 4)];
+      const board = f === 'variety' ? 'varieties' : 'producers';
+      const rows = (avg: 'min3' | 'adjusted') => leaderboard(brews, bagsOf(10), { start: null, end: '2026-10-11' }, board, 'rating', 'all', avg);
+      expect(rows('adjusted')[0].label, 'fixture tells the Scores apart').not.toBe(rows('min3')[0].label);
+      expect(run(f === 'variety' ? 'favoriteVariety' : 'favoriteProducer', brews, bagsOf(10))!.holder.label).toBe(rows('min3')[0].label);
+      expect(run(f === 'variety' ? 'leastVariety' : 'leastProducer', brews, bagsOf(10))!.holder.label).toBe(lowFirst(board, rows('min3'))[0].label);
+    }
   });
   const oneGroup = mk('producer', 'Solo', ids(1, 3), 8);
   it('one qualifying group decides nothing', () => {

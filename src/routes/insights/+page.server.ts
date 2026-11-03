@@ -6,7 +6,7 @@ import {
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
-import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboards, pageFilters } from '$lib/server/insights/leaderboards';
+import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboards, pageFilters, smallHidden } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
 import { spendTab } from '$lib/server/insights/spend';
@@ -144,6 +144,7 @@ export const load: PageServerLoad = ({ url }) => {
       ? Object.fromEntries(VIEW_BOARDS.filter((b) => s.views?.[b]).map((b) => [b,
           boardSeries(scored, bags, { period, dataStart, today }, b, boards[b].map((r) => r.key), s.rank, s.ratings, boardAvg(b, explicit.avg), size)]))
       : null,
+    boardsSmall: boards ? smallHidden(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : {},
     boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : [],
     // Gear tab only: every dripper, grinder and filter with a brew in the Period; the Ratings and Brews switches reach only
     // the ratings. Coffees filters, Compare, People and the other brew filters never apply.

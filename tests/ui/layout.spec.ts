@@ -6087,6 +6087,17 @@ export const STATES: State[] = [
       await expect(page.locator('[data-board="producers"] .like-note')).toHaveText(/\d+ of \d+ bags have a producer\./);
       await expectEqualBoardHeights(page);
     } },
+  // A board the default Score trimmed says how many groups are hidden and offers them (avg=adjusted, never the bare URL);
+  // the cards of its band stay level, whether or not they carry the line.
+  { name: 'insights-board-small-note', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      const note = page.locator('.board .small-note .real').first();
+      await expect(note).toHaveText(/^Ranks .+ with 3\+ bags and 10\+ rated brews; \d+ more are hidden\. Show them$/);
+      await expectEqualBoardHeights(page);
+      await note.getByRole('button', { name: 'Show them' }).click();
+      await expect(page).toHaveURL(/avg=adjusted/);
+      await expect(page.locator('.board .small-note .real')).toHaveCount(0);
+    } },
   // No board head wraps: its children share a top, in List and Over time, Lowest first on and off, for every board.
   ...[false, true].flatMap((low) => [false, true].map((time) => ({
     name: `insights-board-head-one-row-${low ? 'low' : 'high'}-${time ? 'time' : 'list'}`,
