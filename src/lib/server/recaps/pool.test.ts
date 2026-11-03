@@ -220,7 +220,8 @@ describe('coffees facts', () => {
   it('record: settled ratings only; bag named with its roaster', () => {
     const s = fact('record').run(full())!;
     expect(s.lead).toBe('Your best bag of the year was');
-    expect(s.big).toMatch(/ · Bag 86$/);
+    expect(s.big).toBe('Bag 86');
+    expect(s.roaster).toBeTruthy();
     expect(s.sub).toMatch(/^9\.50 average · \d+ brews$/);
     expect(s.card.label).toBe('9.50 best bag');
     expect(s.context).toMatch(/^Anaerobic natural\. \d+ brews all year earned a 10\. Yoiner's coffee also came from .+\.$/);
@@ -233,7 +234,8 @@ describe('coffees facts', () => {
   it('record: the big value is the roaster and bag name', () => {
     const bags = [{ id: 1, roaster: 'Sey Coffees', name: 'Gesha', slug: 'g', processing: 'Washed' }] as unknown as BagFact[];
     const bs = days('2026-07-01', 5).map((b) => ({ ...b, coffeeId: 1, rating: 9 }));
-    expect(fact('record').run(ctx(bs, { bags }))!.big).toBe('Sey Coffees · Gesha');
+    expect(fact('record').run(ctx(bs, { bags }))!.big).toBe('Gesha');
+    expect(fact('record').run(ctx(bs, { bags }))!.roaster).toBe('Sey Coffees');
     expect(fact('record').run(ctx(bs, { bags }))!.context).toBe('Washed.');
     expect(fact('record').run(ctx(bs, { bags }))!.sub).toBe('9.00 average · 5 brews');
   });

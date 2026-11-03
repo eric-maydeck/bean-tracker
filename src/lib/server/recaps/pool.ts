@@ -286,7 +286,7 @@ const record: FactDef = {
     if (others.length) context += `${context ? ' ' : ''}${poss(bag.producer!.trim())} coffee also came from ${andList(others)}.`;
     const top = cands.slice(0, 5), vals = top.map((c) => c.value);
     return {
-      id: 'record', category: 'coffees', lead: 'Your best bag of the year was', big: `${bag.roaster} · ${bag.name}`, sub: `${val} average · ${n} brews`, context,
+      id: 'record', category: 'coffees', lead: 'Your best bag of the year was', big: bag.name, roaster: bag.roaster, sub: `${val} average · ${n} brews`, context,
       viz: {
         kind: 'dots', stack: true,
         rows: top.map((c) => { const b = bagOf(c.holder)!; return { label: `${b.roaster} · ${b.name}`, value: c.value, brews: stats.get(b.id)!.rated.length }; }),

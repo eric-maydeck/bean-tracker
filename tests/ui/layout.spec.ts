@@ -824,6 +824,28 @@ export const STATES: State[] = [
       expect(await page.locator('.recap-grid > :last-child').getAttribute('data-id')).toBe('you');
       expect(Math.abs(youW - gridW), 'you tile spans the full grid width').toBeLessThanOrEqual(1);
     } },
+  { name: 'recaps-best-bag-names', path: () => `/recaps/${recapYear()}?preview=1`,
+    act: async (page) => {
+      // Roaster over coffee: two lines, no wrapping, a long coffee name still fits its box (no ellipsis at 480+).
+      const long = 'Finca El Paraíso Lychee Thermal Shock Natural';
+      await expect(page.locator('#record .names')).toHaveCount(1);
+      const w = page.viewportSize()!.width;
+      for (const sel of ['#record .names', '.recap-grid .names']) {
+        const r = await page.locator(sel).first().evaluate((box, long) => {
+          const cn = box.querySelector('.cn') as HTMLElement;
+          const rn = box.querySelector('.rn') as HTMLElement;
+          const lines = (e: HTMLElement) => e.getClientRects().length;
+          cn.textContent = long;
+          box.style.setProperty('--cn', String(long.length));
+          return { cnFits: cn.scrollWidth <= cn.clientWidth + 1, rnFits: rn.scrollWidth <= rn.clientWidth + 1,
+            oneLine: cn.getBoundingClientRect().height < parseFloat(getComputedStyle(cn).fontSize) * 2, page: document.documentElement.scrollWidth <= innerWidth, lines: lines(cn) };
+        }, long);
+        expect(r.page, `${sel} page overflow`).toBe(true);
+        expect(r.oneLine, `${sel} coffee name on one line`).toBe(true);
+        expect(r.rnFits, `${sel} roaster fits`).toBe(true);
+        if (w >= 480) expect(r.cnFits, `${sel} long name fits at ${w}`).toBe(true);
+      }
+    } },
   { name: 'recaps-turn-legend', path: () => `/recaps/${recapYear()}?preview=1`,
     act: async (page) => {
       // A legend swatch matches the segment it names (a.k.a. no white dot for a green bar).

@@ -19,7 +19,11 @@
 
 {#snippet body()}
   {#if slide.lead}<p class="lead"><CoffeeName text={slide.lead} /></p>{/if}
+  {#if slide.roaster}
+    <div class="big names" style:--rn={slide.roaster.length} style:--cn={slide.big.length}><span class="rn">{slide.roaster}</span><span class="cn"><CoffeeName text={slide.big} /></span></div>
+  {:else}
   <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><CoffeeName text={slide.big} />{#if slide.unit}{#if unitGap(slide.unit)}<span class="unit gap">{' '}</span>{/if}<span class="unit">{slide.unit}</span>{/if}</p>
+  {/if}
   {#if slide.sub}<p class="sub">{slide.sub}</p>{/if}
   <p class="context"><CoffeeName text={slide.context} /></p>
   {#if slide.viz}<div class="vizwrap"><RecapViz viz={slide.viz} /></div>{/if}
@@ -47,6 +51,11 @@
   .lead { font-size: 1.15rem; font-weight: 600; margin: 0; opacity: 0.9; }
   .big { font-family: var(--font-display); font-weight: 700; line-height: 0.92; letter-spacing: -0.035em; margin: 0.1em 0 0.2em -0.04em;
     font-variant-numeric: lining-nums; overflow-wrap: break-word; }
+  /* Roaster over coffee, two nowrap lines that shrink to the width of their box (cqi); ellipsis only past the floor. */
+  .names { container-type: inline-size; --cap: 3.6rem; font-size: 1rem; line-height: 1.05; letter-spacing: -0.02em; white-space: nowrap; }
+  .names span { display: block; overflow: hidden; text-overflow: ellipsis; padding-bottom: 0.08em; }
+  .names .cn { font-size: clamp(0.8rem, calc(100cqi / (var(--cn) * 0.6)), var(--cap)); }
+  .names .rn { font-size: clamp(0.9rem, calc(100cqi / (var(--rn) * 0.6)), calc(var(--cap) * 0.62)); font-weight: 600; opacity: 0.9; }
   .big .unit.gap { white-space: normal; }
   .big .unit { white-space: nowrap; font-family: var(--font-sans); font-size: 0.28em; letter-spacing: 0; font-weight: 600; }
   .sub { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.5rem, 6.5vw, 2.4rem); line-height: 1.1; margin: -0.1em 0 0.1em; }
@@ -64,6 +73,7 @@
   .slide .big { font-size: clamp(4.5rem, min(24vw, 12vh), 8.5rem); }
   .slide .big.long { font-size: clamp(3rem, min(15vw, 8vh), 5.6rem); }
   .slide .big.xlong { font-size: clamp(2rem, min(9vw, 6vh), 3.6rem); line-height: 1; }
+  .slide .names { --cap: clamp(2.4rem, 12vw, 4.4rem); }
   .slide[data-id='you'] .big { font-size: clamp(2.6rem, 11vw, 4.2rem); line-height: 1; }
   .slide[data-id='cover'] .big { font-size: clamp(3.4rem, min(25vw, 14vh), 9rem); line-height: 1; }
   .slide .lead { font-size: clamp(1.15rem, 2.1vh, 1.4rem); }
@@ -77,7 +87,7 @@
   /* Phone portrait and tablet: one centered block; charts keep their natural size, rows and bars grow a little. */
   @media (max-width: 899px) and (min-height: 641px) {
     .slide { padding-top: 84px; }
-    .slide .vizwrap :global(svg) { max-height: 40vh; }
+    .slide .vizwrap :global(svg) { max-height: 34vh; }
     .slide .vizwrap :global(.sbar) { height: clamp(34px, 5vh, 52px); }
     .slide .vizwrap :global(.split) { gap: clamp(10px, 2vh, 22px); }
     .slide .vizwrap :global(.hlist) { row-gap: clamp(8px, 1.6vh, 16px); }
@@ -93,6 +103,7 @@
     .slide .big { font-size: clamp(5rem, min(13vw, 26vh), 13rem); }
     .slide .big.long { font-size: clamp(3.5rem, min(8vw, 16vh), 8rem); }
     .slide .big.xlong { font-size: clamp(2.4rem, min(4.5vw, 9vh), 4.6rem); }
+    .slide .names { --cap: clamp(3rem, min(6vw, 12vh), 6rem); }
     .slide[data-id='you'] .big { font-size: clamp(2.6rem, min(5vw, 10vh), 5rem); }
     .slide[data-id='cover'] .big { font-size: clamp(4rem, min(10vw, 20vh), 9rem); }
     .slide[data-id='cover'] .inner { max-width: 60rem; }
@@ -109,6 +120,7 @@
     .slide .big { font-size: clamp(3rem, 18vh, 6rem); }
     .slide .big.long { font-size: clamp(2.4rem, 13vh, 4rem); }
     .slide .big.xlong { font-size: clamp(1.4rem, 7.5vh, 2rem); }
+    .slide .names { --cap: clamp(1.6rem, 10vh, 2.4rem); }
     .slide .sub { font-size: 1.15rem; margin: 0; }
     .slide .context { font-size: 1rem; }
   }
@@ -128,6 +140,7 @@
   .tile { border-radius: 14px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 10px; }
   .tile .big { font-size: clamp(2.8rem, 5vw, 4.2rem); }
   .tile .big.long { font-size: clamp(2.2rem, 4vw, 3.2rem); }
+  .tile .names { --cap: 2.4rem; }
   .tile .big.xlong { font-size: clamp(1.6rem, 2.6vw, 2.2rem); line-height: 1.05; }
   .tile[data-id='you'] .big { font-size: clamp(2rem, 4vw, 3rem); line-height: 1; }
   .tile .lead { font-size: 1rem; }
@@ -144,4 +157,6 @@
     .tile.wide:has(.vizwrap) > * { grid-column: 1; }
     .tile.wide:has(.vizwrap) > .vizwrap { grid-column: 2; grid-row: 1 / -1; align-self: center; padding: 0; }
   }
+  /* Last, so no size rule for .big (set in em, hence the margins) reaches the roaster/coffee box. */
+  .slide .big.names, .tile .big.names { font-size: 1rem; margin: 0.15rem 0 0.25rem; }
 </style>
