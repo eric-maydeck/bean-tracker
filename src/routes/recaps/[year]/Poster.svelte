@@ -11,14 +11,12 @@
     slides: SlideT[]; poster: { title: string; sub: string; footer: string }; year: number; people?: People; preview: boolean; total: number;
   } = $props();
 
-  // Columns follow the container queries below. Spans make every row close exactly: a wide tile spans 2 only
-  // where 2 columns are left, the last fact tile takes what remains, and the personality tile takes a full row.
-  let width = $state(0);
-  const cols = $derived(width >= 900 ? 3 : width >= 620 ? 2 : 1);
-  const spans = $derived(posterSpans(slides, cols));
+  // Spans for 1, 2 and 3 columns, set as CSS variables so the right layout is there before hydration; the
+  // container queries below pick one. Every row closes exactly (see recapsPoster.ts).
+  const spans = $derived([1, 2, 3].map((c) => posterSpans(slides, c)));
 </script>
 
-<section class="poster" bind:clientWidth={width} id={POSTER_ID} aria-label="{total} of {total}">
+<section class="poster" id={POSTER_ID} aria-label="{total} of {total}">
   <div class="page">
     <header>
       <h2>{poster.title}</h2>
@@ -27,7 +25,7 @@
     </header>
     <div class="recap-grid">
       {#each slides as s, i (s.id)}
-        <Slide tile span={spans[i]} slide={s} {year} {people} {preview} index={i} {total} />
+        <Slide tile spans={spans.map((x) => x[i])} slide={s} {year} {people} {preview} index={i} {total} />
       {/each}
     </div>
     <footer>{poster.footer}</footer>
@@ -45,6 +43,7 @@
   /* Container queries on the poster: 1 column, 2 from 620px, 3 from 900px. The last tile closes its row. */
   .recap-grid { display: grid; gap: 10px; grid-template-columns: 1fr; grid-auto-flow: dense; }
   @container (min-width: 620px) { header { flex-wrap: nowrap; } header p { flex: 1; } }
-  @container (min-width: 620px) { .recap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @container (min-width: 900px) { .recap-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .recap-grid > :global(.tile) { grid-column: span var(--s1); }
+  @container (min-width: 620px) { .recap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .recap-grid > :global(.tile) { grid-column: span var(--s2); } }
+  @container (min-width: 900px) { .recap-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .recap-grid > :global(.tile) { grid-column: span var(--s3); } }
 </style>
