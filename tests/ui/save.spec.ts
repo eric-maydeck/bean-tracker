@@ -427,14 +427,16 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
       await gotoReady(page, '/coffees');
       await expect(banner).toContainText(`Your ${Y} recap is ready`);
       const b = (await banner.boundingBox())!;
-      const m = (await page.locator('main').boundingBox())!;
-      expect(b.x).toBeGreaterThanOrEqual(m.x - 0.5);
-      expect(b.x + b.width).toBeLessThanOrEqual(width);
-      // In flow, not floating: scrolls with the page (not fixed), and is the first thing in the content, above the heading.
+      // The very top, edge to edge, slim, in flow (scrolls away), above the nav.
+      expect(b.y, 'at the very top').toBe(0);
+      expect([b.x, b.width], 'full bleed').toEqual([0, width]);
+      expect(b.height, 'slim').toBeLessThanOrEqual(56);
       expect(await banner.evaluate((el) => getComputedStyle(el).position)).toBe('static');
-      const h1 = (await page.locator('main h1').first().boundingBox())!;
-      expect(b.y + b.height, 'above the first heading, no overlap').toBeLessThanOrEqual(h1.y + 0.5);
-      expect(b.height).toBeLessThanOrEqual(height / 3);
+      expect(await banner.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('0px');
+      const nav = page.locator('nav.site-nav');
+      if (await nav.isVisible()) expect((await nav.boundingBox())!.y, 'above the nav').toBeGreaterThanOrEqual(b.y + b.height - 0.5);
+      const tone = await page.locator('.recap-banner').evaluate((el) => el.style.getPropertyValue('--bg'));
+      expect(tone).toMatch(/^var\(--t-[a-z]+\)$/);
       await checkLayout(page);
     }
     await page.getByRole('button', { name: 'Dismiss' }).click();

@@ -1,7 +1,10 @@
 <script lang="ts">
-  // "Your <year> recap is ready", admin only. A page banner (in flow, top of the content); never takes focus.
+  // "Your <year> recap is ready", admin only. A full-bleed strip at the very top of the page, above the nav, in the recap's cover tone; never takes focus.
   import { goto, invalidateAll } from '$app/navigation';
-  let { year }: { year: number } = $props();
+  import type { Tone } from '$lib/server/recaps/types';
+  let { year, tone }: { year: number; tone: Tone } = $props();
+  // The year's cover tone, with the ink the recap slides use on it.
+  const ink = $derived(['sun', 'amber', 'cream'].includes(tone) ? '#2b211b' : '#faf7f2');
   let hidden = $state(false);
 
   async function seen() {
@@ -21,7 +24,7 @@
 </script>
 
 {#if !hidden}
-<div class="recap-banner" role="status">
+<div class="recap-banner" role="status" style:--bg="var(--t-{tone})" style:--fg={ink}>
   <span>Your {year} recap is ready</span>
   <div class="actions" data-button-row>
     <button type="button" onclick={open}>Open</button>
@@ -31,20 +34,19 @@
 {/if}
 
 <style>
-  /* In flow at the top of the page content, full width; stays until Open or Dismiss. */
+  /* Edge to edge, one slim row; scrolls away with the page (not sticky). Wraps to 2 rows only when it must (320px). */
   .recap-banner {
     box-sizing: border-box;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-2) var(--space-4);
-    margin: 0 0 var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius);
-    background: var(--color-text);
-    color: var(--color-surface);
+    gap: 0 var(--space-4);
+    padding: 4px max(var(--space-4), calc((100% - var(--container-max)) / 2 + var(--space-4)));
+    background: var(--bg);
+    color: var(--fg);
     font-weight: 600;
+    font-size: 0.9rem;
   }
   .actions {
     display: flex;
@@ -53,21 +55,14 @@
   button {
     min-height: 44px;
     padding: 0 var(--space-4);
-    border: 1px solid currentColor;
-    border-radius: var(--radius);
+    border: 1.5px solid currentColor;
+    border-radius: 22px;
     background: transparent;
     color: inherit;
     font: inherit;
     font-weight: 700;
     cursor: pointer;
   }
-  button:hover,
-  button:focus-visible {
-    background: var(--color-surface);
-    color: var(--color-text);
-  }
-  @media (max-width: 480px) {
-    .actions { flex: 1 1 100%; }
-    button { flex: 1; }
-  }
+  button:hover { background: color-mix(in srgb, currentColor 18%, transparent); }
+  button:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
 </style>

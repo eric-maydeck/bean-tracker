@@ -127,6 +127,7 @@
   }
 </script>
 
+{#if data.recapReady && !recapPage}<RecapBanner year={data.recapReady} tone={data.recapTone!} />{/if}
 {#if !recapPage}
 <nav class="site-nav">
   <div class="nav-links">
@@ -216,7 +217,6 @@
 {/if}
 
 <main class={recapPage ? undefined : 'container'}>
-  {#if data.recapReady && !recapPage}<RecapBanner year={data.recapReady} />{/if}
   {@render children()}
   <Toast />
   {#if !recapPage}
