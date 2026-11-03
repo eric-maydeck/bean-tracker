@@ -18,7 +18,7 @@ export interface Recap {
   householdSize: number;
 }
 
-export function recap(db: DatabaseSync, year: number, o: { today: string; preview: boolean; people?: People }): Recap | null {
+export function recap(db: DatabaseSync, year: number, o: { today: string; preview: boolean; people?: People; freeze?: false }): Recap | null {
   const householdSize = getHouseholdSize(db);
   const y = loadYear(db, year, o.today, o.preview, o.people === 'person' ? householdSize : 1);
   if (!y) return null;
@@ -26,7 +26,7 @@ export function recap(db: DatabaseSync, year: number, o: { today: string; previe
   const frozen = frozenIds(db, year);
   const fresh = frozen ? null : order(select(facts), year);
   // A racing first open may have frozen first: freezeIds returns what's stored.
-  const ids = frozen ?? (o.preview ? fresh! : freezeIds(db, year, fresh!));
+  const ids = frozen ?? (o.preview || o.freeze === false ? fresh! : freezeIds(db, year, fresh!));
   const picked = ids.map((id) => facts.find((f) => f.id === id)).filter((f) => f !== undefined);
   const you = personality(y);
   const tones = tonesFor(picked.map((f) => f.id), year);
@@ -56,10 +56,10 @@ const tileYears = (db: DatabaseSync, today: string, isAdmin: boolean): { year: n
 };
 export const hasRecaps = (db: DatabaseSync, today: string, isAdmin: boolean): boolean => tileYears(db, today, isAdmin).length > 0;
 
-// A public viewer never gets a preview year. An open year may freeze on this first view, exactly as opening its recap does.
+// A public viewer never gets a preview year. Tiles never freeze a year's ids (they read the frozen ones, else the would-be pick).
 export function recapTiles(db: DatabaseSync, today: string, isAdmin: boolean): RecapTileData[] {
   return tileYears(db, today, isAdmin).flatMap(({ year, preview }) => {
-    const r = recap(db, year, { today, preview });
+    const r = recap(db, year, { today, preview, freeze: false });
     // Total first, then the next fact(s) in the reel's order: 3 headlines (the personality slide only fills a short recap).
     return r ? [{ year, preview, tone: 'espresso' as const, // the cover's tone (recaps/[year]/+page.svelte)
       href: recapHref(year, preview ? { preview: true } : {}), headlines: r.slides.slice(0, 3).map((s) => s.card) }] : [];

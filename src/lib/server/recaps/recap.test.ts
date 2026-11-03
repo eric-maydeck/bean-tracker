@@ -62,6 +62,7 @@ describe('recapTiles', () => {
     expect(adm[1].headlines.length).toBeGreaterThanOrEqual(2);
     expect(adm[1].headlines[0]).toEqual({ big: '20', label: 'brews' });
     expect(recapTiles(db, '2026-06-01', false)).toEqual([]);
+    expect(frozenIds(db, 2026)).toBeNull(); // a public tile call leaves an open year unfrozen
   });
 });
 
@@ -104,5 +105,13 @@ describe('route load', () => {
   it('opened year is public; admin previews the current year', () => {
     expect(call(String(cur - 1), '', false)).toMatchObject({ isAdmin: false, recap: { year: cur - 1, preview: false } });
     expect(call(String(cur), '?preview=1', true)).toMatchObject({ isAdmin: true, recap: { preview: true }, state: { preview: true } });
+  });
+  // Last: it empties the brews.
+  it('public /recaps has nothing to show without an open year', async () => {
+    const { getDb } = await import('$lib/server/db');
+    const { load: idx } = await import('../../../routes/recaps/+page.server');
+    const db = getDb();
+    db.exec('DELETE FROM beanconqueror_brews');
+    try { idx({ locals: { isAdmin: false } } as never); expect.unreachable(); } catch (e) { expect(e).toMatchObject({ status: 404 }); }
   });
 });

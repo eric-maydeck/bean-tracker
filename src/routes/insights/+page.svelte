@@ -456,8 +456,8 @@
   // The bar's phone grid (gate r2 A3): 3 cells per row up to 480px, 2 up to 640px; packSpans widens controls so every
   // row is full. The menu takes two cells at 3 per row (its label is long); People always two; Dates… a cell, or a row at 2.
   // Compare shows on every tab but the lab and On hand (a snapshot of the shelf has nothing to compare).
-  const noCompare = $derived(labTab || s.tab === 'onhand');
-  const peopleOn = $derived(data.householdSize > 1 && s.tab !== 'milestones' && !labTab);
+  const noCompare = $derived(labTab || s.tab === 'onhand' || s.tab === 'recaps');
+  const peopleOn = $derived(data.householdSize > 1 && s.tab !== 'milestones' && s.tab !== 'recaps' && !labTab);
   const barCells = (cols: 2 | 3) => packSpans([
     ['view', 1], ['period', 1], ...(isCustom(s.range) ? [['range-dates', 4 - cols]] : []),
     ...(noCompare ? [] : [['compare', 1], ...(isCustom(s.compare) ? [['compare-dates', 4 - cols]] : [])]),
