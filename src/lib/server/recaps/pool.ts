@@ -112,7 +112,7 @@ const hour: FactDef = {
       lead: 'Your coffee hour is', big: h12(top),
       context: `${fmtInt(n)} brews: that's 1 in ${Math.round(bs.length / n)} brews at ${h12(top)}. Your brew day spans anywhere from ${clockText(early.value)} to ${clockText(late.value)}.`,
       viz: { kind: 'bars', values, labels, tips: hrs.map((h, i) => `${h12(h)}: ${values[i]} brews`), hi: top - lo, hiText: String(n) },
-      link: { tab: 'Habits', section: 'Habits · Brew clock', href: seeMoreHref(y.year, 'habits') },
+      link: { tab: 'Habits', section: 'Habits · By hour of day', href: seeMoreHref(y.year, 'habits') },
       card: { big: h12(top), label: 'coffee hour' },
       score: Math.min(1, (n / bs.length) * 3)
     };
@@ -135,7 +135,7 @@ const decaf: FactDef = {
       lead: 'After 7pm, your brews were', big: pct(after), unit: 'decaf',
       context: `${eveDecaf} of your ${eve} evening brews skipped the caffeine. Before 7pm, decaf is ${pct(before)}.`,
       viz: { kind: 'hlist', rows: [{ label: 'After 7pm', value: after * 100, texts: [pct(after)] }, { label: 'Before 7pm', value: before * 100, texts: [pct(before)] }] } satisfies Viz,
-      link: { tab: 'Habits', section: 'Habits · Brew clock', href: seeMoreHref(y.year, 'habits') },
+      link: { tab: 'Habits', section: 'Habits · By hour of day', href: seeMoreHref(y.year, 'habits') },
       card: { big: pct(after), label: 'decaf after 7pm' },
       score: after - before
     };

@@ -14,7 +14,7 @@ export interface Slide {
   id: string; category: Category | 'personality';
   lead: string; big: string; unit?: string; roaster?: string; sub?: string; context: string; // sub: a secondary value line under big
   viz?: Viz; traits?: Trait[];
-  link: { tab: string; section: string; href: string }; // "Habits · Brew clock" + seeMoreHref
+  link: { tab: string; section: string; href: string }; // "Habits · By hour of day" + seeMoreHref
   wide?: true; perPerson?: true;
   card: { big: string; label: string }; // the preview card's text (Part 3)
   tone?: Tone; // set by assembly
