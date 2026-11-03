@@ -118,7 +118,7 @@ const LB = '/insights?tab=leaderboards';
 const DIAL_IN = '/insights?tab=brewing#brewing-dialin'; // rescues: the Brewing tab's Dial-in chart
 const SETTLE: Record<SettleDim, string> = { roastLevel: '/insights?tab=brewing#brewing-settle-roast', processGroup: '/insights?tab=brewing#brewing-settle-process', dripper: '/insights?tab=brewing#brewing-settle-dripper', water: '/insights?tab=brewing#brewing-settle-water' }; // dialinBy: its chart
 
-const dialinCurve: Generator = (c) => {
+export const dialinCurve: Generator = (c) => {
   const all = demeaned(counted(c));
   const n = new Map<number, number>();
   for (const r of all) n.set(r.coffeeId!, (n.get(r.coffeeId!) ?? 0) + 1);
@@ -411,7 +411,7 @@ const morningDrift: Generator = (c) => {
 };
 
 // Brews per tracked day (a day with no brews counts as 0).
-const weekendVsWeekday: Generator = (c) => {
+export const weekendVsWeekday: Generator = (c) => {
   const t = trackedBounds(period(c), c.dataStart, c.today);
   if (!t) return null;
   const n = new Map([...groupBy(c.brews, (b) => b.localDate)].map(([d, bs]) => [d, bs.length]));
