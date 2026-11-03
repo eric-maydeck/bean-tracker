@@ -12,7 +12,7 @@ export type Viz =
 export interface Trait { value: string; label: string; strength: number; adj?: string; noun?: string; phrase: string }
 export interface Slide {
   id: string; category: Category | 'personality';
-  lead: string; big: string; unit?: string; context: string;
+  lead: string; big: string; unit?: string; sub?: string; context: string; // sub: a secondary value line under big
   viz?: Viz; traits?: Trait[];
   link: { tab: string; section: string; href: string }; // "Habits · Brew clock" + seeMoreHref
   wide?: true; perPerson?: true;

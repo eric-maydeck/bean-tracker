@@ -129,7 +129,7 @@ const decaf: FactDef = {
     if (after - before < 0.3) return null;
     return {
       id: 'decaf', category: 'habits',
-      lead: 'After 7pm,', big: pct(after), unit: 'decaf',
+      lead: 'After 7pm, your brews were', big: pct(after), unit: 'decaf',
       context: `${eveDecaf} of your ${eve} evening brews skipped the caffeine. Before 7pm, decaf is ${pct(before)}.`,
       viz: { kind: 'hlist', rows: [{ label: 'After 7pm', value: after * 100, texts: [pct(after)] }, { label: 'Before 7pm', value: before * 100, texts: [pct(before)] }] } satisfies Viz,
       link: { tab: 'Habits', section: 'Habits · Brew clock', href: seeMoreHref(y.year, 'habits') },
@@ -175,7 +175,7 @@ const roaster = shareFact('roaster', 'roasters', 'Your top roaster was', 'Roaste
   },
   texts: (r, s) => [pct(s), fmtKg(r.value), nBags(r.bags)]
 });
-const origin = shareFact('origin', 'origins', 'Most of your coffee came from', 'Origins', 'top origin', {
+const origin = shareFact('origin', 'origins', 'Your top origin was', 'Origins', 'top origin', {
   href: { open: 'origins' },
   context: (top, share, rows) => `${pct(share)} of everything you brewed: ${fmtKg(top.value)} from ${nBags(top.bags)}, out of ${rows.length} origins.`,
   texts: (r) => [fmtKg(r.value)]
@@ -280,20 +280,20 @@ const record: FactDef = {
     const tens = y.scored.filter((b) => b.rating === 10 && countsForRating(b, 'current')).length;
     const proc = (bag.processing ?? '').toLowerCase();
     const val = win.value.toFixed(2);
-    let context = `${val} average over ${n} brews${proc ? `, ${proc}` : ''}.`;
-    if (tens) context += ` ${tens} brew${tens === 1 ? '' : 's'} all year earned a 10.`;
+    let context = proc ? `${proc[0].toUpperCase()}${proc.slice(1)}.` : '';
+    if (tens) context += `${context ? ' ' : ''}${tens} brew${tens === 1 ? '' : 's'} all year earned a 10.`;
     const others = bag.producer ? byBags(producerRoasterMap(y).get(bag.producer.trim()) ?? new Map()).map((x) => x.r).filter((r) => r !== bag.roaster) : [];
-    if (others.length) context += ` ${poss(bag.producer!.trim())} coffee also came from ${andList(others)}.`;
+    if (others.length) context += `${context ? ' ' : ''}${poss(bag.producer!.trim())} coffee also came from ${andList(others)}.`;
     const top = cands.slice(0, 5), vals = top.map((c) => c.value);
     return {
-      id: 'record', category: 'coffees', lead: 'Your best bag of the year was', big: `${bag.roaster} ${bag.name}`, context,
+      id: 'record', category: 'coffees', lead: 'Your best bag of the year was', big: `${bag.roaster} · ${bag.name}`, sub: `${val} average · ${n} brews`, context,
       viz: {
         kind: 'dots', stack: true,
         rows: top.map((c) => { const b = bagOf(c.holder)!; return { label: `${b.roaster} · ${b.name}`, value: c.value, brews: stats.get(b.id)!.rated.length }; }),
         lo: Math.floor((Math.min(...vals) - 0.1) * 10) / 10, hi: Math.ceil((Math.max(...vals) + 0.05) * 10) / 10
       },
       link: { tab: 'Highlights', section: 'Highlights · Records', href: seeMoreHref(y.year, 'records') },
-      card: { big: `${bag.roaster} ${bag.name}`, label: `${val} best bag` }, score: Math.min(1, (win.value - (cands[1]?.value ?? 0)) / 0.5)
+      card: { big: `${bag.roaster} · ${bag.name}`, label: `${val} best bag` }, score: Math.min(1, (win.value - (cands[1]?.value ?? 0)) / 0.5)
     };
   }
 };
