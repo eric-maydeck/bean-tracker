@@ -23,8 +23,9 @@ export function recap(db: DatabaseSync, year: number, o: { today: string; previe
   if (!y) return null;
   const facts = POOL.map((f) => f.run(y)).filter((r) => r !== null);
   const frozen = frozenIds(db, year);
-  const ids = frozen ?? order(select(facts), year);
-  if (!frozen && !o.preview) freezeIds(db, year, ids);
+  const fresh = frozen ? null : order(select(facts), year);
+  // A racing first open may have frozen first: freezeIds returns what's stored.
+  const ids = frozen ?? (o.preview ? fresh! : freezeIds(db, year, fresh!));
   const picked = ids.map((id) => facts.find((f) => f.id === id)).filter((f) => f !== undefined);
   const you = personality(y);
   const tones = tonesFor(picked.map((f) => f.id), year);
