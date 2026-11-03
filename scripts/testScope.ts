@@ -11,7 +11,7 @@ export type Scope = { kind: 'full'; reason: string } | { kind: 'tags'; tags: str
 const NO_UI = [/^docs\//, /\.md$/, /\.test\.ts$/, /^deploy\//, /^\.claude\//,
   /^src\/lib\/server\/fixtures\//];
 // The test:ui tag is a state's first path segment (routeTag in tests/ui/layout.spec.ts).
-const TAGGED = /^src\/routes\/(coffees|insights|stats|on-deck|subscriptions)\//;
+const TAGGED = /^src\/routes\/(coffees|insights|stats|on-deck|subscriptions|recaps)\//;
 // Shared by every route: the root layout/page, hooks, app.css, app.html.
 const EVERY_ROUTE = /^src\/(routes\/\+|hooks|app\.)/;
 const INSIGHTS_PAGE = 'src/routes/insights/+page.svelte';

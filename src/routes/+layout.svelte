@@ -53,6 +53,8 @@
   const unreadAlertCount = $derived(data.alerts.filter((a: AlertRow) => a.read_at === null).length);
   // /recipes/<slug> is the Recipes page too.
   const current = (href: string) => page.url.pathname === href || (href === '/recipes' && page.url.pathname.startsWith('/recipes/'));
+  // The recap story is full-screen: no site header, tab bar or footer.
+  const recapPage = $derived(page.route.id === '/recaps/[year]');
   const onAccount = $derived(page.url.pathname === '/account' || page.url.pathname.startsWith('/account/'));
 
   async function markAlertReadClick(id: number) {
@@ -124,6 +126,7 @@
   }
 </script>
 
+{#if !recapPage}
 <nav class="site-nav">
   <div class="nav-links">
     {#each links as link (link.href)}
@@ -209,9 +212,12 @@
   </div>
 {/if}
 
-<main class="container">
+{/if}
+
+<main class={recapPage ? undefined : 'container'}>
   {@render children()}
   <Toast />
+  {#if !recapPage}
   <footer class="site-footer">
     <AiNote email={data.contactEmail} />
     <div>
@@ -220,6 +226,7 @@
       <span class="fi">Last deployed: {formatUpdated(data.lastDeployed)}</span>
     </div>
   </footer>
+  {/if}
 </main>
 
 {#if scrollY > innerHeight}

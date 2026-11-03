@@ -20,6 +20,9 @@ const GRAMS_KEYS = Object.keys(GRAMS) as GramsKey[];
 let cached: Seed | undefined;
 const seed = (): Seed => (cached ??= JSON.parse(readFileSync('.ui-test/seed.json', 'utf8')));
 
+// the local calendar year, as scripts/ui-seed.ts computes the seeded years.
+const recapYear = () => Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Denver', year: 'numeric' }).format(new Date()));
+
 interface State {
   name: string;
   path: (s: Seed) => string;
@@ -686,6 +689,103 @@ async function previewTags(page: Page, path: string): Promise<Record<string, str
 }
 
 export const STATES: State[] = [
+  // Year in review: /recaps/<Y> is the current local year's recap, an admin's ?preview=1; Y - 1 is the thin public seed year.
+  { name: 'recaps-cover', path: () => `/recaps/${recapYear()}?preview=1`,
+    act: async (page) => {
+      const slide = page.locator('.recap-reel > section').first();
+      const box = (await slide.boundingBox())!, vh = await page.evaluate(() => innerHeight);
+      expect(Math.abs(box.height - vh), 'cover fills the viewport').toBeLessThanOrEqual(1);
+      for (const sel of ['.big', '.context']) {
+        const b = (await slide.locator(sel).boundingBox())!;
+        expect(b.y, `${sel} inside the slide`).toBeGreaterThanOrEqual(box.y - 1);
+        expect(b.y + b.height, `${sel} inside the slide`).toBeLessThanOrEqual(box.y + box.height + 1);
+      }
+      await expect(slide.getByRole('link', { name: 'Bean Tracker' })).toBeVisible();
+      await expect(slide.getByText('Swipe or tap to continue')).toBeVisible();
+      await expect(page.locator('.bottom-tabs')).toBeHidden();
+      await expect(page.locator('nav.site-nav')).toHaveCount(0);
+    } },
+  { name: 'recaps-slide-nav', path: () => `/recaps/${recapYear()}?preview=1`,
+    act: async (page) => {
+      const ids = await page.locator('.recap-reel > section').evaluateAll((els) => els.map((e) => e.id));
+      expect(ids.length, 'cover, a second slide, a third and the poster').toBeGreaterThanOrEqual(4);
+      const inView = (id: string) => expect.poll(async () => Math.abs((await page.locator(`#${id}`).boundingBox())!.y), { message: `${id} in view` }).toBeLessThan(2);
+      const [w, h] = await page.evaluate(() => [innerWidth, innerHeight]);
+      await page.mouse.click(w * 0.8, h - 10); // the cover's hint line: no link, button or viz under it
+      await expect.poll(() => new URL(page.url()).hash).toBe(`#${ids[1]}`);
+      await inView(ids[1]);
+      expect(new URL(page.url()).search, 'preview stays, slide never appears').toBe('?preview=1');
+      await page.keyboard.press('ArrowLeft');
+      await expect.poll(() => { const u = new URL(page.url()); return u.pathname + u.search + u.hash; }).toBe(`/recaps/${recapYear()}?preview=1`);
+      await inView(ids[0]);
+      await page.locator('.recap-progress button').nth(2).click();
+      await inView(ids[2]);
+      await expect.poll(() => new URL(page.url()).hash).toBe(`#${ids[2]}`);
+    } },
+  { name: 'recaps-slide-viz', path: () => `/recaps/${recapYear()}?preview=1`,
+    act: async (page) => {
+      const slides = page.locator('.recap-reel > section.slide');
+      const n = await slides.count();
+      expect(n).toBeGreaterThanOrEqual(3);
+      for (let i = 0; i < n; i++) {
+        const sl = slides.nth(i);
+        await sl.evaluate((el) => el.scrollIntoView({ behavior: 'instant' }));
+        const box = (await sl.boundingBox())!;
+        for (const sel of ['.vizwrap', '.traits', '.big', '.context', 'a.more']) {
+          for (const el of await sl.locator(sel).all()) {
+            const b = (await el.boundingBox())!;
+            expect(b.x, `slide ${i} ${sel} left`).toBeGreaterThanOrEqual(box.x - 1);
+            expect(b.x + b.width, `slide ${i} ${sel} right`).toBeLessThanOrEqual(box.x + box.width + 1);
+            expect(b.y, `slide ${i} ${sel} top`).toBeGreaterThanOrEqual(box.y - 1);
+            expect(b.y + b.height, `slide ${i} ${sel} bottom`).toBeLessThanOrEqual(box.y + box.height + 1);
+          }
+        }
+      }
+    } },
+  { name: 'recaps-prior-year', path: () => `/recaps/${recapYear() - 1}`,
+    act: async (page) => {
+      const slides = page.locator('.recap-reel > section');
+      expect(await slides.count(), 'a slide plus the poster').toBeGreaterThanOrEqual(2);
+      const bigs = await page.locator('.recap-reel > section.slide .big').allTextContents();
+      expect(bigs.length).toBeGreaterThanOrEqual(1);
+      for (const b of bigs) expect(b.trim(), 'every slide has a big value').not.toBe('');
+      await expect(page.locator('.recap-reel > section.slide')).toHaveCount(bigs.length);
+    } },
+  { name: 'recaps-dark', path: () => `/recaps/${recapYear()}?preview=1`,
+    act: async (page) => {
+      await page.emulateMedia({ colorScheme: 'dark' }); // the layout reads the scheme at mount: reload
+      await reloadReady(page);
+      const r = await page.locator('.recap-reel > section').first().evaluate((el) => {
+        const probe = document.createElement('div');
+        probe.style.background = `var(--t-${(el as HTMLElement).dataset.tone})`;
+        document.body.append(probe);
+        const want = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return { bg: getComputedStyle(el).backgroundColor, want, token: getComputedStyle(document.documentElement).getPropertyValue('--t-espresso').trim() };
+      });
+      expect(r.token, 'dark tone token').toBe('#3d2719');
+      expect(r.bg).toBe(r.want);
+    } },
+  { name: 'recaps-see-more', viewports: 'two', path: () => `/recaps/${recapYear()}?preview=1`,
+    act: async (page) => {
+      const hrefs = await page.locator('a.more').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
+      expect(hrefs.length).toBeGreaterThan(2);
+      for (const h of hrefs) {
+        const q = new URL(h).searchParams;
+        expect([q.get('range'), q.get('caffeine')], h).toEqual([String(recapYear()), 'all']);
+      }
+    } },
+  { name: 'recaps-share-path', viewports: 'two', path: () => `/recaps/${recapYear()}?preview=1`,
+    act: async (page) => {
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'share', { configurable: true, value: async (d: { url: string }) => { ((window as unknown as { shared: string[] }).shared ??= []).push(d.url); } });
+      });
+      await reloadReady(page);
+      const second = page.locator('.recap-reel > section.slide').nth(1);
+      const id = await second.getAttribute('id');
+      await second.getByRole('button', { name: 'Share' }).click();
+      await expect.poll(() => page.evaluate(() => (window as unknown as { shared?: string[] }).shared?.[0] ?? '')).toMatch(new RegExp(`/recaps/${recapYear()}\\?slide=${id}&preview=1$`));
+    } },
   // /coffees status is a multi-select: Backlog + Open lit together, the list is their union.
   { name: 'coffees-status-multi', viewports: 'two', path: () => '/coffees?status=backlog&status=open&view=cards',
     act: async (page) => {
@@ -10943,6 +11043,12 @@ for (const state of STATES) {
 // Public cards (signed out) with only a roaster default show it, alt "<roaster> logo".
 test.describe('signed out', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
+  test('recaps-404-public', { tag: ['@recaps', '@two'] }, async ({ page }) => {
+    const status = async (path: string) => (await page.goto(path))!.status();
+    expect(await status(`/recaps/${recapYear()}?preview=1`), 'preview is admin-only').toBe(404);
+    expect(await status(`/recaps/${recapYear() + 1}`), 'a year with no brews').toBe(404);
+    expect(await status(`/recaps/${recapYear() - 1}`), 'an opened year is public').toBe(200);
+  });
   test('account-signed-out', async ({ page }) => {
     await page.goto('/account');
     await expect(page).toHaveURL(/\/login\?redirectTo=%2Faccount/);

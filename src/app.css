@@ -7,6 +7,9 @@
   --color-border: #e6ddd2;
   --color-accent: #8a5a3b;
   --color-label: #5c3a24; /* "Espresso": bold labels (record tile names), apart from accent links */
+  --t-espresso: #5c3a24; --t-red: #b23b3b; --t-sun: #f5c518; --t-plum: #8f456b; --t-brown: #8a5a3b;
+  --t-green: #4a7c59; --t-blue: #2e6f9e; --t-teal: #2f7d6b; --t-amber: #e8a95c; --t-violet: #6a5acd;
+  --t-gold: #a8650a; --t-ink: #2b211b; --t-cream: #f2ebe1; /* recap slide tones */
   --color-accent-contrast: #ffffff;
   --button-shade: #000000;
   --color-urgent: #c0392b;
@@ -132,6 +135,9 @@
     --color-text-muted: #b3a494;
     --color-border: #3a2f26;
     --color-accent: #d99a6c;
+  --t-espresso: #3d2719; --t-red: #8e3030; --t-sun: #e0b416; --t-plum: #6e3553; --t-brown: #6d4630;
+  --t-green: #3a6347; --t-blue: #245a80; --t-teal: #25624f; --t-amber: #d99a50; --t-violet: #5446a8;
+  --t-gold: #8a5308; --t-ink: #0f0c09; --t-cream: #262019;
     --color-label: #e8c9ab;
     --color-accent-contrast: #1c1712;
     --button-shade: #ffffff;
@@ -229,6 +235,9 @@
   --color-text-muted: #b3a494;
   --color-border: #3a2f26;
   --color-accent: #d99a6c;
+  --t-espresso: #3d2719; --t-red: #8e3030; --t-sun: #e0b416; --t-plum: #6e3553; --t-brown: #6d4630;
+  --t-green: #3a6347; --t-blue: #245a80; --t-teal: #25624f; --t-amber: #d99a50; --t-violet: #5446a8;
+  --t-gold: #8a5308; --t-ink: #0f0c09; --t-cream: #262019;
   --color-label: #e8c9ab;
   --color-accent-contrast: #1c1712;
   --button-shade: #ffffff;

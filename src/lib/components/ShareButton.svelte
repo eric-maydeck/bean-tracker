@@ -7,11 +7,13 @@
   // plain-http LAN testing). Reads `location`, not `page.url`, which
   // doesn't follow replaceState (see urlState.ts).
   const SHORTEN_OVER = 60;
+  // `path`: share this path (+ query) instead of the current one (a recap slide's own link).
+  let { path: given }: { path?: string } = $props();
   let copied = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   async function share() {
-    const path = location.pathname + location.search;
+    const path = given ?? location.pathname + location.search;
     let link = location.origin + path;
     if (path.length > SHORTEN_OVER) {
       try {
