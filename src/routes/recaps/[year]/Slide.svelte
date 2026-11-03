@@ -5,6 +5,7 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import RecapViz from './RecapViz.svelte';
+  import { unitGap } from '$lib/unitGap';
 
   // One fact: a full-screen story slide (`section`), or a tile on the poster (`tile`).
   let { slide, year, people, preview, index, total, tile = false, spans = [1, 1, 1], cover = false, shareHref }: {
@@ -18,7 +19,8 @@
 
 {#snippet body()}
   {#if slide.lead}<p class="lead"><CoffeeName text={slide.lead} /></p>{/if}
-  <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><CoffeeName text={slide.big} />{#if slide.unit} <span class="unit">{slide.unit}</span>{/if}</p>
+  <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><CoffeeName text={slide.big} />{#if slide.unit}{#if unitGap(slide.unit)}<span class="unit gap">{' '}</span>{/if}<span class="unit">{slide.unit}</span>{/if}</p>
+  {#if slide.sub}<p class="sub">{slide.sub}</p>{/if}
   <p class="context"><CoffeeName text={slide.context} /></p>
   {#if slide.viz}<div class="vizwrap"><RecapViz viz={slide.viz} /></div>{/if}
   {#if slide.traits}
@@ -45,7 +47,9 @@
   .lead { font-size: 1.15rem; font-weight: 600; margin: 0; opacity: 0.9; }
   .big { font-family: var(--font-display); font-weight: 700; line-height: 0.92; letter-spacing: -0.035em; margin: 0.1em 0 0.2em -0.04em;
     font-variant-numeric: lining-nums; overflow-wrap: break-word; }
+  .big .unit.gap { white-space: normal; }
   .big .unit { white-space: nowrap; font-family: var(--font-sans); font-size: 0.28em; letter-spacing: 0; font-weight: 600; }
+  .sub { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.5rem, 6.5vw, 2.4rem); line-height: 1.1; margin: -0.1em 0 0.1em; }
   .context { margin: 0; line-height: 1.45; max-width: 34ch; }
   .more { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
   .more:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
@@ -83,8 +87,9 @@
   @media (min-width: 900px) {
     .inner { max-width: min(84rem, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); column-gap: clamp(32px, 4vw, 80px); row-gap: clamp(12px, 2vh, 24px); align-items: center; align-content: center; }
     .inner:not(:has(.vizwrap, .traits)) { max-width: 46rem; grid-template-columns: minmax(0, 1fr); }
-    .inner > .lead, .inner > .big, .inner > .context, .inner > .more { grid-column: 1; }
-    .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+    .inner > .lead, .inner > .big, .inner > .sub, .inner > .context, .inner > .more { grid-column: 1; }
+    .slide .sub { font-size: clamp(1.8rem, 3vw, 3rem); }
+    .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 5; align-self: center; }
     .slide .big { font-size: clamp(5rem, min(13vw, 26vh), 13rem); }
     .slide .big.long { font-size: clamp(3.5rem, min(8vw, 16vh), 8rem); }
     .slide .big.xlong { font-size: clamp(2.4rem, min(4.5vw, 9vh), 4.6rem); }
@@ -103,13 +108,14 @@
     .inner { gap: 8px; }
     .slide .big { font-size: clamp(3rem, 18vh, 6rem); }
     .slide .big.long { font-size: clamp(2.4rem, 13vh, 4rem); }
-    .slide .big.xlong { font-size: clamp(1.6rem, 9vh, 2.4rem); }
+    .slide .big.xlong { font-size: clamp(1.4rem, 7.5vh, 2rem); }
+    .slide .sub { font-size: 1.15rem; margin: 0; }
     .slide .context { font-size: 1rem; }
   }
   @media (max-height: 640px) and (min-width: 700px) {
     .inner { max-width: 56rem; display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; row-gap: 8px; align-items: center; }
-    .inner > .lead, .inner > .big, .inner > .context { grid-column: 1; }
-    .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+    .inner > .lead, .inner > .big, .inner > .sub, .inner > .context { grid-column: 1; }
+    .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 5; align-self: center; }
     .slide .vizwrap :global(svg) { max-height: 62vh; }
     .slide[data-id='you'] .big { font-size: clamp(2rem, 13vh, 3rem); }
     .slide[data-id='cover'] .big { font-size: clamp(2.6rem, 17vh, 4.5rem); }
@@ -125,11 +131,12 @@
   .tile .big.xlong { font-size: clamp(1.6rem, 2.6vw, 2.2rem); line-height: 1.05; }
   .tile[data-id='you'] .big { font-size: clamp(2rem, 4vw, 3rem); line-height: 1; }
   .tile .lead { font-size: 1rem; }
+  .tile .sub { font-size: 1.4rem; }
   .tile .context { font-size: 0.95rem; max-width: 46ch; }
-  .tile .vizwrap { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; padding-top: 4px; }
+  .tile .vizwrap { padding-top: 4px; }
   .tile .vizwrap :global(.hlist) { row-gap: 10px; }
   .tile .vizwrap :global(.hlist .track) { height: 14px; }
-  .tile .more { font-size: 0.85rem; padding: 6px 0 2px; align-self: flex-start; }
+  .tile .more { font-size: 0.85rem; padding: 6px 0 2px; align-self: flex-start; margin-top: auto; }
   .tile[data-id='you'] .traits { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
   /* The poster picks each tile's span (so every row closes); a tile spanning 2+ puts its chart beside its text. */
   @media (min-width: 900px) {
