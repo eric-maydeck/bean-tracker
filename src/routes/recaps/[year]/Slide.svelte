@@ -15,6 +15,8 @@
   // Dark ink on the light tones, the site's text color on cream; cream text everywhere else.
   const INK: Partial<Record<Tone, string>> = { sun: '#2b211b', amber: '#2b211b', cream: 'var(--color-text)' };
   const tone = $derived(slide.tone ?? 'ink');
+  // A word never breaks mid-word: the longest word (in chars) sizes .fit so it always fits the box (see .fit).
+  const longest = $derived(Math.max(1, ...slide.big.split(/\s+/).map((w) => w.length)));
 </script>
 
 {#snippet body()}
@@ -22,7 +24,7 @@
   {#if slide.roaster}
     <div class="big names" style:--rn={slide.roaster.length} style:--cn={slide.big.length}><span class="rn">{slide.roaster}</span><span class="cn"><CoffeeName text={slide.big} /></span></div>
   {:else}
-  <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><CoffeeName text={slide.big} />{#if slide.unit}{#if unitGap(slide.unit)}<span class="unit gap">{' '}</span>{/if}<span class="unit">{slide.unit}</span>{/if}</p>
+  <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><span class="fit" style:--w={longest}><CoffeeName text={slide.big} />{#if slide.unit}{#if unitGap(slide.unit)}<span class="unit gap">{' '}</span>{/if}<span class="unit">{slide.unit}</span>{/if}</span></p>
   {/if}
   {#if slide.sub}<p class="sub">{slide.sub}</p>{/if}
   {#if slide.context}<p class="context"><CoffeeName text={slide.context} /></p>{/if}
@@ -50,7 +52,9 @@
   .tone :global(.coffee-name), .tone :global(.ink-better), .tone :global(.ink-worse) { color: inherit !important; }
   .lead { font-size: 1.15rem; font-weight: 600; margin: 0; opacity: 0.9; }
   .big { font-family: var(--font-display); font-weight: 700; line-height: 0.92; letter-spacing: -0.035em; margin: 0.1em 0 0.2em -0.04em;
-    font-variant-numeric: lining-nums; overflow-wrap: break-word; }
+    font-variant-numeric: lining-nums; container-type: inline-size; }
+  /* Words wrap only at spaces; a word wider than the box shrinks to fit (never splits). 0.62em is a wide-glyph average for the display face. */
+  .fit { display: block; font-size: min(1em, calc(100cqi / (var(--w) * 0.62))); }
   /* Roaster over coffee, two nowrap lines that shrink to the width of their box (cqi); ellipsis only past the floor. */
   .names { container-type: inline-size; --cap: 3.6rem; font-size: 1rem; line-height: 1.05; letter-spacing: -0.02em; white-space: nowrap; }
   .names span { display: block; overflow: hidden; text-overflow: ellipsis; padding-bottom: 0.08em; }

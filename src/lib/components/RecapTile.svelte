@@ -11,7 +11,7 @@
   <header><h2>{tile.year}</h2>{#if tile.preview}<span class="badge">Preview</span>{/if}</header>
   <ul>
     {#each tile.headlines as h (h.label)}
-      <li><b class:long={h.big.length > 7}><CoffeeName text={h.big} /></b><span>{h.label}</span></li>
+      <li><b class:long={h.big.length > 7}><span class="fit" style:--w={Math.max(1, ...h.big.split(/\s+/).map((w) => w.length))}><CoffeeName text={h.big} /></span></b><span>{h.label}</span></li>
     {/each}
   </ul>
   <span class="open">Open the recap <span aria-hidden="true">→</span></span>
@@ -25,11 +25,13 @@
   header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
   h2 { font-family: var(--font-display); font-size: clamp(2.4rem, 8cqi, 3.6rem); line-height: 0.9; letter-spacing: -0.035em; margin: 0; }
   .badge { border: 1.5px solid currentColor; border-radius: 999px; padding: 2px 10px; font-size: 0.8rem; font-weight: 600; }
-  ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 12px 16px; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
   li { display: flex; flex-direction: column; }
-  b { font-family: var(--font-display); font-size: 1.9rem; line-height: 1; letter-spacing: -0.03em; overflow-wrap: anywhere; }
+  b { font-family: var(--font-display); font-size: 1.9rem; line-height: 1; letter-spacing: -0.03em; container-type: inline-size; }
+  /* A word never breaks mid-word: it shrinks to fit the tile instead. */
+  b .fit { display: block; font-size: min(1em, calc(100cqi / (var(--w) * 0.62))); }
   b.long { font-size: 1.35rem; }
-  li span { font-size: 0.9rem; opacity: 0.9; }
+  li > span { font-size: 0.9rem; opacity: 0.9; }
   .recap-tile :global(.coffee-name) { color: inherit !important; }
   .open { min-height: 44px; display: flex; align-items: center; font-weight: 600; }
 </style>

@@ -161,9 +161,9 @@
   .dots .hi circle { opacity: 1; }
   .dots .thin circle { fill: none; stroke: var(--fg); stroke-width: 1.5; }
   /* One grid for every row, so the bars line up whatever the value text's width. */
-  .hlist { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(3.5em, 8.5em) minmax(1em, 1fr) repeat(var(--vcols, 1), auto); gap: 6px 10px; align-items: center; font-size: 0.9rem; }
+  .hlist { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(min-content, 8.5em) minmax(1em, 1fr) repeat(var(--vcols, 1), auto); gap: 6px 10px; align-items: center; font-size: 0.9rem; }
   .hlist li { display: contents; }
-  .hlist .k { line-height: 1.2; overflow-wrap: anywhere; }
+  .hlist .k { line-height: 1.2; }
   .hlist .v { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
   .hlist .track { height: 10px; }
   .hlist .fill { display: block; height: 100%; min-width: 3px; border-radius: 0 4px 4px 0; background: var(--fg); opacity: 0.35; }

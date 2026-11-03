@@ -32,7 +32,7 @@ async function expectRecapTiles(page: Page, years: string[]) {
     const n = await t.locator('li').count();
     expect(n, `${y} headlines`).toBeGreaterThanOrEqual(2);
     expect(n).toBeLessThanOrEqual(3);
-    for (const li of await t.locator('li').all()) for (const part of [li.locator('b'), li.locator('span')]) expect((await part.textContent())!.trim()).not.toBe('');
+    for (const li of await t.locator('li').all()) for (const part of [li.locator('b'), li.locator('> span')]) expect((await part.textContent())!.trim()).not.toBe('');
     expect((await t.boundingBox())!.height, `${y} tile is a poster, not a row`).toBeGreaterThan(180);
   }
 }
@@ -702,6 +702,38 @@ async function previewTags(page: Page, path: string): Promise<Record<string, str
   }
 }
 
+// A word never breaks mid-word (user, gate 2): every word of the text in `sel` is one line box (one client rect).
+// `fit` (a selector inside each match) is first rewritten to each of `words`, with --w set as the server does, so long names are covered too.
+async function expectNoMidWord(page: Page, sel: string, fit?: string, words: string[] = []) {
+  const check = () => page.evaluate((sel) => {
+    const bad: string[] = [];
+    for (const el of document.querySelectorAll(sel)) {
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let n = w.nextNode(); n; n = w.nextNode()) {
+        const t = n.textContent ?? '';
+        for (const m of t.matchAll(/\S+/g)) {
+          const r = document.createRange();
+          r.setStart(n, m.index!); r.setEnd(n, m.index! + m[0].length);
+          const tops = new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top / 4)));
+          if (tops.size > 1) bad.push(`${m[0]} (${(el as HTMLElement).className})`);
+        }
+      }
+    }
+    return bad;
+  }, sel);
+  expect(await check(), `${sel}: words split across lines`).toEqual([]);
+  if (!fit) return;
+  for (const word of words) {
+    await page.evaluate(([fit, word]) => {
+      const el = document.querySelector(fit) as HTMLElement;
+      el.textContent = word;
+      el.style.setProperty('--w', String(Math.max(...word.split(/\s+/).map((x) => x.length))));
+    }, [fit, word]);
+    expect(await check(), `${sel} with "${word}"`).toEqual([]);
+  }
+}
+const LONG_NAMES = ['Origami', 'Kalita Wave 185', 'Hario Switch', 'Chemex Eight Cup Classic', 'Supercalifragilistic'];
+
 export const STATES: State[] = [
   // Year in review: /recaps/<Y> is the current local year's recap, an admin's ?preview=1; Y - 1 is the thin public seed year.
   { name: 'recaps-cover', path: () => `/recaps/${recapYear()}?preview=1`,
@@ -734,6 +766,12 @@ export const STATES: State[] = [
       const off = await page.locator('.recap-reel > section.slide').evaluateAll((sl) => sl.flatMap((s) => [...s.querySelectorAll('.coffee-name, .ink-better, .ink-worse')]
         .filter((e) => getComputedStyle(e).color !== getComputedStyle(s).color).map((e) => e.textContent)));
       expect(off, 'names/deltas off the slide text color').toEqual([]);
+    } },
+  { name: 'recaps-no-midword', path: () => `/recaps/${recapYear() - 1}`,
+    act: async (page) => {
+      await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context');
+      await expectNoMidWord(page, '.slide:not(.cover) .big:not(.names)', '.slide:not(.cover) .big:not(.names) .fit', LONG_NAMES);
+      await expectNoMidWord(page, '.tile .big:not(.names)', '.tile .big:not(.names) .fit', LONG_NAMES);
     } },
   { name: 'recaps-slide-nav', path: () => `/recaps/${recapYear()}?preview=1`,
     act: async (page) => {
@@ -905,18 +943,38 @@ export const STATES: State[] = [
   { name: 'insights-recaps', path: () => '/insights?tab=recaps',
     act: async (page) => {
       await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
-      await expectGridRowsFull(page, '.recap-tiles');
       await expect(page.locator('.recap-tile .badge')).toHaveText(['Preview']);
+      await expectNoMidWord(page, '.recap-tile b', '.recap-tile b .fit', LONG_NAMES);
       const vp = page.viewportSize()!;
       const rail = page.locator('nav.insights-rail a');
       if (vp.width >= 1000 && vp.height >= 500) await expect(rail.last()).toHaveText('Recaps');
       else expect(await page.getByRole('combobox', { name: 'View' }).locator('option').allTextContents()).toContain('Recaps');
     } },
+  // The Period picks the years: one year, and a range with none (an empty line naming it, not a blank panel).
+  { name: 'insights-recaps-period', path: () => `/insights?tab=recaps&range=${recapYear() - 1}`,
+    act: async (page) => {
+      await expectRecapTiles(page, [String(recapYear() - 1)]);
+      await expect(page.locator('.recap-tile .badge')).toHaveCount(0);
+      await page.goto('/insights?tab=recaps&range=2015-01-01..2015-02-01');
+      await expect(page.locator('.recap-tile')).toHaveCount(0);
+      await expect(page.locator('main .chart-note').first()).toContainText('No recaps in Jan 1, 2015');
+    } },
+  { name: 'insights-recaps-tile-size', path: () => '/insights?tab=recaps',
+    act: async (page) => {
+      // Every tile is the same size whether the Period shows 1 or 2 of them, left-aligned, never stretched.
+      const size = async () => (await page.locator('.recap-tile').evaluateAll((ts) => ts.map((t) => { const r = t.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.left)]; })));
+      const two = await size();
+      expect(new Set(two.map((t) => t[0])).size, 'equal widths').toBe(1);
+      await page.goto(`/insights?tab=recaps&range=${recapYear() - 1}`);
+      await expect(page.locator('.recap-tile')).toHaveCount(1);
+      const one = await size();
+      expect(one[0][0], '1 tile = the 2-tile width').toBe(two[0][0]);
+      expect(one[0][1], 'left-aligned').toBe(two[0][1]);
+    } },
   { name: 'recaps-index', path: () => '/recaps',
     act: async (page) => {
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Recaps');
       await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
-      await expectGridRowsFull(page, '.recap-tiles');
       await page.locator('.recap-tile').nth(1).click();
       await expect(page).toHaveURL(new RegExp(`/recaps/${recapYear() - 1}$`));
     } },
@@ -11187,7 +11245,6 @@ test.describe('signed out', () => {
     await gotoReady(page, '/insights?tab=recaps');
     await expectRecapTiles(page, [String(recapYear() - 1)]);
     await expect(page.locator('.recap-tile .badge')).toHaveCount(0);
-    await expectGridRowsFull(page, '.recap-tiles');
     await checkLayout(page);
   });
   test('account-signed-out', async ({ page }) => {
