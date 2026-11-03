@@ -25,7 +25,7 @@
   <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><CoffeeName text={slide.big} />{#if slide.unit}{#if unitGap(slide.unit)}<span class="unit gap">{' '}</span>{/if}<span class="unit">{slide.unit}</span>{/if}</p>
   {/if}
   {#if slide.sub}<p class="sub">{slide.sub}</p>{/if}
-  <p class="context"><CoffeeName text={slide.context} /></p>
+  {#if slide.context}<p class="context"><CoffeeName text={slide.context} /></p>{/if}
   {#if slide.viz}<div class="vizwrap"><RecapViz viz={slide.viz} /></div>{/if}
   {#if slide.traits}
     <ul class="traits">{#each slide.traits as t (t.label)}<li><b>{t.value}</b> {t.label}</li>{/each}</ul>

@@ -451,7 +451,7 @@ const rest: FactDef = {
 
 // ---- Amounts and money, extra --------------------------------------------------------------------
 const busiestDay: FactDef = {
-  id: 'busiestDay', category: 'amounts',
+  id: 'busiest-day', category: 'amounts',
   run: (y) => {
     const by = new Map<string, number>();
     for (const b of y.brews) by.set(b.localDate, (by.get(b.localDate) ?? 0) + 1);
@@ -464,18 +464,18 @@ const busiestDay: FactDef = {
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const big = fmtInt(n / y.per);
     return {
-      id: 'busiestDay', category: 'amounts',
+      id: 'busiest-day', category: 'amounts',
       lead: 'On your busiest day you brewed', big, unit: 'brews',
       context: `That was ${md(day)}. A usual brew day has ${fmtInt(usual / y.per)}.`,
       viz: { kind: 'bars', values, labels, tips: week.map((d, i) => `${labels[i]} ${md(d)}: ${values[i]} brews`), hi: dow(day), hiText: String(values[dow(day)]) },
-      link: { tab: 'Habits', section: 'Habits · Brew days', href: seeMoreHref(y.year, 'habits') },
+      link: { tab: 'Habits', section: 'Habits · Brew calendar', href: seeMoreHref(y.year, 'habits') },
       perPerson: true, card: { big, label: 'brews on your busiest day' }, score: Math.min(1, n / usual / 4)
     };
   }
 };
 
 const bagsFinished: FactDef = {
-  id: 'bagsFinished', category: 'amounts',
+  id: 'bags-finished', category: 'amounts',
   run: (y) => {
     const done = y.bags.filter((b) => isFinished(b) && b.firstBrew && b.lastBrew!.startsWith(`${y.year}-`));
     if (done.length < 3) return null;
@@ -487,11 +487,11 @@ const bagsFinished: FactDef = {
     const labels = values.map((_, i) => MON[m0 + i]), hi = values.indexOf(Math.max(...values));
     const big = fmtInt(done.length);
     return {
-      id: 'bagsFinished', category: 'amounts',
+      id: 'bags-finished', category: 'amounts',
       lead: 'You finished', big, unit: 'bags',
       context: `The fastest went in ${days} days: ${fast.roaster} · ${fast.name}.`,
       viz: { kind: 'bars', values, labels, tips: values.map((v, i) => `${labels[i]}: ${nBags(v)}`), hi, hiText: String(values[hi]) },
-      link: { tab: 'Habits', section: 'Habits · Consumption', href: seeMoreHref(y.year, 'consumption') },
+      link: { tab: 'Habits', section: 'Consumption · Bought vs brewed', href: seeMoreHref(y.year, 'consumption') },
       card: { big, label: 'bags finished' }, score: Math.min(1, done.length / 52)
     };
   }
@@ -520,7 +520,7 @@ const spend: FactDef = {
 };
 
 const bestValue: FactDef = {
-  id: 'bestValue', category: 'money',
+  id: 'best-value', category: 'money',
   run: (y) => {
     const def = RECORDS.find((r) => r.key === 'bestValue')!;
     const cands = def.run({ brews: y.scored, bags: y.bags, ratings: 'current', today: y.today }).sort((a, b) => b.value - a.value);
@@ -533,7 +533,7 @@ const bestValue: FactDef = {
     if (top.some((x) => !x.bag)) return null;
     const vals = top.map((x) => x.c.mean!), second = cands[1]?.value;
     return {
-      id: 'bestValue', category: 'money', lead: 'Your best value bag was', big: win.holder.label, roaster: win.holder.sub,
+      id: 'best-value', category: 'money', lead: 'Your best value bag was', big: win.holder.label, roaster: win.holder.sub,
       sub: `${usd(win.per100!)}/100g · ${win.mean!.toFixed(2)} average`, context: '',
       viz: {
         kind: 'dots',

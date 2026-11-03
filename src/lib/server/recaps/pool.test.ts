@@ -323,26 +323,26 @@ describe('rest card figures', () => {
   });
 });
 
-describe('busiestDay, bagsFinished, spend, bestValue', () => {
+describe('busiest-day, bags-finished, spend, best-value', () => {
   const noBags = (o: Partial<YearCtx> = {}) => full({ bags: [], ...o });
-  it('busiestDay: the spike, its week, and a usual day', () => {
-    const s = fact('busiestDay').run(full())!;
+  it('busiest-day: the spike, its week, and a usual day', () => {
+    const s = fact('busiest-day').run(full())!;
     expect(s).toMatchObject({ lead: 'On your busiest day you brewed', unit: 'brews', perPerson: true });
     expect(s.context).toMatch(/^That was Mar 14\. A usual brew day has \d+\.$/);
     expect(Number(s.big)).toBeGreaterThan(25);
     expect((s.viz as any).values).toHaveLength(7);
     expect((s.viz as any).values[(s.viz as any).hi]).toBe(Number(s.big));
-    expect(fact('busiestDay').run(full({ per: 2 }))!.big).toBe(String(Math.round(Number(s.big) / 2)));
+    expect(fact('busiest-day').run(full({ per: 2 }))!.big).toBe(String(Math.round(Number(s.big) / 2)));
   });
-  it('busiestDay: null when the busiest day is ordinary', () => {
-    expect(fact('busiestDay').run(ctx(days('2026-03-01', 20)))).toBeNull();
+  it('busiest-day: null when the busiest day is ordinary', () => {
+    expect(fact('busiest-day').run(ctx(days('2026-03-01', 20)))).toBeNull();
   });
-  it('bagsFinished: counts bags whose last brew is in the year, names the fastest', () => {
-    const s = fact('bagsFinished').run(full())!;
+  it('bags-finished: counts bags whose last brew is in the year, names the fastest', () => {
+    const s = fact('bags-finished').run(full())!;
     expect(s).toMatchObject({ lead: 'You finished', big: '121', unit: 'bags' });
     expect(s.context).toMatch(/^The fastest went in \d+ days: .+ · Bag \d+\.$/);
     expect((s.viz as any).values.reduce((a: number, b: number) => a + b, 0)).toBe(121);
-    expect(fact('bagsFinished').run(noBags())).toBeNull();
+    expect(fact('bags-finished').run(noBags())).toBeNull();
   });
   it('spend: per person divides dollars, not bags', () => {
     const one = fact('spend').run(full())!, two = fact('spend').run(full({ per: 2 }))!;
@@ -354,13 +354,13 @@ describe('busiestDay, bagsFinished, spend, bestValue', () => {
     expect((one.viz as any).rows).toHaveLength(3);
     expect(fact('spend').run(noBags())).toBeNull();
   });
-  it('bestValue: names the bag and its roaster, null without prices', () => {
-    const s = fact('bestValue').run(full())!;
+  it('best-value: names the bag and its roaster, null without prices', () => {
+    const s = fact('best-value').run(full())!;
     expect(s).toMatchObject({ lead: 'Your best value bag was', big: expect.stringMatching(/^Bag \d+$/) });
     expect(s.roaster).toBeTruthy();
     expect(s.sub).toMatch(/^\$[\d.,]+\/100g · \d+\.\d\d average$/);
     expect((s.viz as any).rows.length).toBeLessThanOrEqual(3);
-    expect(fact('bestValue').run(full({ bags: shelf.bags.map((b) => ({ ...b, cost: null })) }))).toBeNull();
+    expect(fact('best-value').run(full({ bags: shelf.bags.map((b) => ({ ...b, cost: null })) }))).toBeNull();
   });
 });
 
