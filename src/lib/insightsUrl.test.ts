@@ -659,6 +659,10 @@ describe('TAB_GROUPS', () => {
     expect(parseInsightsUrl(new URLSearchParams('tab=RECAPS'), [2026]).tab).toBe('recaps');
     expect(TAB_GROUPS.flatMap((g) => g.tabs)).toContain('recaps');
     expect(TAB_GROUPS.at(-1)).toEqual({ label: 'Recaps', tabs: ['recaps'] });
+    // The Period rides along (it picks which years' recaps show).
+    const r = parseInsightsUrl(new URLSearchParams('tab=recaps&range=2026'), [2025, 2026]);
+    expect([r.tab, r.range]).toEqual(['recaps', '2026']);
+    expect(insightsParams(r).toString()).toBe('range=2026&tab=recaps');
   });
   it('Lab lists sweetspots, brewing, pours, water, gear', () => {
     expect(TAB_GROUPS.find((g) => g.label === 'Lab')!.tabs).toEqual(['sweetspots', 'brewing', 'pours', 'water', 'gear']);

@@ -1,7 +1,5 @@
 import type { FactResult, Tone } from './types';
 
-export const FACT_SLOTS = 12; // total + 11 ranked (with personality: 13 cards, like the mockup)
-export const CATEGORY_CAP = 3; // total counts toward amounts
 export const THEME_VERSION = 1; // bump when TONES or the generator change (card cache key)
 
 const TONES: Tone[] = ['espresso', 'red', 'sun', 'plum', 'brown', 'green', 'blue', 'teal', 'amber', 'violet', 'gold', 'ink'];
@@ -23,18 +21,11 @@ function shuffle<T>(xs: readonly T[], seed: number): T[] {
   return a;
 }
 
+// Only a lack of data leaves a fact out (its generator returned null): every other fact shows, total first, then by score.
 export function select(facts: readonly FactResult[]): string[] {
-  const total = facts.find((f) => f.id === 'total');
-  const used: Record<string, number> = total ? { [total.category]: 1 } : {};
-  const ids = total ? ['total'] : [];
+  const total = facts.filter((f) => f.id === 'total');
   const ranked = facts.filter((f) => f.id !== 'total').sort((a, b) => b.score - a.score); // stable: ties keep POOL order
-  for (const f of ranked) {
-    if (ids.length >= FACT_SLOTS) break;
-    if ((used[f.category] ?? 0) >= CATEGORY_CAP) continue;
-    used[f.category] = (used[f.category] ?? 0) + 1;
-    ids.push(f.id);
-  }
-  return ids;
+  return [...total, ...ranked].map((f) => f.id);
 }
 
 export function order(ids: readonly string[], year: number): string[] {
@@ -48,3 +39,6 @@ export function tonesFor(ids: readonly string[], year: number): Record<string, T
   const t = theme(year);
   return { ...Object.fromEntries(ids.map((id, i) => [id, t[i % t.length]])), you: 'cream' };
 }
+
+// The cover's tone: the theme's last tone, so it differs from the first slide's (theme[0]) and from year to year.
+export const coverTone = (year: number): Tone => theme(year).at(-1)!;

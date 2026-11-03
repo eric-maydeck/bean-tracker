@@ -27,7 +27,7 @@ describe('recap', () => {
     expect(r.slides[0].id).toBe('total');
     expect(r.slides.every((s) => s.big && s.context && s.tone)).toBe(true);
     expect(r.poster.title).toBe('2025 in coffee');
-    expect(r.cover).toEqual({ title: '2025 in coffee', sub: 'Jun 1 to Jun 8' });
+    expect(r.cover).toMatchObject({ title: '2025 in coffee', sub: 'Jun 1 to Jun 8' });
     expect(r.poster.footer).toBe('Picked from 20 brews across 2 bags and 2 roasters.');
     expect(r.slides.at(-1)!.id).toBe('you');
   });
@@ -61,6 +61,10 @@ describe('recapTiles', () => {
     expect(frozenIds(db, 2027)).toBeNull(); // a preview never freezes
     expect(adm[1].headlines.length).toBeGreaterThanOrEqual(2);
     expect(adm[1].headlines[0]).toEqual({ big: '20', label: 'brews' });
+    expect(recapTiles(db, '2027-07-01', true, { start: '2026-01-01', end: '2026-12-31' }).map((t) => t.year)).toEqual([2026]);
+    expect(recapTiles(db, '2027-07-01', true, { start: '2026-12-31', end: '2027-02-01' }).map((t) => t.year)).toEqual([2027, 2026]);
+    expect(recapTiles(db, '2027-07-01', true, { start: '2025-01-01', end: '2025-12-31' })).toEqual([]);
+    expect(recapTiles(db, '2027-07-01', true, { start: null, end: '2027-07-01' })).toHaveLength(2);
     expect(recapTiles(db, '2026-06-01', false)).toEqual([]);
     expect(frozenIds(db, 2026)).toBeNull(); // a public tile call leaves an open year unfrozen
   });

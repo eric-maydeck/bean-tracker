@@ -225,7 +225,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
     water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,
     gear: s.tab === 'gear' ? gearTab(scored, labCtx) : null,
     recapsTab,
-    recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin) : null,
+    recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin, period) : null,
     recent: s.tab === 'overview' ? recent(brews, bags, 50) : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {

@@ -949,7 +949,7 @@
     {#snippet tiles()}{@render panel('On the shelf', ONHAND, data.onHand!.tiles, null)}{/snippet}
   </OnHand>
 {:else if s.tab === 'recaps' && data.recaps}
-  <Recaps tiles={data.recaps} />
+  <Recaps tiles={data.recaps} empty="No recaps in {span(data.period)}. Pick a wider period to see them." />
 {:else if s.tab === 'spend' && data.spend}
   <Spend t={data.spend} {choose} {placeTip} spendView={s.spendView} spendSeries={s.spendSeries} rcSort={s.rcSort} rcDir={s.rcDir} rcTop={s.rcTop} {compareLabel} {compareDates} {link}>
     {#snippet tiles()}{@render panel('Spending', SPEND, data.spend!.tiles, data.spend!.deltas)}{/snippet}

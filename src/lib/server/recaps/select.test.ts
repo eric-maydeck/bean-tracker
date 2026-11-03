@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { FACT_SLOTS, order, select, theme, tonesFor } from './select';
+import { coverTone, order, select, theme, tonesFor } from './select';
 import type { Category, FactResult } from './types';
 
 const facts = (rows: [string, Category, number][]) => rows.map(([id, category, score]) => ({ id, category, score }) as FactResult);
@@ -8,17 +8,15 @@ const manyFacts = (n: number) => facts([['total', 'amounts', 0], ...Array.from({
 const ids = ['total', ...Array.from({ length: 11 }, (_, i) => `f${i}`)];
 
 describe('select', () => {
-  it('total always first; at most 3 per category; top scores win', () => {
-    const r = select(facts([['total', 'amounts', 0], ['a', 'coffees', .9], ['b', 'coffees', .8], ['c', 'coffees', .7], ['d', 'coffees', .95], ['e', 'habits', .1]]));
-    expect(r[0]).toBe('total');
-    expect(r.filter((id) => 'abcd'.includes(id))).toEqual(['d', 'a', 'b']);
-    expect(r).toContain('e');
+  it('keeps every fact (a null one never reaches it): total first, then by score', () => {
+    const r = select(facts([['a', 'coffees', .9], ['total', 'amounts', 0], ['b', 'coffees', .8], ['c', 'coffees', .7], ['d', 'coffees', .95], ['e', 'habits', .1], ['f', 'coffees', .05]]));
+    expect(r).toEqual(['total', 'd', 'a', 'b', 'c', 'e', 'f']);
   });
-  it('total counts toward amounts', () => {
-    const r = select(facts([['total', 'amounts', 0], ['a', 'amounts', .9], ['b', 'amounts', .8], ['c', 'amounts', .7]]));
-    expect(r).toEqual(['total', 'a', 'b']);
+  it('no cap on the count or per category', () => { expect(select(manyFacts(30))).toHaveLength(31); });
+  it('the cover tone differs from the first slide and from year to year', () => {
+    for (let y = 2000; y < 2100; y++) expect(coverTone(y), String(y)).not.toBe(tonesFor(['total'], y).total);
+    expect(coverTone(2025)).not.toBe(coverTone(2026));
   });
-  it('caps at FACT_SLOTS', () => { expect(select(manyFacts(30))).toHaveLength(FACT_SLOTS); });
   it('order and theme are stable per year and differ between years', () => {
     expect(order(ids, 2026)).toEqual(order(ids, 2026));
     expect(order(ids, 2026)[0]).toBe('total');

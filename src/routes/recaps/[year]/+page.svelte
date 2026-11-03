@@ -12,7 +12,7 @@
   const people = $derived(data.state.people);
   const ids = $derived(['cover', ...r.slides.map((s) => s.id), POSTER_ID]);
   // The title slide is not a fact: no score, never selected, no poster tile.
-  const cover = $derived<SlideT>({ id: 'cover', category: 'amounts', lead: '', big: r.cover.title, context: r.cover.sub, tone: 'espresso',
+  const cover = $derived<SlideT>({ id: 'cover', category: 'amounts', lead: '', big: r.cover.title, context: r.cover.sub, tone: r.cover.tone,
     link: { tab: '', section: '', href: '' }, card: { big: '', label: '' } });
 
   let reel: HTMLElement;
