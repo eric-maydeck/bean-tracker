@@ -216,7 +216,7 @@
 {/if}
 
 <main class={recapPage ? undefined : 'container'}>
-  {#if data.recapReady && !recapPage && page.route.id !== '/recaps'}<RecapBanner year={data.recapReady} />{/if}
+  {#if data.recapReady && !recapPage}<RecapBanner year={data.recapReady} />{/if}
   {@render children()}
   <Toast />
   {#if !recapPage}

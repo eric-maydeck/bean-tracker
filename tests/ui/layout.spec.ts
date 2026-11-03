@@ -995,14 +995,14 @@ export const STATES: State[] = [
       expect(one[0][0], '1 tile = the 2-tile width').toBe(two[0][0]);
       expect(one[0][1], 'left-aligned').toBe(two[0][1]);
     } },
-  { name: 'recaps-index', path: () => '/recaps',
+  // /recaps is only a way to the Recaps tab: it redirects there and drops every other param.
+  { name: 'recaps-index-redirect', path: () => '/recaps?range=2015&x=1',
     act: async (page) => {
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Recaps');
+      await expect(page).toHaveURL(/\/insights\?tab=recaps$/);
       await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
       await page.locator('.recap-tile').nth(1).click();
       await expect(page).toHaveURL(new RegExp(`/recaps/${recapYear() - 1}$`));
     } },
-  // /coffees status is a multi-select: Backlog + Open lit together, the list is their union.
   { name: 'coffees-status-multi', viewports: 'two', path: () => '/coffees?status=backlog&status=open&view=cards',
     act: async (page) => {
       const pressed = async (n: string) => page.getByRole('button', { name: n }).first().getAttribute('aria-pressed');
