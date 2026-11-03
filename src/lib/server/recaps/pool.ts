@@ -17,7 +17,7 @@ import type { YearCtx } from './year';
 
 const md = (d: string) => `${MON[Number(d.slice(5, 7)) - 1]} ${Number(d.slice(8))}`;
 const h12 = (h: number) => `${h % 12 || 12}${h < 12 ? 'am' : 'pm'}`;
-const pct = (n: number) => `${Math.round(n * 100)}%`;
+export const pct = (n: number) => `${Math.round(n * 100)}%`;
 const dow = (d: string) => (new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday = 0
 const sorted = (xs: string[]) => [...new Set(xs)].sort();
 
@@ -87,8 +87,8 @@ const streak: FactDef = {
 };
 
 // Brews with a real time of day (backfilled ones were typed in later).
-const timed = (y: YearCtx): BrewFact[] => y.brews.filter((b) => !b.backfilled);
-const hourOf = (b: BrewFact) => Number(b.localTime.slice(11, 13));
+export const timed = (y: YearCtx): BrewFact[] => y.brews.filter((b) => !b.backfilled);
+export const hourOf = (b: BrewFact) => Number(b.localTime.slice(11, 13));
 
 const hour: FactDef = {
   id: 'hour', category: 'habits',
@@ -116,19 +116,21 @@ const hour: FactDef = {
   }
 };
 
+// Timed brews from 7pm on, and how many were decaf.
+export const evening = (y: YearCtx) => { const e = timed(y).filter((b) => hourOf(b) >= 19); return { eve: e.length, decaf: e.filter((b) => b.decaf).length }; };
 const decaf: FactDef = {
   id: 'decaf', category: 'habits',
   run: (y) => {
     const bs = timed(y);
-    const eve = bs.filter((b) => hourOf(b) >= 19), day = bs.filter((b) => hourOf(b) < 19);
-    const eveDecaf = eve.filter((b) => b.decaf).length;
-    if (eve.length < 10 || bs.filter((b) => b.decaf).length < 5) return null;
-    const after = eveDecaf / eve.length, before = day.length ? day.filter((b) => b.decaf).length / day.length : 0;
+    const day = bs.filter((b) => hourOf(b) < 19);
+    const { eve, decaf: eveDecaf } = evening(y);
+    if (eve < 10 || bs.filter((b) => b.decaf).length < 5) return null;
+    const after = eveDecaf / eve, before = day.length ? day.filter((b) => b.decaf).length / day.length : 0;
     if (after - before < 0.3) return null;
     return {
       id: 'decaf', category: 'habits',
       lead: 'After 7pm,', big: pct(after), unit: 'decaf',
-      context: `${eveDecaf} of your ${eve.length} evening brews skipped the caffeine. Before 7pm, decaf is ${pct(before)}.`,
+      context: `${eveDecaf} of your ${eve} evening brews skipped the caffeine. Before 7pm, decaf is ${pct(before)}.`,
       viz: { kind: 'hlist', rows: [{ label: 'After 7pm', value: after * 100, texts: [pct(after)] }, { label: 'Before 7pm', value: before * 100, texts: [pct(before)] }] } satisfies Viz,
       link: { tab: 'Habits', section: 'Habits · Brew clock', href: seeMoreHref(y.year, 'habits') },
       card: { big: pct(after), label: 'decaf after 7pm' },
@@ -138,19 +140,20 @@ const decaf: FactDef = {
 };
 
 // ---- Coffees: who the coffee came from -------------------------------------------------------
-const poss = (n: string) => (n.endsWith('s') ? `${n}'` : `${n}'s`);
+export const poss = (n: string) => (n.endsWith('s') ? `${n}'` : `${n}'s`);
 const nBags = (n: number) => `${n} bag${n === 1 ? '' : 's'}`;
-const andList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
-const grams = (y: YearCtx) => y.brews.reduce((s, b) => s + (b.dose ?? 0), 0); // unlinked brews count: "of your coffee"
+export const andList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
+export const grams = (y: YearCtx) => y.brews.reduce((s, b) => s + (b.dose ?? 0), 0); // unlinked brews count: "of your coffee"
 const bagCount = (y: YearCtx) => new Set(y.brews.map((b) => b.coffeeId).filter((c) => c !== null)).size;
-const MONTH = (m: number) => new Date(Date.UTC(2000, m, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+export const MONTH = (m: number) => new Date(Date.UTC(2000, m, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
 
+export const boardRows = (y: YearCtx, board: Board) => leaderboard(y.brews, y.bags, y.period, board, 'grams', 'current', 'raw', false);
 // Share-of-coffee boards (roasters, origins, producers): [null] under 2 rows.
 function shareFact(id: string, board: Board, lead: string, section: string, label: string, extra: { href?: Record<string, string>; context: (top: BoardRowLite, share: number, rows: BoardRowLite[], y: YearCtx) => string; texts: (r: BoardRowLite, share: number) => string[]; minBags?: number }): FactDef {
   return {
     id, category: 'coffees',
     run: (y) => {
-      const rows = leaderboard(y.brews, y.bags, y.period, board, 'grams', 'current', 'raw', false);
+      const rows = boardRows(y, board);
       if (rows.length < 2 || bagCount(y) < (extra.minBags ?? 0)) return null;
       const all = grams(y), top = rows[0], share = top.value / all;
       return {
@@ -319,13 +322,13 @@ const byMonth = (bs: readonly BrewFact[]): Month[] => {
   for (const b of bs) { const m = Number(b.localDate.slice(5, 7)) - 1; (g.get(m) ?? g.set(m, []).get(m)!).push(b); }
   return [...g].sort((a, b) => a[0] - b[0]).map(([m, bs]) => ({ m, bs }));
 };
-const avg = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
+export const avg = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
 const spark = (months: Month[], v: (m: Month) => number, text: (v: number) => string): Viz => {
   const values = months.map(v);
   return { kind: 'spark', values, labels: months.map((x) => MON[x.m]), texts: values.map(text) };
 };
 // Mean of `f` per month for months with at least `min` values.
-const monthMeans = (y: YearCtx, f: (b: BrewFact) => number | null, min: number) =>
+export const monthMeans = (y: YearCtx, f: (b: BrewFact) => number | null, min: number) =>
   byMonth(y.brews).map(({ m, bs }) => ({ m, bs: bs.filter((b) => f(b) !== null) })).filter((x) => x.bs.length >= min);
 
 const recipe: FactDef = {
@@ -366,18 +369,23 @@ const simpleFraction = (s: number) => {
   return best;
 };
 
+// The most common rounded ratio among brews with one (null under 30 such brews).
+export function ratioMode(y: YearCtx) {
+  const withRatio = y.brews.filter((b) => b.ratio !== null);
+  if (withRatio.length < 30) return null;
+  const c = new Map<number, number>();
+  for (const b of withRatio) { const r = Math.round(b.ratio!); c.set(r, (c.get(r) ?? 0) + 1); }
+  const [mode, n] = [...c].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
+  return { mode, n, of: withRatio.length, share: n / withRatio.length };
+}
 const ratio: FactDef = {
   id: 'ratio', category: 'brewing',
   run: (y) => {
-    const withRatio = y.brews.filter((b) => b.ratio !== null);
-    if (withRatio.length < 30) return null;
-    const c = new Map<number, number>();
-    for (const b of withRatio) { const r = Math.round(b.ratio!); c.set(r, (c.get(r) ?? 0) + 1); }
-    const [mode, n] = [...c].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
-    const share = n / withRatio.length;
-    if (share < 0.4) return null;
+    const m = ratioMode(y);
+    if (!m || m.share < 0.4) return null;
+    const { mode, n, of, share } = m;
     const f = simpleFraction(share);
-    let context = `1g of coffee to ${mode}g of water, in ${fmtInt(n)} of ${fmtInt(withRatio.length)} brews.`;
+    let context = `1g of coffee to ${mode}g of water, in ${fmtInt(n)} of ${fmtInt(of)} brews.`;
     let viz: Viz | undefined;
     const tm = monthMeans(y, (b) => b.tempC, 10);
     if (tm.length >= 3) {

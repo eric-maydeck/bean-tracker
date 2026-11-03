@@ -6,23 +6,10 @@ vi.mock('$lib/server/insights/lab', async (orig) => {
   return { ...m, sweetSpotsTab: (...a: Parameters<typeof m.sweetSpotsTab>) => (stub.spot ? { matching: { bags: 0, brews: 0 }, topBags: [], cards: [{ key: 'rest', name: 'Rest', spot: stub.spot }] } : m.sweetSpotsTab(...a)) };
 });
 import type { BagFact, BrewFact } from '$lib/server/insights/facts';
-import { addDays } from '$lib/server/insights/time';
 import { POOL, fact } from './pool';
+import { brew, ctx, days } from './testFixtures';
 import type { YearCtx } from './year';
 
-let id = 0;
-const brew = (o: Partial<BrewFact> & { at: string }): BrewFact => {
-  const { at, ...rest } = o;
-  return {
-    id: ++id, coffeeId: 1, localTime: at, localDate: at.slice(0, 10), backfilled: false, dose: 18, rating: 8,
-    roaster: 'R', origin: null, processGroup: null, roastLevel: null, decaf: false, brewer: null, brewerType: 'pourover',
-    waterG: 290, ratio: null, grind: null, dripper: null, filter: null, grinder: null, water: null, waterProfile: null,
-    restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, hasNote: false, tempC: null, brewIndex: 0, ...rest
-  } as unknown as BrewFact;
-};
-const ctx = (brews: BrewFact[], o: Partial<YearCtx> = {}) =>
-  ({ year: 2026, period: { start: '2026-01-01', end: '2026-12-31' }, today: '2027-02-01', preview: false, everyBrew: brews, bags: [], brews, scored: brews, per: 1, size: 2, ...o }) as unknown as YearCtx;
-const days = (from: string, n: number, hh = '09') => Array.from({ length: n }, (_, i) => brew({ at: `${addDays(from, i)}T${hh}:15` }));
 
 // 1,489 brews Feb 9 to Oct 28, May the peak at 226; hours cycle with 1pm three times in 18.
 const MONTHLY = [8, 177, 221, 226, 142, 175, 190, 170, 180];
