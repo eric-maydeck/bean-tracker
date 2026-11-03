@@ -83,7 +83,9 @@ const shelf = (() => {
 const RECIPES = [{ id: 1, name: 'Standard' }, { id: 2, name: 'Shoebox QC' }];
 const DRIPPERS = [['V60', 600, 8.4], ['Kalita', 500, 8.1], ['Origami', 389, 8.2]];
 const trophies = DRIPPERS.map(([name, brews, rating]) => ({ kind: 'dripper', name, brews, rating, sample: { small: false } }));
-const full = (o: Partial<YearCtx> = {}) => ctx(shelf.brews, { bags: shelf.bags, trophies, prevBrews: [], pours: { facts: pourFacts, recipes: RECIPES }, ...o } as Partial<YearCtx>);
+// As loadYear builds it: a bag's first brew rating moves to dialRating (onceDialed); the best bag is left out so the record fact keeps its numbers.
+const scoredOf = (bs: BrewFact[]) => bs.map((b) => (b.brewIndex === 1 && b.coffeeId !== 186 ? { ...b, rating: null, dialRating: b.rating } : b)) as BrewFact[];
+const full = (o: Partial<YearCtx> = {}) => ctx(shelf.brews, { bags: shelf.bags, scored: scoredOf(shelf.brews), trophies, prevBrews: [], pours: { facts: pourFacts, recipes: RECIPES }, ...o } as Partial<YearCtx>);
 
 describe('total', () => {
   it('counts, kg, litres, peak month', () => {
@@ -377,6 +379,8 @@ describe('consistent, dial-in, weekend, top-dripper', () => {
     expect(s.sub).toMatch(/^±0\.\d\d over \d+ brews$/);
     expect(s.context).toMatch(/^All within [\d.]+–[\d.]+\.$/);
     expect(fact('consistent').run(ctx(days('2026-03-01', 3)))).toBeNull();
+    const wild = shelf.brews.map((b) => ({ ...b, rating: b.brewIndex % 2 ? 10 : 5 }));
+    expect(fact('consistent').run(full({ brews: wild, scored: wild }))).toBeNull(); // every bag's SD is above 0.5
   });
   it('dial-in: the first-brew gap, null for a thin year', () => {
     const s = fact('dial-in').run(full())!;
@@ -384,6 +388,9 @@ describe('consistent, dial-in, weekend, top-dripper', () => {
     expect(s.big).toMatch(/^[-+−]0\.\d\d$/);
     expect(s.context).toMatch(/^against the rest; by brew \S+ you're at your best\.$/);
     expect(fact('dial-in').run(ctx(days('2026-03-01', 5), { prevBrews: [] }))).toBeNull();
+    // no first-brew effect: the finding is only 'early' (not solid or hint), so it is no slide
+    const flat = shelf.brews.map((b) => ({ ...b, rating: 7 + (b.id % 5) * 0.2 }));
+    expect(fact('dial-in').run(full({ brews: flat, scored: scoredOf(flat) }))).toBeNull();
   });
   it('weekend: the lean, null for an even week', () => {
     const s = fact('weekend').run(full())!;

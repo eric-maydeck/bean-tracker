@@ -572,7 +572,7 @@ const consistent: FactDef = {
 const dialIn: FactDef = {
   id: 'dial-in', category: 'brewing',
   run: (y) => {
-    const found = dialinCurve(toGenCtx(y));
+    const found = dialinCurve({ ...toGenCtx(y), brews: y.brews }); // /insights' dial-in input: onceDialed strips brew 1's rating
     const f = Array.isArray(found) ? found[0] : found;
     if (!f?.value || !f.series?.length || (f.strength !== 'solid' && f.strength !== 'hint')) return null;
     const best = f.series.reduce((a, b) => (b.value > a.value ? b : a));
@@ -589,8 +589,8 @@ const dialIn: FactDef = {
 const weekend: FactDef = {
   id: 'weekend', category: 'habits',
   run: (y) => {
-    const f = weekendVsWeekday({ ...toGenCtx(y), brews: y.brews }) as ReturnType<typeof weekendVsWeekday> & { sides?: { value: string }[]; series?: { label: string; value: number }[] };
-    if (!f || Array.isArray(f) || !f.sides || !f.series) return null;
+    const f = weekendVsWeekday({ ...toGenCtx(y), brews: y.brews }) as ReturnType<typeof weekendVsWeekday> & { sides?: { label: string; value: string }[]; series?: { label: string; value: number }[] };
+    if (!f || Array.isArray(f) || f.sides?.[0]?.label !== 'Weekdays' || f.sides[1]?.label !== 'Weekends' || !f.series) return null;
     const b = Number(f.sides[0].value), a = Number(f.sides[1].value), ratio = a / b;
     if (!(ratio > 0) || (ratio >= 0.9 && ratio <= 1.1)) return null;
     const big = `${Math.round(Math.abs(ratio - 1) * 100)}% ${ratio > 1 ? 'more' : 'fewer'}`;
