@@ -26,6 +26,7 @@ describe('recap', () => {
     expect(r.slides[0].id).toBe('total');
     expect(r.slides.every((s) => s.big && s.context && s.tone)).toBe(true);
     expect(r.poster.title).toBe('2025 in coffee');
+    expect(r.cover).toEqual({ title: '2025 in coffee', sub: 'Jun 1 to Jun 8' });
     expect(r.poster.footer).toBe('Picked from 20 brews across 2 bags and 2 roasters.');
     expect(r.slides.at(-1)!.id).toBe('you');
   });

@@ -10,6 +10,7 @@ import { loadYear } from './year';
 export interface Recap {
   year: number; preview: boolean; span: { from: string; to: string };
   slides: Slide[]; // facts in order, personality last (poster is rendered from these)
+  cover: { title: string; sub: string }; // the title slide: not a fact, no poster tile
   poster: { title: string; sub: string; footer: string };
   householdSize: number;
 }
@@ -32,6 +33,7 @@ export function recap(db: DatabaseSync, year: number, o: { today: string; previe
   const bags = new Set(y.brews.map((b) => b.coffeeId)).size;
   return {
     year, preview: o.preview, span: { from, to }, slides, householdSize,
+    cover: { title: `${year} in coffee`, sub: `${md(from)} to ${md(to)}` },
     poster: {
       title: `${year} in coffee`,
       sub: `${slides.length} things your brewing said this year, ${md(from)} to ${md(to)}.`,

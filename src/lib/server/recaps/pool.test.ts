@@ -62,6 +62,15 @@ const shelf = (() => {
   });
   const bb = bags.find((b) => b.id === 186)!, other = bags.find((b) => b.id === 187)!;
   if (bb.roaster === other.roaster) other.roaster = 'Elsewhere', brews.forEach((b) => b.coffeeId === 187 && (b.roaster = 'Elsewhere'));
+  // Yoiner also grew bags at three more small roasters (five in all), so producer-roasters shows.
+  const used = new Set([bb.roaster, other.roaster]);
+  for (const bg of bags) {
+    if (used.size >= 5) break;
+    if (!bg.roaster.startsWith('Other') || used.has(bg.roaster)) continue;
+    used.add(bg.roaster);
+    Object.assign(bg, { producer: 'Yoiner' });
+    brews.forEach((b) => b.coffeeId === bg.id && Object.assign(b, { producer: 'Yoiner' }));
+  }
   return { brews, bags };
 })();
 const RECIPES = [{ id: 1, name: 'Standard' }, { id: 2, name: 'Shoebox QC' }];
@@ -90,14 +99,14 @@ describe('streak', () => {
   it('still going when it reaches the year end', () => {
     const s = fact('streak').run(ctx([...days('2026-03-01', 3), ...days('2026-12-20', 12)]))!;
     expect(s.big).toBe('12');
-    expect(s.context).toMatch(/^Unbroken since Dec 20 and still going\./);
+    expect(s.context).toMatch(/^Running since Dec 20 and still going\./);
     expect(s.viz).toMatchObject({ kind: 'calendar' });
   });
   it('not going, with the missed days since the first 7-day run', () => {
     const s = fact('streak').run(ctx([...days('2026-03-01', 7), ...days('2026-03-10', 10)]))!;
-    expect(s.context).toBe('Unbroken from Mar 10 to Mar 19. Since Mar 1 you have missed 2 days.');
+    expect(s.context).toBe('Mar 10 to Mar 19. Since Mar 1 you have missed 2 days.');
     expect(fact('streak').run(ctx([...days('2026-03-01', 7), ...days('2026-03-09', 10)]))!.context)
-      .toBe('Unbroken from Mar 9 to Mar 18. Since Mar 1 you have missed exactly 1 day: Mar 8.');
+      .toBe('Mar 9 to Mar 18. Since Mar 1 you have missed exactly 1 day: Mar 8.');
     const v = s.viz as { start: string; days: string[] };
     expect(v.start).toBe('2026-02-23'); // Monday
     expect(v.days.slice(0, 6)).toEqual(['none', 'none', 'none', 'none', 'none', 'none']);
@@ -175,18 +184,20 @@ describe('coffees facts', () => {
     }
     expect(fact('roaster').run(ctx(blank))).toBeNull();
   });
-  it('producer-roasters: names every roaster, null when none', () => {
+  it('producer-roasters: names every roaster, null under 5 roasters', () => {
     const s = fact('producer-roasters').run(full())!;
     expect(s.lead).toMatch(/^One producer, \d roasters$/);
     expect(s.context).toMatch(/^You bought .+'s coffee from .+ and .+\.$/);
     expect((s.viz as any).rows.length).toBeGreaterThanOrEqual(2);
     const solo = days('2026-03-01', 12).map((b, i) => ({ ...b, producer: `P${i % 2}`, roaster: `R${i % 2}`, coffeeId: i % 2 }));
     expect(fact('producer-roasters').run(ctx(solo))).toBeNull();
-    const three = days('2026-03-01', 12).map((b, i) => ({ ...b, producer: 'Pablo', roaster: ['Zed', 'Amy', 'Moss'][i % 3], coffeeId: i % 3 }));
+    const four = days('2026-03-01', 12).map((b, i) => ({ ...b, producer: 'Pablo', roaster: ['Zed', 'Amy', 'Moss', 'Ned'][i % 4], coffeeId: i % 4 }));
+    expect(fact('producer-roasters').run(ctx(four))).toBeNull();
+    const three = days('2026-03-01', 12).map((b, i) => ({ ...b, producer: 'Pablo', roaster: ['Zed', 'Amy', 'Moss', 'Ned', 'Ola'][i % 5], coffeeId: i % 5 }));
     const t = fact('producer-roasters').run(ctx(three))!;
-    expect(t.lead).toBe('One producer, 3 roasters');
-    expect(t.context).toBe("You bought Pablo's coffee from Amy, Moss and Zed.");
-    expect(t.score).toBeCloseTo(2 / 3);
+    expect(t.lead).toBe('One producer, 5 roasters');
+    expect(t.context).toBe("You bought Pablo's coffee from Amy, Moss, Ned, Ola and Zed.");
+    expect(t.score).toBeCloseTo(1 / 4);
   });
   it('turn: Colombia to Ethiopia, with the process shift', () => {
     const s = fact('turn').run(full())!;
@@ -235,7 +246,7 @@ describe('coffees facts', () => {
 describe('recipe, ratio, rest', () => {
   it('recipe: the biggest riser, with the year-long leader when different', () => {
     const s = fact('recipe').run(full())!;
-    expect(s.lead).toBe('Standard took over:');
+    expect(s.lead).toBe('You used Standard for');
     expect(s.big).toBe('70%');
     expect(s.context).toMatch(/^of \w+'s brews, from 10% in March\./);
     expect(s.viz).toMatchObject({ kind: 'spark' });

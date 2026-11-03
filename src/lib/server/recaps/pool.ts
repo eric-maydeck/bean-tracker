@@ -71,13 +71,13 @@ const streak: FactDef = {
     }
     const missed = span.filter((d) => d >= runStart && !have.has(d));
     const going = to === y.period.end || (y.preview && to === addDays(y.period.end, -1));
-    let context = going ? `Unbroken since ${md(from)} and still going.` : `Unbroken from ${md(from)} to ${md(to)}.`;
+    let context = going ? `Running since ${md(from)} and still going.` : `${md(from)} to ${md(to)}.`;
     if (missed.length) context += ` Since ${md(runStart)} you have missed ${missed.length === 1 ? 'exactly 1 day' : `${missed.length} days`}${missed.length === 1 ? `: ${md(missed[0])}` : ''}.`;
     else if (runStart !== from) context += ` Since ${md(runStart)} you have not missed a day.`;
     const cells = span.map((d) => (d >= from && d <= to ? 'streak' : have.has(d) ? 'on' : 'miss') as 'streak' | 'on' | 'miss');
     return {
       id: 'streak', category: 'habits',
-      lead: 'Brewed every day for', big: String(best.length), unit: 'days', context,
+      lead: 'Longest unbroken brewing streak', big: String(best.length), unit: 'days', context,
       viz: { kind: 'calendar', start: addDays(first, -dow(first)), days: [...Array<'none'>(dow(first)).fill('none'), ...cells] },
       link: { tab: 'Highlights', section: 'Highlights · Milestones', href: seeMoreHref(y.year, 'milestones') },
       wide: true, card: { big: String(best.length), label: 'days in a row' },
@@ -201,7 +201,7 @@ const byBags = (rs: Map<string, Set<number>>) => [...rs].map(([r, s]) => ({ r, n
 const producerRoasters: FactDef = {
   id: 'producer-roasters', category: 'coffees',
   run: (y) => {
-    const best = [...producerRoasterMap(y)].filter(([, rs]) => rs.size >= 2)
+    const best = [...producerRoasterMap(y)].filter(([, rs]) => rs.size >= 5)
       .sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]))[0];
     if (!best) return null;
     const [p, rs] = best, rows = byBags(rs);
@@ -211,7 +211,7 @@ const producerRoasters: FactDef = {
       context: `You bought ${poss(p)} coffee from ${andList(rows.map((x) => x.r))}.`,
       viz: { kind: 'hlist', rows: rows.map((x) => ({ label: x.r, value: x.n, texts: [nBags(x.n)] })) },
       link: { tab: 'Leaderboards', section: 'Leaderboards · Producers', href: seeMoreHref(y.year, 'leaderboards', { rank: 'grams' }) },
-      card: { big: p, label: `from ${rs.size} roasters` }, score: Math.min(1, (rs.size - 1) / 3)
+      card: { big: p, label: `from ${rs.size} roasters` }, score: Math.min(1, (rs.size - 4) / 4)
     };
   }
 };
@@ -355,7 +355,7 @@ const recipe: FactDef = {
     let context = `of ${MONTH(peak.m)}'s brews, from ${pct(best.first)} in ${MONTH(months[0].m)}.`;
     if (topName !== r) context += ` ${topName} is still the year's most-used recipe: ${pct(topN / y.brews.length)} of all brews (${fmtInt(topN)}).`;
     return {
-      id: 'recipe', category: 'brewing', lead: `${r} took over:`, big: pct(best.top), context,
+      id: 'recipe', category: 'brewing', lead: `You used ${r} for`, big: pct(best.top), context,
       viz: spark(months, (x) => Math.round(share(x, r) * 100), (v) => `${v}%`),
       link: { tab: 'Lab', section: 'Lab · Pours', href: seeMoreHref(y.year, 'pours') },
       wide: true, card: { big: pct(best.top), label: `${r} brews` }, score: best.rise
