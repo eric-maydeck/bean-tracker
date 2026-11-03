@@ -105,7 +105,7 @@ export function personality(y: YearCtx): FactResult | null {
   const big = title(all);
   const context = [`${Cap(ph.slice(0, 3).join(', '))}.`, ph.length > 3 ? `${Cap(andList(ph.slice(3)))}.` : ''].filter(Boolean).join(' ');
   return {
-    id: 'you', category: 'personality', lead: 'Your coffee personality', big, context, traits: shown,
+    id: 'you', category: 'personality', lead: 'Your coffee personality is', big, context, traits: shown,
     link: { tab: 'Highlights', section: 'Highlights · Insights', href: seeMoreHref(y.year, 'insights') },
     tone: 'cream', wide: true, card: { big, label: 'coffee personality' }, score: 1
   };

@@ -43,7 +43,7 @@ const total: FactDef = {
     const big = fmtInt(y.brews.length / y.per);
     return {
       id: 'total', category: 'amounts',
-      lead: y.preview ? `Your ${y.year} so far` : `Your ${y.year}`, big, unit: 'brews',
+      lead: y.preview ? `So far in ${y.year} you brewed` : `In ${y.year} you brewed`, big, unit: 'brews',
       context: `${fmtKg(grams)} of coffee through ${fmtLitres(water)} of water, ${md(first)} to ${md(last)}. ${labels[hi]} was the peak at ${values[hi]}.`,
       viz: { kind: 'bars', values, labels, tips: values.map((v, i) => `${labels[i]}: ${v} brews`), hi, hiText: String(values[hi]) },
       link: { tab: 'Summary', section: 'Summary · Overview', href: seeMoreHref(y.year, 'overview') },
@@ -77,7 +77,7 @@ const streak: FactDef = {
     const cells = span.map((d) => (d >= from && d <= to ? 'streak' : have.has(d) ? 'on' : 'miss') as 'streak' | 'on' | 'miss');
     return {
       id: 'streak', category: 'habits',
-      lead: 'Longest unbroken brewing streak', big: String(best.length), unit: 'days', context,
+      lead: 'You brewed every day for', big: String(best.length), unit: 'days', context,
       viz: { kind: 'calendar', start: addDays(first, -dow(first)), days: [...Array<'none'>(dow(first)).fill('none'), ...cells] },
       link: { tab: 'Highlights', section: 'Highlights · Milestones', href: seeMoreHref(y.year, 'milestones') },
       wide: true, card: { big: String(best.length), label: 'days in a row' },
@@ -167,7 +167,7 @@ function shareFact(id: string, board: Board, lead: string, section: string, labe
 }
 type BoardRowLite = { label: string; value: number; bags: number };
 
-const roaster = shareFact('roaster', 'roasters', 'Top roaster', 'Roasters', 'top roaster', {
+const roaster = shareFact('roaster', 'roasters', 'Your top roaster was', 'Roasters', 'top roaster', {
   minBags: 3,
   context: (top, share, rows) => {
     const bl = rows.reduce((a, r) => (r.bags > a.bags ? r : a), top); // ties keep the top roaster
@@ -175,12 +175,12 @@ const roaster = shareFact('roaster', 'roasters', 'Top roaster', 'Roasters', 'top
   },
   texts: (r, s) => [pct(s), fmtKg(r.value), nBags(r.bags)]
 });
-const origin = shareFact('origin', 'origins', 'Top origin', 'Origins', 'top origin', {
+const origin = shareFact('origin', 'origins', 'Most of your coffee came from', 'Origins', 'top origin', {
   href: { open: 'origins' },
   context: (top, share, rows) => `${pct(share)} of everything you brewed: ${fmtKg(top.value)} from ${nBags(top.bags)}, out of ${rows.length} origins.`,
   texts: (r) => [fmtKg(r.value)]
 });
-const producer = shareFact('producer', 'producers', 'Top producer', 'Producers', 'top producer', {
+const producer = shareFact('producer', 'producers', 'Your top producer was', 'Producers', 'top producer', {
   context: (top, share) => `${pct(share)} of your coffee: ${fmtKg(top.value)} over ${nBags(top.bags)}.`,
   texts: (r) => [fmtKg(r.value)]
 });
@@ -207,7 +207,7 @@ const producerRoasters: FactDef = {
     const [p, rs] = best, rows = byBags(rs);
     return {
       id: 'producer-roasters', category: 'coffees',
-      lead: `One producer, ${rs.size} roasters`, big: p,
+      lead: `At ${rs.size} different roasters you bought coffee from`, big: p,
       context: `You bought ${poss(p)} coffee from ${andList(rows.map((x) => x.r))}.`,
       viz: { kind: 'hlist', rows: rows.map((x) => ({ label: x.r, value: x.n, texts: [nBags(x.n)] })) },
       link: { tab: 'Leaderboards', section: 'Leaderboards · Producers', href: seeMoreHref(y.year, 'leaderboards', { rank: 'grams' }) },
@@ -279,20 +279,21 @@ const record: FactDef = {
     const n = stats.get(bag.id)!.rated.length;
     const tens = y.scored.filter((b) => b.rating === 10 && countsForRating(b, 'current')).length;
     const proc = (bag.processing ?? '').toLowerCase();
-    let context = `${poss(bag.roaster)} ${bag.name}${proc ? `, ${proc}` : ''}: average over ${n} brews.`;
+    const val = win.value.toFixed(2);
+    let context = `${val} average over ${n} brews${proc ? `, ${proc}` : ''}.`;
     if (tens) context += ` ${tens} brew${tens === 1 ? '' : 's'} all year earned a 10.`;
     const others = bag.producer ? byBags(producerRoasterMap(y).get(bag.producer.trim()) ?? new Map()).map((x) => x.r).filter((r) => r !== bag.roaster) : [];
     if (others.length) context += ` ${poss(bag.producer!.trim())} coffee also came from ${andList(others)}.`;
     const top = cands.slice(0, 5), vals = top.map((c) => c.value);
     return {
-      id: 'record', category: 'coffees', lead: 'Best bag of the year', big: win.value.toFixed(2), context,
+      id: 'record', category: 'coffees', lead: 'Your best bag of the year was', big: `${bag.roaster} ${bag.name}`, context,
       viz: {
         kind: 'dots', stack: true,
         rows: top.map((c) => { const b = bagOf(c.holder)!; return { label: `${b.roaster} · ${b.name}`, value: c.value, brews: stats.get(b.id)!.rated.length }; }),
         lo: Math.floor((Math.min(...vals) - 0.1) * 10) / 10, hi: Math.ceil((Math.max(...vals) + 0.05) * 10) / 10
       },
       link: { tab: 'Highlights', section: 'Highlights · Records', href: seeMoreHref(y.year, 'records') },
-      card: { big: win.value.toFixed(2), label: 'best bag' }, score: Math.min(1, (win.value - (cands[1]?.value ?? 0)) / 0.5)
+      card: { big: `${bag.roaster} ${bag.name}`, label: `${val} best bag` }, score: Math.min(1, (win.value - (cands[1]?.value ?? 0)) / 0.5)
     };
   }
 };
@@ -307,7 +308,7 @@ const price: FactDef = {
     const rated = countsForRating(top, 'current') ? ` You rated it ${top.rating}.` : '';
     const big = usd(top.costPerBrew!);
     return {
-      id: 'price', category: 'money', lead: 'Priciest cup', big,
+      id: 'price', category: 'money', lead: 'Your priciest cup cost', big,
       context: `${top.dose}g of ${poss(bag?.roaster ?? top.roaster ?? '')} ${bag?.name ?? 'coffee'} on ${md(top.localDate)}.${rated} Your average cup costs ${usd(avg)}.`,
       viz: { kind: 'hlist', rows: [{ label: 'Priciest cup', value: top.costPerBrew!, texts: [big] }, { label: 'Average cup', value: avg, texts: [usd(avg)] }] },
       link: { tab: 'Habits', section: 'Habits · Spend', href: seeMoreHref(y.year, 'spend') },
@@ -424,7 +425,7 @@ const rest: FactDef = {
         const vals = rows.map((r) => r.value);
         const big = dLabel(spot.best.label);
         return {
-          id: 'rest', category: 'brewing', lead: 'Rest sweet spot', big,
+          id: 'rest', category: 'brewing', lead: 'Your beans rest best at', big,
           context: cmp ? `${spot.best.value.toFixed(2)} average ${since}, against ${cmp.v.toFixed(2)} at ${dLabel(cmp.label)}.` : `+${gap.toFixed(2)} ${since}, against the same bags at other rests.`,
           viz: { kind: 'dots', rows, lo: Math.floor(Math.min(...vals) * 10) / 10, hi: Math.ceil(Math.max(...vals) * 10) / 10 },
           link, card: { big, label: 'rest sweet spot' }, score: Math.min(1, gap / 0.5)

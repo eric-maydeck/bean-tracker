@@ -18,7 +18,7 @@
 
 {#snippet body()}
   {#if slide.lead}<p class="lead"><CoffeeName text={slide.lead} /></p>{/if}
-  <p class="big" class:long={slide.big.length > 7}><CoffeeName text={slide.big} />{#if slide.unit} <span class="unit">{slide.unit}</span>{/if}</p>
+  <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><CoffeeName text={slide.big} />{#if slide.unit} <span class="unit">{slide.unit}</span>{/if}</p>
   <p class="context"><CoffeeName text={slide.context} /></p>
   {#if slide.viz}<div class="vizwrap"><RecapViz viz={slide.viz} /></div>{/if}
   {#if slide.traits}
@@ -44,8 +44,8 @@
   .tone :global(.coffee-name), .tone :global(.ink-better), .tone :global(.ink-worse) { color: inherit !important; }
   .lead { font-size: 1.15rem; font-weight: 600; margin: 0; opacity: 0.9; }
   .big { font-family: var(--font-display); font-weight: 700; line-height: 0.92; letter-spacing: -0.035em; margin: 0.1em 0 0.2em -0.04em;
-    font-variant-numeric: lining-nums; overflow-wrap: anywhere; }
-  .big .unit { font-family: var(--font-sans); font-size: 0.28em; letter-spacing: 0; font-weight: 600; }
+    font-variant-numeric: lining-nums; overflow-wrap: break-word; }
+  .big .unit { white-space: nowrap; font-family: var(--font-sans); font-size: 0.28em; letter-spacing: 0; font-weight: 600; }
   .context { margin: 0; line-height: 1.45; max-width: 34ch; }
   .more { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
   .more:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
@@ -59,6 +59,7 @@
   .inner { width: 100%; max-width: 34rem; display: flex; flex-direction: column; gap: clamp(12px, 1.6vh, 28px); }
   .slide .big { font-size: clamp(4.5rem, min(24vw, 12vh), 8.5rem); }
   .slide .big.long { font-size: clamp(3rem, min(15vw, 8vh), 5.6rem); }
+  .slide .big.xlong { font-size: clamp(2rem, min(9vw, 6vh), 3.6rem); line-height: 1; }
   .slide[data-id='you'] .big { font-size: clamp(2.6rem, 11vw, 4.2rem); line-height: 1; }
   .slide[data-id='cover'] .big { font-size: clamp(3.4rem, min(25vw, 14vh), 9rem); line-height: 1; }
   .slide .lead { font-size: clamp(1.15rem, 2.1vh, 1.4rem); }
@@ -86,6 +87,7 @@
     .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
     .slide .big { font-size: clamp(5rem, min(13vw, 26vh), 13rem); }
     .slide .big.long { font-size: clamp(3.5rem, min(8vw, 16vh), 8rem); }
+    .slide .big.xlong { font-size: clamp(2.4rem, min(4.5vw, 9vh), 4.6rem); }
     .slide[data-id='you'] .big { font-size: clamp(2.6rem, min(5vw, 10vh), 5rem); }
     .slide[data-id='cover'] .big { font-size: clamp(4rem, min(10vw, 20vh), 9rem); }
     .slide[data-id='cover'] .inner { max-width: 60rem; }
@@ -101,6 +103,7 @@
     .inner { gap: 8px; }
     .slide .big { font-size: clamp(3rem, 18vh, 6rem); }
     .slide .big.long { font-size: clamp(2.4rem, 13vh, 4rem); }
+    .slide .big.xlong { font-size: clamp(1.6rem, 9vh, 2.4rem); }
     .slide .context { font-size: 1rem; }
   }
   @media (max-height: 640px) and (min-width: 700px) {
@@ -119,6 +122,7 @@
   .tile { border-radius: 14px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 10px; }
   .tile .big { font-size: clamp(2.8rem, 5vw, 4.2rem); }
   .tile .big.long { font-size: clamp(2.2rem, 4vw, 3.2rem); }
+  .tile .big.xlong { font-size: clamp(1.6rem, 2.6vw, 2.2rem); line-height: 1.05; }
   .tile[data-id='you'] .big { font-size: clamp(2rem, 4vw, 3rem); line-height: 1; }
   .tile .lead { font-size: 1rem; }
   .tile .context { font-size: 0.95rem; max-width: 46ch; }

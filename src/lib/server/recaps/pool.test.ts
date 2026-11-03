@@ -83,10 +83,10 @@ describe('total', () => {
     expect(s.context).toBe('26.6kg of coffee through 437L of water, Feb 9 to Oct 28. May was the peak at 226.');
     expect(s.viz).toMatchObject({ kind: 'bars', hi: 3, hiText: '226' });
     expect(s.perPerson).toBe(true);
-    expect(s.lead).toBe('Your 2026');
+    expect(s.lead).toBe('In 2026 you brewed');
   });
   it('preview lead; per person divides amounts', () => {
-    expect(fact('total').run(ctx(rich, { preview: true }))!.lead).toBe('Your 2026 so far');
+    expect(fact('total').run(ctx(rich, { preview: true }))!.lead).toBe('So far in 2026 you brewed');
     const s = fact('total').run(ctx(rich, { per: 2 }))!;
     expect(s.big).toBe('745');
     expect(s.context).toMatch(/^13\.3kg of coffee through 219L of water/);
@@ -170,7 +170,7 @@ describe('coffees facts', () => {
     expect(o.context).toMatch(/^\d+% of everything you brewed: \d+\.\dkg from \d+ bags, out of 7 origins\.$/);
     expect(o.link.href).toContain('open=origins');
     const p = fact('producer').run(full())!;
-    expect(p.lead).toBe('Top producer');
+    expect(p.lead).toBe('Your top producer was');
     expect((p.viz as any).rows).toHaveLength(5);
   });
   it('unlinked brews never name a roaster or origin', () => {
@@ -186,7 +186,7 @@ describe('coffees facts', () => {
   });
   it('producer-roasters: names every roaster, null under 5 roasters', () => {
     const s = fact('producer-roasters').run(full())!;
-    expect(s.lead).toMatch(/^One producer, \d roasters$/);
+    expect(s.lead).toMatch(/^At \d different roasters you bought coffee from$/);
     expect(s.context).toMatch(/^You bought .+'s coffee from .+ and .+\.$/);
     expect((s.viz as any).rows.length).toBeGreaterThanOrEqual(2);
     const solo = days('2026-03-01', 12).map((b, i) => ({ ...b, producer: `P${i % 2}`, roaster: `R${i % 2}`, coffeeId: i % 2 }));
@@ -195,7 +195,7 @@ describe('coffees facts', () => {
     expect(fact('producer-roasters').run(ctx(four))).toBeNull();
     const three = days('2026-03-01', 12).map((b, i) => ({ ...b, producer: 'Pablo', roaster: ['Zed', 'Amy', 'Moss', 'Ned', 'Ola'][i % 5], coffeeId: i % 5 }));
     const t = fact('producer-roasters').run(ctx(three))!;
-    expect(t.lead).toBe('One producer, 5 roasters');
+    expect(t.lead).toBe('At 5 different roasters you bought coffee from');
     expect(t.context).toBe("You bought Pablo's coffee from Amy, Moss, Ned, Ola and Zed.");
     expect(t.score).toBeCloseTo(1 / 4);
   });
@@ -219,18 +219,21 @@ describe('coffees facts', () => {
   });
   it('record: settled ratings only; bag named with its roaster', () => {
     const s = fact('record').run(full())!;
-    expect(s.big).toBe('9.50');
-    expect(s.context).toMatch(/^.+'s Bag 86, anaerobic natural: average over \d+ brews\. \d+ brews all year earned a 10\. Yoiner's coffee also came from .+\.$/);
+    expect(s.lead).toBe('Your best bag of the year was');
+    expect(s.big).toMatch(/ Bag 86$/);
+    expect(s.card.label).toBe('9.50 best bag');
+    expect(s.context).toMatch(/^9\.50 average over \d+ brews, anaerobic natural\. \d+ brews all year earned a 10\. Yoiner's coffee also came from .+\.$/);
     expect((s.viz as any).rows).toHaveLength(5);
     expect((s.viz as any).rows[0].label).toMatch(/ · Bag 86$/);
     expect(s.score).toBe(1);
     const pre = shelf.brews.map((b) => ({ ...b, localDate: '2026-03-01', localTime: '2026-03-01T09:00' }));
     expect(fact('record').run(ctx(pre, { bags: shelf.bags }))).toBeNull();
   });
-  it('record: names ending in s take a bare apostrophe', () => {
+  it('record: the big value is the roaster and bag name', () => {
     const bags = [{ id: 1, roaster: 'Sey Coffees', name: 'Gesha', slug: 'g', processing: 'Washed' }] as unknown as BagFact[];
     const bs = days('2026-07-01', 5).map((b) => ({ ...b, coffeeId: 1, rating: 9 }));
-    expect(fact('record').run(ctx(bs, { bags }))!.context).toBe("Sey Coffees' Gesha, washed: average over 5 brews.");
+    expect(fact('record').run(ctx(bs, { bags }))!.big).toBe('Sey Coffees Gesha');
+    expect(fact('record').run(ctx(bs, { bags }))!.context).toBe('9.00 average over 5 brews, washed.');
   });
   it('price: priciest vs average; null under 10 priced brews', () => {
     const s = fact('price').run(full())!;
@@ -287,7 +290,7 @@ describe('rest card figures', () => {
   const run = (spot: any, brews: BrewFact[] = rich) => { stub.spot = spot; try { return fact('rest').run(ctx(brews)); } finally { stub.spot = null; } };
   it('tier 2: the card means, best against the usual band', () => {
     const s = run(t2())!;
-    expect(s).toMatchObject({ lead: 'Rest sweet spot', big: '45–59d' });
+    expect(s).toMatchObject({ lead: 'Your beans rest best at', big: '45–59d' });
     expect(s.score).toBeCloseTo(0.8);
     expect(s.context).toBe('7.42 average since June, against 7.02 at 30–44d.');
     expect((s.viz as any).rows.map((r: any) => r.label)).toEqual(['30–44d', '45–59d', '60–89d']);

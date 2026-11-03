@@ -747,6 +747,8 @@ export const STATES: State[] = [
         const sl = slides.nth(i);
         await sl.evaluate((el) => el.scrollIntoView({ behavior: 'instant' }));
         expect(await sl.evaluate((el) => el.scrollHeight - el.clientHeight), `slide ${i} (${await sl.getAttribute('id')}) content taller than the slide`).toBeLessThanOrEqual(0);
+        // A big value's unit never breaks mid-word: it sits on one line.
+        for (const u of await sl.locator('.big .unit').all()) expect(await u.evaluate((e) => e.getClientRects().length), `slide ${i} unit on one line`).toBe(1);
         const box = (await sl.boundingBox())!;
         for (const sel of ['.vizwrap', '.traits', '.big', '.context', 'a.more']) {
           for (const el of await sl.locator(sel).all()) {
