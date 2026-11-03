@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { BrewFact } from '$lib/server/insights/facts';
+import type { BagFact, BrewFact } from '$lib/server/insights/facts';
 import { addDays } from '$lib/server/insights/time';
 import { POOL, fact } from './pool';
 import type { YearCtx } from './year';
@@ -36,6 +36,36 @@ const rich = (() => {
   });
   return out.sort((a, b) => a.localTime.localeCompare(b.localTime));
 })();
+
+// Coffees for `rich`: 110 bags brewed in time order (each bag a run of brews). Roasters: H&S 24 bags / 226 brews,
+// Shoebox 33 / 209, Sey 11 / 117, Big Sur 14 / 93, Scenery 9 / 81, ten others 3 bags each. Origins shift
+// from Colombia (early) to Ethiopia (late). Bag 86 is the best: 9.5 mean with 10s, bought from two roasters.
+const ROASTERS: [string, number, number][] = [['H&S', 24, 226], ['Shoebox', 33, 209], ['Sey', 11, 117], ['Big Sur', 14, 93], ['Scenery', 9, 81]];
+for (let i = 0; i < 10; i++) ROASTERS.push([`Other ${i}`, 3, i < 3 ? 77 : 76]);
+const EARLY = ['Colombia', 'Colombia', 'Colombia', 'Colombia', 'Colombia', 'Colombia', 'Peru', 'Ethiopia', 'Kenya', 'Ecuador'];
+const MID = ['Colombia', 'Colombia', 'Colombia', 'Colombia', 'Peru', 'Peru', 'Ethiopia', 'Ethiopia', 'Kenya', 'Brazil'];
+const LATE = ['Ethiopia', 'Ethiopia', 'Ethiopia', 'Colombia', 'Colombia', 'Peru', 'Peru', 'Kenya', 'Brazil', 'Guatemala'];
+const shelf = (() => {
+  const slots = ROASTERS.flatMap(([r, bags, brews]) => Array.from({ length: bags }, (_, j) => ({ r, n: Math.floor(brews / bags) + (j < brews % bags ? 1 : 0) })));
+  const order = slots.map((_, i) => slots[(i * 37) % slots.length]); // 37 is coprime with 110: roasters interleave
+  const bags: BagFact[] = [], brews: BrewFact[] = [];
+  let at = 0;
+  order.forEach((s, k) => {
+    const id = 100 + k, t = at / rich.length, o = (t < 1 / 3 ? EARLY : t < 2 / 3 ? MID : LATE)[k % 10];
+    const best = k === 86, producer = best ? 'Yoiner' : k === 87 ? 'Yoiner' : `Producer ${k % 40}`;
+    bags.push({ id, roaster: s.r, name: `Bag ${k}`, slug: `bag-${k}`, processing: best ? 'Anaerobic Natural' : 'Washed', origin: o, producer, cost: best ? 200 : 20 + (k % 5) * 5, amountG: 250, status: 'archive' } as unknown as BagFact);
+    for (const b of rich.slice(at, at + s.n)) {
+      const i = brews.length;
+      const rating = best ? (i % 2 ? 9 : 10) : 7 + ((k * 7) % 15) / 10 + ((i % 3) - 1) * 0.3;
+      brews.push({ ...b, coffeeId: id, roaster: s.r, origin: o, producer, rating, processGroup: k % 2 && t > 0.6 ? 'Natural' : 'Washed', costPerBrew: (b.dose! * (best ? 200 : 20 + (k % 5) * 5)) / 250 });
+    }
+    at += s.n;
+  });
+  const bb = bags.find((b) => b.id === 186)!, other = bags.find((b) => b.id === 187)!;
+  if (bb.roaster === other.roaster) other.roaster = 'Elsewhere', brews.forEach((b) => b.coffeeId === 187 && (b.roaster = 'Elsewhere'));
+  return { brews, bags };
+})();
+const full = (o: Partial<YearCtx> = {}) => ctx(shelf.brews, { bags: shelf.bags, ...o });
 
 describe('total', () => {
   it('counts, kg, litres, peak month', () => {
@@ -107,15 +137,108 @@ describe('decaf', () => {
   });
 });
 
+describe('coffees facts', () => {
+  it('roaster: share · weight · bags rows; runner-up sentence only when bag leader differs', () => {
+    const s = fact('roaster').run(full())!;
+    expect(s.big).toBe('H&S');
+    expect(s.viz).toMatchObject({ kind: 'hlist' });
+    expect((s.viz as any).rows[0].texts).toEqual(['15%', '4.0kg', '24 bags']);
+    expect(s.context).toBe('15% of your coffee: 4.0kg over 24 bags. You went through more bags of Shoebox (33), but less coffee (3.7kg).');
+    const lone = [...days('2026-03-01', 8).map((b, i) => ({ ...b, roaster: 'A', coffeeId: i % 2 + 1 })), ...days('2026-04-01', 4).map((b, i) => ({ ...b, roaster: 'B', coffeeId: 3 }))];
+    expect(fact('roaster').run(ctx(lone))!.context).toBe('67% of your coffee: 0.1kg over 2 bags.');
+  });
+  it('roaster, origin, producer: null under 2 groups (or 3 bags)', () => {
+    const one = days('2026-03-01', 20).map((b, i) => ({ ...b, roaster: 'A', origin: 'Peru', producer: 'P', coffeeId: i % 4 }));
+    for (const id of ['roaster', 'origin', 'producer']) expect(fact(id).run(ctx(one))).toBeNull();
+    const two = one.map((b, i) => (i < 10 ? { ...b, roaster: 'B', origin: 'Kenya', producer: 'Q', coffeeId: 9 } : b));
+    expect(fact('origin').run(ctx(two))).not.toBeNull();
+    expect(fact('producer').run(ctx(two))).not.toBeNull();
+    expect(fact('roaster').run(ctx(two.map((b) => ({ ...b, coffeeId: b.roaster === 'B' ? 1 : 2 }))))).toBeNull(); // 2 bags
+  });
+  it('origin and producer name the top group', () => {
+    const o = fact('origin').run(full())!;
+    expect(o.big).toBe('Colombia');
+    expect(o.context).toMatch(/^\d+% of everything you brewed: \d+\.\dkg from \d+ bags, out of 7 origins\.$/);
+    expect(o.link.href).toContain('open=origins');
+    const p = fact('producer').run(full())!;
+    expect(p.lead).toBe('Top producer');
+    expect((p.viz as any).rows).toHaveLength(5);
+  });
+  it('unlinked brews never name a roaster or origin', () => {
+    const blank = days('2026-03-01', 40).map((b) => ({ ...b, coffeeId: null, roaster: null, origin: 'N/A', producer: null }));
+    const mixed = [...shelf.brews, ...blank];
+    for (const id of ['roaster', 'origin', 'producer', 'turn']) {
+      const x = fact(id).run(ctx(mixed, { bags: shelf.bags }));
+      if (x) expect([x.big, x.context, x.lead, ...((x.viz as any)?.rows ?? []).flatMap((r: any) => [r.label, ...r.texts])].join('|')).not.toMatch(/null|N\/A|undefined/);
+    }
+    expect(fact('roaster').run(ctx(blank))).toBeNull();
+  });
+  it('producer-roasters: names every roaster, null when none', () => {
+    const s = fact('producer-roasters').run(full())!;
+    expect(s.lead).toMatch(/^One producer, \d roasters$/);
+    expect(s.context).toMatch(/^You bought .+'s coffee from .+ and .+\.$/);
+    expect((s.viz as any).rows.length).toBeGreaterThanOrEqual(2);
+    const solo = days('2026-03-01', 12).map((b, i) => ({ ...b, producer: `P${i % 2}`, roaster: `R${i % 2}`, coffeeId: i % 2 }));
+    expect(fact('producer-roasters').run(ctx(solo))).toBeNull();
+    const three = days('2026-03-01', 12).map((b, i) => ({ ...b, producer: 'Pablo', roaster: ['Zed', 'Amy', 'Moss'][i % 3], coffeeId: i % 3 }));
+    const t = fact('producer-roasters').run(ctx(three))!;
+    expect(t.lead).toBe('One producer, 3 roasters');
+    expect(t.context).toBe("You bought Pablo's coffee from Amy, Moss and Zed.");
+    expect(t.score).toBeCloseTo(2 / 3);
+  });
+  it('turn: Colombia to Ethiopia, with the process shift', () => {
+    const s = fact('turn').run(full())!;
+    expect(s.big).toBe('Ethiopia');
+    expect(s.lead).toBe('Since August, your most brewed origin is');
+    expect(s.context).toBe('Colombia was 51% of Feb–Apr brews. Aug–Oct, Ethiopia leads at 32%. Washed fell from 100% to 49%.');
+    const v = s.viz as any;
+    expect(v.kind).toBe('split');
+    expect(v.periods.map((p: any) => p.name)).toEqual(['Feb–Apr', 'Aug–Oct']);
+    expect(v.periods[0].segs.reduce((t: number, x: any) => t + x.pct, 0)).toBe(100);
+    expect(s.score).toBeGreaterThan(0);
+  });
+  it('turn: null when the leader did not change or a window is thin', () => {
+    const same = (n: number, from: string, o: string) => days(from, n).map((b) => ({ ...b, origin: o }));
+    expect(fact('turn').run(ctx([...same(40, '2026-01-01', 'Peru'), ...same(40, '2026-07-01', 'Peru')]))).toBeNull(); // same leader
+    expect(fact('turn').run(ctx([...same(40, '2026-01-01', 'Peru'), ...same(40, '2026-07-01', 'Kenya')]))).not.toBeNull();
+    expect(fact('turn').run(ctx([...same(40, '2026-01-01', 'Peru'), ...same(29, '2026-07-01', 'Kenya')]))).toBeNull(); // thin late window
+    expect(fact('turn').run(ctx([...same(40, '2026-01-01', 'Peru'), ...same(40, '2026-04-10', 'Kenya')]))).toBeNull(); // under 6 months
+  });
+  it('record: settled ratings only; bag named with its roaster', () => {
+    const s = fact('record').run(full())!;
+    expect(s.big).toBe('9.50');
+    expect(s.context).toMatch(/^.+'s Bag 86, anaerobic natural: average over \d+ brews\. \d+ brews all year earned a 10\. Yoiner's coffee also came from .+\.$/);
+    expect((s.viz as any).rows).toHaveLength(5);
+    expect((s.viz as any).rows[0].label).toMatch(/ · Bag 86$/);
+    expect(s.score).toBe(1);
+    const pre = shelf.brews.map((b) => ({ ...b, localDate: '2026-03-01', localTime: '2026-03-01T09:00' }));
+    expect(fact('record').run(ctx(pre, { bags: shelf.bags }))).toBeNull();
+  });
+  it('record: names ending in s take a bare apostrophe', () => {
+    const bags = [{ id: 1, roaster: 'Sey Coffees', name: 'Gesha', slug: 'g', processing: 'Washed' }] as unknown as BagFact[];
+    const bs = days('2026-07-01', 5).map((b) => ({ ...b, coffeeId: 1, rating: 9 }));
+    expect(fact('record').run(ctx(bs, { bags }))!.context).toBe("Sey Coffees' Gesha, washed: average over 5 brews.");
+  });
+  it('price: priciest vs average; null under 10 priced brews', () => {
+    const s = fact('price').run(full())!;
+    expect(s.big).toMatch(/^\$\d+\.\d\d$/);
+    expect(s.context).toMatch(/^17\.89g of .+ on [A-Z][a-z]+ \d+\. You rated it [\d.]+\. Your average cup costs \$\d\.\d\d\.$/);
+    expect(s.viz).toMatchObject({ kind: 'hlist' });
+    const some = days('2026-03-01', 12).map((b, i) => ({ ...b, coffeeId: 1, costPerBrew: i < 9 ? 2 : null }));
+    expect(fact('price').run(ctx(some, { bags: shelf.bags }))).toBeNull();
+    expect(fact('price').run(ctx(some.map((b) => ({ ...b, costPerBrew: 2 })), { bags: shelf.bags }))).not.toBeNull();
+  });
+});
+
 describe('every fact', () => {
   it('links with caffeine=all and the year', () => {
-    const got = POOL.map((f) => f.run(ctx(rich)));
+    const got = POOL.map((f) => f.run(full()));
     expect(got.every(Boolean)).toBe(true);
     for (const s of got) expect(s!.link.href).toMatch(/range=2026&caffeine=all/);
   });
   it('copy uses digits and unspaced units, with a card and section', () => {
     for (const f of POOL) {
-      const s = f.run(ctx(rich))!;
+      const s = f.run(full())!;
       expect(`${s.big} ${s.context}`).not.toMatch(/\d (g|kg|L|s|d|°C|mL)\b/);
       expect(s.card.big && s.card.label && s.link.section).toBeTruthy();
     }

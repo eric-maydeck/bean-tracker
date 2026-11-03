@@ -1,8 +1,12 @@
 import { MON } from '$lib/insightsUrl';
-import { fmtInt, fmtKg, fmtLitres } from '$lib/recapFormat';
+import { fmtInt, fmtKg, fmtLitres, usd } from '$lib/recapFormat';
 import { seeMoreHref } from '$lib/recapsUrl';
 import type { BrewFact } from '$lib/server/insights/facts';
 import { longestStreak } from '$lib/server/insights/habits';
+import { leaderboard, country } from '$lib/server/insights/leaderboards';
+import { bagStats } from '$lib/server/insights/records';
+import { countsForRating } from '$lib/server/insights/ratings';
+import type { Board } from '$lib/insightsUrl';
 import { pick, RECORDS } from '$lib/server/insights/records';
 import { addDays } from '$lib/server/insights/time';
 import type { FactDef, Viz } from './types';
@@ -130,5 +134,180 @@ const decaf: FactDef = {
   }
 };
 
-export const POOL: FactDef[] = [total, streak, hour, decaf];
+// ---- Coffees: who the coffee came from -------------------------------------------------------
+const poss = (n: string) => (n.endsWith('s') ? `${n}'` : `${n}'s`);
+const nBags = (n: number) => `${n} bag${n === 1 ? '' : 's'}`;
+const andList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
+const grams = (y: YearCtx) => y.brews.reduce((s, b) => s + (b.dose ?? 0), 0); // unlinked brews count: "of your coffee"
+const bagCount = (y: YearCtx) => new Set(y.brews.map((b) => b.coffeeId).filter((c) => c !== null)).size;
+const MONTH = (m: number) => new Date(Date.UTC(2000, m, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+
+// Share-of-coffee boards (roasters, origins, producers): [null] under 2 rows.
+function shareFact(id: string, board: Board, lead: string, section: string, label: string, extra: { href?: Record<string, string>; context: (top: BoardRowLite, share: number, rows: BoardRowLite[], y: YearCtx) => string; texts: (r: BoardRowLite, share: number) => string[]; minBags?: number }): FactDef {
+  return {
+    id, category: 'coffees',
+    run: (y) => {
+      const rows = leaderboard(y.brews, y.bags, y.period, board, 'grams', 'current', 'raw', false);
+      if (rows.length < 2 || bagCount(y) < (extra.minBags ?? 0)) return null;
+      const all = grams(y), top = rows[0], share = top.value / all;
+      return {
+        id, category: 'coffees', lead, big: top.label, context: extra.context(top, share, rows, y),
+        viz: { kind: 'hlist', rows: rows.slice(0, 5).map((r) => ({ label: r.label, value: r.value, texts: extra.texts(r, r.value / all) })) },
+        link: { tab: 'Leaderboards', section: `Leaderboards · ${section}`, href: seeMoreHref(y.year, 'leaderboards', extra.href ?? { rank: 'grams' }) },
+        card: { big: top.label, label }, score: share
+      };
+    }
+  };
+}
+type BoardRowLite = { label: string; value: number; bags: number };
+
+const roaster = shareFact('roaster', 'roasters', 'Top roaster', 'Roasters', 'top roaster', {
+  minBags: 3,
+  context: (top, share, rows) => {
+    const bl = rows.reduce((a, r) => (r.bags > a.bags ? r : a), top); // ties keep the top roaster
+    return `${pct(share)} of your coffee: ${fmtKg(top.value)} over ${nBags(top.bags)}.${bl === top ? '' : ` You went through more bags of ${bl.label} (${bl.bags}), but less coffee (${fmtKg(bl.value)}).`}`;
+  },
+  texts: (r, s) => [pct(s), fmtKg(r.value), nBags(r.bags)]
+});
+const origin = shareFact('origin', 'origins', 'Top origin', 'Origins', 'top origin', {
+  href: { open: 'origins' },
+  context: (top, share, rows) => `${pct(share)} of everything you brewed: ${fmtKg(top.value)} from ${nBags(top.bags)}, out of ${rows.length} origins.`,
+  texts: (r) => [fmtKg(r.value)]
+});
+const producer = shareFact('producer', 'producers', 'Top producer', 'Producers', 'top producer', {
+  context: (top, share) => `${pct(share)} of your coffee: ${fmtKg(top.value)} over ${nBags(top.bags)}.`,
+  texts: (r) => [fmtKg(r.value)]
+});
+
+// producer -> roaster -> bags brewed in the year
+function producerRoasterMap(y: YearCtx) {
+  const m = new Map<string, Map<string, Set<number>>>();
+  for (const b of y.brews) {
+    const p = b.producer?.trim();
+    if (!p || !b.roaster || b.coffeeId === null) continue;
+    const rs = m.get(p) ?? m.set(p, new Map()).get(p)!;
+    (rs.get(b.roaster) ?? rs.set(b.roaster, new Set()).get(b.roaster)!).add(b.coffeeId);
+  }
+  return m;
+}
+const byBags = (rs: Map<string, Set<number>>) => [...rs].map(([r, s]) => ({ r, n: s.size })).sort((a, b) => b.n - a.n || a.r.localeCompare(b.r));
+
+const producerRoasters: FactDef = {
+  id: 'producer-roasters', category: 'coffees',
+  run: (y) => {
+    const best = [...producerRoasterMap(y)].filter(([, rs]) => rs.size >= 2)
+      .sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]))[0];
+    if (!best) return null;
+    const [p, rs] = best, rows = byBags(rs);
+    return {
+      id: 'producer-roasters', category: 'coffees',
+      lead: `One producer, ${rs.size} roasters`, big: p,
+      context: `You bought ${poss(p)} coffee from ${andList(rows.map((x) => x.r))}.`,
+      viz: { kind: 'hlist', rows: rows.map((x) => ({ label: x.r, value: x.n, texts: [nBags(x.n)] })) },
+      link: { tab: 'Leaderboards', section: 'Leaderboards · Producers', href: seeMoreHref(y.year, 'leaderboards', { rank: 'grams' }) },
+      card: { big: p, label: `from ${rs.size} roasters` }, score: Math.min(1, (rs.size - 1) / 3)
+    };
+  }
+};
+
+const turn: FactDef = {
+  id: 'turn', category: 'coffees',
+  run: (y) => {
+    const m0 = Number(y.brews[0].localDate.slice(5, 7)) - 1, m1 = Number(y.brews.at(-1)!.localDate.slice(5, 7)) - 1;
+    const n = m1 - m0 + 1;
+    if (n < 6) return null;
+    const k = Math.floor(n / 3);
+    const inMonths = (a: number, z: number) => y.brews.filter((b) => { const m = Number(b.localDate.slice(5, 7)) - 1; return m >= a && m <= z; });
+    const early = inMonths(m0, m0 + k - 1), late = inMonths(m1 - k + 1, m1);
+    if (early.length < 30 || late.length < 30) return null;
+    const share = (bs: readonly BrewFact[], key: (b: BrewFact) => string | null) => {
+      const c = new Map<string, number>();
+      for (const b of bs) { const v = key(b); if (v) c.set(v, (c.get(v) ?? 0) + 1); }
+      return { c, of: bs.length, top: [...c].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])) };
+    };
+    const ke = share(early, (b) => country(b.origin)), kl = share(late, (b) => country(b.origin));
+    const A = ke.top[0]?.[0], B = kl.top[0]?.[0];
+    if (!A || !B || A === B) return null;
+    const pe = (ke.c.get(B) ?? 0) / ke.of, pl = kl.c.get(B)! / kl.of;
+    const win = (a: number, z: number) => `${MON[a]}–${MON[z]}`;
+    const wE = win(m0, m0 + k - 1), wL = win(m1 - k + 1, m1);
+    let context = `${A} was ${pct(ke.c.get(A)! / ke.of)} of ${wE} brews. ${wL}, ${B} leads at ${pct(pl)}.`;
+    const group = (b: BrewFact) => (b.processGroup === 'Other / Unknown' ? null : b.processGroup);
+    const g = share(y.brews, group).top[0]?.[0];
+    if (g) {
+      const ge = (share(early, group).c.get(g) ?? 0) / early.length, gl = (share(late, group).c.get(g) ?? 0) / late.length;
+      if (Math.abs(gl - ge) >= 0.1) context += ` ${g} ${gl > ge ? 'rose' : 'fell'} from ${pct(ge)} to ${pct(gl)}.`;
+    }
+    const both = new Map<string, number>();
+    for (const x of [ke, kl]) for (const [o, c] of x.c) both.set(o, (both.get(o) ?? 0) + c);
+    const keys = [A, B, ...[...both].sort((a, b) => b[1] - a[1]).map(([o]) => o).filter((o) => o !== A && o !== B)].slice(0, 3);
+    const seg = (name: string, x: ReturnType<typeof share>) => {
+      const segs = keys.map((o) => ({ label: o, pct: Math.round(((x.c.get(o) ?? 0) / x.of) * 100) })).filter((s) => s.pct > 0).sort((a, b) => b.pct - a.pct);
+      const rest = 100 - segs.reduce((s, x) => s + x.pct, 0);
+      return { name, segs: rest > 0 ? [...segs, { label: 'Other', pct: rest }] : segs };
+    };
+    return {
+      id: 'turn', category: 'coffees',
+      lead: `Since ${MONTH(m1 - k + 1)}, your most brewed origin is`, big: B, context,
+      viz: { kind: 'split', periods: [seg(wE, ke), seg(wL, kl)], keys },
+      // ponytail: Leaderboards has no origin over-time view yet (VIEW_BOARDS), so this opens the Origins board.
+      link: { tab: 'Leaderboards', section: 'Leaderboards · Origins over time', href: seeMoreHref(y.year, 'leaderboards', { open: 'origins' }) },
+      wide: true, card: { big: B, label: `since ${MONTH(m1 - k + 1)}` }, score: pl - pe
+    };
+  }
+};
+
+const record: FactDef = {
+  id: 'record', category: 'coffees',
+  run: (y) => {
+    const def = RECORDS.find((r) => r.key === 'bestBag')!;
+    const cands = def.run({ brews: y.scored, bags: y.bags, ratings: 'current', today: y.today }).sort((a, b) => b.value - a.value);
+    const win = pick(cands, 'max');
+    if (!win) return null;
+    const bagOf = (h: { href?: string; label: string; sub?: string }) =>
+      y.bags.find((b) => (h.href ? h.href === `/coffees/${b.slug}` : b.name === h.label && b.roaster === h.sub));
+    const stats = bagStats(y.scored, 'current');
+    const bag = bagOf(win.holder);
+    if (!bag) return null;
+    const n = stats.get(bag.id)!.rated.length;
+    const tens = y.scored.filter((b) => b.rating === 10 && countsForRating(b, 'current')).length;
+    const proc = (bag.processing ?? '').toLowerCase();
+    let context = `${poss(bag.roaster)} ${bag.name}${proc ? `, ${proc}` : ''}: average over ${n} brews.`;
+    if (tens) context += ` ${tens} brew${tens === 1 ? '' : 's'} all year earned a 10.`;
+    const others = bag.producer ? byBags(producerRoasterMap(y).get(bag.producer.trim()) ?? new Map()).map((x) => x.r).filter((r) => r !== bag.roaster) : [];
+    if (others.length) context += ` ${poss(bag.producer!.trim())} coffee also came from ${andList(others)}.`;
+    const top = cands.slice(0, 5), vals = top.map((c) => c.value);
+    return {
+      id: 'record', category: 'coffees', lead: 'Best bag of the year', big: win.value.toFixed(2), context,
+      viz: {
+        kind: 'dots', stack: true,
+        rows: top.map((c) => { const b = bagOf(c.holder)!; return { label: `${b.roaster} · ${b.name}`, value: c.value, brews: stats.get(b.id)!.rated.length }; }),
+        lo: Math.floor((Math.min(...vals) - 0.1) * 10) / 10, hi: Math.ceil((Math.max(...vals) + 0.05) * 10) / 10
+      },
+      link: { tab: 'Highlights', section: 'Highlights · Records', href: seeMoreHref(y.year, 'records') },
+      card: { big: win.value.toFixed(2), label: 'best bag' }, score: Math.min(1, (win.value - (cands[1]?.value ?? 0)) / 0.5)
+    };
+  }
+};
+const price: FactDef = {
+  id: 'price', category: 'money',
+  run: (y) => {
+    const priced = y.brews.filter((b) => b.costPerBrew !== null && b.coffeeId !== null);
+    if (priced.length < 10) return null;
+    const top = priced.reduce((a, b) => (b.costPerBrew! > a.costPerBrew! ? b : a));
+    const avg = priced.reduce((s, b) => s + b.costPerBrew!, 0) / priced.length;
+    const bag = y.bags.find((b) => b.id === top.coffeeId);
+    const rated = countsForRating(top, 'current') ? ` You rated it ${top.rating}.` : '';
+    const big = usd(top.costPerBrew!);
+    return {
+      id: 'price', category: 'money', lead: 'Priciest cup', big,
+      context: `${top.dose}g of ${poss(bag?.roaster ?? top.roaster ?? '')} ${bag?.name ?? 'coffee'} on ${md(top.localDate)}.${rated} Your average cup costs ${usd(avg)}.`,
+      viz: { kind: 'hlist', rows: [{ label: 'Priciest cup', value: top.costPerBrew!, texts: [big] }, { label: 'Average cup', value: avg, texts: [usd(avg)] }] },
+      link: { tab: 'Habits', section: 'Habits · Spend', href: seeMoreHref(y.year, 'spend') },
+      card: { big, label: 'priciest cup' }, score: Math.min(1, top.costPerBrew! / avg / 5)
+    };
+  }
+};
+
+export const POOL: FactDef[] = [total, streak, hour, decaf, roaster, origin, producer, producerRoasters, turn, record, price];
 export const fact = (id: string) => POOL.find((f) => f.id === id)!;
