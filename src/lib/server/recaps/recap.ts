@@ -4,7 +4,9 @@ import type { People } from '$lib/insightsUrl';
 import { fmtInt } from '$lib/recapFormat';
 import { md, POOL } from './pool';
 import { personality } from './traits';
-import type { Slide, Tone } from './types';
+import { order, select, tonesFor } from './select';
+import { freezeIds, frozenIds } from './store';
+import type { Slide } from './types';
 import { loadYear } from './year';
 
 export interface Recap {
@@ -15,19 +17,19 @@ export interface Recap {
   householdSize: number;
 }
 
-// The mockup's tone per fact id. Ids it has no card for (producer ...) fall back to ink until Part 2 re-tones.
-export const DEFAULT_TONES: Record<string, Tone> = {
-  total: 'espresso', streak: 'red', hour: 'sun', decaf: 'plum', roaster: 'brown', origin: 'green',
-  turn: 'blue', recipe: 'teal', ratio: 'amber', rest: 'violet', record: 'gold', price: 'ink', you: 'cream'
-};
-
 export function recap(db: DatabaseSync, year: number, o: { today: string; preview: boolean; people?: People }): Recap | null {
   const householdSize = getHouseholdSize(db);
   const y = loadYear(db, year, o.today, o.preview, o.people === 'person' ? householdSize : 1);
   if (!y) return null;
-  const slides = [...POOL.map((f) => f.run(y)), personality(y)]
-    .filter((r) => r !== null)
-    .map(({ score: _score, ...s }) => ({ ...s, tone: DEFAULT_TONES[s.id] ?? 'ink' }) as Slide);
+  const facts = POOL.map((f) => f.run(y)).filter((r) => r !== null);
+  const frozen = frozenIds(db, year);
+  const ids = frozen ?? order(select(facts), year);
+  if (!frozen && !o.preview) freezeIds(db, year, ids);
+  const picked = ids.map((id) => facts.find((f) => f.id === id)).filter((f) => f !== undefined);
+  const you = personality(y);
+  const tones = tonesFor(picked.map((f) => f.id), year);
+  const slides = [...picked, ...(you ? [you] : [])]
+    .map(({ score: _score, ...s }) => ({ ...s, tone: tones[s.id] }) as Slide);
   const from = y.brews[0].localDate, to = y.brews.at(-1)!.localDate;
   const roasters = new Set(y.brews.map((b) => b.roaster)).size;
   const bags = new Set(y.brews.map((b) => b.coffeeId)).size;

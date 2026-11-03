@@ -775,6 +775,14 @@ export const STATES: State[] = [
       for (const b of bigs) expect(b.trim(), 'every slide has a big value').not.toBe('');
       await expect(page.locator('.recap-reel > section.slide')).toHaveCount(bigs.length);
     } },
+  { name: 'recaps-unknown-slide', viewports: 'two', path: () => `/recaps/${recapYear() - 1}?slide=nope`,
+    act: async (page) => {
+      const ids = await page.locator('.recap-reel > section').evaluateAll((els) => els.map((e) => e.id));
+      const inView = (id: string) => expect.poll(async () => Math.abs((await page.locator(`#${id}`).boundingBox())!.y), { message: `${id} in view` }).toBeLessThan(2);
+      await inView(ids[0]);
+      await page.goto(`/recaps/${recapYear() - 1}#nope`);
+      await inView(ids[0]);
+    } },
   { name: 'recaps-dark', path: () => `/recaps/${recapYear()}?preview=1`,
     act: async (page) => {
       await page.emulateMedia({ colorScheme: 'dark' }); // the layout reads the scheme at mount: reload
@@ -828,9 +836,9 @@ export const STATES: State[] = [
     act: async (page) => {
       // Roaster over coffee: two lines, no wrapping, a long coffee name still fits its box (no ellipsis at 480+).
       const long = 'Finca El Paraíso Lychee Thermal Shock Natural';
-      await expect(page.locator('#record .names')).toHaveCount(1);
+      await expect(page.locator('.recap-reel > section.slide .names').first()).toBeAttached();
       const w = page.viewportSize()!.width;
-      for (const sel of ['#record .names', '.recap-grid .names']) {
+      for (const sel of ['.recap-reel > section.slide .names', '.recap-grid .names']) {
         const r = await page.locator(sel).first().evaluate((box, long) => {
           const cn = box.querySelector('.cn') as HTMLElement;
           const rn = box.querySelector('.rn') as HTMLElement;

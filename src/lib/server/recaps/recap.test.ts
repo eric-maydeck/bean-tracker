@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { createDb, setHouseholdSize } from '$lib/server/db';
 import { localToday } from '$lib/server/localToday';
 import { recap } from './recap';
+import { freezeIds, frozenIds } from './store';
 
 function seed(db: ReturnType<typeof createDb>, years: number[]) {
   const now = '2026-10-09T00:00:00.000Z';
@@ -45,6 +46,24 @@ describe('recap', () => {
     const h = recap(db, 2025, { today: '2026-02-01', preview: false })!, p = recap(db, 2025, { today: '2026-02-01', preview: false, people: 'person' })!;
     expect(p.householdSize).toBe(2);
     expect(p.slides[0].big).not.toBe(h.slides[0].big);
+  });
+});
+
+describe('freezing', () => {
+  it('freezes on first public open; preview never freezes', () => {
+    const db = createDb(':memory:');
+    seed(db, [2026]);
+    recap(db, 2026, { today: '2026-11-01', preview: true });
+    expect(frozenIds(db, 2026)).toBeNull();
+    const r = recap(db, 2026, { today: '2027-01-02', preview: false })!;
+    expect(frozenIds(db, 2026)).toEqual(r.slides.filter((s) => s.id !== 'you').map((s) => s.id));
+  });
+  it('skips a frozen fact that is now null, keeping order', () => {
+    const db = createDb(':memory:');
+    seed(db, [2026]);
+    freezeIds(db, 2026, ['total', 'decaf', 'streak']); // decaf now null: no decaf brews
+    const r = recap(db, 2026, { today: '2027-01-02', preview: false })!;
+    expect(r.slides.map((s) => s.id)).toEqual(['total', 'streak', 'you']);
   });
 });
 
