@@ -1,4 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+const stub = vi.hoisted(() => ({ spot: null as any }));
+vi.mock('$lib/server/insights/lab', async (orig) => {
+  const m = await orig<typeof import('$lib/server/insights/lab')>();
+  return { ...m, sweetSpotsTab: (...a: Parameters<typeof m.sweetSpotsTab>) => (stub.spot ? { matching: { bags: 0, brews: 0 }, topBags: [], cards: [{ key: 'rest', name: 'Rest', spot: stub.spot }] } : m.sweetSpotsTab(...a)) };
+});
 import type { BagFact, BrewFact } from '$lib/server/insights/facts';
 import { addDays } from '$lib/server/insights/time';
 import { POOL, fact } from './pool';
@@ -273,6 +279,38 @@ describe('recipe, ratio, rest', () => {
     expect(s.score).toBeCloseTo(56 / 60);
     expect(fact('rest').run(ctx(rich.map((b) => ({ ...b, restDays: 40 }))))).toBeNull();
     expect(fact('rest').run(ctx(rich.map((b, i) => ({ ...b, restDays: i % 2 ? 100 : 20, localDate: b.localDate.slice(0, 5) + (b.localDate.slice(5, 7) < '04' ? '02' : '03') + b.localDate.slice(7) }))))).toBeNull();
+  });
+});
+
+describe('rest card figures', () => {
+  const band = (label: string, value: number, small = false) => ({ label, value, bags: 5, brews: 30, solid: true, sample: { bags: 5, brews: 30, small } });
+  const t2 = (o: any = {}) => ({ tier: 2, verdict: 'win', best: { label: '45–59', value: 7.42, strength: 'solid' }, next: { label: '60–89', value: 7.34 }, usual: { label: '30–44', mean: 7.02 },
+    bands: [band('30–44', 7.0), band('45–59', 7.42), band('60–89', 7.34)], ...o });
+  const run = (spot: any, brews: BrewFact[] = rich) => { stub.spot = spot; try { return fact('rest').run(ctx(brews)); } finally { stub.spot = null; } };
+  it('tier 2: the card means, best against the usual band', () => {
+    const s = run(t2())!;
+    expect(s).toMatchObject({ lead: 'Rest sweet spot', big: '45–59d' });
+    expect(s.score).toBeCloseTo(0.8);
+    expect(s.context).toBe('7.42 average since June, against 7.02 at 30–44d.');
+    expect((s.viz as any).rows.map((r: any) => r.label)).toEqual(['30–44d', '45–59d', '60–89d']);
+  });
+  it('tier 2: best = usual compares with the runner-up', () => {
+    const s = run(t2({ usual: { label: '45–59', mean: 7.4 } }))!;
+    expect(s.context).toBe('7.42 average since June, against 7.34 at 60–89d.');
+    expect(s.score).toBeCloseTo(0.16);
+  });
+  it('tier 1: a signed same-bag gap', () => {
+    const s = run({ tier: 1, verdict: 'win', best: { label: '45–59', value: 0.42, strength: 'solid' }, usual: { label: '45–59', mean: 7.4 }, bands: [band('30–44', -0.1), band('45–59', 0.42)] })!;
+    expect(s.big).toBe('45–59d');
+    expect(s.context).toBe('+0.42 since June, against the same bags at other rests.');
+    expect(s.score).toBeCloseTo(0.84);
+  });
+  it('a small best band is no win: backup copy', () => {
+    expect(run(t2({ bands: [band('45–59', 7.42, true)] }))!.lead).toBe('Your beans now wait');
+  });
+  it('non-win verdicts: backup copy on a big shift, null on a small one', () => {
+    expect(run(t2({ verdict: 'tie' }))!.lead).toBe('Your beans now wait');
+    expect(run(t2({ verdict: 'early' }), rich.map((b) => ({ ...b, restDays: 40 })))).toBeNull();
   });
 });
 

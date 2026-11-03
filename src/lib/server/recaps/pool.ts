@@ -11,7 +11,7 @@ import { pick, RECORDS } from '$lib/server/insights/records';
 import { addDays } from '$lib/server/insights/time';
 import { sweetSpotsTab } from '$lib/server/insights/lab';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
-import { recipeBand, restBand } from '$lib/server/insights/pours';
+import { recipeBand } from '$lib/server/insights/pours';
 import type { FactDef, Viz } from './types';
 import type { YearCtx } from './year';
 
@@ -403,19 +403,22 @@ const rest: FactDef = {
   run: (y) => {
     const link = { tab: 'Lab', section: 'Lab · Sweet spots', href: seeMoreHref(y.year, 'sweetspots') };
     const spot = sweetSpotsTab(y.scored, y.bags, { period: y.period, ratings: 'current', grinder: null, filters: {}, all: y.scored }).cards.find((c) => c.key === 'rest')?.spot;
-    if (spot?.verdict === 'win' && spot.best) {
-      // Plain mean rating per rest band over the settled ratings (tier 1's band values are same-bag deltas).
-      const rated = y.scored.filter((b) => countsForRating(b, 'current'));
-      const stat = (label: string) => { const r = rated.filter((b) => restBand(b)?.label === label); return r.length ? { label, mean: avg(r.map((b) => b.rating!)), brews: r.length } : null; };
-      const best = stat(spot.best.label), vs = stat(spot.usual.label !== spot.best.label ? spot.usual.label : spot.next?.label ?? '');
-      if (best && vs && best.mean > vs.mean) {
-        const rows = spot.bands.map((b) => stat(b.label)).filter((x) => x !== null).map((x) => ({ label: dLabel(x.label), value: x.mean, brews: x.brews }));
+    const bestBand = spot?.bands.find((b) => b.label === spot.best?.label);
+    if (spot?.verdict === 'win' && spot.best && bestBand && !bestBand.sample.small) {
+      // The card's own figures: tier 2 compares band means (best against the usual band, or the runner-up when best is
+      // the usual one); tier 1's value is already a same-bag delta against the other rests.
+      const cmp = spot.tier === 2 ? (spot.usual.label !== spot.best.label ? { label: spot.usual.label, v: spot.usual.mean } : spot.next && { label: spot.next.label, v: spot.next.value }) : null;
+      const gap = spot.tier === 1 ? spot.best.value : cmp ? spot.best.value - cmp.v : null;
+      if (gap !== null && gap > 0) {
+        const since = `since ${MONTH(Number(RATINGS_SETTLED_FROM.slice(5, 7)) - 1)}`;
+        const rows = spot.bands.filter((b) => b.value !== null).map((b) => ({ label: dLabel(b.label), value: b.value!, brews: b.brews }));
         const vals = rows.map((r) => r.value);
+        const big = dLabel(spot.best.label);
         return {
-          id: 'rest', category: 'brewing', lead: 'Rest sweet spot', big: dLabel(best.label),
-          context: `${best.mean.toFixed(2)} average since ${MONTH(Number(RATINGS_SETTLED_FROM.slice(5, 7)) - 1)}, against ${vs.mean.toFixed(2)} at ${dLabel(vs.label)}.`,
+          id: 'rest', category: 'brewing', lead: 'Rest sweet spot', big,
+          context: cmp ? `${spot.best.value.toFixed(2)} average ${since}, against ${cmp.v.toFixed(2)} at ${dLabel(cmp.label)}.` : `+${gap.toFixed(2)} ${since}, against the same bags at other rests.`,
           viz: { kind: 'dots', rows, lo: Math.floor(Math.min(...vals) * 10) / 10, hi: Math.ceil(Math.max(...vals) * 10) / 10 },
-          link, card: { big: dLabel(best.label), label: 'rest sweet spot' }, score: Math.min(1, (best.mean - vs.mean) / 0.5)
+          link, card: { big, label: 'rest sweet spot' }, score: Math.min(1, gap / 0.5)
         };
       }
     }
