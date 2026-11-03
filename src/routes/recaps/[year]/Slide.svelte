@@ -16,7 +16,14 @@
   const INK: Partial<Record<Tone, string>> = { sun: '#2b211b', amber: '#2b211b', cream: 'var(--color-text)' };
   const tone = $derived(slide.tone ?? 'ink');
   // A word never breaks mid-word: the longest word (in chars) sizes .fit so it always fits the box (see .fit).
-  const longest = $derived(Math.max(1, ...slide.big.split(/\s+/).map((w) => w.length)));
+  // The last word and its unit are one unbreakable run, so they count together (the unit is set at 0.28em, a glue gap at ~0.3).
+  const longest = $derived.by(() => {
+    const words = slide.big.split(/\s+/).map((w) => w.length);
+    if (slide.unit) words[words.length - 1] += slide.unit.length * 0.28 + (unitGap(slide.unit) ? 0.3 : 0);
+    return Math.max(1, ...words);
+  });
+  // No line break after a hyphen, en dash or slash inside a value ("22–30d" stays whole): a word joiner glues them.
+  const glue = (s: string) => s.replace(/([-–—/])(?=\S)/g, '$1\u2060');
 </script>
 
 {#snippet body()}
@@ -24,7 +31,7 @@
   {#if slide.roaster}
     <div class="big names" style:--rn={slide.roaster.length} style:--cn={slide.big.length}><span class="rn">{slide.roaster}</span><span class="cn"><CoffeeName text={slide.big} /></span></div>
   {:else}
-  <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><span class="fit" style:--w={longest}><CoffeeName text={slide.big} />{#if slide.unit}{#if unitGap(slide.unit)}<span class="unit gap">{' '}</span>{/if}<span class="unit">{slide.unit}</span>{/if}</span></p>
+  <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><span class="fit" style:--w={longest}><CoffeeName text={glue(slide.big)} />{#if slide.unit}{#if unitGap(slide.unit)}<span class="unit gap">{'\u00a0'}</span>{/if}<span class="unit">{slide.unit}</span>{/if}</span></p>
   {/if}
   {#if slide.sub}<p class="sub">{slide.sub}</p>{/if}
   {#if slide.context}<p class="context"><CoffeeName text={slide.context} /></p>{/if}

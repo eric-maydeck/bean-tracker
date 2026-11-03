@@ -702,20 +702,40 @@ async function previewTags(page: Page, path: string): Promise<Record<string, str
   }
 }
 
-// A word never breaks mid-word (user, gate 2): every word of the text in `sel` is one line box (one client rect).
-// `fit` (a selector inside each match) is first rewritten to each of `words`, with --w set as the server does, so long names are covered too.
+// A word never breaks mid-word, a value never parts from its unit, nothing is wider than its box (user, gate 2).
+// Words: every word of the text in `sel` is one line box (one client rect). Units: a `.unit`'s line is its value's last line.
+// Overflow: no .fit / .unit sticks out of its .big (or tile headline `b`). `fit` (a selector inside each match) is first
+// rewritten to each of `words`, with --w set as the server does (and the dash glue applied), so long names are covered too.
+// A selector matching nothing fails (a check that checks nothing).
 async function expectNoMidWord(page: Page, sel: string, fit?: string, words: string[] = []) {
   const check = () => page.evaluate((sel) => {
     const bad: string[] = [];
-    for (const el of document.querySelectorAll(sel)) {
+    const els = [...document.querySelectorAll(sel)];
+    if (!els.length) return ['matched no element'];
+    for (const el of els) {
       const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let n = w.nextNode(); n; n = w.nextNode()) {
         const t = n.textContent ?? '';
-        for (const m of t.matchAll(/\S+/g)) {
+        for (const m of t.matchAll(/[^\s\u00a0]+/g)) {
           const r = document.createRange();
           r.setStart(n, m.index!); r.setEnd(n, m.index! + m[0].length);
           const tops = new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top / 4)));
-          if (tops.size > 1) bad.push(`${m[0]} (${(el as HTMLElement).className})`);
+          if (tops.size > 1) bad.push(`${m[0]} split (${(el as HTMLElement).className})`);
+        }
+      }
+      const box = (el.closest('.big, b') ?? el) as HTMLElement;
+      const fitEl = box.querySelector('.fit');
+      if (fitEl && !box.classList.contains('names')) {
+        const c = box.getBoundingClientRect();
+        for (const u of box.querySelectorAll('.fit, .unit:not(.gap)')) if (u.getBoundingClientRect().right > c.right + 1) bad.push(`${u.className || 'fit'} wider than its box`);
+        if (box.scrollWidth > box.clientWidth + 1) bad.push(`${box.className || box.tagName} overflows (${box.scrollWidth} > ${box.clientWidth})`);
+        for (const u of box.querySelectorAll('.unit:not(.gap)')) {
+          const v = document.createRange();
+          v.setStart(fitEl, 0); v.setEndBefore(u);
+          const last = [...v.getClientRects()].filter((x) => x.width > 0).at(-1);
+          const ur = u.getBoundingClientRect();
+          const mid = ur.top + ur.height / 2;
+          if (last && (mid < last.top || mid > last.bottom)) bad.push(`unit "${u.textContent}" on another line than its value`);
         }
       }
     }
@@ -726,13 +746,13 @@ async function expectNoMidWord(page: Page, sel: string, fit?: string, words: str
   for (const word of words) {
     await page.evaluate(([fit, word]) => {
       const el = document.querySelector(fit) as HTMLElement;
-      el.textContent = word;
+      el.textContent = word.replace(/([-–—/])(?=\S)/g, '$1\u2060');
       el.style.setProperty('--w', String(Math.max(...word.split(/\s+/).map((x) => x.length))));
     }, [fit, word]);
     expect(await check(), `${sel} with "${word}"`).toEqual([]);
   }
 }
-const LONG_NAMES = ['Origami', 'Kalita Wave 185', 'Hario Switch', 'Chemex Eight Cup Classic', 'Supercalifragilistic'];
+const LONG_NAMES = ['Origami', 'Kalita Wave 185', 'Hario Switch', 'Chemex Eight Cup Classic', 'Supercalifragilistic', '22–30d', '22-30d', '114–118d+'];
 
 export const STATES: State[] = [
   // Year in review: /recaps/<Y> is the current local year's recap, an admin's ?preview=1; Y - 1 is the thin public seed year.
@@ -793,7 +813,7 @@ export const STATES: State[] = [
     } },
   { name: 'recaps-no-midword', path: () => `/recaps/${recapYear() - 1}`,
     act: async (page) => {
-      await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context');
+      await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context, .hlist .k');
       await expectNoMidWord(page, '.slide:not(.cover) .big:not(.names)', '.slide:not(.cover) .big:not(.names) .fit', LONG_NAMES);
       await expectNoMidWord(page, '.tile .big:not(.names)', '.tile .big:not(.names) .fit', LONG_NAMES);
     } },
