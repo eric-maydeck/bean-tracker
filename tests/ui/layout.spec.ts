@@ -705,6 +705,13 @@ export const STATES: State[] = [
       await expect(page.locator('.bottom-tabs')).toBeHidden();
       await expect(page.locator('nav.site-nav')).toHaveCount(0);
       // Keyword-colored names and signed deltas take the slide's text color on a tone.
+      await page.locator('.recap-reel > section.slide .context').first().evaluate((c) => {
+        c.insertAdjacentHTML('beforeend', '<span class="coffee-name" id="probe-name" style="color:rgb(255,0,0)">x</span><span class="ink-better" id="probe-delta">+0.3</span>');
+      });
+      for (const id of ['probe-name', 'probe-delta']) {
+        const [el, sl] = await page.locator(`#${id}`).evaluate((e) => [getComputedStyle(e).color, getComputedStyle(e.closest('section')!).color]);
+        expect(el, `${id} takes the slide text color`).toBe(sl);
+      }
       const off = await page.locator('.recap-reel > section.slide').evaluateAll((sl) => sl.flatMap((s) => [...s.querySelectorAll('.coffee-name, .ink-better, .ink-worse')]
         .filter((e) => getComputedStyle(e).color !== getComputedStyle(s).color).map((e) => e.textContent)));
       expect(off, 'names/deltas off the slide text color').toEqual([]);
