@@ -192,7 +192,7 @@ describe('coffees facts', () => {
     const s = fact('turn').run(full())!;
     expect(s.big).toBe('Ethiopia');
     expect(s.lead).toBe('Since August, your most brewed origin is');
-    expect(s.context).toBe('Colombia was 51% of Feb–Apr brews. Aug–Oct, Ethiopia leads at 32%. Washed fell from 100% to 49%.');
+    expect(s.context).toBe('Colombia was 51% of Feb\u2060–\u2060Apr brews. Aug\u2060–\u2060Oct, Ethiopia leads at 32%. Washed fell from 100% to 49%.');
     const v = s.viz as any;
     expect(v.kind).toBe('split');
     expect(v.periods.map((p: any) => p.name)).toEqual(['Feb–Apr', 'Aug–Oct']);

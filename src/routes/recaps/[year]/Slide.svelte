@@ -56,30 +56,45 @@
 
   /* Story slides: one fact per screen. */
   .slide { height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; display: grid; place-items: center; padding: 56px 20px 28px; cursor: pointer; }
-  .inner { width: 100%; max-width: 30rem; display: flex; flex-direction: column; gap: 18px; }
-  .slide .big { font-size: clamp(4.5rem, 24vw, 8.5rem); }
-  .slide .big.long { font-size: clamp(3rem, 15vw, 5.6rem); }
+  .inner { width: 100%; max-width: 34rem; display: flex; flex-direction: column; gap: clamp(14px, 2.6vh, 32px); }
+  .slide .big { font-size: clamp(4.5rem, min(24vw, 12vh), 8.5rem); }
+  .slide .big.long { font-size: clamp(3rem, min(15vw, 8vh), 5.6rem); }
   .slide[data-id='you'] .big { font-size: clamp(2.6rem, 11vw, 4.2rem); line-height: 1; }
-  .slide .context { font-size: 1.15rem; }
-  .slide .vizwrap { margin-top: 6px; }
+  .slide .lead { font-size: clamp(1.15rem, 2.1vh, 1.4rem); }
+  .slide .context { font-size: clamp(1.15rem, 2.1vh, 1.4rem); }
+  .slide .vizwrap { margin-top: clamp(6px, 2vh, 24px); font-size: clamp(0.9rem, 1.7vh, 1.1rem); }
   .slide .more { align-self: flex-start; font-size: 0.95rem; padding: 10px 0; }
   .share { position: absolute; top: 30px; right: 12px; z-index: 1; }
   .share :global(.share-button) { min-height: 44px; padding: 0 14px; border: 1.5px solid currentColor; border-radius: 22px; background: transparent; color: inherit; font: 600 0.9rem var(--font-sans); }
   .hint { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; font-size: 0.85rem; opacity: 0.7; margin: 0; }
   .home { position: absolute; top: 30px; left: 12px; min-height: 44px; display: inline-flex; align-items: center; padding: 0 4px; color: inherit; font-weight: 600; font-size: 0.9rem; }
+  /* Desktop: text left, the chart or traits right, the whole block centered and filling the slide. */
+  @media (min-width: 900px) {
+    .inner { max-width: min(76rem, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); column-gap: clamp(32px, 5vw, 96px); row-gap: clamp(12px, 2vh, 24px); align-items: center; align-content: center; }
+    .inner:not(:has(.vizwrap, .traits)) { max-width: 46rem; grid-template-columns: minmax(0, 1fr); }
+    .inner > .lead, .inner > .big, .inner > .context, .inner > .more { grid-column: 1; }
+    .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+    .slide .big { font-size: clamp(5rem, min(11vw, 22vh), 11rem); }
+    .slide .big.long { font-size: clamp(3.5rem, min(7vw, 14vh), 7rem); }
+    .slide[data-id='you'] .big { font-size: clamp(2.6rem, min(5vw, 10vh), 5rem); }
+    .slide .lead { font-size: clamp(1.15rem, 1.6vw, 1.6rem); }
+    .slide .context { font-size: clamp(1.15rem, 1.6vw, 1.6rem); max-width: 38ch; }
+    .slide .vizwrap { font-size: clamp(1rem, 1.4vw, 1.4rem); margin-top: 0; }
+    .slide .traits { gap: 28px 32px; }
+    .slide .traits b { font-size: clamp(1.7rem, 3vw, 3rem); }
+  }
   @media (max-height: 640px) {
-    .slide { padding: 60px 20px 12px; }
+    .slide { padding: 60px 20px 34px; }
     .inner { gap: 8px; }
     .slide .big { font-size: clamp(3rem, 18vh, 6rem); }
     .slide .big.long { font-size: clamp(2.4rem, 13vh, 4rem); }
     .slide .context { font-size: 1rem; }
   }
   @media (max-height: 640px) and (min-width: 700px) {
-    .inner { max-width: 56rem; display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; align-items: end; }
+    .inner { max-width: 56rem; display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; row-gap: 8px; align-items: center; }
     .inner > .lead, .inner > .big, .inner > .context { grid-column: 1; }
-    .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 2; align-self: end; }
-    .slide .vizwrap :global(svg) { max-height: 52vh; }
-    .inner > .more { grid-column: 2; grid-row: 3; align-self: end; justify-self: start; }
+    .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+    .slide .vizwrap :global(svg) { max-height: 58vh; }
     .slide[data-id='you'] .big { font-size: clamp(2rem, 13vh, 3rem); }
     .slide .traits { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 14px; }
     .slide .traits b { font-size: 1.4rem; }
@@ -92,10 +107,15 @@
   .tile[data-id='you'] .big { font-size: clamp(2rem, 4vw, 3rem); line-height: 1; }
   .tile .lead { font-size: 1rem; }
   .tile .context { font-size: 0.95rem; max-width: 46ch; }
-  .tile .vizwrap { margin-top: auto; padding-top: 4px; }
-  .tile.wide .vizwrap { max-width: 560px; }
+  .tile .vizwrap { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; padding-top: 4px; }
+  .tile .vizwrap :global(.hlist) { flex: 1; align-content: space-evenly; }
   .tile .more { font-size: 0.85rem; padding: 6px 0 2px; align-self: flex-start; }
   .tile[data-id='you'] .traits { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
   /* Wide tiles span 2 only in the 3-column grid; with 1 or 2 columns they would sit alone on a row. */
-  @media (min-width: 900px) { .tile.wide { grid-column: span 2; } }
+  @media (min-width: 900px) {
+    .tile.wide { grid-column: span 2; }
+    .tile.wide:has(.vizwrap) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); grid-template-rows: auto auto 1fr auto; column-gap: 24px; }
+    .tile.wide:has(.vizwrap) > * { grid-column: 1; }
+    .tile.wide:has(.vizwrap) > .vizwrap { grid-column: 2; grid-row: 1 / -1; align-self: center; padding: 0; }
+  }
 </style>

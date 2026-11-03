@@ -1,7 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { getHouseholdSize } from '$lib/server/db';
 import type { People } from '$lib/insightsUrl';
-import { POOL } from './pool';
+import { fmtInt } from '$lib/recapFormat';
+import { md, POOL } from './pool';
 import { personality } from './traits';
 import type { Slide, Tone } from './types';
 import { loadYear } from './year';
@@ -33,8 +34,8 @@ export function recap(db: DatabaseSync, year: number, o: { today: string; previe
     year, preview: o.preview, span: { from, to }, slides, householdSize,
     poster: {
       title: `${year} in coffee`,
-      sub: `${slides.length} things your brewing said this year, ${from} to ${to}.`,
-      footer: `Picked from ${y.brews.length} brews across ${bags} bags and ${roasters} roasters.`
+      sub: `${slides.length} things your brewing said this year, ${md(from)} to ${md(to)}.`,
+      footer: `Picked from ${fmtInt(y.brews.length)} brews across ${fmtInt(bags)} bags and ${fmtInt(roasters)} roasters.`
     }
   };
 }

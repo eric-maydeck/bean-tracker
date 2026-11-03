@@ -15,7 +15,7 @@ import { recipeBand } from '$lib/server/insights/pours';
 import type { FactDef, Viz } from './types';
 import type { YearCtx } from './year';
 
-const md = (d: string) => `${MON[Number(d.slice(5, 7)) - 1]} ${Number(d.slice(8))}`;
+export const md = (d: string) => `${MON[Number(d.slice(5, 7)) - 1]} ${Number(d.slice(8))}`;
 const h12 = (h: number) => `${h % 12 || 12}${h < 12 ? 'am' : 'pm'}`;
 export const pct = (n: number) => `${Math.round(n * 100)}%`;
 const dow = (d: string) => (new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7; // Monday = 0
@@ -237,7 +237,8 @@ const turn: FactDef = {
     const pe = (ke.c.get(B) ?? 0) / ke.of, pl = kl.c.get(B)! / kl.of;
     const win = (a: number, z: number) => `${MON[a]}–${MON[z]}`;
     const wE = win(m0, m0 + k - 1), wL = win(m1 - k + 1, m1);
-    let context = `${A} was ${pct(ke.c.get(A)! / ke.of)} of ${wE} brews. ${wL}, ${B} leads at ${pct(pl)}.`;
+    const nb = (w: string) => w.replace('–', '\u2060–\u2060'); // no line break inside a month range
+    let context = `${A} was ${pct(ke.c.get(A)! / ke.of)} of ${nb(wE)} brews. ${nb(wL)}, ${B} leads at ${pct(pl)}.`;
     const group = (b: BrewFact) => (b.processGroup === 'Other / Unknown' ? null : b.processGroup);
     const g = share(y.brews, group).top[0]?.[0];
     if (g) {

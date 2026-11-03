@@ -6,7 +6,7 @@
   // the site's FloatTip needs a pointer-anchored client component, which a static recap mark doesn't warrant).
   let { viz }: { viz: Viz } = $props();
 
-  const cut = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+  const cut = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s);
 
   // bars
   const BW = 300, BH = 90;
@@ -54,7 +54,7 @@
     const x = (v: number) => lx + ((v - viz.lo) / (viz.hi - viz.lo)) * (300 - 46 - lx);
     return { stack, lx, h: viz.rows.length * rowH + (stack ? 6 : 16), rows: viz.rows.map((r, i) => {
       const y = i * rowH + (stack ? 26 : 12);
-      return { ...r, y, cx: x(r.value), best: r.value === best, thin: r.brews < thin, label: cut(r.label, stack ? 40 : 16), tip: `${r.label}: ${r.value.toFixed(2)} avg over ${r.brews} brews` };
+      return { ...r, y, cx: x(r.value), best: r.value === best, thin: r.brews < thin, label: cut(r.label, stack ? 48 : 18), tip: `${r.label}: ${r.value.toFixed(2)} avg over ${r.brews} brews` };
     }) };
   });
 </script>
@@ -120,6 +120,7 @@
     {/each}
     {#each cal.months as m (m.x)}<text class="ax" x={m.x} y={7 * CS + 12}>{m.m}</text>{/each}
   </svg>
+  <p class="legend key"><span><i class="c streak"></i>Streak</span><span><i class="c on"></i>Brewed</span><span><i class="c miss"></i>No brew</span></p>
 {:else if viz.kind === 'dots' && dots}
   <svg class="viz dots" viewBox="0 0 300 {dots.h}" role="img">
     {#each dots.rows as r, i (i)}
@@ -150,9 +151,9 @@
   .dots .hi circle { opacity: 1; }
   .dots .thin circle { fill: none; stroke: var(--fg); stroke-width: 1.5; }
   /* One grid for every row, so the bars line up whatever the value text's width. */
-  .hlist { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(3.5em, 7.5em) minmax(1em, 1fr) repeat(var(--vcols, 1), auto); gap: 6px 8px; align-items: center; font-size: 0.9rem; }
+  .hlist { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(3.5em, 8.5em) minmax(1em, 1fr) repeat(var(--vcols, 1), auto); gap: 6px 10px; align-items: center; font-size: 0.9rem; }
   .hlist li { display: contents; }
-  .hlist .k { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hlist .k { line-height: 1.2; overflow-wrap: anywhere; }
   .hlist .v { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
   .hlist .track { height: 10px; }
   .hlist .fill { display: block; height: 100%; min-width: 3px; border-radius: 0 4px 4px 0; background: var(--fg); opacity: 0.35; }
@@ -169,6 +170,10 @@
   .seg.c { background: #92dba9; color: #2b211b; }
   .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: 0.8rem; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend.key { margin-top: 6px; }
+  .legend i.c { width: 10px; height: 10px; border-radius: 2px; background: var(--fg); }
+  .legend i.c.on { opacity: 0.4; }
+  .legend i.c.miss { background: none; border: 1px solid var(--fg); opacity: 0.6; box-sizing: border-box; }
   .legend i.seg { width: 12px; height: 12px; padding: 0; border-radius: 3px; }
   @container (max-width: 360px) { .seg b { display: none; } }
   /* Narrow homes (tiles, 360 phones): a multi-value list puts its bar on its own line under the label and values. */
