@@ -40,12 +40,12 @@ export function loadYear(db: DatabaseSync, year: number, today: string, preview:
   };
 }
 
-// Mirrors /insights' insightsTab context (no filters): brews = scored, allBrews = every rating, wholeBrews = unfiltered scored.
+// Mirrors /insights' insightsTab context (no filters): brews = scored, allBrews = every rating, wholeBrews = y.brews (in-period, every rating, before once-dialed; no brew filters here).
 // Dial-in generators want {...ctx, brews: ctx.allBrews} (as insightsTab does).
 export function toGenCtx(y: YearCtx): GenCtx {
   return {
-    brews: y.scored, allBrews: y.brews, wholeBrews: y.scored, brewFilters: {},
-    dialIn: dialInIds(y.everyBrew), bags: y.bags, prevBrews: y.prevBrews, ratings: 'current', today: y.today,
+    brews: y.scored, allBrews: y.brews, wholeBrews: y.brews, brewFilters: {},
+    dialIn: dialInIds(y.everyBrew), bags: y.bags, prevBrews: onceDialed(y.prevBrews, dialInIds(y.everyBrew)), ratings: 'current', today: y.today,
     householdSize: y.size, onHandG: gramsOnHand(y.bags, y.everyBrew), logged: loggedGrams(y.everyBrew),
     period: { from: y.period.start!, to: y.period.end }, dataStart: y.everyBrew[0].localDate,
     pours: undefined

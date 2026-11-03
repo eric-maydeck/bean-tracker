@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDb, setHouseholdSize } from '$lib/server/db';
+import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { loadYear, toGenCtx, dataStamp } from './year';
 
 function seed() {
@@ -42,6 +43,8 @@ describe('loadYear', () => {
     const g = toGenCtx(y);
     expect(g.brews).toBe(y.scored);
     expect(g.allBrews).toBe(y.brews);
+    expect(g.wholeBrews).toBe(y.brews);
+    expect(g.prevBrews).toEqual(onceDialed(y.prevBrews, dialInIds(y.everyBrew)));
     expect(g.dataStart).toBe('2025-12-31');
     expect(g.period).toEqual({ from: '2026-01-01', to: '2026-12-31' });
     expect(g.ratings).toBe('current');
