@@ -1,3 +1,84 @@
+# [1.108.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.107.0...v1.108.0) (2026-11-04)
+
+
+### Bug Fixes
+
+* alerts only store internal recap paths as href
+* close the alerts modal when following a recap alert link
+* days unit is unspaced (22–30d)
+* **recaps:** a little more room above the per-person line
+* **recaps:** a value never parts from its unit, overflow and split checks
+* **recaps:** append facts that gain data after the freeze
+* **recaps:** atomic card cache writes, cover footer
+* **recaps:** back ignores the reel's own navigations
+* **recaps:** banner fetch failure, hidden-on-recap check
+* **recaps:** banner text centered, smaller pills
+* **recaps:** card cache before recap, 404 chrome, preview no-store, test fixes
+* **recaps:** centered slide block, poster spans before hydration, landscape fit
+* **recaps:** cents on every amount of the spend slide
+* **recaps:** chart value labels never sit on a mark, with a check
+* **recaps:** companion line tight under the big value, sub-sized
+* **recaps:** dial-in reads every brew, null-branch tests
+* **recaps:** dial-in slide needs a first-brew gap of at least 0.1
+* **recaps:** every fact with data shows, cover tone from the year's theme
+* **recaps:** fill slides on desktop and phone, poster tile layout, copy fixes
+* **recaps:** hour and decaf see-more label matches the Habits heading
+* **recaps:** kebab-case fact ids, no empty context, real section labels
+* **recaps:** lazy per-1 pick, local year in the household test
+* **recaps:** no ready banner on the recaps index
+* **recaps:** poster rows close, full-width personality tile, fuller slides, legend colours
+* **recaps:** readable names on tones, darker gold, progress ignore reason
+* **recaps:** ready banner is an in-flow page banner
+* **recaps:** recap alerts drop the redundant source prefix
+* **recaps:** rest band labels never carry a spaced d, and the check now sees it
+* **recaps:** rest win copy uses the sweet spots card's figures
+* **recaps:** signed-out recaps tab shows an empty state with sign in, no redirect
+* **recaps:** space before word units, sub line, top-aligned tile charts
+* **recaps:** tiles never freeze, recaps tab hides compare and people
+* **recaps:** toGenCtx wholeBrews and prevBrews as insights passes them
+* **recaps:** unit spacing check accepts the non-breaking space
+* **recaps:** use the stored ids when a first open races
+* **recaps:** words never break mid-word, fixed-size tiles, period picks the years
+
+
+### Features
+
+* **recaps:** back and all recaps links over the reel
+* **recaps:** best bag roaster and coffee on two lines that fit the width
+* **recaps:** best bag sub line, origin and decaf leads
+* **recaps:** busiest day, bags finished, spend and best value facts
+* **recaps:** consistent bag, dial-in, weekend and dripper facts
+* **recaps:** effect-size floors so only interesting facts show
+* **recaps:** household and per person toggle
+* **recaps:** link previews for slides
+* **recaps:** per-person companion line replaces the people toggle
+* **recaps:** personality and trait pool
+* **recaps:** poster slide
+* **recaps:** preview card images
+* **recaps:** ranked selection, seeded order and theme, frozen ids
+* **recaps:** ranking facts always show, dial-in reframed as brews to settle
+* **recaps:** ready banner is a full-bleed strip above the nav in the cover tone
+* **recaps:** recap assembly, route load and thin prior-year seed
+* **recaps:** recap ready banner
+* **recaps:** recap ready notice also lands in the alerts inbox
+* **recaps:** recaps tab and index
+* **recaps:** recipe, ratio and rest facts
+* **recaps:** roaster, origin, producer, turn, record and price facts
+* **recaps:** sentence leads, best bag named, unit never splits mid-word
+* **recaps:** story slides with navigation and share
+* **recaps:** streak and recipe leads, producer-roasters needs 5 roasters, cover copy
+* **recaps:** the recaps tab is the one recaps page
+* **recaps:** title slide, rule 4 exemption for story progress
+* **recaps:** total, streak, hour and decaf facts
+* **recaps:** url codec and availability
+* **recaps:** weak effects get a steady headline instead of dropping out
+* **recaps:** year context and fact types
+
+
+### Performance Improvements
+
+* skip the brew scan once the newest recap year is alerted
+
 # [1.107.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.106.0...v1.107.0) (2026-11-03)
 
 
