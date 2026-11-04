@@ -637,7 +637,7 @@
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
   {#if peopleOn}
     <div class="form-field group-field people-field" style={cell('people')}>
-      <span><button class="mode-tip-button" popovertarget="tip-people" aria-describedby="tip-people"><span class="tip-text">People</span></button></span>
+      <span><button class="mode-tip-button" popovertarget="tip-people" aria-describedby="tip-people"><span class="tip-text">People</span><Icon name="question" /></button></span>
       <div class="tab-group people-switch" role="group" aria-label="People">
         {#each PEOPLE as m (m)}
           <button

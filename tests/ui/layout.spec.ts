@@ -6115,13 +6115,13 @@ export const STATES: State[] = [
       await switches.first().getByRole('button', { name: 'All ratings', exact: true }).click();
       await expect(page).toHaveURL(/ratings=all/);
       for (const g of await switches.all()) await expect(g.getByRole('button', { name: 'All ratings', exact: true })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.locator('.mode-tip-button')).toHaveText(['All ratings', 'All ratings']);
+      await expect(page.locator('.mode-tip-button:not([popovertarget="tip-people"])')).toHaveText(['All ratings', 'All ratings']);
       const brews = page.getByRole('group', { name: 'Brews' });
       await expect(brews).toHaveCount(2);
       await brews.last().getByRole('button', { name: 'All brews', exact: true }).click();
       await expect(page).toHaveURL(/dial=all/);
       for (const g of await brews.all()) await expect(g.getByRole('button', { name: 'All brews', exact: true })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.locator('.mode-tip-button')).toHaveText(['All ratings', 'All brews', 'All ratings', 'All brews']);
+      await expect(page.locator('.mode-tip-button:not([popovertarget="tip-people"])')).toHaveText(['All ratings', 'All brews', 'All ratings', 'All brews']);
     }
   },
   ...(['leaderboards', 'habits&measure=rating', 'records', 'sweetspots', 'brewing', 'water', 'gear'] as const).map((t) => ({
@@ -6393,7 +6393,7 @@ export const STATES: State[] = [
     name: 'insights-tip-hover', viewports: 'two',
     path: () => '/insights',
     act: async (page) => {
-      const btn = page.locator('.mode-tip-button').first();
+      const btn = page.locator('.mode-tip-button:not([popovertarget="tip-people"])').first();
       const tip = page.locator('#tip-rated');
       if (!(await page.evaluate(() => matchMedia('(hover: hover)').matches))) {
         await btn.click();
@@ -6451,13 +6451,13 @@ export const STATES: State[] = [
     name: 'insights-ratings-tip',
     path: () => '/insights',
     act: async (page) => {
-      await page.locator('.mode-tip-button').first().click();
+      await page.locator('.mode-tip-button:not([popovertarget="tip-people"])').first().click();
       const tip = page.locator('#tip-rated');
       await expect(tip).toBeVisible();
       await expect(tip.locator('.tip-title')).toHaveText('Calibrated ratings');
       await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Calibrated ratings leaves out ratings before \w+ \d{4}, while the rating scale was still settling\.$/);
       await expect(tip.locator('.tip-lines li').nth(1)).toContainText('dial-in brews');
-      await expect(page.locator('.mode-tip-button').first()).toHaveAccessibleDescription(/still settling/);
+      await expect(page.locator('.mode-tip-button:not([popovertarget="tip-people"])').first()).toHaveAccessibleDescription(/still settling/);
       const r = (await tip.boundingBox())!;
       const vw = page.viewportSize()!.width;
       expect(r.x).toBeGreaterThanOrEqual(0);

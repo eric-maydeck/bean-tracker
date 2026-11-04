@@ -357,7 +357,7 @@
   </div>
   {#if data.householdSize > 1}
     <div class="form-field group-field">
-      <span><button class="mode-tip-button" popovertarget="tip-people" aria-describedby="tip-people"><span class="tip-text">People</span></button></span>
+      <span><button class="mode-tip-button" popovertarget="tip-people" aria-describedby="tip-people"><span class="tip-text">People</span><Icon name="question" /></button></span>
       <div class="tab-group" role="group" aria-label="People">
         {#each PEOPLE as m (m)}
           <button
