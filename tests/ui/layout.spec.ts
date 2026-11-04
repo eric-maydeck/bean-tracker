@@ -5098,17 +5098,18 @@ export const STATES: State[] = [
       expect(t['og:description']).toMatch(/^What fuhnoo spends on coffee, and on what\n.+\nSpent \$[\d,.]+ · [\d,.]+ bags?( · \$\d+\.\d\d\/g avg)?$/);
     }
   },
-  // On hand: six tiles and no Compare control (a snapshot has nothing to compare); the runway and freshness cards fill their rows.
+  // On hand: eight tiles (with the oldest and newest unopened) and no Compare control (a snapshot has nothing to compare); the runway and freshness cards fill their rows.
   {
     name: 'insights-onhand', path: () => '/insights?tab=onhand&range=3m',
     act: async (page) => {
-      const shelf = ['Bags waiting', 'Grams waiting', '$ tied up', 'Avg age', 'In the freezer', 'Avg bag cost'];
+      const shelf = ['Bags waiting', 'Grams waiting', '$ tied up', 'Avg age', 'In the freezer', 'Avg bag cost', 'Oldest unopened', 'Newest unopened'];
       await expect(page.locator('.stat-item .stat-label')).toHaveText(
         [...shelf, 'Days left', 'Runs out', 'A day', 'Days left', 'Runs out', 'A day'], { useInnerText: true, ignoreCase: true }
       );
       await expect(page.getByLabel('Compare', { exact: true })).toHaveCount(0);
       await expect(page.getByLabel('Period', { exact: true })).toBeVisible();
-      await expect(page.locator('#onhand-runway-at-your-pace, #onhand-freshness')).toHaveCount(2);
+      await expect(page.locator('#onhand-runway-at-your-pace, #onhand-freshness, #onhand-bag-states')).toHaveCount(3);
+      await expect(page.locator('[data-section="onhand-bag-states"] canvas')).toHaveCount(1);
       // The runway: its tiles are the shelf tiles' size, and a chart of the projection fills the rest.
       const runway = page.locator('section.chart-panel:has(#onhand-runway-at-your-pace)');
       await expect(runway.locator('canvas')).toHaveCount(1);

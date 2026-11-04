@@ -5,7 +5,7 @@
   const hasAge = (t: OnHandTab) => AGE_KEYS.some((k) => t.age.bags[k].some((n) => n > 0));
   const shelf = (t: OnHandTab) => t.tiles.bagsWaiting + t.tiles.frozenBags > 0 || Object.values(t.freshness).some((g) => typeof g === 'object' && g && g.count > 0);
   export function jumpLinks(t: OnHandTab): JumpLink[] {
-    return [['onhand-runway-at-your-pace', 'Runway at your pace'], shelf(t) && ['onhand-freshness', 'Freshness now'], hasAge(t) && ['onhand-age', 'Age profile'], t.tiles.bagsWaiting > 0 && ['onhand-waiting', "What's waiting"]];
+    return [['onhand-runway-at-your-pace', 'Runway at your pace'], shelf(t) && ['onhand-freshness', 'Freshness now'], shelf(t) && ['onhand-bag-states', 'Bag states'], hasAge(t) && ['onhand-age', 'Age profile'], t.tiles.bagsWaiting > 0 && ['onhand-waiting', "What's waiting"]];
   }
 </script>
 
@@ -47,6 +47,9 @@
     const total = AGE_SERIES.reduce((a, [k]) => a + split[k][i], 0);
     return { title: `${t.age.labels[i]} days since roast`, rows: [...rows, ['Total', ageFmt(total)]], marks: [...AGE_SERIES.map((_, j) => ({ color: `var(${AGE_TOKENS[j]}-ink)` })), null] };
   });
+  // Bag states: every open and backlog bag in one state (a freeze beats open/waiting), counted in bags or grams.
+  const STATES = [['open', 'Open'], ['waiting', 'Unopened'], ['frozen', 'Frozen']] as const;
+  const stateVals = $derived(STATES.map(([k]) => (grams ? t.states[k].grams : t.states[k].bags)));
   // What's waiting: backlog grams grouped by roaster, origin, process or roast level.
   const by = $derived(waitBy ?? 'roaster');
   const rows = $derived(t.waiting.by[by]);
@@ -91,6 +94,19 @@
     {/if}
   {/if}
 </section>
+
+{#if shelf(t)}
+  <section class="chart-panel" data-section="onhand-bag-states">
+    <LabHead id="onhand-bag-states" title="Bag states" {placeTip}
+      help={['Open and backlog bags by state.', 'Open: opened, not frozen.', 'Unopened: waiting in the backlog, not frozen.', 'Frozen: frozen with no thaw date, whether opened or not.', 'Per person divides grams, not bags.']}>
+      <ChartToggle label="Unit" options={[['grams', 'Grams'], ['bags', 'Bags']]} value={unit} pick={(v) => choose({ unit: v })} />
+    </LabHead>
+    <Chart type="bar" labels={STATES.map(([, n]) => n)} values={stateVals} datasetLabel={grams ? 'Grams' : 'Bags'} format={ageFmt}
+      tipFormat={(v, i) => `${ageFmt(v)} · ${grams ? `${t.states[STATES[i][0]].bags} bag${t.states[STATES[i][0]].bags === 1 ? '' : 's'}` : formatGrams(t.states[STATES[i][0]].grams)}`}
+      label="Bag states" height={STATES.length * 40 + 24} />
+    <p class="chart-note">Open, unopened and frozen bags on the shelf</p>
+  </section>
+{/if}
 
 {#if hasAge(t)}
   <section class="chart-panel" data-section="onhand-age">

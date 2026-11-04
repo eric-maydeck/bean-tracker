@@ -85,8 +85,8 @@ describe('onHandTab', () => {
   it('a size of 2 halves grams and dollars only', () => {
     const bags = [fact({ id: 1, cost: 20, purchaseDate: '2026-09-15' }), fact({ id: 2, cost: 10, frozenStart: '2026-09-20' })];
     const one = onHandTab([], bags, ctx).tiles;
-    const two = onHandTab([], bags, { ...ctx, size: 2 }).tiles;
-    expect(two).toEqual({ ...one, gramsWaiting: one.gramsWaiting / 2, tiedUp: one.tiedUp / 2, frozenGrams: one.frozenGrams / 2 });
+    const two = onHandTab([], bags, { ...ctx, size: 2 });
+    expect(two.tiles).toEqual({ ...one, gramsWaiting: one.gramsWaiting / 2, tiedUp: one.tiedUp / 2, frozenGrams: one.frozenGrams / 2 });
   });
   it('a size of 2 halves the daily grams, so the shelf (not divided) lasts twice as long', () => {
     const brews = [dose(9, '2026-09-20', 300)];
@@ -97,8 +97,32 @@ describe('onHandTab', () => {
     expect([one.days, two.days]).toEqual([14, 27]); // 500g at 37.5 g/day, then at 18.75 g/day (the Consumption rule)
     expect(two.perDay).toBe(one.perDay! / 2);
   });
+  it('oldest and newest unopened by rest age', () => {
+    const t = onHandTab([], [
+      fact({ id: 1, name: 'A', slug: 'a', purchaseDate: '2026-09-05' }), // 20
+      fact({ id: 2, name: 'B', purchaseDate: '2026-09-20' }), // 5
+      fact({ id: 3, name: 'C', purchaseDate: '2026-09-15' }), // 10
+      fact({ id: 4, name: 'Open', status: 'open', purchaseDate: '2026-01-01' }) // not unopened
+    ], ctx).tiles;
+    expect(t.oldest).toEqual({ days: 20, name: 'A', slug: 'a' });
+    expect(t.newest).toEqual({ days: 5, name: 'B', slug: null });
+  });
+  it('no unopened bag: oldest and newest are null', () => {
+    const t = onHandTab([], [fact({ id: 1, status: 'open' })], ctx).tiles;
+    expect([t.oldest, t.newest]).toEqual([null, null]);
+  });
+  it('states split open, waiting and frozen bags', () => {
+    const bags = [
+      fact({ id: 1, status: 'open', amountG: 100 }), fact({ id: 2, status: 'open', amountG: 100, frozenStart: '2026-09-20' }),
+      fact({ id: 3, amountG: 250 }), fact({ id: 4, amountG: 250, frozenStart: '2026-09-20' }), fact({ id: 5, status: 'archive' })
+    ];
+    expect(onHandTab([], bags, ctx).states).toEqual({
+      open: { bags: 1, grams: 100 }, waiting: { bags: 1, grams: 250 }, frozen: { bags: 2, grams: 350 }
+    });
+    expect(onHandTab([], bags, { ...ctx, size: 2 }).states.frozen).toEqual({ bags: 2, grams: 175 });
+  });
   it('has zeros and nulls without bags', () => {
-    expect(onHandTab([], [], ctx).tiles).toEqual({ bagsWaiting: 0, gramsWaiting: 0, tiedUp: 0, avgAge: null, frozenBags: 0, frozenGrams: 0, avgBagCost: null });
+    expect(onHandTab([], [], ctx).tiles).toEqual({ bagsWaiting: 0, gramsWaiting: 0, tiedUp: 0, avgAge: null, frozenBags: 0, frozenGrams: 0, avgBagCost: null, oldest: null, newest: null });
   });
   it('an all-time pace runs out at a different day than a one-week pace', () => {
     const brews = [dose(9, '2026-08-05', 300), dose(9, '2026-09-24', 30)];

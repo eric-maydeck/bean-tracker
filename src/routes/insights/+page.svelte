@@ -270,6 +270,7 @@
   type Tile = {
     key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean;
     up?: 'good' | 'bad'; split?: true; sub?: () => string | null; keepSub?: true;
+    subHref?: () => string | null; // links the sub line (the oldest unopened coffee's name)
     was?: () => string | null; // a neutral line in the delta slot ("was Thu")
     stack?: () => { head: string; tail: string; said: string } | null; // two-line "vs Oct 4:" / "3 brews · 48g" there
     from?: () => string | null; // a ratio tile's previous count ("31 days"): the delta reads "from 31 days (100%)"
@@ -338,7 +339,9 @@
     { key: 'avgAge', label: 'Avg age', fmt: count, suffix: 'days', help: 'Counted by roast date, minus days in the freezer.' },
     // The count is the household's bags (never divided); only the grams under it divide, and its line says so.
     { key: 'frozenBags', label: 'In the freezer', fmt: count, sub: () => (data.onHand ? `${formatGrams(data.onHand.tiles.frozenGrams)}${perPersonOn ? ' per person' : ''}` : null) },
-    { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd }
+    { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd },
+    { key: 'oldest', label: 'Oldest unopened', fmt: count, suffix: 'days', sub: () => data.onHand?.tiles.oldest?.name ?? null, subHref: () => (data.onHand?.tiles.oldest?.slug ? `/coffees/${data.onHand.tiles.oldest.slug}` : null) },
+    { key: 'newest', label: 'Newest unopened', fmt: count, suffix: 'days', sub: () => data.onHand?.tiles.newest?.name ?? null, subHref: () => (data.onHand?.tiles.newest?.slug ? `/coffees/${data.onHand.tiles.newest.slug}` : null) }
   ]);
   // Runway: the days left at the Period's pace and at the all-time pace (one tile when the Period is all time).
   // "last 12 months pace"; a custom window's dates stay as they are.
@@ -807,7 +810,7 @@
     {/if}
     {#each tiles.some((x) => x.row) ? [...new Set(tiles.map((x) => x.row))].map((r) => ({ row: r, tiles: tiles.filter((x) => x.row === r) })) : [{ row: undefined, tiles }] as g (g.row ?? '')}
     {#if g.row}<h3 class="row-label">{g.row}</h3>{/if}
-    <div class="stat-row fit n{g.tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'} class:spending={title === 'Spending'} class:runway-row={!!g.row}>
+    <div class="stat-row fit n{g.tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'} class:spending={title === 'Spending'} class:on-shelf={title === 'On the shelf'} class:runway-row={!!g.row}>
       {#each g.tiles as t (t.key)}
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
@@ -833,7 +836,7 @@
           {/if}
           <!-- Under a delta (or a "was" line), a kept sub takes the pace line's slot (no keepSub tile is paced). -->
           {#if t.sub?.() && (!d || t.keepSub)}
-            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
+            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{#if t.subHref?.()}<a href={link(t.subHref()!)}>{t.sub?.()}</a>{:else}{t.sub?.()}{/if}</span>
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || t.ratingSwitch} class:has-cap={pp || t.ratingSwitch}
@@ -949,7 +952,7 @@
   {/snippet}
   {#snippet runwayPanel()}{@render panel('Runway at your pace', RUNWAY, { paceDays: data.onHand!.runway.days, paceOut: data.onHand!.runway.days, pacePerDay: data.onHand!.runway.perDay, allDays: data.onHand!.runwayAll.days, allOut: data.onHand!.runwayAll.days, allPerDay: data.onHand!.runwayAll.perDay }, null, undefined, runwayChart)}{/snippet}
   <OnHand t={data.onHand} {link} runway={runwayPanel} {placeTip} unit={s.unit} waitBy={s.waitBy} {choose}>
-    {#snippet tiles()}{@render panel('On the shelf', ONHAND, data.onHand!.tiles, null)}{/snippet}
+    {#snippet tiles()}{@render panel('On the shelf', ONHAND, { ...data.onHand!.tiles, oldest: data.onHand!.tiles.oldest?.days ?? null, newest: data.onHand!.tiles.newest?.days ?? null }, null)}{/snippet}
   </OnHand>
 {:else if s.tab === 'recaps' && data.recaps}
   <Recaps tiles={data.recaps} admin={data.isAdmin} period={data.recapsTab ? span(data.period) : null} />
@@ -1829,6 +1832,15 @@
   .fit.n8,
   .fit.n7 {
     --c: 4;
+  }
+  /* On the shelf (eight): below the wide layout 3 across like the runway's tiles under it, the last row of two stretched. */
+  @container insights (max-width: 967px) {
+    .fit.n8.on-shelf {
+      --c: 3;
+    }
+    .fit.n8.on-shelf .stat-item:nth-last-child(-n + 2) {
+      --q: 2;
+    }
   }
   /* Spending's seven: a row of four, then three stretched (content stays one tile wide). */
   .fit.n7 .stat-item:nth-last-child(-n + 3) {

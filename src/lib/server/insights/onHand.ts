@@ -51,7 +51,10 @@ export function freshness(bags: readonly FreshBag[], today: string): Freshness {
 export type OnHandTiles = {
   bagsWaiting: number; gramsWaiting: number; tiedUp: number; avgAge: number | null;
   frozenBags: number; frozenGrams: number; avgBagCost: number | null;
+  oldest: AgedBag | null; newest: AgedBag | null; // backlog bags by freezer-net days since roast (the avgAge rule)
 };
+export type AgedBag = { days: number; name: string; slug: string | null };
+export type BagStates = Record<'open' | 'waiting' | 'frozen', { bags: number; grams: number }>;
 export interface Runway { days: number | null; clearBy: string | null; perDay: number | null }
 export type WaitRow = { label: string; grams: number; bags: number; href: string | null };
 export interface Waiting { by: Record<'roaster' | 'origin' | 'process' | 'roast', WaitRow[]>; sub: number; oneOff: number }
@@ -83,7 +86,7 @@ export function whatsWaiting(bags: readonly BagFact[], logged: Map<number, numbe
 }
 
 export type AgeSplit = { before: number[]; inside: number[]; past: number[]; noWindow: number[] };
-export interface OnHandTab { tiles: OnHandTiles; runway: Runway; runwayAll: Runway; onHandG: number; freshness: Freshness; waiting: Waiting; age: { labels: string[]; bags: AgeSplit; grams: AgeSplit; links: Record<AgeKey, string[]> } }
+export interface OnHandTab { tiles: OnHandTiles; states: BagStates; runway: Runway; runwayAll: Runway; onHandG: number; freshness: Freshness; waiting: Waiting; age: { labels: string[]; bags: AgeSplit; grams: AgeSplit; links: Record<AgeKey, string[]> } }
 
 // Waiting (backlog) bags by freezer-net days since roast, split by where that age sits against the roaster's rest
 // window. Bags are counted whole (shared in the household); grams divide per person.
@@ -125,6 +128,15 @@ export function onHandTab(
   const fresh = live.map((b) => freshBag(b, logged));
   const t = parseDate(c.today);
   const frozen = fresh.filter(frozenNow);
+  // Open + backlog bags in exactly one state: an open freeze is only frozen (bags whole, grams per person).
+  const states: BagStates = { open: { bags: 0, grams: 0 }, waiting: { bags: 0, grams: 0 }, frozen: { bags: 0, grams: 0 } };
+  live.forEach((b, i) => {
+    const s = states[frozenNow(fresh[i]) ? 'frozen' : b.status === 'open' ? 'open' : 'waiting'];
+    s.bags++;
+    s.grams += fresh[i].grams / c.size;
+  });
+  const aged = waiting.flatMap((b) => { const days = computeDaysSinceRoast(freshBag(b, logged), t); return days === null ? [] : [{ days, name: b.name, slug: b.slug }]; });
+  const byAge = [...aged].sort((a, b) => a.days - b.days);
   const tiedUp = live.reduce((s, b) => s + (b.status === 'backlog' ? (b.cost ?? 0) : b.cost && b.amountG ? (b.cost * remaining(b, logged)) / b.amountG : 0), 0);
   const onHandG = gramsOnHand(bags, whole);
   const run = (p: Period): Runway => {
@@ -139,8 +151,11 @@ export function onHandTab(
       avgAge: mean(fresh.flatMap((b) => computeDaysSinceRoast(b, t) ?? [])),
       frozenBags: frozen.length,
       frozenGrams: frozen.reduce((s, b) => s + b.grams, 0) / c.size,
-      avgBagCost: mean(live.flatMap((b) => (b.cost !== null && b.cost > 0 ? [b.cost] : [])))
+      avgBagCost: mean(live.flatMap((b) => (b.cost !== null && b.cost > 0 ? [b.cost] : []))),
+      oldest: byAge.at(-1) ?? null,
+      newest: byAge[0] ?? null
     },
+    states,
     onHandG,
     runway: run(c.period),
     runwayAll: run({ start: null, end: c.today }),
