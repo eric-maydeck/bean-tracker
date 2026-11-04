@@ -11,9 +11,10 @@ export interface NewAlertInput {
 export function createAlert(db: DatabaseSync, input: NewAlertInput): AlertRow {
   const now = new Date().toISOString();
   const severity = input.severity ?? 'error';
+  const href = input.href && /^\/recaps\/\d{4}$/.test(input.href) ? input.href : null; // internal recap paths only
   const result = db
     .prepare(`INSERT INTO alerts (source, message, severity, created_at, href) VALUES (?, ?, ?, ?, ?)`)
-    .run(input.source, input.message, severity, now, input.href ?? null);
+    .run(input.source, input.message, severity, now, href);
   return {
     id: Number(result.lastInsertRowid),
     source: input.source,
@@ -22,7 +23,7 @@ export function createAlert(db: DatabaseSync, input: NewAlertInput): AlertRow {
     created_at: now,
     read_at: null,
     dismissed_at: null,
-    href: input.href ?? null
+    href: href
   };
 }
 

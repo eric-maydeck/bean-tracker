@@ -24,6 +24,12 @@ describe('createAlert', () => {
     const alert = createAlert(db, { source: 'backup', message: 'Heads up', severity: 'warning' });
     expect(alert.severity).toBe('warning');
   });
+
+  it('keeps only internal recap paths as href', () => {
+    expect(createAlert(db, { source: 'recap', message: 'x', href: '/recaps/2025' }).href).toBe('/recaps/2025');
+    for (const href of ['//evil.com', 'https://evil.com', '/recaps/2025/x', 'javascript:alert(1)', '/insights'])
+      expect(createAlert(db, { source: 'recap', message: 'x', href }).href, href).toBeNull();
+  });
 });
 
 describe('getActiveAlerts', () => {
