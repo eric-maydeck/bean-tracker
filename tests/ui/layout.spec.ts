@@ -3158,6 +3158,22 @@ export const STATES: State[] = [
     }
   },
   {
+    // A failed Link shows its message in the open picker, not (only) at the top of the panel.
+    name: 'account-not-tracked-link-error', viewports: 'two',
+    path: () => '/account',
+    act: async (page) => {
+      await page.route('**/account?/linkBeanConqueror', (route) =>
+        route.fulfill({ json: { type: 'failure', status: 400, data: '[{"error":1},"Stubbed is already linked"]' } }));
+      await showPicker(page, 'Kenya Kiambu');
+      await page.getByRole('button', { name: /^Coffee to link/ }).click();
+      await page.getByRole('option').first().click();
+      const row = page.locator('.triage-row').filter({ hasText: 'Kenya Kiambu' }).first();
+      await row.getByRole('button', { name: 'Link', exact: true }).click();
+      await expect(row.getByRole('alert')).toHaveText('Stubbed is already linked');
+      await checkLayout(page);
+    }
+  },
+  {
     // Closed, after a keyboard pick (nothing is submitted): ↓ + Enter takes the
     // second twin; Esc closes without changing it. Focus returns to the button.
     name: 'account-not-tracked-link-picker', viewports: 'two',

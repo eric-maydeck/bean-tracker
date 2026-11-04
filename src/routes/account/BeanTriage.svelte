@@ -27,6 +27,8 @@
   // Which row has its Link picker open. Inline action state, like the Create modal: never in the URL.
   let linkingId = $state<string | null>(null);
   let linkCoffeeId = $state<number | null>(null);
+  // A failed Link (e.g. already linked) is shown by the open picker, not as a page-level form error.
+  let linkError = $state<string | null>(null);
 
   function prefillFor(bean: UnmatchedBean): Partial<CoffeeRow> {
     return {
@@ -75,21 +77,27 @@
             method="POST"
             action="?/linkBeanConqueror"
             use:enhance={() => async ({ result, update }) => {
+              if (result.type === 'failure') {
+                linkError = String(result.data?.error ?? 'Could not link that bean');
+                return;
+              }
+              linkError = null;
               await update();
               if (result.type === 'success') linkingId = null;
             }}
           >
             <input type="hidden" name="beanId" value={bean.id} />
             <LinkPicker {groups} label={`Coffee to link ${bean.name} to`} bind:value={linkCoffeeId} />
+            {#if linkError}<p class="badge badge-urgent" role="alert"><CoffeeName text={linkError} /></p>{/if}
             <div class="action-buttons candidate-actions link-picker-actions">
               <button class="button" type="submit" disabled={linkCoffeeId == null}>Link</button>
-              <button class="button button-secondary" type="button" onclick={() => (linkingId = null)}>Cancel</button>
+              <button class="button button-secondary" type="button" onclick={() => { linkingId = null; linkError = null; }}>Cancel</button>
             </div>
           </form>
         {:else}
           <div class="action-buttons candidate-actions">
             <button class="button button-secondary" type="button" onclick={() => (createBean = bean)}>Create</button>
-            <button class="button button-secondary" type="button" onclick={() => { linkingId = bean.id; linkCoffeeId = null; }}>Link</button>
+            <button class="button button-secondary" type="button" onclick={() => { linkingId = bean.id; linkCoffeeId = null; linkError = null; }}>Link</button>
             <form method="POST" action="?/dismissBeanConqueror" use:enhance>
               <input type="hidden" name="id" value={bean.id} />
               <button class="button button-danger" type="submit">Dismiss</button>

@@ -9,23 +9,16 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd, usdPrecise, wholeUsd } from '$lib/money';
   import { enhance } from '$app/forms';
-  import { invalidateAll, afterNavigate } from '$app/navigation';
-  import { browser } from '$app/environment';
+  import { afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import Chart from '$lib/components/Chart.svelte';
-  import { linkPickerGroups, cap } from '$lib/linkPicker';
-  import LinkPicker from '$lib/components/LinkPicker.svelte';
-  import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
-  import { defaultViewForWidth } from '$lib/defaultView';
   import { currentParams, pickOne, pickMany } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
   import { parseRange, parsePeople, peopleHelp, DEFAULTS, PEOPLE, RANGES, RANGE_LABELS } from '$lib/insightsUrl';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   import { parseStatsTab, parseBcAverage } from './statsTab';
-  import type { UnmatchedBean } from '$lib/server/beanconqueror';
   import { bcPerPerson, type RatedGroup, type PeriodWindow } from './beanConquerorStatsData';
-  import type { CoffeeRow } from '$lib/types';
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
   import { ownerName, statsPreview } from '$lib/linkPreview';
   import type { PageData, ActionData } from './$types';
@@ -746,7 +739,7 @@
       : 'never'}
   </p>
   {#if data.isAdmin}
-    <p class="text-muted">Import and untracked beans moved to <a href="/account">Account</a>.</p>
+    <p class="text-muted">Import and untracked beans moved to <a href="/account#not-tracked">Account</a>.</p>
   {/if}
 
   {#if bc.totalBrews > 0 || bc.totalBeans > 0}
