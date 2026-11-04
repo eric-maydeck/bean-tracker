@@ -8,6 +8,7 @@ export function holdHeight(el: HTMLElement | undefined): void {
   const off = () => {
     panel.style.minHeight = '';
     removeEventListener('scroll', check);
+    removeEventListener('resize', off);
   };
   // The panel's own content height: the last child's bottom plus the panel's bottom padding and border.
   const natural = () => {
@@ -20,6 +21,8 @@ export function holdHeight(el: HTMLElement | undefined): void {
     if (spare <= 1 || scrollY + innerHeight + 2 < document.documentElement.scrollHeight - spare) off();
   }
   addEventListener('scroll', check, { passive: true });
+  // A resize or rotation reflows the page anyway: drop the hold rather than leave a stale blank band.
+  addEventListener('resize', off);
   // After the new content has rendered (local state: the next frame).
   requestAnimationFrame(() => requestAnimationFrame(check));
 }
