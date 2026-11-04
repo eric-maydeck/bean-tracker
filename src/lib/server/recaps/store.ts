@@ -13,6 +13,9 @@ export function freezeIds(db: DatabaseSync, year: number, ids: readonly string[]
   db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, ?)`).run(`recap_ids_${year}`, JSON.stringify(ids));
   return frozenIds(db, year)!;
 }
+// A fact that gained data after the freeze is appended (order and links stay stable); unlike freezeIds this overwrites.
+export const extendFrozenIds = (db: DatabaseSync, year: number, ids: readonly string[]) =>
+  void db.prepare(`INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)`).run(`recap_ids_${year}`, JSON.stringify(ids));
 export const recapSeen = (db: DatabaseSync, year: number) => get(db, `recap_seen_${year}`) !== null;
 export function markRecapSeen(db: DatabaseSync, year: number): void {
   db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, ?)`).run(`recap_seen_${year}`, '1');

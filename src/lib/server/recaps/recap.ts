@@ -6,7 +6,7 @@ import { fmtInt } from '$lib/recapFormat';
 import { md, POOL } from './pool';
 import { personality } from './traits';
 import { coverTone, order, select, tonesFor } from './select';
-import { brewYears, freezeIds, frozenIds } from './store';
+import { brewYears, extendFrozenIds, freezeIds, frozenIds } from './store';
 import type { Slide, Tone } from './types';
 import { loadYear } from './year';
 
@@ -36,7 +36,11 @@ export function recap(db: DatabaseSync, year: number, o: { today: string; previe
   const base = () => (y.per === 1 ? facts : POOL.map((f) => f.run({ ...y, per: 1 })).filter((r) => r !== null));
   const fresh = frozen ? null : order(select(base()), year);
   // A racing first open may have frozen first: freezeIds returns what's stored.
-  const ids = frozen ?? (o.preview || o.freeze === false ? fresh! : freezeIds(db, year, fresh!));
+  const persist = !o.preview && o.freeze !== false;
+  // Only lack of data omits a fact: ones that gained data since the freeze go after the frozen ones, and are kept.
+  const added = frozen ? order(facts.map((f) => f.id).filter((id) => !frozen.includes(id)), year) : [];
+  const ids = frozen ? [...frozen, ...added] : (persist ? freezeIds(db, year, fresh!) : fresh!);
+  if (added.length && persist) extendFrozenIds(db, year, ids);
   const picked = ids.map((id) => facts.find((f) => f.id === id)).filter((f) => f !== undefined);
   const you = personality(y);
   const tones = tonesFor(picked.map((f) => f.id), year);

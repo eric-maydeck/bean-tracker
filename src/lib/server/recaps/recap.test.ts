@@ -108,7 +108,25 @@ describe('freezing', () => {
     seed(db, [2026]);
     freezeIds(db, 2026, ['total', 'decaf', 'streak']); // decaf now null: no decaf brews
     const r = recap(db, 2026, { today: '2027-01-02', preview: false })!;
-    expect(r.slides.map((s) => s.id)).toEqual(['total', 'streak', 'you']);
+    const ids = r.slides.map((s) => s.id);
+    expect(ids.slice(0, 2)).toEqual(['total', 'streak']); // decaf stays out; facts with data follow
+    expect(ids).not.toContain('decaf');
+  });
+});
+
+describe('frozen ids gaining facts', () => {
+  it('appends newly non-null facts after the frozen ones and persists them', () => {
+    const db = createDb(':memory:');
+    seed(db, [2026]);
+    freezeIds(db, 2026, ['total', 'streak']);
+    const ids = (r: NonNullable<ReturnType<typeof recap>>) => r.slides.filter((s) => s.id !== 'you').map((s) => s.id);
+    const tile = recap(db, 2026, { today: '2027-01-02', preview: false, freeze: false })!;
+    expect(ids(tile).slice(0, 2)).toEqual(['total', 'streak']);
+    expect(ids(tile).length).toBeGreaterThan(2);
+    expect(frozenIds(db, 2026)).toEqual(['total', 'streak']); // tiles never persist
+    const r = recap(db, 2026, { today: '2027-01-02', preview: false })!;
+    expect(ids(r)).toEqual(ids(tile));
+    expect(frozenIds(db, 2026)).toEqual(ids(r));
   });
 });
 
