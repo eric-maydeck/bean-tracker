@@ -837,6 +837,19 @@ export const STATES: State[] = [
     act: async (page) => {
       const links = page.locator('.recap-nav a');
       await expect(links).toHaveText(['Back', 'All recaps']);
+      // Opened directly, an in-page navigation to a slide link (?slide=, a client navigation on the same route) is not an earlier in-app page: Back stays the plain
+      // link to the Recaps tab, not history.back() (which would leave the site).
+      const here = page.url();
+      await page.evaluate(() => {
+        const id = document.querySelector('.recap-reel > section:nth-of-type(2)')!.id;
+        const a = Object.assign(document.createElement('a'), { href: `${location.pathname}?slide=${id}` });
+        document.body.append(a); a.click(); a.remove();
+      });
+      await expect.poll(() => page.url()).toContain('slide=');
+      await page.evaluate(() => { history.back = () => {}; }); // a hijacked Back would call this and go nowhere
+      await links.first().click();
+      await expect(page).toHaveURL(/\/insights\?tab=recaps/);
+      await gotoReady(page, here);
       await expect(links.nth(1)).toHaveAttribute('href', '/insights?tab=recaps');
       const n = await page.locator('.recap-reel > section.slide').count();
       for (let i = 0; i <= n; i++) {
@@ -857,42 +870,41 @@ export const STATES: State[] = [
         expect(r, `slide ${i}`).toMatchObject({ found: true, belowProgress: true, apart: true, hits: 0, inView: true });
       }
     } },
-  { name: 'recaps-people', path: () => `/recaps/${recapYear() - 1}`,
+  // The per-person companion ("An average of 4 per person") under the big value of total, busiest-day and spend: one line, left-aligned
+  // with the big, smaller than .sub, inside the slide, readable on its tone. The household-of-one absence is in save.spec.
+  { name: 'recaps-each', path: () => `/recaps/${recapYear()}?preview=1`,
     act: async (page) => {
-      const sw = page.locator('.slide .people-switch');
-      await expect(sw, 'the switch is on the total slide only').toHaveCount(1);
-      await expect(page.locator('.slide[data-id="total"] .people-switch')).toHaveCount(1);
-      const total = page.locator('.slide[data-id="total"]');
-      await page.locator('.recap-progress button').nth(1).click();
-      await expect.poll(() => total.evaluate((e) => Math.abs(e.getBoundingClientRect().top) < 4)).toBe(true);
-      const geo = () => sw.evaluate((e) => [...e.querySelectorAll('button')].map((b) => { const r = b.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; }));
-      const before = await geo(), big = await total.locator('.big').innerText();
-      for (const [, , w, h] of before) { expect(h).toBeGreaterThanOrEqual(44); expect(w).toBeGreaterThanOrEqual(44); }
-      await sw.getByRole('button', { name: 'Per person' }).click();
-      await expect.poll(() => page.url()).toContain('people=person');
-      await expect(total.locator('.big')).not.toHaveText(big);
-      await expect(sw.getByRole('button', { name: 'Per person' })).toHaveAttribute('aria-pressed', 'true');
-      // The block is centred, so a divided figure that re-wraps its context may move the row vertically; the buttons keep size and x.
-      expect((await geo()).map(([l, , w, h]) => [l, w, h]), 'toggle keeps size and x').toEqual(before.map(([l, , w, h]) => [l, w, h]));
-      expect(page.url()).toContain('slide=total');
-      for (const h of await page.locator('a.more').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href))) expect(new URL(h).searchParams.get('people'), h).toBe('person');
-      await expectNoMidWord(page, '.slide .big, .slide .context, .people-switch button');
-      // Opened directly, the toggle's replaceState is not an earlier in-app page: Back stays the plain link to the Recaps tab.
-      await page.evaluate(() => { history.back = () => {}; }); // a hijacked Back would call this and go nowhere
-      await page.getByRole('link', { name: /Back$/ }).click();
-      await expect(page).toHaveURL(/\/insights\?tab=recaps/);
-      await page.goto(`/recaps/${recapYear() - 1}?people=person`);
-      await reloadReady(page);
-      await expect(page.locator('.slide .people-switch button[aria-pressed="true"]')).toHaveText('Per person');
-      await page.locator('.people-switch').getByRole('button', { name: 'Household' }).click();
-      await expect.poll(() => page.url()).not.toContain('people=person');
-    } },
-  { name: 'recaps-people-hidden', viewports: 'two', path: () => `/recaps/${recapYear() - 1}`,
-    act: async (page) => {
-      await page.locator('.recap-progress button').last().click(); // the poster tile list
-      await expect(page.locator('.people-switch')).toHaveCount(1); // only the total slide's, none on tiles
-      await expect(page.locator('#poster .people-switch, .tile .people-switch')).toHaveCount(0);
-      await expect(page.locator('.slide[data-id="you"] .people-switch')).toHaveCount(0);
+      await expect(page.locator('.people-switch'), 'the toggle is gone').toHaveCount(0);
+      for (const id of ['total', 'busiest-day', 'spend']) {
+        const slide = page.locator(`.slide[data-id="${id}"]`);
+        await expect(slide, `the seed year has a ${id} slide`).toHaveCount(1);
+        await slide.scrollIntoViewIfNeeded();
+        await page.locator('.recap-reel').evaluate((reel, i) => { document.getElementById(i)!.scrollIntoView({ behavior: 'instant' }); }, id);
+        await expect.poll(() => slide.evaluate((e) => Math.abs(e.getBoundingClientRect().top) < 4)).toBe(true);
+        await expect(slide.locator('.each')).toHaveText(/^An average of \$?[\d,]+(\.\d\d)? per person$/);
+        const r = await slide.evaluate((sl) => {
+          const rc = (e: Element) => e.getBoundingClientRect();
+          const each = sl.querySelector('.each span')!, big = sl.querySelector('.big')!, fit = sl.querySelector('.big .fit')!;
+          const range = document.createRange(); range.selectNodeContents(each);
+          const lines = new Set([...range.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top / 3))).size;
+          const inner = rc(sl.querySelector('.inner')!), sub = sl.querySelector('.sub');
+          const left = (e: Element) => { const rg = document.createRange(); rg.selectNodeContents(e); return rg.getBoundingClientRect().left; };
+          return { lines, right: rc(each).right <= inner.right + 1 && rc(each).left >= inner.left - 1, below: rc(each).top >= rc(big).bottom - rc(big).height * 0.3,
+            // the figure's first glyph and the line's sit on one left edge (the big has a small negative margin and glyph side bearing)
+            dx: Math.abs(left(each) - left(fit)),
+            fs: parseFloat(getComputedStyle(each).fontSize), subFs: sub ? parseFloat(getComputedStyle(sub).fontSize) : 99,
+            ctxFs: parseFloat(getComputedStyle(sl.querySelector('.context')!).fontSize), over: each.scrollWidth > each.clientWidth + 1 };
+        });
+        expect(r, id).toMatchObject({ lines: 1, right: true, below: true, over: false });
+        expect(r.dx, `${id}: left-aligned with the big`).toBeLessThanOrEqual(8);
+        expect(r.fs, `${id}: smaller than .sub`).toBeLessThan(r.subFs);
+        expect(r.fs, `${id}: about the context size or a step below`).toBeLessThanOrEqual(r.ctxFs);
+        expect(r.fs, `${id}: still readable`).toBeGreaterThanOrEqual(12);
+        const [fg, bg] = await slide.evaluate((sl) => [getComputedStyle(sl.querySelector('.each')!).color, getComputedStyle(sl).backgroundColor]);
+        expect(fg, 'same text color as the slide').toBe(await slide.evaluate((sl) => getComputedStyle(sl).color));
+        void bg;
+      }
+      await expectNoMidWord(page, '.slide .each');
     } },
   { name: 'recaps-chart-labels', path: () => `/recaps/${recapYear()}?preview=1`,
     act: async (page) => { await expectChartLabelsClear(page); } },
@@ -902,10 +914,10 @@ export const STATES: State[] = [
       await page.goto(`/recaps/${recapYear()}?preview=1`);
       await reloadReady(page);
       await expect(page.locator('section.slide[data-id="rest"]'), 'the seed year has a rest slide').toHaveCount(1);
-      await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context, .hlist .k');
+      await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .each, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context, .hlist .k');
       await page.goto(`/recaps/${recapYear() - 1}`);
       await reloadReady(page);
-      await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context, .hlist .k');
+      await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .each, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context, .hlist .k');
       await expectNoMidWord(page, '.slide:not(.cover) .big:not(.names)', '.slide:not(.cover) .big:not(.names) .fit', LONG_NAMES);
       await expectNoMidWord(page, '.tile .big:not(.names)', '.tile .big:not(.names) .fit', LONG_NAMES);
     } },

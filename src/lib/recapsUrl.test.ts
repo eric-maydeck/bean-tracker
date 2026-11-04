@@ -14,26 +14,24 @@ describe('recapsUrl', () => {
     expect(recapYears([2025, 2026, 2027], '2027-06-01')).toEqual([2026, 2025]);
     expect(recapYears([2024, 2026], '2027-01-01')).toEqual([2026, 2024]);
   });
-  it('parseRecapUrl: slide, people, preview; bad values dropped', () => {
-    expect(parseRecapUrl(q('slide=Streak'), 2)).toEqual({ slide: 'streak' });
-    expect(parseRecapUrl(q('slide=cover'), 2)).toEqual({ slide: 'cover' }); // the title slide
-    expect(parseRecapUrl(q('slide=a b'), 2)).toEqual({});
-    expect(parseRecapUrl(q('slide=' + 'x'.repeat(41)), 2)).toEqual({});
-    expect(parseRecapUrl(q('people=PERSON'), 2)).toEqual({ people: 'person' });
-    expect(parseRecapUrl(q('people=person'), 1)).toEqual({});
-    expect(parseRecapUrl(q('preview=1'), 2)).toEqual({ preview: true });
-    expect(parseRecapUrl(q('preview=yes'), 2)).toEqual({});
-    expect(parseRecapUrl(q(''), 2)).toEqual({});
+  it('parseRecapUrl: slide, preview; bad values dropped (a stale people=person is ignored)', () => {
+    expect(parseRecapUrl(q('slide=Streak'))).toEqual({ slide: 'streak' });
+    expect(parseRecapUrl(q('slide=cover'))).toEqual({ slide: 'cover' }); // the title slide
+    expect(parseRecapUrl(q('slide=a b'))).toEqual({});
+    expect(parseRecapUrl(q('slide=' + 'x'.repeat(41)))).toEqual({});
+    expect(parseRecapUrl(q('people=person'))).toEqual({});
+    expect(parseRecapUrl(q('preview=1'))).toEqual({ preview: true });
+    expect(parseRecapUrl(q('preview=yes'))).toEqual({});
+    expect(parseRecapUrl(q(''))).toEqual({});
   });
-  it('seeMoreHref: tab, the year, decaf included, extras, people', () => {
+  it('seeMoreHref: tab, the year, decaf included, extras', () => {
     const u = new URL(seeMoreHref(2026, 'leaderboards', { rank: 'grams' }), 'http://x');
     expect(u.pathname).toBe('/insights');
     expect(Object.fromEntries(u.searchParams)).toEqual({ tab: 'leaderboards', range: '2026', caffeine: 'all', rank: 'grams' });
-    expect(seeMoreHref(2026, 'overview', {}, 'person')).toContain('people=person');
     expect(new URL(seeMoreHref(2026, 'overview'), 'http://x').searchParams.has('tab')).toBe(false);
   });
   it('recapHref: canonical order, defaults omitted', () => {
     expect(recapHref(2026, {})).toBe('/recaps/2026');
-    expect(recapHref(2026, { preview: true, people: 'person', slide: 'hour' })).toBe('/recaps/2026?slide=hour&people=person&preview=1');
+    expect(recapHref(2026, { preview: true, slide: 'hour' })).toBe('/recaps/2026?slide=hour&preview=1');
   });
 });

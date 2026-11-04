@@ -67,6 +67,9 @@ test('household of one hides the people switch everywhere', { tag: ['@stats', '@
   // Saving from a held ?people=person view, without reloading, drops back to the household view.
   await gotoReady(page, '/stats?people=person');
   await expect(page.getByRole('group', { name: 'People' })).toBeVisible();
+  await gotoReady(page, `/recaps/${Number(localToday().slice(0, 4)) - 1}`); // size 2: the recap's companion line shows
+  await expect(page.locator('.slide[data-id="total"] .each')).toContainText('per person');
+  await gotoReady(page, '/stats?people=person');
   await page.getByRole('button', { name: 'Edit household size' }).click();
   await page.getByLabel('Household size').fill('1');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
@@ -91,6 +94,7 @@ test('household of one hides the people switch everywhere', { tag: ['@stats', '@
       await gotoReady(page, path);
       await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
       await expect(page.getByText(/per person/i)).toHaveCount(0);
+      await expect(page.locator('.each'), 'no recap companion line').toHaveCount(0);
       if (path.startsWith('/insights')) await expectStatRowsFull(page);
       const name = path.replace(/\W+/g, '-');
       if (process.env.UI_SHOTS === 'all') {

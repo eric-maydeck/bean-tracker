@@ -13,5 +13,5 @@ export const brew = (o: Partial<BrewFact> & { at: string }): BrewFact => {
   } as unknown as BrewFact;
 };
 export const ctx = (brews: BrewFact[], o: Partial<YearCtx> = {}) =>
-  ({ year: 2026, period: { start: '2026-01-01', end: '2026-12-31' }, today: '2027-02-01', preview: false, everyBrew: brews, bags: [], brews, scored: brews, per: 1, size: 2, ...o }) as unknown as YearCtx;
+  ({ year: 2026, period: { start: '2026-01-01', end: '2026-12-31' }, today: '2027-02-01', preview: false, everyBrew: brews, bags: [], brews, scored: brews, size: 2, ...o }) as unknown as YearCtx;
 export const days = (from: string, n: number, hh = '09') => Array.from({ length: n }, (_, i) => brew({ at: `${addDays(from, i)}T${hh}:15` }));

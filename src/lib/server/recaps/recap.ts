@@ -1,6 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { getHouseholdSize } from '$lib/server/db';
-import type { People } from '$lib/insightsUrl';
 import { recapHref, recapYears } from '$lib/recapsUrl';
 import { fmtInt } from '$lib/recapFormat';
 import { md, POOL } from './pool';
@@ -18,23 +17,13 @@ export interface Recap {
   householdSize: number;
 }
 
-// Every See more link carries people=person when set (hrefs are site-relative).
-const withPeople = (href: string, people?: People) => {
-  if (people !== 'person' || !href) return href;
-  const u = new URL(href, 'http://x');
-  u.searchParams.set('people', people);
-  return u.pathname + u.search + u.hash;
-};
-
-export function recap(db: DatabaseSync, year: number, o: { today: string; preview: boolean; people?: People; freeze?: false }): Recap | null {
+export function recap(db: DatabaseSync, year: number, o: { today: string; preview: boolean; freeze?: false }): Recap | null {
   const householdSize = getHouseholdSize(db);
-  const y = loadYear(db, year, o.today, o.preview, o.people === 'person' ? householdSize : 1);
+  const y = loadYear(db, year, o.today, o.preview);
   if (!y) return null;
   const facts = POOL.map((f) => f.run(y)).filter((r) => r !== null);
-  // Selection never depends on people (P5): pick at per=1, then show the requested figures.
   const frozen = frozenIds(db, year);
-  const base = () => (y.per === 1 ? facts : POOL.map((f) => f.run({ ...y, per: 1 })).filter((r) => r !== null));
-  const fresh = frozen ? null : order(select(base()), year);
+  const fresh = frozen ? null : order(select(facts), year);
   // A racing first open may have frozen first: freezeIds returns what's stored.
   const persist = !o.preview && o.freeze !== false;
   // Only lack of data omits a fact: ones that gained data since the freeze go after the frozen ones, and are kept.
@@ -45,7 +34,7 @@ export function recap(db: DatabaseSync, year: number, o: { today: string; previe
   const you = personality(y);
   const tones = tonesFor(picked.map((f) => f.id), year);
   const slides = [...picked, ...(you ? [you] : [])]
-    .map(({ score: _score, ...s }) => ({ ...s, tone: tones[s.id], link: { ...s.link, href: withPeople(s.link.href, o.people) } }) as Slide);
+    .map(({ score: _score, ...s }) => ({ ...s, tone: tones[s.id] }) as Slide);
   const from = y.brews[0].localDate, to = y.brews.at(-1)!.localDate;
   const roasters = new Set(y.brews.map((b) => b.roaster)).size;
   const bags = new Set(y.brews.map((b) => b.coffeeId)).size;

@@ -64,8 +64,8 @@ export function cardsRoot(dbPath = process.env.DB_PATH ?? 'data/bean-tracker.db'
 }
 
 // "_" can't occur in a slide id, so a prefix is exact. Written to a temp name (no "_" prefix match) then renamed: readers never see a partial file.
-export async function cachedCard(key: { year: number; slide: string; people: 'household' | 'person'; stamp: string }, make: () => Promise<Buffer>): Promise<Buffer> {
-  const root = cardsRoot(), prefix = `${key.year}_${key.slide}_${key.people}_`, name = `${prefix}${key.stamp}_v${CARD_VERSION}.png`, file = join(root, name);
+export async function cachedCard(key: { year: number; slide: string; stamp: string }, make: () => Promise<Buffer>): Promise<Buffer> {
+  const root = cardsRoot(), prefix = `${key.year}_${key.slide}_`, name = `${prefix}${key.stamp}_v${CARD_VERSION}.png`, file = join(root, name);
   if (existsSync(file)) return readFileSync(file);
   const png = await make();
   try {

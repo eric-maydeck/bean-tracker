@@ -38,38 +38,34 @@ describe('recap', () => {
     expect(r.slides.length).toBeGreaterThanOrEqual(1);
     expect(r.slides.length).toBeLessThan(8);
   });
-  it('null for a year without brews; people=person uses household size', () => {
+  it('null for a year without brews; reports the household size', () => {
     const db = createDb(':memory:');
     seed(db, [2025]);
     setHouseholdSize(db, 2);
     expect(recap(db, 2024, { today: '2026-02-01', preview: false })).toBeNull();
-    const h = recap(db, 2025, { today: '2026-02-01', preview: false })!, p = recap(db, 2025, { today: '2026-02-01', preview: false, people: 'person' })!;
-    expect(p.householdSize).toBe(2);
-    expect(p.slides[0].big).not.toBe(h.slides[0].big);
+    expect(recap(db, 2025, { today: '2026-02-01', preview: false })!.householdSize).toBe(2);
   });
 });
 
-describe('recap per person', () => {
+describe('recap per person companion', () => {
   const opts = { today: '2026-02-01', preview: false };
-  const num = (t: string) => Number(t.replace(/[^0-9.]/g, ''));
-  it('divides totals by household size, not bags; same slides; links carry people', () => {
+  const each = (r: NonNullable<ReturnType<typeof recap>>, id: string) => r.slides.find((s) => s.id === id)?.each;
+  it('household > 1: the household figure is the big, the average rides along; only perPerson slides get one', () => {
     const db = createDb(':memory:');
     seed(db, [2025]);
     setHouseholdSize(db, 2);
-    const h = recap(db, 2025, opts)!, p = recap(db, 2025, { ...opts, people: 'person' })!;
-    expect(num(p.slides[0].big)).toBeCloseTo(num(h.slides[0].big) / 2, 0);
-    expect(p.slides.map((s) => s.id)).toEqual(h.slides.map((s) => s.id));
-    const bags = (r: typeof h) => r.slides.find((s) => s.id === 'bags-finished')?.big;
-    expect(bags(p)).toBe(bags(h));
-    expect(p.slides.every((s) => !s.link.href || s.link.href.includes('people=person'))).toBe(true);
-    expect(h.slides.some((s) => s.link.href.includes('people='))).toBe(false);
+    const r = recap(db, 2025, opts)!;
+    const total = r.slides.find((s) => s.id === 'total')!;
+    expect(total.big).toBe('20');
+    expect(total.each).toBe('An average of 10 per person');
+    expect(r.slides.filter((s) => s.each).map((s) => s.id).every((id) => ['total', 'busiest-day', 'spend'].includes(id))).toBe(true);
+    expect(r.slides.some((s) => s.link.href.includes('people='))).toBe(false);
   });
-  it('a household of one: the parser drops people, so recap is the household recap', () => {
+  it('a household of one has no companion', () => {
     const db = createDb(':memory:');
     seed(db, [2025]);
     setHouseholdSize(db, 1);
-    const p = recap(db, 2025, { ...opts, people: 'person' })!, h = recap(db, 2025, opts)!;
-    expect(p.slides[0].big).toBe(h.slides[0].big);
+    expect(recap(db, 2025, opts)!.slides.some((s) => s.each)).toBe(false);
   });
 });
 

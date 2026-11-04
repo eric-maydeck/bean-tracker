@@ -93,15 +93,12 @@ describe('total', () => {
     expect(s.big).toBe('1,489');
     expect(s.context).toBe('26.6kg of coffee through 437L of water, Feb 9 to Oct 28. May was the peak at 226.');
     expect(s.viz).toMatchObject({ kind: 'bars', hi: 3, hiText: '226' });
-    expect(s.perPerson).toBe(true);
+    expect(s.each).toBe('An average of 745 per person'); // ctx size 2
     expect(s.lead).toBe('In 2026 you brewed');
   });
-  it('preview lead; per person divides amounts', () => {
+  it('preview lead; the companion is absent for a household of one', () => {
     expect(fact('total').run(ctx(rich, { preview: true }))!.lead).toBe('So far in 2026 you brewed');
-    const s = fact('total').run(ctx(rich, { per: 2 }))!;
-    expect(s.big).toBe('745');
-    expect(s.context).toMatch(/^13\.3kg of coffee through 219L of water/);
-    expect(s.context).toMatch(/peak at 113\.$/);
+    expect(fact('total').run(ctx(rich, { size: 1 }))!.each).toBeUndefined();
   });
 });
 
@@ -351,12 +348,12 @@ describe('busiest-day, bags-finished, spend, best-value', () => {
   const noBags = (o: Partial<YearCtx> = {}) => full({ bags: [], ...o });
   it('busiest-day: the spike, its week, and a usual day', () => {
     const s = fact('busiest-day').run(full())!;
-    expect(s).toMatchObject({ lead: 'On your busiest day you brewed', unit: 'brews', perPerson: true });
+    expect(s).toMatchObject({ lead: 'On your busiest day you brewed', unit: 'brews' });
+    expect(s.each).toBe(`An average of ${Math.round(Number(s.big) / 2)} per person`);
     expect(s.context).toMatch(/^That was Mar 14\. A usual brew day has \d+\.$/);
     expect(Number(s.big)).toBeGreaterThan(25);
     expect((s.viz as any).values).toHaveLength(7);
     expect((s.viz as any).values[(s.viz as any).hi]).toBe(Number(s.big));
-    expect(fact('busiest-day').run(full({ per: 2 }))!.big).toBe(String(Math.round(Number(s.big) / 2)));
   });
   it('busiest-day: an ordinary busiest day gets a steady headline when the data is not thin', () => {
     const many = days('2026-03-01', 30).map((b, i) => ({ ...b, coffeeId: 1 + (i % 3) }));
@@ -372,13 +369,18 @@ describe('busiest-day, bags-finished, spend, best-value', () => {
     expect((s.viz as any).values.reduce((a: number, b: number) => a + b, 0)).toBe(121);
     expect(fact('bags-finished').run(noBags())).toBeNull();
   });
-  it('spend: per person divides dollars, not bags', () => {
-    const one = fact('spend').run(full())!, two = fact('spend').run(full({ per: 2 }))!;
-    const num = (t: string) => Number(t.replace(/[$,]/g, ''));
+  it('spend: the companion divides dollars, not bags, in the household amount\'s precision', () => {
+    const one = fact('spend').run(full())!;
+    const num = (t: string) => Number(t.replace(/[^0-9.]/g, ''));
     expect(one.lead).toBe('You spent');
     expect(one.context).toMatch(/^on 121 bags, \$[\d.,]+\/100g on average\.$/);
-    expect(two.context).toBe(one.context);
-    expect(Math.abs(num(two.big) - num(one.big) / 2)).toBeLessThanOrEqual(0.5);
+    const each = one.each!.replace(/^An average of | per person$/g, '');
+    expect(Math.abs(num(each) - num(one.big) / 2)).toBeLessThanOrEqual(0.5);
+    expect(each.includes('.'), `${one.big} / ${each}`).toBe(one.big.includes('.')); // both cents or neither
+    const cheap = fact('spend').run(full({ bags: shelf.bags.map((b) => (b.cost ? { ...b, cost: 1 } : b)) }))!; // under $1,000: 2 decimals on both
+    expect(cheap.big).toMatch(/\.\d\d$/);
+    expect(cheap.each).toMatch(/^An average of \$[\d,]+\.\d\d per person$/);
+    expect(fact('spend').run(full({ size: 1 }))!.each).toBeUndefined();
     expect((one.viz as any).rows).toHaveLength(3);
     expect(fact('spend').run(noBags())).toBeNull();
   });

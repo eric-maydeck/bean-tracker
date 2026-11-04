@@ -37,30 +37,30 @@ describe('card', () => {
   });
   it('cachedCard: builds once per key; a new stamp replaces the old file', async () => {
     const make = vi.fn(async () => Buffer.from('png'));
-    const k = { year: 2025, slide: 'total', people: 'household' as const, stamp: 'a' };
+    const k = { year: 2025, slide: 'total', stamp: 'a' };
     await cachedCard(k, make); await cachedCard(k, make);
     expect(make).toHaveBeenCalledTimes(1);
     await cachedCard({ ...k, stamp: 'b' }, make);
     await cachedCard({ ...k, slide: 'streak', stamp: 'a' }, make);
     expect(make).toHaveBeenCalledTimes(3);
-    expect(readdirSync(cardsRoot()).sort()).toEqual(['2025_streak_household_a_v2.png', '2025_total_household_b_v2.png']);
+    expect(readdirSync(cardsRoot()).sort()).toEqual(['2025_streak_a_v2.png', '2025_total_b_v2.png']);
   });
 });
 
 describe('cachedCard robustness', () => {
-  it('leaves no temp files, keeps a slide whose id ends in -household, tolerates a vanished stale file', async () => {
+  it('leaves no temp files, keeps a slide whose id extends another, tolerates a vanished stale file', async () => {
     const make = async () => Buffer.from('x');
-    await cachedCard({ year: 2024, slide: 'x', people: 'household', stamp: 'a' }, make);
-    await cachedCard({ year: 2024, slide: 'x-household', people: 'person', stamp: 'a' }, make);
-    await cachedCard({ year: 2024, slide: 'x', people: 'household', stamp: 'b' }, make);
+    await cachedCard({ year: 2024, slide: 'x', stamp: 'a' }, make);
+    await cachedCard({ year: 2024, slide: 'x-more', stamp: 'a' }, make);
+    await cachedCard({ year: 2024, slide: 'x', stamp: 'b' }, make);
     const files = readdirSync(cardsRoot()).filter((f) => f.startsWith('2024_'));
-    expect(files.sort()).toEqual(['2024_x-household_person_a_v2.png', '2024_x_household_b_v2.png']);
+    expect(files.sort()).toEqual(['2024_x-more_a_v2.png', '2024_x_b_v2.png']);
     expect(readdirSync(cardsRoot()).some((f) => f.startsWith('.tmp-'))).toBe(false);
     // a stale file listed but deleted underneath us (ENOENT) must not fail the request
     const fs = await import('node:fs');
     const real = vi.mocked(fs.unlinkSync).getMockImplementation()!;
     vi.mocked(fs.unlinkSync).mockImplementation(((p: string) => { real(p); throw Object.assign(new Error('gone'), { code: 'ENOENT' }); }) as never);
-    await expect(cachedCard({ year: 2024, slide: 'x', people: 'household', stamp: 'c' }, make)).resolves.toEqual(Buffer.from('x'));
+    await expect(cachedCard({ year: 2024, slide: 'x', stamp: 'c' }, make)).resolves.toEqual(Buffer.from('x'));
     vi.mocked(fs.unlinkSync).mockImplementation(real);
   });
 });
@@ -93,8 +93,7 @@ describe('endpoint', () => {
     }
     expect(((await call(cur, 'cover', '?preview=1', true)) as Response).status).toBe(200);
   });
-  it('people=person at household size 1 is the household card', async () => {
-    db.setHouseholdSize(db.getDb(), 1);
+  it('a stale people=person is ignored: the household card', async () => {
     const a = Buffer.from(await ((await call(cur - 1, 'total')) as Response).arrayBuffer());
     const b = Buffer.from(await ((await call(cur - 1, 'total', '?people=person')) as Response).arrayBuffer());
     expect(b.equals(a)).toBe(true);

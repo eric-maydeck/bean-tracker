@@ -11,7 +11,6 @@
   let { data } = $props();
   const r = $derived(data.recap);
   // data.recap.preview, not data.state.preview: the route echoes ?preview=1 even when it resolved false.
-  const people = $derived(data.state.people);
   const ids = $derived(['cover', ...r.slides.map((s) => s.id), POSTER_ID]);
   // The title slide is not a fact: no score, never selected, no poster tile.
   const cover = $derived<SlideT>({ id: 'cover', lead: '', big: r.cover.title, context: r.cover.sub, tone: r.cover.tone,
@@ -23,7 +22,7 @@
 
   // Back is the browser's back whenever an in-app page came before (as the coffee page's Back); otherwise a plain link to the Recaps tab.
   let cameFromApp = $state(false);
-  // The reel's own replaceState (people toggle, slide hash) is not an earlier page.
+  // The reel's own replaceState (slide hash) is not an earlier page.
   afterNavigate(({ from }) => { if (from && from.route.id !== '/recaps/[year]') cameFromApp = true; });
   function back(e: MouseEvent) {
     if (!cameFromApp || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -69,7 +68,7 @@
 </script>
 
 <svelte:head><title>{r.poster.title}</title></svelte:head>
-<PreviewMeta preview={recapPreview(r, data.state.slide, people)} />
+<PreviewMeta preview={recapPreview(r, data.state.slide)} />
 <svelte:window onkeydown={key} />
 
 <nav class="recap-progress" data-layout-ignore="story progress segments: ui-rules rule 4 exemption (user, 2026-11-02)" class:solid={onPoster()} style:--pfg={pfg || undefined} aria-label="Slides">
@@ -85,11 +84,11 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <div class="recap-reel" bind:this={reel} onclick={tap} role="presentation">
-  <Slide cover slide={cover} shareHref={recapHref(r.year, { people, ...(r.preview && { preview: true as const }) })} year={r.year} {people} preview={r.preview} index={0} total={ids.length} />
+  <Slide cover slide={cover} shareHref={recapHref(r.year, { ...(r.preview && { preview: true as const }) })} year={r.year} preview={r.preview} index={0} total={ids.length} />
   {#each r.slides as s, i (s.id)}
-    <Slide slide={s} householdSize={r.householdSize} year={r.year} {people} preview={r.preview} index={i + 1} total={ids.length} />
+    <Slide slide={s} year={r.year} preview={r.preview} index={i + 1} total={ids.length} />
   {/each}
-  <Poster slides={r.slides} poster={r.poster} year={r.year} {people} preview={r.preview} total={ids.length} />
+  <Poster slides={r.slides} poster={r.poster} year={r.year} preview={r.preview} total={ids.length} />
 </div>
 
 <style>

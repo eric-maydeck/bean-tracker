@@ -20,12 +20,11 @@ export interface YearCtx {
   pours: { facts: ReadonlyMap<number, PourFact>; recipes: Recipe[] };
   trophies: Trophy[];
   size: number; // getHouseholdSize(db)
-  per: number; // 1 = household; household size for per person (facts divide amounts by it)
   db: DatabaseSync;
 }
 
 // null = no brews in the year. A preview (the open year, admin only) ends today.
-export function loadYear(db: DatabaseSync, year: number, today: string, preview: boolean, per = 1): YearCtx | null {
+export function loadYear(db: DatabaseSync, year: number, today: string, preview: boolean): YearCtx | null {
   const { brews: everyBrew, bags } = loadFacts(db);
   const period: Period = { start: `${year}-01-01`, end: preview ? today : `${year}-12-31` };
   const brews = everyBrew.filter((b) => inPeriod(b.localDate, period));
@@ -36,7 +35,7 @@ export function loadYear(db: DatabaseSync, year: number, today: string, preview:
     prevBrews: everyBrew.filter((b) => b.localDate.startsWith(`${year - 1}-`)),
     pours: loadPourFacts(db, everyBrew),
     trophies: trophyCase(everyBrew, gearArchive(db), today, { period, ratings: 'current', scored }, getGearDetails(db)),
-    size: getHouseholdSize(db), per, db
+    size: getHouseholdSize(db), db
   };
 }
 

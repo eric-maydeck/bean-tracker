@@ -203,10 +203,10 @@ describe('recapPreview', () => {
     expect(recapPreview(r, 'gone').image!.src).toBe('/recaps/2026/card/cover.png');
     expect(recapPreview(r, 'hour').description.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
   });
-  it('two-line names, people and preview carry into the card URL', () => {
+  it('two-line names and preview carry into the card URL', () => {
     expect(recapPreview(r, 'record').title).toBe("2026 in coffee · Your best bag of the year was Bean's Beans · La Terrazan Java");
-    expect(recapPreview(r, 'streak', 'person').image!.src).toBe('/recaps/2026/card/streak.png?people=person');
-    expect(recapPreview({ ...r, preview: true }, undefined, 'person').image!.src).toBe('/recaps/2026/card/cover.png?people=person&preview=1');
+    expect(recapPreview(r, 'streak').image!.src).toBe('/recaps/2026/card/streak.png');
+    expect(recapPreview({ ...r, preview: true }, undefined).image!.src).toBe('/recaps/2026/card/cover.png?preview=1');
     expect(recapPreview(r, 'poster').image!.src).toBe('/recaps/2026/card/poster.png');
   });
 });

@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb, getHouseholdSize } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { localToday } from '$lib/server/localToday';
 import { parseRecapUrl, parseYear, POSTER_ID, SLIDE_ID } from '$lib/recapsUrl';
 import { recap } from '$lib/server/recaps/recap';
@@ -14,14 +14,13 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
   if (year === null) error(404, 'Not found');
   const db = getDb();
   const today = localToday();
-  const state = parseRecapUrl(url.searchParams, getHouseholdSize(db));
+  const state = parseRecapUrl(url.searchParams);
   const preview = !!(state.preview && locals.isAdmin && year === Number(today.slice(0, 4)));
   if (!preview && today < `${year + 1}-01-01`) error(404, 'Not found');
   if (!SLIDE_ID.test(params.slide)) error(404, 'Not found');
-  const people = state.people ?? 'household';
   // The cache is checked before the recap is built: a file exists only for a slide that was valid at this stamp, and a public request never reads the preview ('p') stamp.
-  const png = await cachedCard({ year, slide: params.slide, people, stamp: `${dataStamp(db)}-t${THEME_VERSION}${preview ? 'p' : ''}` }, async () => {
-    const r = recap(db, year, { today, preview, people: state.people, freeze: false });
+  const png = await cachedCard({ year, slide: params.slide, stamp: `${dataStamp(db)}-t${THEME_VERSION}${preview ? 'p' : ''}` }, async () => {
+    const r = recap(db, year, { today, preview, freeze: false });
     if (!r) error(404, 'Not found');
     const s = r.slides.find((x) => x.id === params.slide);
     const total = r.slides.find((x) => x.id === 'total');

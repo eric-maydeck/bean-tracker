@@ -11,7 +11,7 @@ import { pick, RECORDS } from '$lib/server/insights/records';
 import { addDays, daysBetween } from '$lib/server/insights/time';
 import { isFinished } from '$lib/server/insights/overview';
 import { spendTiles } from '$lib/server/insights/spend';
-import { wholeUsd } from '$lib/money';
+import { isWholeUsd, wholeUsd } from '$lib/money';
 import { sweetSpotsTab } from '$lib/server/insights/lab';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
 import { recipeBand } from '$lib/server/insights/pours';
@@ -33,6 +33,9 @@ const clockHolder = (y: YearCtx, key: string) => {
   return pick(d.run({ brews: y.brews, bags: y.bags, ratings: 'current', today: y.today }), d.dir);
 };
 
+// The household-of-one case has no companion line.
+const each = (y: YearCtx, n: string) => (y.size > 1 ? `An average of ${n} per person` : undefined);
+
 const total: FactDef = {
   id: 'total',
   run: (y) => {
@@ -41,18 +44,18 @@ const total: FactDef = {
     const counts = Array<number>(m1 - m0 + 1).fill(0);
     for (const b of y.brews) counts[Number(b.localDate.slice(5, 7)) - 1 - m0]++;
     const hi = counts.indexOf(Math.max(...counts));
-    const values = counts.map((n) => Math.round(n / y.per));
-    const grams = y.brews.reduce((s, b) => s + (b.dose ?? 0), 0) / y.per;
-    const water = y.brews.reduce((s, b) => s + (b.waterG ?? 0), 0) / y.per;
+    const values = counts.map((n) => n);
+    const grams = y.brews.reduce((s, b) => s + (b.dose ?? 0), 0);
+    const water = y.brews.reduce((s, b) => s + (b.waterG ?? 0), 0);
     const labels = values.map((_, i) => MON[m0 + i]);
-    const big = fmtInt(y.brews.length / y.per);
+    const big = fmtInt(y.brews.length);
     return {
       id: 'total',
       lead: y.preview ? `So far in ${y.year} you brewed` : `In ${y.year} you brewed`, big, unit: 'brews',
       context: `${fmtKg(grams)} of coffee through ${fmtLitres(water)} of water, ${md(first)} to ${md(last)}. ${labels[hi]} was the peak at ${values[hi]}.`,
       viz: { kind: 'bars', values, labels, tips: values.map((v, i) => `${labels[i]}: ${v} brews`), hi, hiText: String(values[hi]) },
       link: { tab: 'Summary', section: 'Summary · Overview', href: seeMoreHref(y.year, 'overview') },
-      wide: true, perPerson: true, card: { big, label: 'brews' }, score: 1
+      wide: true, each: each(y, fmtInt(y.brews.length / y.size)), card: { big, label: 'brews' }, score: 1
     };
   }
 };
@@ -487,16 +490,16 @@ const busiestDay: FactDef = {
     if (!spike && pooled(new Set(y.brews.map((b) => b.coffeeId)).size, y.brews.length).small) return null; // thin data: nothing to say
     const start = addDays(day, -dow(day));
     const week = Array.from({ length: 7 }, (_, i) => addDays(start, i));
-    const values = week.map((d) => Math.round((by.get(d) ?? 0) / y.per));
+    const values = week.map((d) => by.get(d) ?? 0);
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const big = fmtInt(n / y.per);
+    const big = fmtInt(n);
     return {
       id: 'busiest-day',
       lead: spike ? 'On your busiest day you brewed' : 'Even your busiest day was a steady one: you brewed', big, unit: 'brews',
-      context: `That was ${md(day)}. A usual brew day has ${fmtInt(usual / y.per)}.`,
+      context: `That was ${md(day)}. A usual brew day has ${fmtInt(usual)}.`,
       viz: { kind: 'bars', values, labels, tips: week.map((d, i) => `${labels[i]} ${md(d)}: ${values[i]} brews`), hi: dow(day), hiText: String(values[dow(day)]) },
       link: { tab: 'Habits', section: 'Habits · Brew calendar', href: seeMoreHref(y.year, 'habits') },
-      perPerson: true, card: { big, label: 'brews on your busiest day' }, score: spike ? Math.min(1, n / usual / 4) : 0.25
+      each: each(y, fmtInt(n / y.size)), card: { big, label: 'brews on your busiest day' }, score: spike ? Math.min(1, n / usual / 4) : 0.25
     };
   }
 };
@@ -529,19 +532,21 @@ const spend: FactDef = {
   run: (y) => {
     const inYear = y.bags.filter((b) => b.purchaseDate?.startsWith(`${y.year}-`));
     if (inYear.filter((b) => (b.cost ?? 0) > 0).length < 3) return null;
-    const t = spendTiles(y.bags, [], y.period, y.per);
+    const t = spendTiles(y.bags, [], y.period, 1);
     const by = new Map<string, number>();
-    for (const b of inYear) by.set(b.roaster, (by.get(b.roaster) ?? 0) + (b.cost ?? 0) / y.per);
+    for (const b of inYear) by.set(b.roaster, (by.get(b.roaster) ?? 0) + (b.cost ?? 0));
     const top = [...by].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3);
     const whole = wholeUsd(top.map((x) => x[1]));
     const big = usd(t.spent);
+    // Same precision as the household amount: whole dollars when it has no cents.
+    const pp = usd(t.spent / y.size, isWholeUsd(t.spent));
     return {
       id: 'spend',
       lead: 'You spent', big,
       context: `on ${nBags(t.bags)}, ${usd(t.avgPpg! * 100)}/100g on average.`,
       viz: { kind: 'hlist', rows: top.map(([label, value]) => ({ label, value, texts: [usd(value, whole)] })) },
       link: { tab: 'Habits', section: 'Habits · Spend', href: seeMoreHref(y.year, 'spend') },
-      perPerson: true, card: { big, label: 'spent' }, score: 0.3
+      each: each(y, pp), card: { big, label: 'spent' }, score: 0.3
     };
   }
 };

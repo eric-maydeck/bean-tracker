@@ -4,7 +4,6 @@ import type { StatusTab } from './coffeeViewState';
 import { formatBag, formatGrams } from './grams';
 import { originWithFlag } from './countryFlags';
 import { glue, unitGap } from './unitGap';
-import type { People } from './insightsUrl';
 import type { Recap } from './server/recaps/recap';
 
 export interface Preview { title: string; description: string; image?: { src: string; alt: string } | null }
@@ -110,8 +109,8 @@ export function statsPreview(v: { tab: 'general' | 'bq'; owner: string; opened: 
 }
 
 // A recap link: the cover (bare URL, an unknown slide) or one slide, with its card image (server/recaps/card.ts).
-// The card URL carries people=person and, for an admin's preview year, preview=1 (the card endpoint 404s it otherwise).
-export function recapPreview(r: Recap, slideId: string | undefined, people?: People): Preview {
+// The card URL carries, for an admin's preview year, preview=1 (the card endpoint 404s it otherwise).
+export function recapPreview(r: Recap, slideId: string | undefined): Preview {
   const s = r.slides.find((x) => x.id === slideId);
   const id = s ? s.id : slideId === 'poster' ? 'poster' : 'cover';
   const head = `${r.year} in coffee`;
@@ -119,7 +118,6 @@ export function recapPreview(r: Recap, slideId: string | undefined, people?: Peo
     : s.roaster ? `${head} · ${s.lead} ${s.roaster} · ${s.big}`
     : `${head} · ${s.lead} ${glue(s.big)}${s.unit ? unitGap(s.unit) + s.unit : ''}`;
   const q = new URLSearchParams();
-  if (people === 'person') q.set('people', 'person');
   if (r.preview) q.set('preview', '1');
   const qs = q.size ? `?${q}` : '';
   return {

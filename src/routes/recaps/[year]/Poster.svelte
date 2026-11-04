@@ -1,14 +1,13 @@
 <script lang="ts">
   import type { Slide as SlideT } from '$lib/server/recaps/types';
-  import type { People } from '$lib/insightsUrl';
   import { POSTER_ID, recapHref } from '$lib/recapsUrl';
   import { posterSpans } from '$lib/recapsPoster';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import Slide from './Slide.svelte';
 
   // Last reel slide: every fact as a tile. Scrolls natively inside the reel.
-  let { slides, poster, year, people, preview, total }: {
-    slides: SlideT[]; poster: { title: string; sub: string; footer: string }; year: number; people?: People; preview: boolean; total: number;
+  let { slides, poster, year, preview, total }: {
+    slides: SlideT[]; poster: { title: string; sub: string; footer: string }; year: number; preview: boolean; total: number;
   } = $props();
 
   // Spans for 1, 2 and 3 columns, set as CSS variables so the right layout is there before hydration; the
@@ -21,11 +20,11 @@
     <header>
       <h2>{poster.title}</h2>
       <p>{poster.sub}</p>
-      <ShareButton path={recapHref(year, { slide: POSTER_ID, people, ...(preview && { preview: true as const }) })} />
+      <ShareButton path={recapHref(year, { slide: POSTER_ID, ...(preview && { preview: true as const }) })} />
     </header>
     <div class="recap-grid">
       {#each slides as s, i (s.id)}
-        <Slide tile spans={spans.map((x) => x[i])} slide={s} {year} {people} {preview} index={i} {total} />
+        <Slide tile spans={spans.map((x) => x[i])} slide={s} {year} {preview} index={i} {total} />
       {/each}
     </div>
     <footer>{poster.footer}</footer>

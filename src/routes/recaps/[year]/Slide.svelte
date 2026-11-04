@@ -1,16 +1,14 @@
 <script lang="ts">
   import type { Slide, Tone } from '$lib/server/recaps/types';
-  import type { People } from '$lib/insightsUrl';
   import { recapHref } from '$lib/recapsUrl';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import RecapViz from './RecapViz.svelte';
   import { unitGap, glue } from '$lib/unitGap';
-  import { goto } from '$app/navigation';
 
   // One fact: a full-screen story slide (`section`), or a tile on the poster (`tile`).
-  let { slide, year, people, preview, index, total, tile = false, spans = [1, 1, 1], cover = false, shareHref, householdSize = 1 }: {
-    slide: Slide; year: number; people?: People; preview: boolean; index: number; total: number; tile?: boolean; spans?: number[]; cover?: boolean; shareHref?: string; householdSize?: number;
+  let { slide, year, preview, index, total, tile = false, spans = [1, 1, 1], cover = false, shareHref }: {
+    slide: Slide; year: number; preview: boolean; index: number; total: number; tile?: boolean; spans?: number[]; cover?: boolean; shareHref?: string;
   } = $props();
 
   // Dark ink on the light tones, the site's text color on cream; cream text everywhere else.
@@ -23,7 +21,6 @@
     if (slide.unit) words[words.length - 1] += slide.unit.length * 0.28 + (unitGap(slide.unit) ? 0.3 : 0);
     return Math.max(1, ...words);
   });
-  const choose = (p?: People) => goto(recapHref(year, { slide: slide.id, people: p, ...(preview && { preview: true as const }) }), { replaceState: true, noScroll: true, keepFocus: true });
 </script>
 
 {#snippet body()}
@@ -33,31 +30,21 @@
   {:else}
   <p class="big" class:long={slide.big.length > 7} class:xlong={slide.big.length > 18}><span class="fit" style:--w={longest}><CoffeeName text={glue(slide.big)} />{#if slide.unit}{#if unitGap(slide.unit)}<span class="unit gap">{'\u00a0'}</span>{/if}<span class="unit">{slide.unit}</span>{/if}</span></p>
   {/if}
+  {#if slide.each && !tile}<p class="each"><span style:--w={slide.each.length}>{slide.each}</span></p>{/if}
   {#if slide.sub}<p class="sub">{slide.sub}</p>{/if}
   {#if slide.context}<p class="context"><CoffeeName text={slide.context} /></p>{/if}
   {#if slide.viz}<div class="vizwrap"><RecapViz viz={slide.viz} /></div>{/if}
   {#if slide.traits}
     <ul class="traits">{#each slide.traits as t (t.label)}<li><b>{t.value}</b> {t.label}</li>{/each}</ul>
   {/if}
-  {#snippet more()}{#if !cover}<a class="more" href={slide.link.href} aria-label="See more in {slide.link.section}">{slide.link.section} <span aria-hidden="true">→</span></a>{/if}{/snippet}
-  {#if slide.perPerson && householdSize > 1 && !tile}
-    <!-- The switch and the link share one row so the toggle adds no height (phone landscape). -->
-    <div class="foot">
-      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-      <div class="people-switch" role="group" aria-label="People" onclick={(e) => e.stopPropagation()}>
-        <button type="button" aria-pressed={people !== 'person'} onclick={() => choose()}>Household</button>
-        <button type="button" aria-pressed={people === 'person'} onclick={() => choose('person')}>Per person</button>
-      </div>
-      {@render more()}
-    </div>
-  {:else}{@render more()}{/if}
+  {#if !cover}<a class="more" href={slide.link.href} aria-label="See more in {slide.link.section}">{slide.link.section} <span aria-hidden="true">→</span></a>{/if}
 {/snippet}
 
 {#if tile}
   <article class="tone tile" class:wide={spans[2] > 1} style:--s1={spans[0]} style:--s2={spans[1]} style:--s3={spans[2]} data-id={slide.id} data-tone={tone} style:--bg="var(--t-{tone})" style:--fg={INK[tone]}>{@render body()}</article>
 {:else}
   <section class="tone slide" class:cover id={slide.id} data-id={slide.id} data-tone={tone} aria-label="{index + 1} of {total}" style:--bg="var(--t-{tone})" style:--fg={INK[tone]}>
-    <div class="share"><ShareButton path={shareHref ?? recapHref(year, { slide: slide.id, people, ...(preview && { preview: true as const }) })} /></div>
+    <div class="share"><ShareButton path={shareHref ?? recapHref(year, { slide: slide.id, ...(preview && { preview: true as const }) })} /></div>
     <div class="inner">{@render body()}</div>
     {#if cover}<footer class="cover-foot"><a class="home" href="/">Bean Tracker</a><p class="hint">Swipe or tap to continue</p></footer>{/if}
   </section>
@@ -83,12 +70,10 @@
   .context { margin: 0; line-height: 1.45; max-width: 34ch; }
   .more { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
   .more:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
-  /* The /insights .people-switch look, on a tone: outlined pills, the pressed one filled. Both always render: no shift. */
-  .foot { display: flex; flex-wrap: wrap; align-items: center; column-gap: 20px; }
-  .people-switch { display: flex; gap: 8px; }
-  .people-switch button { min-height: 44px; padding: 0 14px; border: 1.5px solid currentColor; border-radius: 22px; background: transparent; color: inherit; font: 600 0.9rem var(--font-sans); white-space: nowrap; cursor: pointer; }
-  .people-switch button[aria-pressed='true'] { background: var(--fg); color: var(--bg); }
-  .people-switch button:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+  /* The per-person companion under the big value: one nowrap line that shrinks to its box (cqi, ~0.56em per char), never wraps. */
+  .each { container-type: inline-size; margin: -0.1em 0 0.1em; font-weight: 600; opacity: 0.95; }
+  .each span { display: block; white-space: nowrap; font-size: min(1em, calc(100cqi / (var(--w) * 0.56))); }
+  .slide .each { font-size: clamp(1rem, 1.8vh, 1.2rem); }
   .vizwrap { container-type: inline-size; }
   .traits { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
   .traits li { border-top: 2px solid currentColor; padding-top: 6px; line-height: 1.3; }
@@ -125,8 +110,9 @@
   @media (min-width: 900px) {
     .inner { max-width: min(84rem, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); column-gap: clamp(32px, 4vw, 80px); row-gap: clamp(12px, 2vh, 24px); align-items: center; align-content: center; }
     .inner:not(:has(.vizwrap, .traits)) { max-width: 46rem; grid-template-columns: minmax(0, 1fr); }
-    .inner > .lead, .inner > .big, .inner > .sub, .inner > .context, .inner > .more, .inner > .foot { grid-column: 1; }
+    .inner > .lead, .inner > .big, .inner > .each, .inner > .sub, .inner > .context, .inner > .more { grid-column: 1; }
     .slide .sub { font-size: clamp(1.8rem, 3vw, 3rem); }
+    .slide .each { font-size: clamp(1rem, 1.5vw, 1.5rem); }
     .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 5; align-self: center; }
     .slide .big { font-size: clamp(5rem, min(13vw, 26vh), 13rem); }
     .slide .big.long { font-size: clamp(3.5rem, min(8vw, 16vh), 8rem); }
@@ -151,10 +137,11 @@
     .slide .names { --cap: clamp(1.6rem, 10vh, 2.4rem); }
     .slide .sub { font-size: 1.15rem; margin: 0; }
     .slide .context { font-size: 1rem; }
+    .slide .each { font-size: 0.95rem; margin: -0.3em 0 0; }
   }
   @media (max-height: 640px) and (min-width: 700px) {
     .inner { max-width: 56rem; display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; row-gap: 8px; align-items: center; }
-    .inner > .lead, .inner > .big, .inner > .sub, .inner > .context, .inner > .foot { grid-column: 1; }
+    .inner > .lead, .inner > .big, .inner > .each, .inner > .sub, .inner > .context { grid-column: 1; }
     .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 5; align-self: center; }
     .slide .vizwrap :global(svg) { max-height: 54vh; }
     .slide .context { line-height: 1.3; }

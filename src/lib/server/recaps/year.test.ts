@@ -28,7 +28,6 @@ describe('loadYear', () => {
     expect(y.brews.some((b) => b.decaf)).toBe(true);
     expect(y.period).toEqual({ start: '2026-01-01', end: '2026-12-31' });
     expect(y.prevBrews.map((b) => b.localDate)).toEqual(['2025-12-31']);
-    expect(y.per).toBe(1);
   });
   it('23:30 Dec 31 brew counts in its own year', () => {
     expect(loadYear(seed().db, 2025, '2027-02-01', false)!.brews).toHaveLength(1);
@@ -39,7 +38,7 @@ describe('loadYear', () => {
     expect(loadYear(db, 2024, '2027-02-01', false)).toBeNull();
   });
   it('toGenCtx: scored brews, every-rating allBrews, history-wide dial-in and dataStart', () => {
-    const y = loadYear(seed().db, 2026, '2027-02-01', false, 2)!;
+    const y = loadYear(seed().db, 2026, '2027-02-01', false)!;
     const g = toGenCtx(y);
     expect(g.brews).toBe(y.scored);
     expect(g.allBrews).toBe(y.brews);
