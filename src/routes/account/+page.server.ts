@@ -40,13 +40,10 @@ export const actions: Actions = {
       return fail(400, { error: err instanceof Error ? err.message : 'Could not parse that Bean Conqueror export' });
     }
     const db = getDb();
-    importBeanConquerorData(db, parsed);
+    const changes = importBeanConquerorData(db, parsed);
     linkMarks(db);
     queueReadings(db).catch((e) => console.error('pour readings failed', e));
-    return {
-      success: true as const,
-      imported: { beans: parsed.beans.length, brews: parsed.brews.length, waters: parsed.waters?.length ?? 0 }
-    };
+    return { success: true as const, changes };
   },
   addDose: (e) => editList(e, 'doses', 'add'),
   removeDose: (e) => editList(e, 'doses', 'remove'),

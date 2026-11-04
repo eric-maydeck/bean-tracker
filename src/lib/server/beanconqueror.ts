@@ -146,10 +146,42 @@ function brewValues(br: ParsedBrew, now: string) {
   ];
 }
 
-export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConquerorData): void {
+export interface ImportChanges {
+  beans: { new: number; updated: number };
+  brews: { new: number; updated: number };
+  waters: { new: number; updated: number };
+  autoLinked: number;
+  untracked: { total: number; added: number };
+}
+
+// id -> JSON of every column except imported_at (which changes on every import).
+function snapshot(db: DatabaseSync, table: string, key: string): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const r of db.prepare(`SELECT * FROM ${table}`).all() as Record<string, unknown>[]) {
+    const { imported_at: _, ...rest } = r;
+    m.set(String(r[key]), JSON.stringify(rest));
+  }
+  return m;
+}
+
+function diff(before: Map<string, string>, after: Map<string, string>) {
+  let n = 0, updated = 0;
+  for (const [id, v] of after) {
+    if (!before.has(id)) n++;
+    else if (before.get(id) !== v) updated++;
+  }
+  return { new: n, updated };
+}
+
+export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConquerorData): ImportChanges {
   const now = new Date().toISOString();
   db.exec('BEGIN');
   try {
+    const before = {
+      beans: snapshot(db, 'beanconqueror_beans', 'id'),
+      waters: snapshot(db, 'beanconqueror_waters', 'id'),
+      brews: snapshot(db, 'beanconqueror_brews', 'id')
+    };
     // Auto-link only considers beans that are new in this import.
     const existingBeanIds = new Set(
       (db.prepare(`SELECT id FROM beanconqueror_beans`).all() as { id: string }[]).map((r) => r.id)
@@ -258,10 +290,16 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
       else insertBrew.run(...brewValues(br, now));
     }
 
+    // Counted before linking, so coffee_id writes from auto-link aren't "updates".
+    const changes = {
+      beans: diff(before.beans, snapshot(db, 'beanconqueror_beans', 'id')),
+      brews: diff(before.brews, snapshot(db, 'beanconqueror_brews', 'id')),
+      waters: diff(before.waters, snapshot(db, 'beanconqueror_waters', 'id'))
+    };
+
     // The bean upsert above never writes coffee_id, so existing links survive.
     const newBeanIds = parsed.beans.map((b) => b.id).filter((id) => !existingBeanIds.has(id));
-    linkDerivedBeans(db, newBeanIds);
-    autoLinkBeanConquerorBeans(db, newBeanIds);
+    const autoLinked = linkDerivedBeans(db, newBeanIds) + autoLinkBeanConquerorBeans(db, newBeanIds);
     fillBlankCoffeeFields(db);
 
     db.prepare(
@@ -269,7 +307,14 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`
     ).run(now);
 
+    const fresh = new Set(newBeanIds);
+    const untracked = (db.prepare(`SELECT b.id FROM beanconqueror_beans b ${UNMATCHED_BEAN_WHERE}`).all() as { id: string }[]);
     db.exec('COMMIT');
+    return {
+      ...changes,
+      autoLinked,
+      untracked: { total: untracked.length, added: untracked.filter((r) => fresh.has(r.id)).length }
+    };
   } catch (err) {
     db.exec('ROLLBACK');
     throw err;

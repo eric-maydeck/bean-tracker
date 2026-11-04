@@ -84,9 +84,9 @@
   </form>
   {#if form && 'error' in form && form.error}
     <p class="badge badge-urgent"><CoffeeName text={form.error} /></p>
-  {:else if form && 'imported' in form && form.imported}
+  {:else if form && 'changes' in form && form.changes}
     <p class="text-muted">
-      Imported {form.imported.beans} beans, {form.imported.brews} brews, {form.imported.waters} waters.
+      Imported: {form.changes.beans.new + form.changes.beans.updated} beans, {form.changes.brews.new + form.changes.brews.updated} brews, {form.changes.waters.new + form.changes.waters.updated} waters changed.
     </p>
   {/if}
   <p class="text-muted">

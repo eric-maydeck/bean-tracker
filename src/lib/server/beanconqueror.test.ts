@@ -564,3 +564,46 @@ describe('fillBlankCoffeeFields origin format', () => {
     expect(row()).toEqual({ region: 'Bench Maji, Oma', elevation: '1,500 masl', variety: 'Gesha, SL28', harvest_time: 'September 2025' });
   });
 });
+
+describe('importBeanConquerorData changes', () => {
+  const E = { beanOrigins: [], methods: [], grinders: [] };
+  const bean = (id: string, over = {}) => ({ id, name: id, roaster: 'R', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: 200, cost: 18, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false, ...over });
+  const water = { id: 'w1', name: 'W', calcium: null, magnesium: null, sodium: null, potassium: null, chloride: null, sulfate: null, tds: null, storedGh: null, storedGhType: null, storedKh: null, storedKhType: null, type: null, note: null, bcArchived: false };
+  const brews = (n: number, over = {}) => Array.from({ length: n }, (_, i) => ({ ...BASE_BREW, bcCreatedAt: `2026-06-0${i + 1}T12:00:00.000Z`, bcUuid: `u${i}`, ...over }));
+  const data = (rating = 7) => ({ ...E, beans: [bean('b1'), bean('b2')], waters: [water], brews: brews(3).map((b, i) => (i === 0 ? { ...b, rating } : b)) });
+
+  it('first import counts everything new', () => {
+    const c = importBeanConquerorData(createDb(':memory:'), data());
+    expect(c).toMatchObject({ beans: { new: 2, updated: 0 }, brews: { new: 3, updated: 0 }, waters: { new: 1, updated: 0 } });
+  });
+
+  it('same file again changes nothing', () => {
+    const db = createDb(':memory:');
+    const first = importBeanConquerorData(db, data());
+    expect(importBeanConquerorData(db, data())).toEqual({
+      beans: { new: 0, updated: 0 }, brews: { new: 0, updated: 0 }, waters: { new: 0, updated: 0 },
+      autoLinked: 0, untracked: { total: first.untracked.total, added: 0 }
+    });
+  });
+
+  it('an edited brew rating counts as updated', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, data());
+    expect(importBeanConquerorData(db, data(9)).brews).toEqual({ new: 0, updated: 1 });
+  });
+
+  it('a legacy row claimed by uuid is not new', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, { ...E, beans: [], brews: [{ ...BASE_BREW }] });
+    db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = NULL`).run();
+    const c = importBeanConquerorData(db, { ...E, beans: [], brews: [{ ...BASE_BREW, bcUuid: 'u9' }] });
+    expect(c.brews).toEqual({ new: 0, updated: 1 });
+  });
+
+  it('untracked counts the total and this upload\'s share', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, { ...E, beans: [bean('b1')], brews: [] });
+    const c = importBeanConquerorData(db, { ...E, beans: [bean('b1'), bean('b2')], brews: [] });
+    expect(c.untracked).toEqual({ total: 2, added: 1 });
+  });
+});

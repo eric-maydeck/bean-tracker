@@ -9,6 +9,7 @@ import ExcelJS from 'exceljs';
 import { fixtureZip } from '$lib/server/fixtures/beanconqueror/fixture';
 import { MAX_UPLOAD_BYTES } from '$lib/server/beanConquerorJson';
 import { linkMarks } from '$lib/server/brewNow/outcome';
+import type { ImportChanges } from '$lib/server/beanconqueror';
 import { actions, load } from './+page.server';
 
 vi.mock('$lib/server/brewNow/outcome', () => ({ linkMarks: vi.fn(() => 0) }));
@@ -65,9 +66,9 @@ describe('?/importBeanConqueror', () => {
   });
 
   it('imports the .zip export and reports what it read', async () => {
-    expect(await actions.importBeanConqueror(upload(await fixtureZip()))).toEqual({
-      success: true, imported: { beans: 10, brews: 68, waters: 17 }
-    });
+    const r = (await actions.importBeanConqueror(upload(await fixtureZip()))) as { success: true; changes: ImportChanges };
+    expect(r.success).toBe(true);
+    expect(r.changes).toMatchObject({ beans: { new: 10 }, brews: { new: 68 }, waters: { new: 17 } });
     const n = getDb().prepare(`SELECT COUNT(*) n FROM beanconqueror_brews WHERE bc_uuid IS NOT NULL`).get() as { n: number };
     expect(n.n).toBe(68);
     expect(linkMarks).toHaveBeenCalledTimes(1); // Brew now marks link to the brews just imported
