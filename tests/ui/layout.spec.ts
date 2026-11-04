@@ -5391,6 +5391,20 @@ export const STATES: State[] = [
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
+  { name: 'insights-onhand-waiting-caffeine', viewports: 'two', path: () => '/insights?tab=onhand&waitBy=caffeine',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel:has(#onhand-waiting)');
+      await panel.scrollIntoViewIfNeeded();
+      const by = panel.getByRole('group', { name: 'Group by' });
+      await expect(by.getByRole('button', { name: 'Caffeine', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await by.getByRole('button', { name: 'Roaster', exact: true }).click();
+      await expect(page).not.toHaveURL(/waitBy/);
+      await by.getByRole('button', { name: 'Caffeine', exact: true }).click();
+      await expect(page).toHaveURL(/waitBy=caffeine/);
+      await expect(panel.locator('.chart-note').first()).toHaveText(/^Subscription .+ · One-off /);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
   // Pours tab: the report card, technique, recipe x coffee and rest age; thin recipes behind a toggle (pourThin).
   {
     name: 'insights-pours', path: () => '/insights?tab=pours',
@@ -6823,7 +6837,7 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
-  { name: 'insights-board-caffeine', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-board-caffeine', path: () => '/insights?tab=leaderboards&range=all&dial=all',
     act: async (page) => {
       const board = page.locator('[data-board="caffeine"]');
       await board.scrollIntoViewIfNeeded();
@@ -6831,9 +6845,14 @@ export const STATES: State[] = [
       await expect(board.locator('.board-row', { hasText: 'Decaf' })).toHaveCount(0); // decaf has no rating by default
       await board.getByRole('button', { name: 'Include decaf' }).click();
       await expect(page).toHaveURL(/caffeine=all/);
+      await expect(board.locator('.board-row', { hasText: 'Decaf' })).toBeVisible();
       await expect(board.getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
-      await page.goto('/insights?tab=leaderboards&range=all&rank=brews'); // counts keep decaf, no filter needed
+      // Counts keep decaf with no filter, so no note; and by default (dialing in counted out) there is no decaf rating to hide.
+      await page.goto('/insights?tab=leaderboards&range=all&rank=brews');
       await expect(page.locator('[data-board="caffeine"] .board-row', { hasText: 'Decaf' })).toBeVisible();
+      await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
+      await page.goto('/insights?tab=leaderboards&range=all');
+      await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
       await expectEqualBoardHeights(page);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     } },

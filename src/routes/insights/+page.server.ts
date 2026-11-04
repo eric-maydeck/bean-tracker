@@ -5,7 +5,7 @@ import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
 } from '$lib/server/insights/time';
-import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
+import { RATINGS_SETTLED_FROM, countsForRating, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
 import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboards, pageFilters, smallHidden } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
@@ -143,6 +143,9 @@ export const load: PageServerLoad = ({ url, locals }) => {
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     boards,
+    // Rating ranks leave decaf out unless Caffeine is All: are there rated decaf brews in the view that it hides? (the Caffeine board's note)
+    decafHidden: !!boards && s.rank === 'rating' && !s.caffeine
+      && (s.dial === 'all' ? everyBrew : onceDialed(everyBrew, dialIn)).filter(matches).filter(matchesBrew(bf)).some((b) => b.decaf && b.rating !== null && b.rating > 0 && countsForRating(b, s.ratings) && inPeriod(b.localDate, period)),
     boardCoverage: boards ? fieldCoverage(scored, bags, period, s.rank) : null,
     // Over time: only the small boards switched to it (views=water-time); the others cost nothing.
     boardSeries: boards

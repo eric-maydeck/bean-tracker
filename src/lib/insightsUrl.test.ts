@@ -703,6 +703,7 @@ describe('spend tab params', () => {
   it('On hand: tab, waitBy parsed case-insensitively, junk dropped, round-trips', () => {
     expect(parse('tab=OnHand').tab).toBe('onhand');
     expect(parse('waitBy=Origin').waitBy).toBe('origin');
+    expect(parse('waitBy=Caffeine').waitBy).toBe('caffeine');
     expect(parse('waitBy=junk').waitBy).toBeUndefined();
     expect(parse('waitBy=roaster').waitBy).toBeUndefined(); // the default is absent
     expect(insightsParams(parse('tab=onhand&waitBy=process')).toString()).toBe('tab=onhand&waitBy=process');

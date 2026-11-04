@@ -32,7 +32,7 @@
   import { MediaQuery } from 'svelte/reactivity';
   import { allShownLine, hiddenLine, BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Caffeine, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
   import { RANK_LABEL, boardValue } from './chartLink';
   import { labelTip } from '$lib/components/labelTip';
@@ -41,9 +41,9 @@
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
 
   let {
-    boards, coverage, wholeKeys, cut, small, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part, caffeine
+    boards, coverage, wholeKeys, cut, small, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part, decafHidden
   }: {
-    caffeine?: Caffeine; // the page's Caffeine filter (absent = Caffeinated: decaf brews have no rating)
+    decafHidden: boolean; // rated decaf brews in the view that the rating rule leaves out (server)
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
     boards: Rows; coverage: PageData['boardCoverage'] & {}; wholeKeys: BrewFilterKey[]; cut: Board[]; small: Partial<Record<Board, number>>; rank: Rank; avg: Avg | undefined; open: Board[]; low: Board[]; comparing: boolean; perPerson: boolean;
@@ -298,7 +298,7 @@
         {/if}
       </div>
     </div>
-    {#if b === 'caffeine' && rank === 'rating' && !caffeine}<p class="like-note">Decaf brews are left out of ratings. <button class="link-like" onclick={() => choose({ caffeine: 'all' })}>Include decaf</button></p>{/if}
+    {#if b === 'caffeine' && decafHidden}<p class="like-note">Decaf brews are left out of ratings. <button class="link-like" onclick={() => choose({ caffeine: 'all' })}>Include decaf</button></p>{/if}
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     {#if (b === 'varieties' || b === 'producers') && rows.length}
       {@const c = coverage[b]}
@@ -462,6 +462,12 @@
   }
   .board {
     margin: 0;
+  }
+  /* Seven boards leave a lone last card at 2 or 3 columns: it takes the whole row. */
+  @media (min-width: 641px) {
+    .band-7 > .board:last-child {
+      grid-column: 1 / -1;
+    }
   }
   /* An expanded Over time card spans the band's row; dense flow lets the cards after it fill the gap it leaves, at their
      normal width. */
