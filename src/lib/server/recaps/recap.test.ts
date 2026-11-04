@@ -49,6 +49,30 @@ describe('recap', () => {
   });
 });
 
+describe('recap per person', () => {
+  const opts = { today: '2026-02-01', preview: false };
+  const num = (t: string) => Number(t.replace(/[^0-9.]/g, ''));
+  it('divides totals by household size, not bags; same slides; links carry people', () => {
+    const db = createDb(':memory:');
+    seed(db, [2025]);
+    setHouseholdSize(db, 2);
+    const h = recap(db, 2025, opts)!, p = recap(db, 2025, { ...opts, people: 'person' })!;
+    expect(num(p.slides[0].big)).toBeCloseTo(num(h.slides[0].big) / 2, 0);
+    expect(p.slides.map((s) => s.id)).toEqual(h.slides.map((s) => s.id));
+    const bags = (r: typeof h) => r.slides.find((s) => s.id === 'bags-finished')?.big;
+    expect(bags(p)).toBe(bags(h));
+    expect(p.slides.every((s) => !s.link.href || s.link.href.includes('people=person'))).toBe(true);
+    expect(h.slides.some((s) => s.link.href.includes('people='))).toBe(false);
+  });
+  it('a household of one: the parser drops people, so recap is the household recap', () => {
+    const db = createDb(':memory:');
+    seed(db, [2025]);
+    setHouseholdSize(db, 1);
+    const p = recap(db, 2025, { ...opts, people: 'person' })!, h = recap(db, 2025, opts)!;
+    expect(p.slides[0].big).toBe(h.slides[0].big);
+  });
+});
+
 describe('recapTiles', () => {
   it('public sees open years only; admin also the current year as preview', () => {
     const db = createDb(':memory:');

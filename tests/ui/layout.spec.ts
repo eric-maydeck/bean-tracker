@@ -857,6 +857,39 @@ export const STATES: State[] = [
         expect(r, `slide ${i}`).toMatchObject({ found: true, belowProgress: true, apart: true, hits: 0, inView: true });
       }
     } },
+  { name: 'recaps-people', path: () => `/recaps/${recapYear() - 1}`,
+    act: async (page) => {
+      const sw = page.locator('.slide .people-switch');
+      await expect(sw, 'the switch is on the total slide only').toHaveCount(1);
+      await expect(page.locator('.slide[data-id="total"] .people-switch')).toHaveCount(1);
+      const total = page.locator('.slide[data-id="total"]');
+      await page.locator('.recap-progress button').nth(1).click();
+      await expect.poll(() => total.evaluate((e) => Math.abs(e.getBoundingClientRect().top) < 4)).toBe(true);
+      const geo = () => sw.evaluate((e) => [...e.querySelectorAll('button')].map((b) => { const r = b.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)]; }));
+      const before = await geo(), big = await total.locator('.big').innerText();
+      for (const [, , w, h] of before) { expect(h).toBeGreaterThanOrEqual(44); expect(w).toBeGreaterThanOrEqual(44); }
+      await sw.getByRole('button', { name: 'Per person' }).click();
+      await expect.poll(() => page.url()).toContain('people=person');
+      await expect(total.locator('.big')).not.toHaveText(big);
+      await expect(sw.getByRole('button', { name: 'Per person' })).toHaveAttribute('aria-pressed', 'true');
+      // The block is centred, so a divided figure that re-wraps its context may move the row vertically; the buttons keep size and x.
+      expect((await geo()).map(([l, , w, h]) => [l, w, h]), 'toggle keeps size and x').toEqual(before.map(([l, , w, h]) => [l, w, h]));
+      expect(page.url()).toContain('slide=total');
+      for (const h of await page.locator('a.more').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href))) expect(new URL(h).searchParams.get('people'), h).toBe('person');
+      await expectNoMidWord(page, '.slide .big, .slide .context, .people-switch button');
+      await page.goto(`/recaps/${recapYear() - 1}?people=person`);
+      await reloadReady(page);
+      await expect(page.locator('.slide .people-switch button[aria-pressed="true"]')).toHaveText('Per person');
+      await page.locator('.people-switch').getByRole('button', { name: 'Household' }).click();
+      await expect.poll(() => page.url()).not.toContain('people=person');
+    } },
+  { name: 'recaps-people-hidden', viewports: 'two', path: () => `/recaps/${recapYear() - 1}`,
+    act: async (page) => {
+      await page.locator('.recap-progress button').last().click(); // the poster tile list
+      await expect(page.locator('.people-switch')).toHaveCount(1); // only the total slide's, none on tiles
+      await expect(page.locator('#poster .people-switch, .tile .people-switch')).toHaveCount(0);
+      await expect(page.locator('.slide[data-id="you"] .people-switch')).toHaveCount(0);
+    } },
   { name: 'recaps-chart-labels', path: () => `/recaps/${recapYear()}?preview=1`,
     act: async (page) => { await expectChartLabelsClear(page); } },
   { name: 'recaps-no-midword', path: () => `/recaps/${recapYear() - 1}`,

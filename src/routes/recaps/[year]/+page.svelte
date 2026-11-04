@@ -83,7 +83,7 @@
 <div class="recap-reel" bind:this={reel} onclick={tap} role="presentation">
   <Slide cover slide={cover} shareHref={recapHref(r.year, { people, ...(r.preview && { preview: true as const }) })} year={r.year} {people} preview={r.preview} index={0} total={ids.length} />
   {#each r.slides as s, i (s.id)}
-    <Slide slide={s} year={r.year} {people} preview={r.preview} index={i + 1} total={ids.length} />
+    <Slide slide={s} householdSize={r.householdSize} year={r.year} {people} preview={r.preview} index={i + 1} total={ids.length} />
   {/each}
   <Poster slides={r.slides} poster={r.poster} year={r.year} {people} preview={r.preview} total={ids.length} />
 </div>
