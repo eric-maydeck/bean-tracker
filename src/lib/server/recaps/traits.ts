@@ -4,7 +4,7 @@ import { country } from '$lib/server/insights/leaderboards';
 import { recipeBand } from '$lib/server/insights/pours';
 import { countsForRating } from '$lib/server/insights/ratings';
 import { pooled } from '$lib/sample';
-import { andList, avg, boardRows, evening, grams, monthMeans, pct, ratioMode } from './pool';
+import { andList, avg, boardRows, evening, grams, LEAD, monthMeans, pct, ratioMode } from './pool';
 import type { FactResult, Trait } from './types';
 import type { YearCtx } from './year';
 
@@ -18,8 +18,9 @@ const W = { rest: 0.7, perDay: 0.5, gear: 0.4, other: 0.3 };
 const top = <T>(xs: T[]) => {
   const c = new Map<T, number>();
   for (const x of xs) c.set(x, (c.get(x) ?? 0) + 1);
-  const [k, n] = [...c].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))[0] ?? [undefined, 0];
-  return { k: k as T | undefined, n: n as number, of: xs.length, size: c.size };
+  const ranked = [...c].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])));
+  const [k, n] = ranked[0] ?? [undefined, 0];
+  return { k: k as T | undefined, n: n as number, n2: ranked[1]?.[1] ?? 0, of: xs.length, size: c.size };
 };
 const Cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
@@ -27,13 +28,13 @@ const Cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 export const TRAITS: { id: string; run: (y: YearCtx) => Trait | null }[] = [
   { id: 'process', run: (y) => {
     const t = top(y.brews.map((b) => b.processGroup as string | null).filter((g): g is string => !!g && g !== 'Other / Unknown'));
-    if (t.of < 20 || t.n / t.of < 0.4) return null;
+    if (t.of < 20 || t.n / t.of < 0.4 || t.n < LEAD * t.n2) return null;
     const s = t.n / t.of, g = t.k!.toLowerCase();
     return { value: pct(s), label: g, strength: share(s, 0.4), adj: g, ...(s >= 0.6 && { noun: 'purist' }), phrase: `${g} coffee` };
   } },
   { id: 'setup', run: (y) => {
     const t = top(y.brews.map((b) => b.dripper).filter((d): d is string => d !== null));
-    if (t.size < 2 || t.n / t.of < 0.25) return null;
+    if (t.size < 2 || t.n / t.of < 0.25 || t.n < LEAD * t.n2) return null;
     return { value: pct(t.n / t.of), label: `on the ${t.k}`, strength: share(t.n / t.of, 0.25), phrase: `mostly the ${t.k}` };
   } },
   { id: 'rest', run: (y) => {
@@ -58,8 +59,8 @@ export const TRAITS: { id: string; run: (y: YearCtx) => Trait | null }[] = [
     return { value: `${t}°C`, label: 'average brew temp', strength: W.other, phrase: `${t}°C water` };
   } },
   { id: 'origin', run: (y) => {
-    const r = boardRows(y, 'origins')[0];
-    if (!r || r.value / grams(y) < 0.3) return null;
+    const [r, r2] = boardRows(y, 'origins');
+    if (!r || r.value / grams(y) < 0.3 || (r2 && r.value < LEAD * r2.value)) return null;
     const s = r.value / grams(y);
     return { value: pct(s), label: `from ${r.label}`, strength: share(s, 0.3), phrase: `${country(r.label) ?? r.label} beans` };
   } },
@@ -71,12 +72,12 @@ export const TRAITS: { id: string; run: (y: YearCtx) => Trait | null }[] = [
   { id: 'recipe', run: (y) => {
     const band = recipeBand(y.pours.facts, y.pours.recipes);
     const t = top(y.brews.map((b) => band(b)?.label).filter((l): l is string => !!l && l !== 'No recipe'));
-    if (!t.k || t.n / y.brews.length < 0.2) return null;
+    if (!t.k || t.n / y.brews.length < 0.2 || t.n < LEAD * t.n2) return null;
     return { value: pct(t.n / y.brews.length), label: t.k, strength: share(t.n / y.brews.length, 0.2), phrase: `a ${t.k} recipe` };
   } },
   { id: 'roast', run: (y) => {
     const t = top(y.brews.map((b) => b.roastLevel).filter((l): l is string => l !== null));
-    if (!t.k || t.n / t.of < 0.4) return null;
+    if (!t.k || t.n / t.of < 0.4 || t.n < LEAD * t.n2) return null;
     return { value: pct(t.n / t.of), label: `${t.k.toLowerCase()} roasts`, strength: share(t.n / t.of, 0.4), phrase: `${t.k.toLowerCase()} roasts` };
   } },
   { id: 'perDay', run: (y) => {

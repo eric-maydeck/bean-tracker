@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { addDays } from '$lib/server/insights/time';
-import { personality } from './traits';
+import { personality, TRAITS } from './traits';
 import { brew, ctx } from './testFixtures';
 
 // 300 brews over 150 days (Jun 1 to Oct 28, 2/day): 62% washed, a third on the CT62 of 11 pour-over drippers,
@@ -51,5 +51,17 @@ describe('personality', () => {
   it('fewer than 2 supportable traits = no personality slide', () => {
     const thin = Array.from({ length: 10 }, (_, i) => brew({ at: `2026-03-0${1 + (i % 9)}T09:00` }));
     expect(personality(ctx(thin, { pours: { facts: new Map(), recipes: [] } }))).toBeNull();
+  });
+  it('comparison traits (process, setup, recipe, roast, origin) need a 20% lead over the runner-up', () => {
+    const run = (id: string, y: ReturnType<typeof year>) => TRAITS.find((t) => t.id === id)!.run(y);
+    const split = (key: 'processGroup' | 'dripper' | 'roastLevel', a: string, b: string, na: number) => {
+      const y = year({ evening: false });
+      y.brews.forEach((x, i) => Object.assign(x, { [key]: i < na ? a : b }));
+      return y;
+    };
+    for (const [id, key, a, b] of [['process', 'processGroup', 'Washed', 'Natural'], ['setup', 'dripper', 'CT62', 'V60'], ['roast', 'roastLevel', 'Light', 'Dark']] as const) {
+      expect(run(id, split(key, a, b, 152)), `${id} 51:49`).toBeNull(); // a near tie is no habit
+      expect(run(id, split(key, a, b, 210)), `${id} 70:30`).not.toBeNull();
+    }
   });
 });

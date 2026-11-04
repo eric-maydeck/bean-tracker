@@ -16,7 +16,7 @@ function seed(db: ReturnType<typeof createDb>, years: number[]) {
     db.prepare(`INSERT INTO beanconqueror_beans (id, name, roaster, imported_at, coffee_id) VALUES (?, ?, ?, ?, ?)`).run(`b${k}`, `Bag ${r}`, r, now, id);
   });
   const brew = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, brew_temperature, water_amount_g, rating, imported_at) VALUES (?, ?, 18, 93, 290, 8, ?)`);
-  for (const y of years) for (let i = 0; i < 20; i++) brew.run(`${y}-06-${String(1 + (i % 8)).padStart(2, '0')}T${String(7 + (i % 14)).padStart(2, '0')}:10:00.000Z`, `b${i % 2}`, now);
+  for (const y of years) for (let i = 0; i < 20; i++) brew.run(`${y}-06-${String(1 + (i % 8)).padStart(2, '0')}T${String(7 + (i % 14)).padStart(2, '0')}:10:00.000Z`, `b${i % 5 < 3 ? 0 : 1}`, now); // 12 vs 8: a clear lead, so the top-of-list facts clear their floors
 }
 
 describe('recap', () => {

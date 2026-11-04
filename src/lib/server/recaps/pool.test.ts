@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const stub = vi.hoisted(() => ({ spot: null as any }));
 vi.mock('$lib/server/insights/lab', async (orig) => {
@@ -7,7 +7,7 @@ vi.mock('$lib/server/insights/lab', async (orig) => {
 });
 import type { BagFact, BrewFact } from '$lib/server/insights/facts';
 import { dialinCurve } from '$lib/server/insights/insightGenerators';
-import { POOL, fact } from './pool';
+import { POOL, fact, measure } from './pool';
 import { toGenCtx } from './year';
 import { brew, ctx, days } from './testFixtures';
 import type { YearCtx } from './year';
@@ -57,7 +57,7 @@ const shelf = (() => {
   order.forEach((s, k) => {
     const id = 100 + k, t = at / rich.length, o = (t < 1 / 3 ? EARLY : t < 2 / 3 ? MID : LATE)[k % 10];
     const best = k === 86, producer = best ? 'Yoiner' : k === 87 ? 'Yoiner' : `Producer ${k % 40}`;
-    bags.push({ id, roaster: s.r, name: `Bag ${k}`, slug: `bag-${k}`, processing: best ? 'Anaerobic Natural' : 'Washed', origin: o, producer, cost: best ? 200 : 20 + (k % 5) * 5, amountG: 250, status: 'archive' } as unknown as BagFact);
+    bags.push({ id, roaster: s.r, name: `Bag ${k}`, slug: `bag-${k}`, processing: best ? 'Anaerobic Natural' : 'Washed', origin: o, producer, cost: best ? 200 : k === 115 ? 17 : 20 + (k % 5) * 5, amountG: 250, status: 'archive' } as unknown as BagFact);
     for (const [j, b] of rich.slice(at, at + s.n).entries()) {
       const i = brews.length;
       const rating = best ? (i % 2 ? 9 : 10) : 7 + ((k * 7) % 15) / 10 + ((i % 3) - 1) * 0.3 - (j === 0 ? 0.8 : 0); // first brews of a bag rate lower
@@ -69,6 +69,8 @@ const shelf = (() => {
     const mine = brews.filter((b) => b.coffeeId === bg.id).map((b) => b.localDate).sort();
     Object.assign(bg, { firstBrew: mine[0], lastBrew: mine.at(-1), purchaseDate: mine[0] });
   }
+  // bag 115 is clearly the best value (cost 17), and H&S leads on grams: both clear their lead floors.
+  brews.forEach((b) => { if (b.roaster === 'H&S') b.dose = b.dose! * 1.3; }); // H&S leads on grams by well over the 20% floor
   const bb = bags.find((b) => b.id === 186)!, other = bags.find((b) => b.id === 187)!;
   if (bb.roaster === other.roaster) other.roaster = 'Elsewhere', brews.forEach((b) => b.coffeeId === 187 && (b.roaster = 'Elsewhere'));
   // Yoiner also grew bags at three more small roasters (five in all), so producer-roasters shows.
@@ -164,15 +166,15 @@ describe('coffees facts', () => {
     const s = fact('roaster').run(full())!;
     expect(s.big).toBe('H&S');
     expect(s.viz).toMatchObject({ kind: 'hlist' });
-    expect((s.viz as any).rows[0].texts).toEqual(['15%', '4.0kg', '24 bags']);
-    expect(s.context).toBe('15% of your coffee: 4.0kg over 24 bags. You went through more bags of Shoebox (33), but less coffee (3.7kg).');
+    expect((s.viz as any).rows[0].texts).toEqual(['19%', '5.3kg', '24 bags']);
+    expect(s.context).toBe('19% of your coffee: 5.3kg over 24 bags. You went through more bags of Shoebox (33), but less coffee (3.7kg).');
     const lone = [...days('2026-03-01', 8).map((b, i) => ({ ...b, roaster: 'A', coffeeId: i % 2 + 1 })), ...days('2026-04-01', 4).map((b, i) => ({ ...b, roaster: 'B', coffeeId: 3 }))];
     expect(fact('roaster').run(ctx(lone))!.context).toBe('67% of your coffee: 0.1kg over 2 bags.');
   });
   it('roaster, origin, producer: null under 2 groups (or 3 bags)', () => {
     const one = days('2026-03-01', 20).map((b, i) => ({ ...b, roaster: 'A', origin: 'Peru', producer: 'P', coffeeId: i % 4 }));
     for (const id of ['roaster', 'origin', 'producer']) expect(fact(id).run(ctx(one))).toBeNull();
-    const two = one.map((b, i) => (i < 10 ? { ...b, roaster: 'B', origin: 'Kenya', producer: 'Q', coffeeId: 9 } : b));
+    const two = one.map((b, i) => (i < 12 ? { ...b, roaster: 'B', origin: 'Kenya', producer: 'Q', coffeeId: 9 } : b));
     expect(fact('origin').run(ctx(two))).not.toBeNull();
     expect(fact('producer').run(ctx(two))).not.toBeNull();
     expect(fact('roaster').run(ctx(two.map((b) => ({ ...b, coffeeId: b.roaster === 'B' ? 1 : 2 }))))).toBeNull(); // 2 bags
@@ -259,7 +261,7 @@ describe('coffees facts', () => {
     expect(s.viz).toMatchObject({ kind: 'hlist' });
     const some = days('2026-03-01', 12).map((b, i) => ({ ...b, coffeeId: 1, costPerBrew: i < 9 ? 2 : null }));
     expect(fact('price').run(ctx(some, { bags: shelf.bags }))).toBeNull();
-    expect(fact('price').run(ctx(some.map((b) => ({ ...b, costPerBrew: 2 })), { bags: shelf.bags }))).not.toBeNull();
+    expect(fact('price').run(ctx(some.map((b, i) => ({ ...b, costPerBrew: i === 0 ? 10 : 2 })), { bags: shelf.bags }))).not.toBeNull();
   });
 });
 
@@ -302,8 +304,8 @@ describe('recipe, ratio, rest', () => {
 
 describe('rest card figures', () => {
   const band = (label: string, value: number, small = false) => ({ label, value, bags: 5, brews: 30, solid: true, sample: { bags: 5, brews: 30, small } });
-  const t2 = (o: any = {}) => ({ tier: 2, verdict: 'win', best: { label: '45–59', value: 7.42, strength: 'solid' }, next: { label: '60–89', value: 7.34 }, usual: { label: '30–44', mean: 7.02 },
-    bands: [band('30–44', 7.0), band('45–59', 7.42), band('60–89', 7.34)], ...o });
+  const t2 = (o: any = {}) => ({ tier: 2, verdict: 'win', best: { label: '45–59', value: 7.42, strength: 'solid' }, next: { label: '60–89', value: 7.30 }, usual: { label: '30–44', mean: 7.02 },
+    bands: [band('30–44', 7.0), band('45–59', 7.42), band('60–89', 7.30)], ...o });
   const run = (spot: any, brews: BrewFact[] = rich) => { stub.spot = spot; try { return fact('rest').run(ctx(brews)); } finally { stub.spot = null; } };
   it('tier 2: the card means, best against the usual band', () => {
     const s = run(t2())!;
@@ -314,8 +316,8 @@ describe('rest card figures', () => {
   });
   it('tier 2: best = usual compares with the runner-up', () => {
     const s = run(t2({ usual: { label: '45–59', mean: 7.4 } }))!;
-    expect(s.context).toBe('7.42 average since June, against 7.34 at 60–89d.');
-    expect(s.score).toBeCloseTo(0.16);
+    expect(s.context).toBe('7.42 average since June, against 7.30 at 60–89d.');
+    expect(s.score).toBeCloseTo(0.24);
   });
   it('tier 1: a signed same-bag gap', () => {
     const s = run({ tier: 1, verdict: 'win', best: { label: '45–59', value: 0.42, strength: 'solid' }, usual: { label: '45–59', mean: 7.4 }, bands: [band('30–44', -0.1), band('45–59', 0.42)] })!;
@@ -436,5 +438,95 @@ describe('every fact', () => {
       expect(`${s.big} ${s.context}`).not.toMatch(/\d (g|kg|L|s|d|°C|mL)\b/);
       expect(s.card.big && s.card.label && s.link.section).toBeTruthy();
     }
+  });
+});
+
+// Effect-size floors (user, gate 2): a recap highlights interesting things, so a fact claiming a difference, a lead or a
+// "best" returns null when the margin is trivial. Each case reaches the floor (measure = what the floor saw) and has a
+// just-clearing twin. Consistency (`consistent`) is exempt; ratio, recipe, decaf, busiest-day and streak keep their own
+// older floors (40% share, 30-point rise, 30-point gap, 2x the usual day, 7 days).
+describe('effect-size floors', () => {
+  beforeEach(() => { for (const k of Object.keys(measure)) delete measure[k]; }); // a stale reading would hide a floor never reached
+  const below = (id: string, min: number) => { expect(measure[id], `${id} measured`).toBeLessThan(min); expect(measure[id]).toBeGreaterThan(0); };
+  it('hour: the peak hour must beat the runner-up by 20%', () => {
+    const mk = (a: number, b: number) => [...days('2026-03-01', a, '13'), ...days('2026-04-01', b, '08')];
+    expect(fact('hour').run(ctx(mk(30, 29)))).toBeNull();
+    below('hour', 1.2);
+    expect(fact('hour').run(ctx(mk(36, 30)))).not.toBeNull(); // exactly 1.2
+  });
+  it('roaster, origin, producer: the top must beat the second by 20% (by grams)', () => {
+    const mk = (a: number, b: number) => [
+      ...days('2026-03-01', a).map((x, i) => ({ ...x, roaster: 'A', origin: 'Peru', producer: 'P', coffeeId: 1 + (i % 3) })),
+      ...days('2026-05-01', b).map((x, i) => ({ ...x, roaster: 'B', origin: 'Kenya', producer: 'Q', coffeeId: 4 + (i % 3) }))
+    ];
+    for (const id of ['roaster', 'origin', 'producer']) {
+      expect(fact(id).run(ctx(mk(11, 10))), id).toBeNull();
+      below(id, 1.2);
+      expect(fact(id).run(ctx(mk(14, 6))), id).not.toBeNull();
+    }
+  });
+  it('turn: the new leader must gain 15 points between the windows', () => {
+    const mix = (from: string, peru: number, kenya: number) =>
+      [...days(from, peru).map((b) => ({ ...b, origin: 'Peru' })), ...days(from, kenya).map((b) => ({ ...b, origin: 'Kenya' }))];
+    // Peru leads early 22:18; Kenya leads late 22:18: a 10-point gain.
+    expect(fact('turn').run(ctx([...mix('2026-01-01', 22, 18), ...mix('2026-07-01', 18, 22)]))).toBeNull();
+    below('turn', 0.15);
+  });
+  it('record: the best bag must beat the runner-up by 0.1 rating points', () => {
+    const bags = [1, 2].map((id) => ({ id, roaster: 'R', name: `B${id}`, slug: `b${id}`, processing: 'Washed' })) as unknown as BagFact[];
+    const mk = (second: number) => [
+      ...days('2026-07-01', 5).map((b) => ({ ...b, coffeeId: 1, rating: 9 })),
+      ...days('2026-08-01', 5).map((b) => ({ ...b, coffeeId: 2, rating: second }))
+    ];
+    expect(fact('record').run(ctx(mk(8.95), { bags }))).toBeNull();
+    below('record', 0.1);
+    expect(fact('record').run(ctx(mk(8.8), { bags }))).not.toBeNull();
+  });
+  it('price: the priciest cup must cost at least twice the average', () => {
+    const mk = (top: number) => days('2026-03-01', 12).map((b, i) => ({ ...b, coffeeId: 1, costPerBrew: i === 0 ? top : 2 }));
+    expect(fact('price').run(ctx(mk(2.5), { bags: shelf.bags }))).toBeNull();
+    below('price', 2);
+    expect(fact('price').run(ctx(mk(10), { bags: shelf.bags }))).not.toBeNull();
+  });
+  it('rest: the sweet spot must win by 0.1 rating points', () => {
+    const none = rich.map((b) => ({ ...b, restDays: 40 })); // no wait-shift fallback either
+    const spot = (v: number) => ({ tier: 1, verdict: 'win', best: { label: '45–59', value: v, strength: 'solid' }, usual: { label: '45–59', mean: 7.4 },
+      bands: [{ label: '30–44', value: -0.1, bags: 5, brews: 30, solid: true, sample: { bags: 5, brews: 30, small: false } }, { label: '45–59', value: v, bags: 5, brews: 30, solid: true, sample: { bags: 5, brews: 30, small: false } }] });
+    stub.spot = spot(0.05);
+    try { expect(fact('rest').run(ctx(none))).toBeNull(); below('rest', 0.1); stub.spot = spot(0.1); expect(fact('rest').run(ctx(none))).not.toBeNull(); } finally { stub.spot = null; }
+  });
+  it('best-value: the best must be 10% better value than the runner-up', () => {
+    const flat = shelf.bags.map((b) => (b.id === 215 ? { ...b, cost: 20 } : b)); // bag 115's discount removed
+    expect(fact('best-value').run(full({ bags: flat }))).toBeNull();
+    below('best-value', 0.1);
+    expect(fact('best-value').run(full())).not.toBeNull();
+  });
+  it('dial-in: a solid but tiny gap (0.05) is below the 0.1 floor, so no slide', () => {
+    const tiny = shelf.brews.map((b) => ({ ...b, rating: b.brewIndex === 1 ? 6.95 : 7 + (b.id % 2) * 0.001 }));
+    const c = full({ brews: tiny, scored: scoredOf(tiny) });
+    const found = dialinCurve({ ...toGenCtx(c), brews: c.brews });
+    const f = Array.isArray(found) ? found[0] : found;
+    expect([f?.strength, f?.value]).toEqual(['solid', '-0.05']); // /insights would show it; the recap does not
+    expect(fact('dial-in').run(c)).toBeNull();
+    below('dial-in', 0.1);
+  });
+  it('weekend: the lean must be 20% or more', () => {
+    const weeks = (extra: number) => {
+      const all = days('2026-03-02', 140); // Mondays first: 40 weekend days
+      const wk = all.filter((b) => [5, 6].includes((new Date(`${b.localDate}T00:00:00Z`).getUTCDay() + 6) % 7));
+      return [...all, ...wk.slice(0, extra).map((b) => ({ ...b, id: b.id + 100000, localTime: b.localTime.replace('T09', 'T10') }))];
+    };
+    expect(fact('weekend').run(ctx(weeks(6), { prevBrews: [] }))).toBeNull(); // 15% more
+    below('weekend', 0.2);
+    expect(fact('weekend').run(ctx(weeks(20), { prevBrews: [] }))).not.toBeNull(); // 50% more
+  });
+  it('top-dripper: the go-to must beat the runner-up by 20%', () => {
+    const t = (a: number, b: number) => [{ ...trophies[0], brews: a }, { ...trophies[1], brews: b }] as any;
+    expect(fact('top-dripper').run(full({ trophies: t(600, 560) }))).toBeNull();
+    below('top-dripper', 1.2);
+    expect(fact('top-dripper').run(full({ trophies: t(600, 400) }))).not.toBeNull();
+  });
+  it('consistent is exempt: a tiny spread is the point', () => {
+    expect(fact('consistent').run(full())).not.toBeNull();
   });
 });

@@ -32,6 +32,13 @@ const clockHolder = (y: YearCtx, key: string) => {
   return pick(d.run({ brews: y.brews, bags: y.bags, ratings: 'current', today: y.today }), d.dir);
 };
 
+// Effect-size floors (user, gate 2: a recap highlights interesting things, so a trivial margin is no finding). Every fact
+// that claims a difference, a lead or a "best" clears its floor or returns null; consistency facts are exempt (small is
+// their point). `measure` keeps the last value each floor saw (read by the audit tests).
+export const measure: Record<string, number> = {};
+export const clears = (id: string, v: number, min: number): boolean => { measure[id] = v; return v >= min; };
+export const LEAD = 1.2; // a "top" must beat the runner-up by 20%
+
 const total: FactDef = {
   id: 'total', category: 'amounts',
   run: (y) => {
@@ -102,6 +109,7 @@ const hour: FactDef = {
     const by = Array<number>(24).fill(0);
     for (const b of bs) by[hourOf(b)]++;
     const top = by.indexOf(Math.max(...by)), n = by[top];
+    if (!clears('hour', n / Math.max(1, ...by.filter((_, h) => h !== top)), LEAD)) return null;
     const lo = by.findIndex((v) => v), hiH = by.findLastIndex((v) => v);
     const early = clockHolder(y, 'earlyBird'), late = clockHolder(y, 'nightOwl');
     if (!early || !late) return null;
@@ -159,6 +167,7 @@ function shareFact(id: string, board: Board, lead: string, section: string, labe
     run: (y) => {
       const rows = boardRows(y, board);
       if (rows.length < 2 || bagCount(y) < (extra.minBags ?? 0)) return null;
+      if (!clears(id, rows[0].value / rows[1].value, LEAD)) return null;
       const all = grams(y), top = rows[0], share = top.value / all;
       return {
         id, category: 'coffees', lead, big: top.label, context: extra.context(top, share, rows, y),
@@ -239,6 +248,7 @@ const turn: FactDef = {
     const A = ke.top[0]?.[0], B = kl.top[0]?.[0];
     if (!A || !B || A === B) return null;
     const pe = (ke.c.get(B) ?? 0) / ke.of, pl = kl.c.get(B)! / kl.of;
+    if (!clears('turn', pl - pe, 0.15)) return null; // the new leader gained 15 points
     const win = (a: number, z: number) => `${MON[a]}–${MON[z]}`;
     const wE = win(m0, m0 + k - 1), wL = win(m1 - k + 1, m1);
     const nb = (w: string) => w.replace('–', '\u2060–\u2060'); // no line break inside a month range
@@ -280,6 +290,7 @@ const record: FactDef = {
     const stats = bagStats(y.scored, 'current');
     const bag = bagOf(win.holder);
     if (!bag) return null;
+    if (cands[1] && !clears('record', win.value - cands[1].value, 0.1)) return null; // 0.1 rating points over the runner-up
     const n = stats.get(bag.id)!.rated.length;
     const tens = y.scored.filter((b) => b.rating === 10 && countsForRating(b, 'current')).length;
     const proc = (bag.processing ?? '').toLowerCase();
@@ -308,6 +319,7 @@ const price: FactDef = {
     if (priced.length < 10) return null;
     const top = priced.reduce((a, b) => (b.costPerBrew! > a.costPerBrew! ? b : a));
     const avg = priced.reduce((s, b) => s + b.costPerBrew!, 0) / priced.length;
+    if (!clears('price', top.costPerBrew! / avg, 2)) return null; // at least twice the average cup
     const bag = y.bags.find((b) => b.id === top.coffeeId);
     const rated = countsForRating(top, 'current') ? ` You rated it ${top.rating}.` : '';
     const big = usd(top.costPerBrew!);
@@ -423,7 +435,7 @@ const rest: FactDef = {
       // the usual one); tier 1's value is already a same-bag delta against the other rests.
       const cmp = spot.tier === 2 ? (spot.usual.label !== spot.best.label ? { label: spot.usual.label, v: spot.usual.mean } : spot.next && { label: spot.next.label, v: spot.next.value }) : null;
       const gap = spot.tier === 1 ? spot.best.value : cmp ? spot.best.value - cmp.v : null;
-      if (gap !== null && gap > 0) {
+      if (gap !== null && clears('rest', gap, 0.1)) {
         const since = `since ${MONTH(Number(RATINGS_SETTLED_FROM.slice(5, 7)) - 1)}`;
         const rows = spot.bands.filter((b) => b.value !== null).map((b) => ({ label: dLabel(b.label), value: b.value!, brews: b.brews }));
         const vals = rows.map((r) => r.value);
@@ -533,6 +545,7 @@ const bestValue: FactDef = {
     const top = cands.slice(0, 3).map((c) => ({ c, bag: bagOf(c.holder) }));
     if (top.some((x) => !x.bag)) return null;
     const vals = top.map((x) => x.c.mean!), second = cands[1]?.value;
+    if (second !== undefined && !clears('best-value', (win.value - second) / win.value, 0.1)) return null; // 10% better value than the runner-up
     return {
       id: 'best-value', category: 'money', lead: 'Your best value bag was', big: win.holder.label, roaster: win.holder.sub,
       sub: `${usd(win.per100!)}/100g · ${win.mean!.toFixed(2)} average`, context: '',
@@ -577,7 +590,7 @@ const dialIn: FactDef = {
     const found = dialinCurve({ ...toGenCtx(y), brews: y.brews }); // /insights' dial-in input: onceDialed strips brew 1's rating
     const f = Array.isArray(found) ? found[0] : found;
     if (!f?.value || !f.series?.length || (f.strength !== 'solid' && f.strength !== 'hint')) return null;
-    if (Math.abs(Number(f.value)) < DIAL_IN_FLOOR) return null; // solid, but too small an effect to be a slide (user, gate 2)
+    if (!clears('dial-in', Math.abs(Number(f.value)), DIAL_IN_FLOOR)) return null; // solid, but too small an effect to be a slide (user, gate 2)
     const best = f.series.reduce((a, b) => (b.value > a.value ? b : a));
     return {
       id: 'dial-in', category: 'brewing', lead: 'The first brews of a bag rate', big: f.value,
@@ -595,7 +608,7 @@ const weekend: FactDef = {
     const f = weekendVsWeekday({ ...toGenCtx(y), brews: y.brews }) as ReturnType<typeof weekendVsWeekday> & { sides?: { label: string; value: string }[]; series?: { label: string; value: number }[] };
     if (!f || Array.isArray(f) || f.sides?.[0]?.label !== 'Weekdays' || f.sides[1]?.label !== 'Weekends' || !f.series) return null;
     const b = Number(f.sides[0].value), a = Number(f.sides[1].value), ratio = a / b;
-    if (!(ratio > 0) || (ratio >= 0.9 && ratio <= 1.1)) return null;
+    if (!(ratio > 0) || !clears('weekend', Math.abs(ratio - 1), 0.2)) return null; // 20% more or fewer
     const big = `${Math.round(Math.abs(ratio - 1) * 100)}% ${ratio > 1 ? 'more' : 'fewer'}`;
     const values = f.series.map((x) => +x.value.toFixed(1)), hi = values.indexOf(Math.max(...values));
     return {
@@ -614,7 +627,7 @@ const topDripper: FactDef = {
     const ds = y.trophies.filter((t) => t.kind === 'dripper').sort((a, b) => b.brews - a.brews || a.name.localeCompare(b.name));
     if (ds.length < 2) return null;
     const top = ds[0], share = top.brews / y.brews.length;
-    if (share < 0.25) return null;
+    if (share < 0.25 || !clears('top-dripper', top.brews / Math.max(1, ds[1].brews), LEAD)) return null;
     return {
       id: 'top-dripper', category: 'brewing', lead: 'Your go-to dripper was', big: top.name,
       context: `${pct(share)} of brews, out of ${ds.length} drippers.${!top.sample.small && top.rating !== null ? ` It averaged ${top.rating.toFixed(2)}.` : ''}`,
