@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, statsPreview, subscriptionsPreview, waterPreview } from './linkPreview';
+import type { Recap } from './server/recaps/recap';
+import { DESCRIPTION_MAX, recapPreview, RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, statsPreview, subscriptionsPreview, waterPreview } from './linkPreview';
 
 const kenya = { roaster: 'The Picky Chemist', coffee_name: 'Kenya AA Inoi Kianderi', origin: 'Kenya', processing: 'Washed', amount_g: 250, roast_date: '2026-10-03' };
 
@@ -176,5 +177,36 @@ describe('recipePreview', () => {
     const long = recipePreview({ ...base, steps: 'y'.repeat(400) }).description;
     expect(long).toHaveLength(RECIPE_PREVIEW_MAX);
     expect(long.endsWith('…')).toBe(true);
+  });
+});
+
+describe('recapPreview', () => {
+  const slide = (o: object) => ({ category: 'habits', big: '', context: 'ctx', link: { tab: '', section: '', href: '' }, card: { big: '', label: '' }, ...o });
+  const r = {
+    year: 2026, preview: false, span: { from: '2026-01-01', to: '2026-12-31' }, householdSize: 2,
+    slides: [
+      slide({ id: 'streak', lead: 'You brewed every day for', big: '124', unit: 'days' }),
+      slide({ id: 'hour', lead: 'Your coffee hour was', big: '1pm', context: 'x'.repeat(500) }),
+      slide({ id: 'rest', lead: 'You rested beans', big: '59', unit: 'd', context: 'ctx' }),
+      slide({ id: 'record', lead: 'Your best bag of the year was', big: 'La Terrazan Java', roaster: "Bean's Beans" })
+    ],
+    cover: { title: '2026 in coffee', sub: 'Jan 1 to Dec 31', tone: 'teal' },
+    poster: { title: '2026 in coffee', sub: 'Things.', footer: 'Picked from 5 brews.' }
+  } as unknown as Recap;
+  it('slide title from lead, big and unit; context; card image; cover by default', () => {
+    const p = recapPreview(r, 'streak');
+    expect(p.title).toBe('2026 in coffee · You brewed every day for 124 days');
+    expect(p.description).toBe('ctx');
+    expect(p.image!.src).toBe('/recaps/2026/card/streak.png');
+    expect(recapPreview(r, 'rest').title).toBe('2026 in coffee · You rested beans 59d');
+    expect(recapPreview(r, undefined)).toMatchObject({ title: '2026 in coffee', description: 'Things. Picked from 5 brews.', image: { src: '/recaps/2026/card/cover.png' } });
+    expect(recapPreview(r, 'gone').image!.src).toBe('/recaps/2026/card/cover.png');
+    expect(recapPreview(r, 'hour').description.length).toBeLessThanOrEqual(DESCRIPTION_MAX);
+  });
+  it('two-line names, people and preview carry into the card URL', () => {
+    expect(recapPreview(r, 'record').title).toBe("2026 in coffee · Your best bag of the year was Bean's Beans · La Terrazan Java");
+    expect(recapPreview(r, 'streak', 'person').image!.src).toBe('/recaps/2026/card/streak.png?people=person');
+    expect(recapPreview({ ...r, preview: true }, undefined, 'person').image!.src).toBe('/recaps/2026/card/cover.png?people=person&preview=1');
+    expect(recapPreview(r, 'poster').image!.src).toBe('/recaps/2026/card/poster.png');
   });
 });

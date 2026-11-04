@@ -3,6 +3,8 @@
   import { afterNavigate, replaceState } from '$app/navigation';
   import { POSTER_ID, recapHref } from '$lib/recapsUrl';
   import type { Slide as SlideT } from '$lib/server/recaps/types';
+  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import { recapPreview } from '$lib/linkPreview';
   import Slide from './Slide.svelte';
   import Poster from './Poster.svelte';
 
@@ -66,6 +68,7 @@
 </script>
 
 <svelte:head><title>{r.poster.title}</title></svelte:head>
+<PreviewMeta preview={recapPreview(r, data.state.slide, people)} />
 <svelte:window onkeydown={key} />
 
 <nav class="recap-progress" data-layout-ignore="story progress segments: ui-rules rule 4 exemption (user, 2026-11-02)" class:solid={onPoster()} style:--pfg={pfg || undefined} aria-label="Slides">

@@ -959,6 +959,19 @@ export const STATES: State[] = [
       for (const b of bigs) expect(b.trim(), 'every slide has a big value').not.toBe('');
       await expect(page.locator('.recap-reel > section.slide')).toHaveCount(bigs.length);
     } },
+  // A slide's link preview: the SSR tags point at that slide's card, and the card is a PNG.
+  { name: 'recaps-preview-tags', viewports: 'two', path: () => `/recaps/${recapYear() - 1}?slide=total`,
+    act: async (page) => {
+      const t = await previewTags(page, `/recaps/${recapYear() - 1}?slide=total`);
+      expect(t['og:image']).toMatch(new RegExp(`/recaps/${recapYear() - 1}/card/total\\.png$`));
+      expect(t['twitter:card']).toBe('summary_large_image');
+      const ctx = await request.newContext({ baseURL: new URL(page.url()).origin });
+      try {
+        const res = await ctx.get(`/recaps/${recapYear() - 1}/card/total.png`);
+        expect(res.status()).toBe(200);
+        expect(res.headers()['content-type']).toBe('image/png');
+      } finally { await ctx.dispose(); }
+    } },
   { name: 'recaps-unknown-slide', viewports: 'two', path: () => `/recaps/${recapYear() - 1}?slide=nope`,
     act: async (page) => {
       const ids = await page.locator('.recap-reel > section').evaluateAll((els) => els.map((e) => e.id));
