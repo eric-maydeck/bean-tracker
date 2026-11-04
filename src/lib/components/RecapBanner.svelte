@@ -27,21 +27,21 @@
 <div class="recap-banner" role="status" style:--bg="var(--t-{tone})" style:--fg={ink}>
   <span>Your {year} recap is ready</span>
   <div class="actions" data-button-row>
-    <button type="button" onclick={open}>Open</button>
-    <button type="button" onclick={dismiss}>Dismiss</button>
+    <button type="button" onclick={open}><span>Open</span></button>
+    <button type="button" onclick={dismiss}><span>Dismiss</span></button>
   </div>
 </div>
 {/if}
 
 <style>
-  /* Edge to edge, one slim row; scrolls away with the page (not sticky). Wraps to 2 rows only when it must (320px). */
+  /* Edge to edge, one slim row; scrolls away with the page (not sticky). Text and buttons are one centered group; wraps to 2 rows only when it must (320px). */
   .recap-banner {
     box-sizing: border-box;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 0 var(--space-4);
+    justify-content: center;
+    gap: 0 var(--space-3);
     padding: 4px max(var(--space-4), calc((100% - var(--container-max)) / 2 + var(--space-4)));
     background: var(--bg);
     color: var(--fg);
@@ -52,17 +52,28 @@
     display: flex;
     gap: var(--space-2);
   }
+  /* The button is the 44px tap target (site rule); the pill you see is the smaller span inside it. */
   button {
     min-height: 44px;
-    padding: 0 var(--space-4);
-    border: 1.5px solid currentColor;
-    border-radius: 22px;
-    background: transparent;
+    min-width: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
     color: inherit;
     font: inherit;
+    font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
   }
-  button:hover { background: color-mix(in srgb, currentColor 18%, transparent); }
-  button:focus-visible { outline: 3px solid currentColor; outline-offset: 2px; }
+  button span {
+    display: block;
+    box-sizing: border-box;
+    min-height: 32px;
+    padding: 0 var(--space-3);
+    line-height: 29px;
+    border: 1.5px solid currentColor;
+    border-radius: 16px;
+  }
+  button:hover span { background: color-mix(in srgb, currentColor 18%, transparent); }
+  button:focus-visible { outline: 3px solid currentColor; outline-offset: -2px; border-radius: 22px; }
 </style>

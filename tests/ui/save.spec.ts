@@ -431,6 +431,17 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
       expect(b.y, 'at the very top').toBe(0);
       expect([b.x, b.width], 'full bleed').toEqual([0, width]);
       expect(b.height, 'slim').toBeLessThanOrEqual(56);
+      // Text and buttons are one centered group, the visible pills a step smaller.
+      const group = await banner.evaluate((el) => { const r = [...el.children].map((c) => c.getBoundingClientRect()); return { l: Math.min(...r.map((x) => x.left)), r: Math.max(...r.map((x) => x.right)) }; });
+      expect(Math.abs((group.l + group.r) / 2 - width / 2), 'centered').toBeLessThanOrEqual(2);
+      for (const btn of await banner.getByRole('button').all()) {
+        const bb = (await btn.boundingBox())!;
+        expect(bb.height, 'the tap target keeps the site 44px').toBeGreaterThanOrEqual(44);
+        const pill = (await btn.locator('span').boundingBox())!; // what you see: a step smaller than before (was 44px)
+        expect(pill.height).toBeGreaterThanOrEqual(32);
+        expect(pill.height).toBeLessThanOrEqual(36);
+        expect(pill.width).toBeGreaterThanOrEqual(44);
+      }
       expect(await banner.evaluate((el) => getComputedStyle(el).position)).toBe('static');
       expect(await banner.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('0px');
       const nav = page.locator('nav.site-nav');
