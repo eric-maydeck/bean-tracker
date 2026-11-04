@@ -72,3 +72,19 @@ function makeTip(node: HTMLElement, label: Label, follow: boolean) {
     }
   };
 }
+
+// A truncated name's full text in the tip (ui-rules 50): a tile's sub line or caption link that ellipsizes or clamps. The tip
+// exists only while the text is cut (checked on hover and focus, the node and its next 3 ancestors, where the clip is set).
+export function truncTip(node: HTMLElement) {
+  const cut = () => {
+    for (let e: HTMLElement | null = node, i = 0; e && i < 4; e = e.parentElement, i++) {
+      if (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1) return true;
+    }
+    return false;
+  };
+  const set = () => tip.update(cut() ? node.textContent?.trim() : undefined);
+  node.addEventListener('pointerenter', set); // before labelTip's own listeners: the label is current when it opens
+  node.addEventListener('focus', set);
+  const tip = labelTip(node, undefined);
+  return { destroy() { node.removeEventListener('pointerenter', set); node.removeEventListener('focus', set); tip.destroy(); } };
+}

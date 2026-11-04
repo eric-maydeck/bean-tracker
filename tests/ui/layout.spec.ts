@@ -5340,6 +5340,33 @@ export const STATES: State[] = [
     }
   },
   {
+    name: 'insights-onhand-trunc-tip', viewports: 'two', path: () => '/insights?tab=onhand&range=3m',
+    act: async (page) => {
+      // A tile's cut-off coffee name shows its full text in the tip on hover and on keyboard focus; an uncut one shows none.
+      const link = page.locator('#onhand-oldest a').first();
+      const full = (await link.textContent())!.trim();
+      await expect(link).toBeVisible();
+      await link.hover();
+      await page.waitForTimeout(300);
+      const tip = page.locator('.float-tip');
+      const cut = await link.evaluate((a) => [a, a.parentElement!].some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
+      if (cut) await expect(tip.filter({ hasText: full })).toBeVisible(); else await expect(tip).toHaveCount(0);
+      await page.mouse.move(0, 0);
+      await expect(tip).toHaveCount(0);
+      // Force the cut so the tip is certain, then keyboard focus.
+      await link.evaluate((a) => { const p = a.parentElement!; p.style.right = 'auto'; p.style.width = '3rem'; p.style.overflow = 'hidden'; p.style.whiteSpace = 'nowrap'; p.style.textOverflow = 'ellipsis'; });
+      await link.hover();
+      await expect(tip.filter({ hasText: full })).toBeVisible();
+      await page.mouse.move(0, 0);
+      await expect(tip).toHaveCount(0);
+      await page.keyboard.press('Tab'); // focus-visible needs the keyboard; walk to the link
+      for (let i = 0; i < 80 && !(await link.evaluate((a) => a === document.activeElement)); i++) await page.keyboard.press('Tab');
+      await expect(tip.filter({ hasText: full })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(tip).toHaveCount(0);
+    }
+  },
+  {
     name: 'insights-onhand-preview', viewports: 'two', path: () => '/insights?tab=onhand',
     act: async (page) => {
       const t = await previewTags(page, '/insights?tab=onhand');

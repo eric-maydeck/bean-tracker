@@ -1,7 +1,7 @@
 <script lang="ts">
   import Recaps from './Recaps.svelte';
   import WholeNote from './WholeNote.svelte';
-  import { labelTip } from '$lib/components/labelTip';
+  import { labelTip, truncTip } from '$lib/components/labelTip';
   import { setting, plainText } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
@@ -836,11 +836,11 @@
           {/if}
           <!-- Under a delta (or a "was" line), a kept sub takes the pace line's slot (no keepSub tile is paced). -->
           {#if t.sub?.() && (!d || t.keepSub)}
-            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{#if t.subHref?.()}<a href={link(t.subHref()!)}>{t.sub?.()}</a>{:else}{t.sub?.()}{/if}</span>
+            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{#if t.subHref?.()}<a href={link(t.subHref()!)} use:truncTip>{t.sub?.()}</a>{:else}<span use:truncTip>{t.sub?.()}</span>{/if}</span>
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || t.ratingSwitch} class:has-cap={pp || t.ratingSwitch}
-              ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
+              ><a class="caption-link" href="#{tileId(t.key)}" use:truncTip>{t.label}</a>{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
                 >{/if}{#if pp || t.ratingSwitch}{' '}<span class="cap-block"><span class="cap-list">{#if t.ratingSwitch}<CapItem><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
                   ><span class="tip-text">{RATINGS_LABEL[s.ratings]}</span>{#if s.dial !== 'all'}<Icon name="question" />{/if}</button
                 ></CapItem>{#if s.dial === 'all'}<CapItem><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
