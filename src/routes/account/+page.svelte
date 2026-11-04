@@ -5,6 +5,8 @@
   import Icon from '$lib/components/Icon.svelte';
   import BeanTriage from './BeanTriage.svelte';
   import { showToast } from '$lib/toast.svelte';
+  import { page } from '$app/state';
+  import { parseAccount } from '$lib/accountUrl';
   import { importSummary } from '$lib/importSummary';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   let { data, form } = $props();
@@ -142,12 +144,12 @@
     <p class="badge badge-urgent"><CoffeeName text={form.error} /></p>
   {:else if summary}
     <div class="bq-result" role="status">
-      {#if summary.nothing}
-        <p class="bq-nothing">{summary.lines[0]}</p>
+      {#if summary.headline}<p class="bq-nothing">{summary.headline}</p>{/if}
+      {#if summary.lines.length}
+        <ul>
+          {#each summary.lines as line (line)}<li>{line}</li>{/each}
+        </ul>
       {/if}
-      <ul>
-        {#each summary.nothing ? summary.lines.slice(1) : summary.lines as line (line)}<li>{line}</li>{/each}
-      </ul>
       <p class="bq-links">
         <a class="button button-secondary" href="/insights">See your stats</a>
         {#if form && 'changes' in form && form.changes && form.changes.untracked.total > 0}
@@ -163,6 +165,7 @@
 
   <BeanTriage
     unmatched={data.unmatchedBeans}
+    showAll={parseAccount(page.url.searchParams).untracked === 'all'}
     linkable={data.linkableCoffees}
     roastLevels={data.roastLevels}
     roasters={data.roasters}
@@ -299,7 +302,6 @@
   .bq-hide { visibility: hidden; }
   .bq-result { margin-top: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); }
   .bq-nothing { margin: 0; }
-  .bq-result ul:empty { display: none; }
   .bq-nothing ~ ul { margin-top: var(--space-2); }
   /* The global .badge never wraps: these messages are sentences. */
   p.badge { white-space: normal; max-width: 100%; border-radius: var(--radius); padding: 0.3rem 0.8rem; }

@@ -3129,7 +3129,7 @@ export const STATES: State[] = [
   {
     // The triage list sits in the Bean Conqueror panel under the upload; the import result links to it.
     name: 'account-not-tracked',
-    path: () => '/account',
+    path: () => '/account?untracked=all',
     act: async (page) => {
       const h = page.getByRole('heading', { name: /^Not yet tracked \(\d+\)$/ });
       await expect(h).toHaveAttribute('id', 'not-tracked');
@@ -3140,6 +3140,36 @@ export const STATES: State[] = [
         await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
         await checkLayout(page);
       }
+    }
+  },
+  {
+    // Capped at 3 rows; "Show N more" opens the rest (?untracked=all) and "Show fewer" goes back, button in the same place.
+    name: 'account-not-tracked-open', path: () => '/account',
+    act: async (page) => {
+      const rows = page.locator('.triage-row');
+      await expect(rows).toHaveCount(3);
+      const more = page.getByRole('button', { name: /^Show \d+ more$/ });
+      const before = await more.boundingBox();
+      await more.click();
+      await expect(page).toHaveURL(/[?&]untracked=all/);
+      await expect(rows).toHaveCount(5);
+      const fewer = page.getByRole('button', { name: 'Show fewer' });
+      const after = await fewer.boundingBox();
+      expect(Math.abs(after!.width - before!.width)).toBeLessThan(2);
+      expect(Math.abs(after!.height - before!.height)).toBeLessThan(2);
+      await checkLayout(page);
+      await fewer.click();
+      await expect(rows).toHaveCount(3);
+      await expect(page).not.toHaveURL(/untracked/);
+    }
+  },
+  {
+    // Deep link with the list open: every row shows; layout only (no column-ratio check).
+    name: 'account-not-tracked-all', path: () => '/account?untracked=all',
+    act: async (page) => {
+      await expect(page.locator('.triage-row')).toHaveCount(5);
+      await expect(page.getByRole('button', { name: 'Show fewer' })).toBeVisible();
+      await checkLayout(page);
     }
   },
   {
@@ -3160,7 +3190,7 @@ export const STATES: State[] = [
   {
     // A failed Link shows its message in the open picker, not (only) at the top of the panel.
     name: 'account-not-tracked-link-error', viewports: 'two',
-    path: () => '/account',
+    path: () => '/account?untracked=all',
     act: async (page) => {
       await page.route('**/account?/linkBeanConqueror', (route) =>
         route.fulfill({ json: { type: 'failure', status: 400, data: '[{"error":1},"Stubbed is already linked"]' } }));
@@ -3177,7 +3207,7 @@ export const STATES: State[] = [
     // Closed, after a keyboard pick (nothing is submitted): ↓ + Enter takes the
     // second twin; Esc closes without changing it. Focus returns to the button.
     name: 'account-not-tracked-link-picker', viewports: 'two',
-    path: () => '/account',
+    path: () => '/account?untracked=all',
     act: async (page) => {
       await openPicker(page, 'Kenya Kiambu');
       const button = page.getByRole('button', { name: /^Coffee to link/ });
@@ -3195,7 +3225,7 @@ export const STATES: State[] = [
   },
   {
     name: 'account-not-tracked-link-picker-open',
-    path: () => '/account',
+    path: () => '/account?untracked=all',
     act: async (page) => {
       await openPicker(page, 'Kenya Kiambu');
       const top = page.getByRole('group', { name: 'Top match' }).getByRole('option');
@@ -3206,7 +3236,7 @@ export const STATES: State[] = [
   },
   {
     name: 'account-not-tracked-link-picker-search', viewports: 'two',
-    path: () => '/account',
+    path: () => '/account?untracked=all',
     act: async (page) => {
       await openPicker(page, 'Kenya Kiambu');
       await page.getByRole('searchbox', { name: 'Search coffees' }).fill('ethiopia');
@@ -4189,7 +4219,7 @@ export const STATES: State[] = [
         expect(c.y).toBeGreaterThan(b.bottom);
         expect(Math.abs(a.y - b.y)).toBeLessThan(2);
         const left = h.bottom - a.y, right = c.bottom - b.y;
-        expect(Math.min(left, right) / Math.max(left, right), 'columns end together').toBeGreaterThanOrEqual(0.4); // seed has 5 untracked beans (tall left); prod is far closer
+        expect(Math.min(left, right) / Math.max(left, right), 'columns end together').toBeGreaterThanOrEqual(0.6);
       } else {
         expect(Math.abs(b.x - a.x)).toBeLessThan(2); // single column
         expect(b.y).toBeGreaterThanOrEqual(a.bottom);
@@ -4201,7 +4231,7 @@ export const STATES: State[] = [
   },
   {
     // Over the 20 MB body limit: stopped in the browser, with the reason.
-    name: 'account-zip-too-big', viewports: 'two',
+    name: 'account-zip-too-big',
     path: () => '/account',
     act: async (page) => {
       const input = page.locator('input[name="file"]');
@@ -4209,7 +4239,10 @@ export const STATES: State[] = [
       expect(await input.evaluate((el: HTMLInputElement) => el.validationMessage)).toContain('Over 20 MB');
       const badge = page.locator('.bq-upload + .badge-urgent');
       await expect(badge).toContainText('Over 20 MB'); // visible, not just a greyed button
-      const [bx, px] = await badge.evaluate((el) => [el.getBoundingClientRect().right, el.closest('section')!.getBoundingClientRect().right]);
+      const [bx, px] = await badge.evaluate((el) => {
+        const sec = el.closest('section')!, cs = getComputedStyle(sec);
+        return [el.getBoundingClientRect().right, sec.getBoundingClientRect().right - parseFloat(cs.paddingRight) - parseFloat(cs.borderRightWidth)];
+      });
       expect(bx, 'badge wraps inside its panel').toBeLessThanOrEqual(px);
       await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled();
       await expect(page.locator('.bq-file')).toHaveText('No file chosen');

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
+  import { UNTRACKED_CAP, accountQuery } from '$lib/accountUrl';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import LinkPicker from '$lib/components/LinkPicker.svelte';
@@ -10,7 +11,8 @@
   import type { ComponentProps } from 'svelte';
 
   type FormProps = ComponentProps<typeof CoffeeForm>;
-  let { unmatched, linkable, roastLevels, roasters, roasterImages, origins, processingMethods, restHistory, subscriptions, formError = null }: {
+  let { unmatched, linkable, roastLevels, roasters, roasterImages, origins, processingMethods, restHistory, subscriptions, showAll = false, formError = null }: {
+    showAll?: boolean;
     unmatched: { beans: UnmatchedBean[]; total: number };
     linkable: LinkableCoffee[];
     roastLevels: FormProps['roastLevels'];
@@ -49,6 +51,8 @@
     createBean = null;
     await invalidateAll();
   }
+  const shown = $derived(showAll ? unmatched.beans : unmatched.beans.slice(0, UNTRACKED_CAP));
+  const toggle = () => goto(accountQuery({ untracked: showAll ? undefined : 'all' }) || '/account', { replaceState: true, noScroll: true, keepFocus: true });
   const facts = (b: UnmatchedBean) => [b.roaster ?? 'Unknown roaster', b.origin, b.processing, b.roastDate].filter(Boolean).join(' · ');
 </script>
 
@@ -57,7 +61,7 @@
   <p class="text-muted">Beans in Bean Conqueror with no coffee here yet. Create one, or link it to a coffee you already have.</p>
   {#if unmatched.beans.length < unmatched.total}<p class="text-muted">Showing top {unmatched.beans.length} of {unmatched.total}.</p>{/if}
   <ul class="triage">
-    {#each unmatched.beans as bean (bean.id)}
+    {#each shown as bean (bean.id)}
       <li class="triage-row">
         <div class="triage-title">
           <strong><CoffeeName name={bean.name} /></strong>
@@ -107,6 +111,9 @@
       </li>
     {/each}
   </ul>
+  {#if unmatched.beans.length > UNTRACKED_CAP}
+    <p><button class="button button-secondary triage-more" type="button" onclick={toggle}>{showAll ? 'Show fewer' : `Show ${unmatched.beans.length - UNTRACKED_CAP} more`}</button></p>
+  {/if}
 {/if}
 
 {#if createBean}
@@ -132,6 +139,7 @@
 {/if}
 
 <style>
+  .triage-more { min-width: 9rem; min-height: 44px; margin: 0; }
   .triage { list-style: none; padding: 0; margin: 0 0 var(--space-3); }
   .triage-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
   .triage-row:last-child { border-bottom: 0; }

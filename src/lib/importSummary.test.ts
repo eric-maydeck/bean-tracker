@@ -9,11 +9,11 @@ const zero: ImportChanges = {
 
 describe('importSummary', () => {
   it('says nothing changed when everything is zero', () => {
-    expect(importSummary(zero)).toEqual({ nothing: true, lines: ['Nothing changed.'] });
+    expect(importSummary(zero)).toEqual({ headline: 'Nothing changed.', lines: [] });
   });
   it('omits zero parts and singularizes 1', () => {
     const r = importSummary({ ...zero, brews: { new: 12, updated: 1 }, beans: { new: 2, updated: 0 }, waters: { new: 1, updated: 0 } });
-    expect(r.nothing).toBe(false);
+    expect(r.headline).toBeNull();
     expect(r.lines).toContain('12 new brews, 1 updated');
     expect(r.lines).toContain('2 new beans');
     expect(r.lines).toContain('1 new water');
@@ -31,6 +31,6 @@ describe('importSummary', () => {
 
 it('a re-upload with standing untracked beans is still "nothing changed"', () => {
   expect(importSummary({ ...zero, untracked: { total: 3, added: 0 } })).toEqual({
-    nothing: true, lines: ['Nothing changed.', '3 beans not tracked yet']
+    headline: 'Nothing changed.', lines: ['3 beans not tracked yet']
   });
 });
