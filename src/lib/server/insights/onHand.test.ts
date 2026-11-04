@@ -104,8 +104,8 @@ describe('onHandTab', () => {
       fact({ id: 3, name: 'C', purchaseDate: '2026-09-15' }), // 10
       fact({ id: 4, name: 'Open', status: 'open', purchaseDate: '2026-01-01' }) // not unopened
     ], ctx).tiles;
-    expect(t.oldest).toEqual({ days: 20, name: 'A', slug: 'a' });
-    expect(t.newest).toEqual({ days: 5, name: 'B', slug: null });
+    expect(t.oldest).toEqual({ days: 20, name: 'A', roaster: 'R', slug: 'a' });
+    expect(t.newest).toEqual({ days: 5, name: 'B', roaster: 'R', slug: null });
   });
   it('no unopened bag: oldest and newest are null', () => {
     const t = onHandTab([], [fact({ id: 1, status: 'open' })], ctx).tiles;

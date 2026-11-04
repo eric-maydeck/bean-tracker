@@ -5344,12 +5344,12 @@ export const STATES: State[] = [
     act: async (page) => {
       // A tile's cut-off coffee name shows its full text in the tip on hover and on keyboard focus; an uncut one shows none.
       const link = page.locator('#onhand-oldest a').first();
-      const full = (await link.textContent())!.trim();
+      const full = (await link.locator('.sub1').textContent())!.trim(); // the tip also holds the roaster line
       await expect(link).toBeVisible();
       await link.hover();
       await page.waitForTimeout(300);
       const tip = page.locator('.float-tip');
-      const cut = await link.evaluate((a) => [a, a.parentElement!].some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
+      const cut = await link.evaluate((a) => [a, a.parentElement!, ...a.querySelectorAll('*')].some((e) => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1));
       if (cut) await expect(tip.filter({ hasText: full })).toBeVisible(); else await expect(tip).toHaveCount(0);
       await page.mouse.move(0, 0);
       await expect(tip).toHaveCount(0);
@@ -5368,9 +5368,33 @@ export const STATES: State[] = [
       await link.evaluate((a) => { const p = a.parentElement!; p.style.overflow = 'visible'; p.style.textOverflow = 'clip'; });
       await link.hover();
       await page.waitForTimeout(300);
-      const clipped = await link.evaluate((a) => { for (let e: Element | null = a, i = 0; e && i < 4; e = e.parentElement, i++) { const s = getComputedStyle(e); if ((s.overflowX === 'hidden' && e.scrollWidth > e.clientWidth + 1) || (s.overflowY === 'hidden' && e.scrollHeight > e.clientHeight + 1)) return true; } return false; });
+      const clipped = await link.evaluate((a) => { for (let e: Element | null = a, i = 0; e && i < 4; e = e.parentElement, i++) { const s = getComputedStyle(e); if ((s.overflowX === 'hidden' && e.scrollWidth > e.clientWidth + 1) || (s.overflowY === 'hidden' && e.scrollHeight > e.clientHeight + 1)) return true; } return [...a.querySelectorAll('*')].some((e) => getComputedStyle(e).overflowX === 'hidden' && e.scrollWidth > e.clientWidth + 1); });
       if (!clipped) await expect(tip).toHaveCount(0);
       await link.evaluate((a) => { a.parentElement!.style.overflow = 'hidden'; }); // the layout check runs after the act
+    }
+  },
+  {
+    // Oldest / Newest unopened: the roaster under the coffee name, in the same link; one tip holds both; the tiles keep their heights.
+    name: 'insights-onhand-sub-roaster', viewports: 'two', path: () => '/insights?tab=onhand&range=3m',
+    act: async (page) => {
+      const tiles = ['oldest', 'newest'].map((k) => page.locator(`#onhand-${k}`));
+      const hs: number[] = [];
+      for (const tile of tiles) {
+        const link = tile.locator('a:has(.sub2)');
+        await expect(link).toHaveCount(1);
+        const [name, roaster] = await link.evaluate((a) => [a.querySelector('.sub1')!, a.querySelector('.sub2')!].map((e) => e.getBoundingClientRect()).map((r) => [r.top, r.left]) as number[][]).then((r) => r);
+        expect(roaster[0], 'roaster below the name').toBeGreaterThan(name[0]);
+        expect(await tile.locator('a:not(.caption-link)').count(), 'one link').toBe(1);
+        hs.push((await tile.boundingBox())!.height);
+        // Force a cut on the roaster line: one tip with both parts.
+        const full = (await link.locator('.sub1').textContent())! + ' · ' + (await link.locator('.sub2').textContent())!;
+        await link.locator('.sub2').evaluate((e) => { e.parentElement!.style.width = '2rem'; });
+        await link.hover();
+        await expect(page.locator('.float-tip').filter({ hasText: full })).toBeVisible();
+        await page.mouse.move(0, 0);
+        await link.locator('.sub2').evaluate((e) => { e.parentElement!.style.width = ''; });
+      }
+      expect(Math.abs(hs[0] - hs[1]), 'tiles level').toBeLessThanOrEqual(1);
     }
   },
   {

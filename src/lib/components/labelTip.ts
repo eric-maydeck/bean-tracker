@@ -84,6 +84,7 @@ export function truncTip(node: HTMLElement, text?: string | null) {
     return (hid(s.overflowX) && e.scrollWidth > e.clientWidth + 1) || (hid(s.overflowY) && e.scrollHeight > e.clientHeight + 1);
   };
   const cut = () => {
+    if ([...node.querySelectorAll<HTMLElement>('*')].some(clips)) return true; // a part inside it (a second line) cut on its own
     for (let e: HTMLElement | null = node, i = 0; e && i < 4; e = e.parentElement, i++) if (clips(e)) return true;
     return false;
   };

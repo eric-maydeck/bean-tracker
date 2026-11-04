@@ -270,6 +270,7 @@
   type Tile = {
     key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean;
     up?: 'good' | 'bad'; split?: true; sub?: () => string | null; keepSub?: true;
+    sub2?: () => string | null; // a second sub line under it, sharing its link and tip (the roaster under the coffee name)
     subHref?: () => string | null; // links the sub line (the oldest unopened coffee's name)
     was?: () => string | null; // a neutral line in the delta slot ("was Thu")
     stack?: () => { head: string; tail: string; said: string } | null; // two-line "vs Oct 4:" / "3 brews · 48g" there
@@ -340,8 +341,8 @@
     // The count is the household's bags (never divided); only the grams under it divide, and its line says so.
     { key: 'frozenBags', label: 'In the freezer', fmt: count, sub: () => (data.onHand ? `${formatGrams(data.onHand.tiles.frozenGrams)}${perPersonOn ? ' per person' : ''}` : null) },
     { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd },
-    { key: 'oldest', label: 'Oldest unopened', fmt: count, suffix: 'days', sub: () => data.onHand?.tiles.oldest?.name ?? null, subHref: () => (data.onHand?.tiles.oldest?.slug ? `/coffees/${data.onHand.tiles.oldest.slug}` : null) },
-    { key: 'newest', label: 'Newest unopened', fmt: count, suffix: 'days', sub: () => data.onHand?.tiles.newest?.name ?? null, subHref: () => (data.onHand?.tiles.newest?.slug ? `/coffees/${data.onHand.tiles.newest.slug}` : null) }
+    { key: 'oldest', label: 'Oldest unopened', fmt: count, suffix: 'days', sub: () => data.onHand?.tiles.oldest?.name ?? null, sub2: () => data.onHand?.tiles.oldest?.roaster ?? null, subHref: () => (data.onHand?.tiles.oldest?.slug ? `/coffees/${data.onHand.tiles.oldest.slug}` : null) },
+    { key: 'newest', label: 'Newest unopened', fmt: count, suffix: 'days', sub: () => data.onHand?.tiles.newest?.name ?? null, sub2: () => data.onHand?.tiles.newest?.roaster ?? null, subHref: () => (data.onHand?.tiles.newest?.slug ? `/coffees/${data.onHand.tiles.newest.slug}` : null) }
   ]);
   // Runway: the days left at the Period's pace and at the all-time pace (one tile when the Period is all time).
   // "last 12 months pace"; a custom window's dates stay as they are.
@@ -836,7 +837,7 @@
           {/if}
           <!-- Under a delta (or a "was" line), a kept sub takes the pace line's slot (no keepSub tile is paced). -->
           {#if t.sub?.() && (!d || t.keepSub)}
-            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{#if t.subHref?.()}<a href={link(t.subHref()!)} use:truncTip={t.sub?.()}>{t.sub?.()}</a>{:else}<span use:truncTip={t.sub?.()}>{t.sub?.()}</span>{/if}</span>
+            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{#snippet lines()}<span class="sub1">{t.sub?.()}</span>{#if t.sub2?.()}<span class="sub2">{t.sub2()}</span>{/if}{/snippet}{#if t.subHref?.()}<a href={link(t.subHref()!)} class:two={!!t.sub2?.()} use:truncTip={[t.sub?.(), t.sub2?.()].filter(Boolean).join(' · ')}>{@render lines()}</a>{:else}<span class:two={!!t.sub2?.()} use:truncTip={[t.sub?.(), t.sub2?.()].filter(Boolean).join(' · ')}>{@render lines()}</span>{/if}</span>
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || t.ratingSwitch} class:has-cap={pp || t.ratingSwitch}
@@ -1647,6 +1648,22 @@
   }
   /* "vs 8.0 at that pace": its own small line right under the delta, above the
      caption (tile geometry in cqw like the rest, see app.css .stat-unit). */
+  /* A tile's two sub lines (the unopened coffee, its roaster beneath): one link and tip, each line cut with its own ellipsis. */
+  .two {
+    display: block;
+    line-height: 1.2;
+  }
+  .two .sub1,
+  .two .sub2 {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .two .sub2 {
+    font-weight: normal;
+    color: var(--color-text-muted);
+  }
   .stat-item .insights-pace {
     position: absolute;
     left: var(--space-2);

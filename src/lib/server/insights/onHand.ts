@@ -53,7 +53,7 @@ export type OnHandTiles = {
   frozenBags: number; frozenGrams: number; avgBagCost: number | null;
   oldest: AgedBag | null; newest: AgedBag | null; // backlog bags by freezer-net days since roast (the avgAge rule)
 };
-export type AgedBag = { days: number; name: string; slug: string | null };
+export type AgedBag = { days: number; name: string; roaster: string | null; slug: string | null };
 export type BagStates = Record<'open' | 'waiting' | 'frozen', { bags: number; grams: number }>;
 export interface Runway { days: number | null; clearBy: string | null; perDay: number | null }
 export type WaitRow = { label: string; grams: number; bags: number; href: string | null };
@@ -136,7 +136,7 @@ export function onHandTab(
     s.bags++;
     s.grams += fresh[i].grams / c.size;
   });
-  const aged = waiting.flatMap((b) => { const days = computeDaysSinceRoast(freshBag(b, logged), t); return days === null ? [] : [{ days, name: b.name, slug: b.slug }]; });
+  const aged = waiting.flatMap((b) => { const days = computeDaysSinceRoast(freshBag(b, logged), t); return days === null ? [] : [{ days, name: b.name, roaster: b.roaster || null, slug: b.slug }]; });
   const byAge = [...aged].sort((a, b) => a.days - b.days);
   const tiedUp = live.reduce((s, b) => s + (b.status === 'backlog' ? (b.cost ?? 0) : b.cost && b.amountG ? (b.cost * remaining(b, logged)) / b.amountG : 0), 0);
   const onHandG = gramsOnHand(bags, whole);
