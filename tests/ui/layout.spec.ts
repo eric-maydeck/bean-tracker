@@ -6492,7 +6492,7 @@ export const STATES: State[] = [
     name: 'insights-leaderboards',
     path: () => '/insights?tab=leaderboards',
     act: async (page) => {
-      await expect(page.locator('.board')).toHaveCount(11);
+      await expect(page.locator('.board')).toHaveCount(12);
       await expectEqualBoardHeights(page);
       await expectBarHover(page);
       await expectSampleChips(page);
@@ -6829,7 +6829,7 @@ export const STATES: State[] = [
     act: async (page) => {
       // One jump link per board; a click lands the card's top just under the sticky bar.
       const links = page.locator('.board-jump a');
-      await expect(links).toHaveCount(11);
+      await expect(links).toHaveCount(12);
       await expectChipsInBar(page, links);
       await links.filter({ hasText: 'Origins' }).click();
       await expect(page).toHaveURL(/#leaderboard-origins$/);
@@ -6845,14 +6845,23 @@ export const STATES: State[] = [
       await expect(board.locator('.board-row', { hasText: 'Decaf' })).toHaveCount(0); // decaf has no rating by default
       await board.getByRole('button', { name: 'Include decaf' }).click();
       await expect(page).toHaveURL(/caffeine=all/);
-      await expect(board.locator('.board-row', { hasText: 'Decaf' })).toBeVisible();
-      await expect(board.getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
-      // Counts keep decaf with no filter, so no note; and by default (dialing in counted out) there is no decaf rating to hide.
+      // One decaf bag is under the Score's 3+ bags cutoff: Decaf shows with the small samples (avg=adjusted).
+      await page.goto('/insights?tab=leaderboards&range=all&dial=all&caffeine=all&avg=adjusted');
+      await expect(page.locator('[data-board="caffeine"] .board-row', { hasText: 'Decaf' })).toBeVisible();
+      await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
+      // Counts keep decaf with no filter, so no note.
       await page.goto('/insights?tab=leaderboards&range=all&rank=brews');
       await expect(page.locator('[data-board="caffeine"] .board-row', { hasText: 'Decaf' })).toBeVisible();
       await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
+      // The default view hides the rated decaf brew (note); a roaster with no decaf has nothing to hide (no note).
       await page.goto('/insights?tab=leaderboards&range=all');
+      await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(1);
+      await page.goto('/insights?tab=leaderboards&range=all&roaster=Kurasu');
       await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
+      // Over time on Caffeine: the card already spans its row, so no Expand control, and the -wide link looks the same.
+      await page.goto('/insights?tab=leaderboards&range=all&views=caffeine-time-wide');
+      await expect(page.locator('[data-board="caffeine"] .time-chart canvas')).toBeVisible();
+      await expect(page.locator('[data-board="caffeine"] .expand')).toHaveCount(0);
       await expectEqualBoardHeights(page);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     } },
@@ -6889,9 +6898,9 @@ export const STATES: State[] = [
   // No board head wraps: its children share a top, in List and Over time, Lowest first on and off, for every board.
   ...[false, true].flatMap((low) => [false, true].map((time) => ({
     name: `insights-board-head-one-row-${low ? 'low' : 'high'}-${time ? 'time' : 'list'}`,
-    path: () => `/insights?tab=leaderboards&range=all${time ? '&views=process-time,roast-time,water-time,dripper-time,filter-time,grinder-time' : ''}${low ? '&low=roasters,coffees,origins,varieties,producers,process,roast,water,dripper,filter,grinder' : ''}`,
+    path: () => `/insights?tab=leaderboards&range=all${time ? '&views=process-time,roast-time,water-time,dripper-time,filter-time,grinder-time,caffeine-time' : ''}${low ? '&low=roasters,coffees,origins,varieties,producers,process,roast,water,dripper,filter,grinder,caffeine' : ''}`,
     act: async (page: Page) => {
-      await expect(page.locator('.board-head')).toHaveCount(11);
+      await expect(page.locator('.board-head')).toHaveCount(12);
       // One row: the title and every tool are centred on the same line (they're align-items: center, so tops differ by height).
       const mids = await page.locator('.board-head').evaluateAll((heads) => heads.map((h) => {
         const m = [...h.querySelectorAll(':scope > *, .board-tools > *')].filter((c) => c.getBoundingClientRect().width > 0).map((c) => { const r = c.getBoundingClientRect(); return [c.className || c.tagName, Math.round(r.x), Math.round(r.width), r.top + r.height / 2] as const; });

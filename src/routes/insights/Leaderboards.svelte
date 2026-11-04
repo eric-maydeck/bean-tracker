@@ -277,7 +277,9 @@
   {@const switchable = (VIEW_BOARDS as readonly Board[]).includes(b) && !unranked(b) && rows.length > 0}
   {@const pick = switchable ? viewOf(b) : undefined}
   {@const view = pick ? 'time' : 'list'}
-  {@const wide = pick === 'wide'}
+  <!-- Caffeine already spans its row (CSS), so it has no Expand/Shrink and a views=caffeine-time-wide link just shows Over time. -->
+  {@const spans = b === 'caffeine'}
+  {@const wide = pick === 'wide' && !spans}
   <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:timeview={view === 'time'} class:wide data-board={b} style:--rows={size}
     data-lines={view === 'time' ? (isOpen ? pool.length : Math.min(size, pool.length)) : undefined}>
     <div class="board-head">
@@ -320,9 +322,9 @@
           <div class="time-chart">
             <!-- In the chart's top-right corner, not the head: the head is the same in List and Over time and never wraps for it.
                  Only where the band has columns to span (CSS hides it on a phone). -->
-            <button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
-              onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>
-            <Chart type="line" padTop={roomy.current ? 36 : 0} labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
+            {#if !spans}<button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
+              onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>{/if}
+            <Chart type="line" padTop={roomy.current && !spans ? 36 : 0} labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
               series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height="fill" />
           </div>
           <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === pool.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `${isLow ? 'lowest' : 'top'} ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
