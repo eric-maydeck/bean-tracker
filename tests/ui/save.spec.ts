@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import { gotoReady } from './ready';
+import { localToday } from '../../src/lib/server/localToday';
 import { DatabaseSync } from 'node:sqlite';
 import { VIEWPORTS } from './viewports';
 import { checkLayout, expectStatRowsFull, expectTipInView } from './checkLayout';
@@ -86,7 +87,7 @@ test('household of one hides the people switch everywhere', { tag: ['@stats', '@
   await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: '1' });
   for (const v of VIEWPORTS) {
     await page.setViewportSize(v.viewport);
-    for (const path of ['/insights?people=person', '/stats?people=person', '/stats?tab=bq&people=person', `/recaps/${new Date().getFullYear() - 1}?people=person`]) {
+    for (const path of ['/insights?people=person', '/stats?people=person', '/stats?tab=bq&people=person', `/recaps/${Number(localToday().slice(0, 4)) - 1}?people=person`]) {
       await gotoReady(page, path);
       await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
       await expect(page.getByText(/per person/i)).toHaveCount(0);

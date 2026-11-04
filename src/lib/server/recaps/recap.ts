@@ -32,9 +32,9 @@ export function recap(db: DatabaseSync, year: number, o: { today: string; previe
   if (!y) return null;
   const facts = POOL.map((f) => f.run(y)).filter((r) => r !== null);
   // Selection never depends on people (P5): pick at per=1, then show the requested figures.
-  const base = y.per === 1 ? facts : POOL.map((f) => f.run({ ...y, per: 1 })).filter((r) => r !== null);
   const frozen = frozenIds(db, year);
-  const fresh = frozen ? null : order(select(base), year);
+  const base = () => (y.per === 1 ? facts : POOL.map((f) => f.run({ ...y, per: 1 })).filter((r) => r !== null));
+  const fresh = frozen ? null : order(select(base()), year);
   // A racing first open may have frozen first: freezeIds returns what's stored.
   const ids = frozen ?? (o.preview || o.freeze === false ? fresh! : freezeIds(db, year, fresh!));
   const picked = ids.map((id) => facts.find((f) => f.id === id)).filter((f) => f !== undefined);
