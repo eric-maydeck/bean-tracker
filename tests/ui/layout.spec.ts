@@ -3137,6 +3137,7 @@ export const STATES: State[] = [
       const h = page.getByRole('heading', { name: /^Not yet tracked \(\d+\)$/ });
       await expect(h).toHaveAttribute('id', 'not-tracked');
       await expect(h.locator('xpath=ancestor::section[1]').getByRole('heading', { level: 2 })).toHaveText('Bean Conqueror');
+      await expect(page.locator('.triage-row').filter({ hasText: 'Mountain Water' })).toContainText('Unknown roaster · No roast date');
       const row = page.locator('.triage-row').filter({ hasText: 'Kenya Kiambu' }).first();
       for (const name of ['Create', 'Link', 'Dismiss']) await expect(row.getByRole('button', { name, exact: true })).toBeVisible();
       for (const theme of ['dark', 'light']) {

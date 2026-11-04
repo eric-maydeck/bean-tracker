@@ -53,7 +53,7 @@
   }
   const shown = $derived(showAll ? unmatched.beans : unmatched.beans.slice(0, UNTRACKED_CAP));
   const toggle = () => goto(accountQuery({ untracked: showAll ? undefined : 'all' }) || '/account', { replaceState: true, noScroll: true, keepFocus: true });
-  const facts = (b: UnmatchedBean) => [b.roaster ?? 'Unknown roaster', b.origin, b.processing, b.roastDate].filter(Boolean).join(' · ');
+  const facts = (b: UnmatchedBean) => [b.roaster ?? 'Unknown roaster', b.origin, b.processing, b.roastDate ?? 'No roast date'].filter(Boolean).join(' · ');
 </script>
 
 {#if unmatched.total > 0}
