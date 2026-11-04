@@ -18,6 +18,7 @@
   import type { FreshGroup } from '$lib/server/insights/onHand';
   import Chart from '$lib/components/Chart.svelte';
   import ChartToggle from './ChartToggle.svelte';
+  import { holdHeight } from '$lib/holdHeight';
   import { WAIT_BYS, type InsightsUrlState, type Unit, type WaitBy } from '$lib/insightsUrl';
   import type { Tip } from '$lib/components/TipBody.svelte';
 
@@ -54,6 +55,7 @@
   const by = $derived(waitBy ?? 'roaster');
   const rows = $derived(t.waiting.by[by]);
   const BY_LABEL: Record<WaitBy, string> = { roaster: 'Roaster', origin: 'Origin', process: 'Process', roast: 'Roast', caffeine: 'Caffeine' };
+  let waitPanel = $state<HTMLElement>();
   const empty = $derived(!shelf(t) && t.freshness.unknown === 0);
 </script>
 
@@ -122,10 +124,10 @@
 {/if}
 
 {#if t.tiles.bagsWaiting > 0}
-  <section class="chart-panel" data-section="onhand-waiting">
+  <section class="chart-panel" data-section="onhand-waiting" bind:this={waitPanel}>
     <LabHead id="onhand-waiting" title="What's waiting" {placeTip}
       help={['Grams in unopened (backlog) bags, grouped.', 'The number in brackets is the bags.', 'Biggest first: the top 10, then Other.', 'Per person divides grams, not bags.']}>
-      <ChartToggle label="Group by" options={WAIT_BYS.map((k) => [k, BY_LABEL[k]] as const)} value={by} pick={(v) => choose({ waitBy: v === 'roaster' ? undefined : v })} />
+      <ChartToggle label="Group by" options={WAIT_BYS.map((k) => [k, BY_LABEL[k]] as const)} value={by} pick={(v) => (holdHeight(waitPanel), choose({ waitBy: v === 'roaster' ? undefined : v }))} />
     </LabHead>
     <Chart type="bar" labels={rows.map((r) => `${r.label} (${r.bags})`)} values={rows.map((r) => r.grams)} datasetLabel="Grams waiting" format={formatGrams}
       tipFormat={(v, i) => `${formatGrams(v)} · ${rows[i].bags} bag${rows[i].bags === 1 ? '' : 's'}`} tipLink={waitLink} label="What's waiting" height={rows.length * 32 + 24} />
