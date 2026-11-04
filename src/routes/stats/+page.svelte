@@ -357,7 +357,7 @@
   </div>
   {#if data.householdSize > 1}
     <div class="form-field group-field">
-      <span>People{#if data.isAdmin} <a class="people-set" href="/account#household">Set it on Account</a>{/if}</span>
+      <span><button class="mode-tip-button" popovertarget="tip-people" aria-describedby="tip-people"><span class="tip-text">People</span></button></span>
       <div class="tab-group" role="group" aria-label="People">
         {#each PEOPLE as m (m)}
           <button
@@ -369,7 +369,8 @@
         {/each}
       </div>
     </div>
-    <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
+    <div class="mode-tip" id="tip-people" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'People', lines: [`Per person: ${PEOPLE_HELP.person}`, `Household: ${PEOPLE_HELP.household}`] }} />{#if data.isAdmin}<a class="tip-link people-tip-link" href="/account#household">Set it on Account</a>{/if}</div>
+<span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
     <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
   {/if}
 </div>

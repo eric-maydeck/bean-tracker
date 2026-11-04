@@ -637,7 +637,7 @@
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
   {#if peopleOn}
     <div class="form-field group-field people-field" style={cell('people')}>
-      <span>People{#if data.isAdmin} <a class="people-set" href="/account#household">Set it on Account</a>{/if}</span>
+      <span><button class="mode-tip-button" popovertarget="tip-people" aria-describedby="tip-people"><span class="tip-text">People</span></button></span>
       <div class="tab-group people-switch" role="group" aria-label="People">
         {#each PEOPLE as m (m)}
           <button
@@ -789,6 +789,7 @@
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
 <span id="dial-help-dialed" hidden>{DIAL_HELP.dialed}</span>
 <span id="dial-help-all" hidden>{DIAL_HELP.all}</span>
+<div class="mode-tip" id="tip-people" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'People', lines: [`Per person: ${PEOPLE_HELP.person}`, `Household: ${PEOPLE_HELP.household}`] }} />{#if data.isAdmin}<a class="tip-link people-tip-link" href="/account#household">Set it on Account</a>{/if}</div>
 <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
 <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
 

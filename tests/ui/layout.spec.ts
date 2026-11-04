@@ -3268,6 +3268,58 @@ export const STATES: State[] = [
       expect(new URL(page.url()).search).toBe('');
     } },
   {
+    // The People label is the (help-cursor) trigger of a sticky tip: text + an admin link to Account; Esc closes; the switch doesn't move.
+    name: 'stats-people-tip', viewports: 'two', path: () => '/stats',
+    act: async (page) => {
+      const sw = page.getByRole('group', { name: 'People' });
+      const trigger = page.getByRole('button', { name: 'People', exact: true });
+      const before = await sw.boundingBox();
+      expect(await trigger.evaluate((el) => getComputedStyle(el).cursor)).toBe('help');
+      await trigger.click();
+      const tip = page.locator('#tip-people');
+      await expect(tip).toBeVisible();
+      await expect(tip).toContainText('Per person');
+      const link = tip.getByRole('link', { name: 'Set it on Account' });
+      await expect(link).toBeVisible();
+      expect(await link.evaluate((el) => getComputedStyle(el).cursor)).toBe('pointer');
+      expect(await tip.evaluate((el) => getComputedStyle(el).cursor)).not.toBe('help');
+      const after = await sw.boundingBox();
+      expect(after).toEqual(before);
+      await checkLayout(page);
+      await page.keyboard.press('Escape');
+      await expect(tip).toBeHidden();
+      await trigger.click();
+      await link.click();
+      await expect(page).toHaveURL(/\/account#household$/);
+    }
+  },
+  {
+    // The People label is the (help-cursor) trigger of a sticky tip: text + an admin link to Account; Esc closes; the switch doesn't move.
+    name: 'insights-people-tip', viewports: 'two', path: () => '/insights',
+    act: async (page) => {
+      const sw = page.getByRole('group', { name: 'People' });
+      const trigger = page.getByRole('button', { name: 'People', exact: true });
+      const before = await sw.boundingBox();
+      expect(await trigger.evaluate((el) => getComputedStyle(el).cursor)).toBe('help');
+      await trigger.click();
+      const tip = page.locator('#tip-people');
+      await expect(tip).toBeVisible();
+      await expect(tip).toContainText('Per person');
+      const link = tip.getByRole('link', { name: 'Set it on Account' });
+      await expect(link).toBeVisible();
+      expect(await link.evaluate((el) => getComputedStyle(el).cursor)).toBe('pointer');
+      expect(await tip.evaluate((el) => getComputedStyle(el).cursor)).not.toBe('help');
+      const after = await sw.boundingBox();
+      expect(after).toEqual(before);
+      await checkLayout(page);
+      await page.keyboard.press('Escape');
+      await expect(tip).toBeHidden();
+      await trigger.click();
+      await link.click();
+      await expect(page).toHaveURL(/\/account#household$/);
+    }
+  },
+  {
     // The /stats people switch drives both tabs: At a Glance on General, totals on Bean Conqueror.
     name: 'stats-people-person',
     path: () => '/stats',
