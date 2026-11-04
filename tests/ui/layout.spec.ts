@@ -2,6 +2,9 @@ import { expect, request, type Page, type Locator, type Route } from '@playwrigh
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
+import { truncate, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody, outerHeight } from './collapsibleBar';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
@@ -4305,6 +4308,29 @@ export const STATES: State[] = [
       await checkLayout(page);
       await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
       await checkLayout(page);
+    }
+  },
+  {
+    // After the over-20 MB message, the next (good) file imports on the first try (user, 2026-11-04: the form reset).
+    name: 'account-upload-after-too-big', viewports: 'two',
+    path: () => '/account',
+    act: async (page) => {
+      // Real picker round-trips with an on-disk sparse file (not committed): the way a phone picks.
+      const big = join(tmpdir(), `bq-big-${process.pid}.zip`);
+      await truncate(big, 25 * 1024 * 1024).catch(async () => { await writeFile(big, ''); await truncate(big, 25 * 1024 * 1024); });
+      try {
+        const pick = async (file: string) => {
+          const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.bq-choose').click()]);
+          await fc.setFiles(file);
+        };
+        await pick(big);
+        await expect(page.locator('.bq-upload + .badge-urgent')).toBeVisible();
+        await pick('tests/ui/fixtures/bq-tiny.zip');
+        await expect(page.locator('.bq-upload + .badge-urgent')).toHaveCount(0);
+        await expect(page.locator('.bq-file')).toHaveText('bq-tiny.zip');
+        await page.getByRole('button', { name: 'Import', exact: true }).click();
+        await expect(page.locator('.bq-result')).toBeVisible();
+      } finally { await rm(big, { force: true }); }
     }
   },
   {
