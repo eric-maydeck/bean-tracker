@@ -23,6 +23,6 @@
 </script>
 
 <div class="hl-caption">
-  <span class="stat-label" class:has-cap={!!children} data-head={head}><a class="caption-link" href={chart ? link.href(chart) : href} onclickcapture={onclick} data-sveltekit-preload-data={chart ? 'off' : undefined} use:truncTip>{#if parts.length > 1}<span class="cap-block"><span class="cap-list">{#each parts as part, i (i)}<CapItem><CoffeeName text={part} /></CapItem>{/each}</span></span>{:else}<CoffeeName text={label} />{/if}</a>
+  <span class="stat-label" class:has-cap={!!children} data-head={head}><a class="caption-link" href={chart ? link.href(chart) : href} onclickcapture={onclick} data-sveltekit-preload-data={chart ? 'off' : undefined} use:truncTip={label}>{#if parts.length > 1}<span class="cap-block"><span class="cap-list">{#each parts as part, i (i)}<CapItem><CoffeeName text={part} /></CapItem>{/each}</span></span>{:else}<CoffeeName text={label} />{/if}</a>
 {#if children}{' '}<span class="cap-block"><span class="cap-list">{@render children()}</span></span>{/if}</span>
 </div>

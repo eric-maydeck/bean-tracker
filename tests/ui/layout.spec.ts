@@ -5364,6 +5364,25 @@ export const STATES: State[] = [
       await expect(tip.filter({ hasText: full })).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(tip).toHaveCount(0);
+      // An ancestor whose overflow is visible does not clip: text running out of it fully shown gets no tip.
+      await link.evaluate((a) => { const p = a.parentElement!; p.style.overflow = 'visible'; p.style.textOverflow = 'clip'; });
+      await link.hover();
+      await page.waitForTimeout(300);
+      const clipped = await link.evaluate((a) => { for (let e: HTMLElement | null = a, i = 0; e && i < 4; e = e.parentElement, i++) { const s = getComputedStyle(e); if ((s.overflowX === 'hidden' && e.scrollWidth > e.clientWidth + 1) || (s.overflowY === 'hidden' && e.scrollHeight > e.clientHeight + 1)) return true; } return false; });
+      if (!clipped) await expect(tip).toHaveCount(0);
+      await link.evaluate((a) => { a.parentElement!.style.overflow = 'hidden'; }); // the layout check runs after the act
+    }
+  },
+  {
+    // A multi-part caption ("Coarsest grind · A4Z") shows its tip text with the separators, not the glued parts.
+    name: 'insights-caption-trunc-tip', viewports: 'two', path: () => '/insights?tab=sweetspots',
+    act: async (page) => {
+      const link = page.locator('.caption-link:has(.cap-list)').first();
+      await expect(link).toBeVisible();
+      await link.evaluate((a) => { a.style.display = 'block'; a.style.width = '3rem'; a.style.overflow = 'hidden'; a.style.height = '1.2em'; });
+      await link.hover();
+      await expect(page.locator('.float-tip').filter({ hasText: ' · ' })).toBeVisible();
+      await link.evaluate((a) => a.removeAttribute('style')); // the layout checks run after the act
     }
   },
   {
