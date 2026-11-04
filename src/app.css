@@ -706,6 +706,13 @@ input:focus-visible {
   align-items: end; /* a button beside a labeled group lines up with the chips, not the label */
 }
 
+.people-set {
+  margin-left: var(--space-1);
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
 .group-field > span,
 .group-field > label {
   display: block;

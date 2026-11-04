@@ -4175,20 +4175,21 @@ export const STATES: State[] = [
     }
   },
   {
-    // Wide screens: Bean Conqueror left, Recipes + Brew now stacked right; one column below 1100px. Checked in dark too.
+    // Wide screens: Bean Conqueror + Household left, Recipes + Brew now right; one column below 1100px. Checked in dark too.
     name: 'account-columns', path: () => '/account',
     act: async (page) => {
-      const secs = await page.locator('.acct > section').evaluateAll((els) => els.map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, right: b.right, y: b.y, bottom: b.bottom }; }));
-      expect(secs).toHaveLength(4); // Bean Conqueror, Recipes, Household, Brew now
-      const [a, b, h, c] = secs;
+      const secs = await page.locator('.acct section').evaluateAll((els) => els.map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, right: b.right, y: b.y, bottom: b.bottom }; }));
+      expect(secs).toHaveLength(4); // Bean Conqueror, Household, Recipes, Brew now
+      const [a, h, b, c] = secs;
       if (page.viewportSize()!.width >= 1100) {
         expect(b.x).toBeGreaterThan(a.right); // right column
         expect(Math.abs(c.x - b.x)).toBeLessThan(2);
-        expect(Math.abs(h.x - b.x)).toBeLessThan(2);
-        expect(h.y).toBeGreaterThan(b.bottom);
-        expect(c.y).toBeGreaterThan(h.bottom);
+        expect(Math.abs(h.x - a.x)).toBeLessThan(2);
+        expect(h.y).toBeGreaterThan(a.bottom);
+        expect(c.y).toBeGreaterThan(b.bottom);
         expect(Math.abs(a.y - b.y)).toBeLessThan(2);
-        expect(Math.abs(Math.max(a.bottom, c.bottom) - Math.min(a.bottom, c.bottom)), 'columns end together').toBeLessThan(400);
+        const left = h.bottom - a.y, right = c.bottom - b.y;
+        expect(Math.min(left, right) / Math.max(left, right), 'columns end together').toBeGreaterThanOrEqual(0.4); // seed has 5 untracked beans (tall left); prod is far closer
       } else {
         expect(Math.abs(b.x - a.x)).toBeLessThan(2); // single column
         expect(b.y).toBeGreaterThanOrEqual(a.bottom);
@@ -4206,6 +4207,11 @@ export const STATES: State[] = [
       const input = page.locator('input[name="file"]');
       await input.setInputFiles({ name: 'Beanconqueror.zip', mimeType: 'application/zip', buffer: Buffer.alloc(21 * 1024 * 1024) });
       expect(await input.evaluate((el: HTMLInputElement) => el.validationMessage)).toContain('Over 20 MB');
+      await expect(page.locator('.bq-upload + .badge-urgent')).toContainText('Over 20 MB'); // visible, not just a greyed button
+      await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled();
+      await expect(page.locator('.bq-file')).toHaveText('No file chosen');
+      await input.setInputFiles({ name: 'Beanconqueror.zip', mimeType: 'application/zip', buffer: Buffer.alloc(1024) });
+      await expect(page.locator('.bq-upload + .badge-urgent')).toHaveCount(0);
     }
   },
   {

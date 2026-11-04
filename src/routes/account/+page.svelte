@@ -86,6 +86,7 @@
 <h1>Account</h1>
 
 <div class="acct">
+<div>
 <section data-row-scope class="chart-panel">
   <h2>Bean Conqueror</h2>
 
@@ -127,7 +128,7 @@
           }}
         />
       </label>
-      <span class="bq-file" class:text-muted={!picked}>{picked ?? 'Beanconqueror.zip'}</span>
+      <span class="bq-file" class:text-muted={!picked}>{picked ?? 'No file chosen'}</span>
     </div>
     <button class="button bq-go" type="submit" disabled={!picked || submitting}>
       <span class:bq-hide={submitting}>Import</span>
@@ -190,12 +191,6 @@
   <p class="text-muted">If you change your sign-in password, update it in Bean Conqueror too.</p>
 </section>
 
-<section data-row-scope class="chart-panel">
-  <h2>Recipes</h2>
-  <p>{data.recipes.saved} saved · {data.recipes.groups} found in your brews.</p>
-  <p><a class="button button-secondary" href="/recipes">Open recipes</a></p>
-</section>
-
 <section data-row-scope class="chart-panel" id="household">
   <h2>Household</h2>
   <p class="text-muted">Per-person stats divide your totals by this number: an even split, since Bean Conqueror doesn't record who brewed.</p>
@@ -205,6 +200,14 @@
     <button class="button button-secondary" type="submit">Save</button>
   </form>
   {#if householdError}<p class="badge badge-urgent" role="alert">{householdError}</p>{/if}
+</section>
+
+</div>
+<div>
+<section data-row-scope class="chart-panel">
+  <h2>Recipes</h2>
+  <p>{data.recipes.saved} saved · {data.recipes.groups} found in your brews.</p>
+  <p><a class="button button-secondary" href="/recipes">Open recipes</a></p>
 </section>
 
 <section data-row-scope class="chart-panel" id="brew-now">
@@ -255,6 +258,7 @@
   {#if data.ratios.derived}<p class="text-muted">From your brews: your most common ratios over the last year. Editing the list makes it yours.</p>{/if}
 </section>
 </div>
+</div>
 
 {#if pending}
   <div class="modal-backdrop">
@@ -272,10 +276,9 @@
 {/if}
 
 <style>
-  /* Wide screens: Bean Conqueror left (spanning), Recipes, Household and Brew now stacked right. */
+  /* Wide screens: Bean Conqueror and Household left, Recipes and Brew now right. */
   @media (min-width: 1100px) {
     .acct { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-4); align-items: start; }
-    .acct > :global(section:first-child) { grid-row: span 3; }
   }
   #brew-now { scroll-margin-top: var(--space-4); }
   .bn-cells { display: flex; flex-wrap: wrap; flex: 0 1 auto; gap: var(--space-1) var(--space-4); padding: var(--space-2) 0; min-width: 0; }
