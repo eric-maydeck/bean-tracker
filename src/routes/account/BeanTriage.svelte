@@ -59,7 +59,7 @@
 {#if unmatched.total > 0}
   <h3 id="not-tracked">Not yet tracked ({unmatched.total})</h3>
   <p class="text-muted">Beans in Bean Conqueror with no coffee here yet. Create one, or link it to a coffee you already have.</p>
-  {#if unmatched.beans.length < unmatched.total}<p class="text-muted">Showing top {unmatched.beans.length} of {unmatched.total}.</p>{/if}
+  {#if shown.length < unmatched.total}<p class="text-muted">Showing {shown.length} of {unmatched.total}.</p>{/if}
   <ul class="triage">
     {#each shown as bean (bean.id)}
       <li class="triage-row">
