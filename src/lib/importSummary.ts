@@ -7,7 +7,7 @@ export function importSummary(c: ImportChanges): { lines: string[]; nothing: boo
   const lines: string[] = [];
   for (const [key, one] of [['brews', 'brew'], ['beans', 'bean'], ['waters', 'water']] as const) {
     const { new: n, updated: u } = c[key];
-    const parts = [n && `${n} new ${n === 1 ? one : one + 's'}`, u && `${u} updated`].filter(Boolean);
+    const parts = [n && `${n} new ${n === 1 ? one : one + 's'}`, u && `${u}${n ? '' : ' ' + (u === 1 ? one : one + 's')} updated`].filter(Boolean);
     if (parts.length) lines.push(parts.join(', '));
   }
   if (c.autoLinked) lines.push(`${plural(c.autoLinked, 'bean')} linked to ${c.autoLinked === 1 ? 'its coffee' : 'their coffees'}`);

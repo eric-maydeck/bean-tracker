@@ -18,6 +18,10 @@ describe('importSummary', () => {
     expect(r.lines).toContain('2 new beans');
     expect(r.lines).toContain('1 new water');
   });
+  it('names the noun when nothing is new', () => {
+    const r = importSummary({ ...zero, beans: { new: 0, updated: 22 }, brews: { new: 0, updated: 1 }, waters: { new: 0, updated: 5 } });
+    expect(r.lines).toEqual(['1 brew updated', '22 beans updated', '5 waters updated']);
+  });
   it('reports links and untracked beans', () => {
     expect(importSummary({ ...zero, autoLinked: 1 }).lines).toContain('1 bean linked to its coffee');
     expect(importSummary({ ...zero, autoLinked: 2 }).lines).toContain('2 beans linked to their coffees');
