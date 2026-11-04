@@ -460,6 +460,8 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     const inbox = async () => { await bell.click(); return page.locator('.alert-list-item').filter({ hasText: `Your ${Y} recap is ready` }); };
     let item = await inbox();
     await expect(item.getByRole('link', { name: `Your ${Y} recap is ready` })).toHaveAttribute('href', `/recaps/${Y}`);
+    await expect(item.locator('.alert-meta'), 'no redundant source prefix').not.toContainText('recap ·');
+    await expect(item.locator('.alert-meta')).toContainText('UTC');
     await page.getByRole('button', { name: 'Close' }).click();
     await page.getByRole('button', { name: 'Dismiss' }).first().click(); // the banner's
     await expect(banner).toHaveCount(0);

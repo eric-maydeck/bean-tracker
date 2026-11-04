@@ -259,7 +259,7 @@
           {#each data.alerts as alert (alert.id)}
             <li class="alert-list-item" class:alert-unread={alert.read_at === null}>
               <p class="alert-message">{#if alert.href}<a href={alert.href}>{alert.message}</a>{:else}{alert.message}{/if}</p>
-              <p class="alert-meta">{alert.source} · {formatUpdated(alert.created_at)}</p>
+              <p class="alert-meta">{#if alert.source !== 'recap'}{alert.source} · {/if}{formatUpdated(alert.created_at)}</p>
               <div class="alert-actions">
                 {#if alert.read_at === null}
                   <button class="button button-secondary" type="button" onclick={() => markAlertReadClick(alert.id)}
