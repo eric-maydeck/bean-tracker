@@ -48,7 +48,8 @@ export const BREW_KEY: Record<Board, (b: BrewFact) => string | null> = {
   filter: (b) => (b.filter === MIXED_FILTER ? null : b.filter),
   grinder: (b) => b.grinder,
   varieties: (b) => b.variety?.trim() || null,
-  producers: (b) => b.producer?.trim() || null
+  producers: (b) => b.producer?.trim() || null,
+  caffeine: (b) => (b.decaf ? 'Decaf' : 'Regular')
 };
 // Spend and $/g group bags; only bag attributes have a key.
 const BAG_KEY: Partial<Record<Board, (b: BagFact) => string | null>> = {
@@ -58,7 +59,8 @@ const BAG_KEY: Partial<Record<Board, (b: BagFact) => string | null>> = {
   process: (b) => b.processGroup,
   roast: (b) => b.roastLevel,
   varieties: (b) => b.variety?.trim() || null,
-  producers: (b) => b.producer?.trim() || null
+  producers: (b) => b.producer?.trim() || null,
+  caffeine: (b) => (b.decaf ? 'Decaf' : 'Regular')
 };
 // Boards whose rows open the coffee list filtered to them.
 const FILTER_COLUMN: Partial<Record<Board, ColumnKey>> = { roasters: 'roaster', origins: 'origin', roast: 'roast_level', producers: 'producer' };

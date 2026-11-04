@@ -80,7 +80,7 @@ export interface LabValues {
 }
 export const NO_LAB: LabValues = { bags: [], roasts: [], processes: [], origins: [], roasters: [], grinders: [], drippers: [], filters: [], waters: [], doses: [], temps: [] };
 
-export const WAIT_BYS = ['roaster', 'origin', 'process', 'roast'] as const;
+export const WAIT_BYS = ['roaster', 'origin', 'process', 'roast', 'caffeine'] as const;
 export type WaitBy = (typeof WAIT_BYS)[number];
 // Pours: Recipe × coffee's grouping (absent = roast level).
 export const RECIPE_BYS = ['roast', 'process', 'roaster'] as const;
@@ -151,7 +151,7 @@ export function pickNumber(p: URLSearchParams, name: string, min: number, max: n
 // What if inputs: [min, max] for the URL parser and the inputs.
 export const WHATIF_LIMITS = { drinkers: [1, 20], gpp: [1, 500], inflow: [0, 10000], bpd: [0.5, 20], dose: [5, 40] } as const;
 
-export const BOARDS = ['roasters', 'coffees', 'origins', 'varieties', 'producers', 'process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const;
+export const BOARDS = ['roasters', 'coffees', 'origins', 'varieties', 'producers', 'process', 'roast', 'water', 'dripper', 'filter', 'grinder', 'caffeine'] as const;
 export type Board = (typeof BOARDS)[number];
 // Lowest first: the descending rows reversed, one-bag groups dropped (a lone bag is noise at the bottom) except
 // on Coffees, where each row is one bag.
@@ -159,12 +159,12 @@ export type Board = (typeof BOARDS)[number];
 export const lowFirst = <R extends { bags: number; value: number }>(board: Board, rows: readonly R[]): R[] =>
   rows.filter((r) => board === 'coffees' || r.bags >= 2).sort((a, b) => a.value - b.value);
 // Spend and $/g are per bag: only boards of bag attributes rank by them.
-export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'varieties', 'producers', 'process', 'roast'];
+export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'varieties', 'producers', 'process', 'roast', 'caffeine'];
 // vs like coffees ranks coffees and their roasters only.
 export const LIKE_BOARDS: readonly Board[] = ['coffees', 'roasters'];
 // The small boards' List · Over time switch: views=roast-time,water-time-wide (absent = List; `wide`: the Over time card
 // expanded to the band's full row).
-export const VIEW_BOARDS = ['process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const satisfies readonly Board[];
+export const VIEW_BOARDS = ['process', 'roast', 'water', 'dripper', 'filter', 'grinder', 'caffeine'] as const satisfies readonly Board[];
 export type ViewBoard = (typeof VIEW_BOARDS)[number];
 export type BoardView = 'time' | 'wide';
 export type BoardViews = Partial<Record<ViewBoard, BoardView>>;
@@ -606,7 +606,7 @@ export const resetInsights = (s: InsightsUrlState): InsightsUrlState =>
 // A board's rows, plural (the singular drops the s).
 export const BOARD_NOUN: Record<Board, string> = {
   roasters: 'roasters', coffees: 'coffees', origins: 'origins', varieties: 'varieties', producers: 'producers', process: 'process groups', roast: 'roast levels',
-  water: 'waters', dripper: 'drippers', filter: 'filters', grinder: 'grinders'
+  water: 'waters', dripper: 'drippers', filter: 'filters', grinder: 'grinders', caffeine: 'caffeine kinds'
 };
 const count = (n: number, plural: string) => `${n} ${n === 1 ? plural.slice(0, -1) : plural}`;
 // The See all note (gate 3): what the Score/Ratings/Brews settings hide on this tab. Rows the boards would gain

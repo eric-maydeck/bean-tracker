@@ -6823,6 +6823,20 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
+  { name: 'insights-board-caffeine', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      const board = page.locator('[data-board="caffeine"]');
+      await board.scrollIntoViewIfNeeded();
+      await expect(board.locator('.board-row:not(.placeholder)', { hasText: 'Regular' })).toBeVisible();
+      await expect(board.locator('.board-row', { hasText: 'Decaf' })).toHaveCount(0); // decaf has no rating by default
+      await board.getByRole('button', { name: 'Include decaf' }).click();
+      await expect(page).toHaveURL(/caffeine=all/);
+      await expect(board.getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
+      await page.goto('/insights?tab=leaderboards&range=all&rank=brews'); // counts keep decaf, no filter needed
+      await expect(page.locator('[data-board="caffeine"] .board-row', { hasText: 'Decaf' })).toBeVisible();
+      await expectEqualBoardHeights(page);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    } },
   { name: 'insights-board-varieties', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
       for (const b of ['varieties', 'producers']) await expect(page.locator(`[data-board="${b}"] .board-row:not(.placeholder)`).first()).toBeVisible();

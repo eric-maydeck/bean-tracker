@@ -44,6 +44,15 @@ const RATED = [
 // hiddenRows' reasons over every board, in order.
 const why = (h: ReturnType<typeof hiddenRows>) => [...new Set(Object.values(h.by).flat())];
 
+describe('caffeine board', () => {
+  it('caffeine board ranks Decaf and Regular', () => {
+    const bs = [brew({ coffeeId: 1, rating: 8 }), brew({ coffeeId: 1, rating: 8 }), brew({ coffeeId: 2, decaf: true, rating: 9 })];
+    const gs = [bag({ id: 1 }), bag({ id: 2, decaf: true, cost: 10, amountG: 100 })];
+    expect(vals(leaderboard(bs, gs, SEPT, 'caffeine', 'brews', 'all', 'raw'))).toEqual([['Regular', 2], ['Decaf', 1]]);
+    expect(vals(leaderboard(bs, gs, SEPT, 'caffeine', 'spend', 'all', 'raw'))).toEqual([['Regular', 25], ['Decaf', 10]]);
+  });
+});
+
 describe('leaderboard', () => {
   it('brews: count per key, bags distinct', () =>
     expect(leaderboard(BREWS, BAGS, SEPT, 'roasters', 'brews', 'all', 'raw')).toMatchObject([
@@ -201,7 +210,7 @@ describe('coffees under k2 / adjusted: shrunk by brews', () => {
 describe('leaderboards', () => {
   it('every board, movement only with a compare window', () => {
     const all = leaderboards(BREWS, BAGS, SEPT, null, 'brews', 'all', 'raw');
-    expect(Object.keys(all)).toHaveLength(11);
+    expect(Object.keys(all)).toHaveLength(12);
     expect(all.roasters[0].move).toBeUndefined();
     const cmp = leaderboards(BREWS, BAGS, SEPT, AUG, 'brews', 'all', 'raw');
     // Aug: Moonwake #1 only. Sept: Sey #1 (new), Moonwake #2 (fell one).

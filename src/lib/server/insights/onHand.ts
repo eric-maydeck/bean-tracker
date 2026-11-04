@@ -57,7 +57,7 @@ export type AgedBag = { days: number; name: string; slug: string | null };
 export type BagStates = Record<'open' | 'waiting' | 'frozen', { bags: number; grams: number }>;
 export interface Runway { days: number | null; clearBy: string | null; perDay: number | null }
 export type WaitRow = { label: string; grams: number; bags: number; href: string | null };
-export interface Waiting { by: Record<'roaster' | 'origin' | 'process' | 'roast', WaitRow[]>; sub: number; oneOff: number }
+export interface Waiting { by: Record<'roaster' | 'origin' | 'process' | 'roast' | 'caffeine', WaitRow[]>; sub: number; oneOff: number }
 const TOP = 10;
 
 // Backlog grams on the shelf grouped four ways: biggest first, the top 10 then Other. A missing value is "Unknown".
@@ -79,7 +79,8 @@ export function whatsWaiting(bags: readonly BagFact[], logged: Map<number, numbe
       // Unknown = whatever country() maps to no country: the group's own raw values (blank, "n/a", " N/A "), as processLabels does.
       origin: by((b) => country(b.origin), (l) => ({ column: 'origin', mode: 'any', values: l === null ? [...new Set(rows.filter((r) => country(r.b.origin) === null).map((r) => r.b.origin || null))] : [l] })),
       process: by((b) => b.processGroup, (l) => { const v = processLabels(rows.map((r) => r.b), l ?? ''); return v.length ? { column: 'processing', mode: 'any', values: v } : null; }),
-      roast: by((b) => b.roastLevel, (l) => ({ column: 'roast_level', mode: 'any', values: l === null ? [null] : roastLevelLabels(l) }))
+      roast: by((b) => b.roastLevel, (l) => ({ column: 'roast_level', mode: 'any', values: l === null ? [null] : roastLevelLabels(l) })),
+      caffeine: by((b) => (b.decaf ? 'Decaf' : 'Regular'), (l) => ({ column: 'decaf', mode: 'bool', value: l === 'Decaf' }))
     },
     sub, oneOff: rows.reduce((s, r) => s + r.g, 0) - sub
   };

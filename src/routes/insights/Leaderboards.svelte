@@ -6,7 +6,7 @@
 
   type Rows = NonNullable<PageData['boards']>;
   const TITLE = BOARD_TITLE;
-  const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['varieties', 'producers'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
+  const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['varieties', 'producers'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder', 'caffeine']];
   export function jumpLinks(boards: Rows, cut: Board[], rank: Rank): JumpLink[] {
     // A whole tab with nothing to rank is one empty panel: no chips.
     if (!cut.length && BANDS.flat().every((b) => !boards[b].length)) return [];
@@ -32,7 +32,7 @@
   import { MediaQuery } from 'svelte/reactivity';
   import { allShownLine, hiddenLine, BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Caffeine, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
   import { RANK_LABEL, boardValue } from './chartLink';
   import { labelTip } from '$lib/components/labelTip';
@@ -41,8 +41,9 @@
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
 
   let {
-    boards, coverage, wholeKeys, cut, small, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part
+    boards, coverage, wholeKeys, cut, small, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part, caffeine
   }: {
+    caffeine?: Caffeine; // the page's Caffeine filter (absent = Caffeinated: decaf brews have no rating)
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
     boards: Rows; coverage: PageData['boardCoverage'] & {}; wholeKeys: BrewFilterKey[]; cut: Board[]; small: Partial<Record<Board, number>>; rank: Rank; avg: Avg | undefined; open: Board[]; low: Board[]; comparing: boolean; perPerson: boolean;
@@ -297,6 +298,7 @@
         {/if}
       </div>
     </div>
+    {#if b === 'caffeine' && rank === 'rating' && !caffeine}<p class="like-note">Decaf brews are left out of ratings. <button class="link-like" onclick={() => choose({ caffeine: 'all' })}>Include decaf</button></p>{/if}
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     {#if (b === 'varieties' || b === 'producers') && rows.length}
       {@const c = coverage[b]}
@@ -446,13 +448,15 @@
   }
   @media (min-width: 641px) {
     .band-2,
-    .band-6 {
+    .band-6,
+    .band-7 {
       --cols: 2;
     }
   }
   /* viewport 1000px (no rail; the rail narrows it) */
   @container insights (min-width: 968px) {
-    .band-6 {
+    .band-6,
+    .band-7 {
       --cols: 3;
     }
   }

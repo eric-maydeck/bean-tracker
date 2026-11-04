@@ -53,7 +53,7 @@
   // What's waiting: backlog grams grouped by roaster, origin, process or roast level.
   const by = $derived(waitBy ?? 'roaster');
   const rows = $derived(t.waiting.by[by]);
-  const BY_LABEL: Record<WaitBy, string> = { roaster: 'Roaster', origin: 'Origin', process: 'Process', roast: 'Roast' };
+  const BY_LABEL: Record<WaitBy, string> = { roaster: 'Roaster', origin: 'Origin', process: 'Process', roast: 'Roast', caffeine: 'Caffeine' };
   const empty = $derived(!shelf(t) && t.freshness.unknown === 0);
 </script>
 

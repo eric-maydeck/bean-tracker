@@ -23,7 +23,7 @@ export const useChartLink = (): ChartLink => getContext<ChartLink>(KEY);
 
 export const BOARD_TITLE: Record<Board, string> = {
   roasters: 'Roasters', coffees: 'Coffees', origins: 'Origins', varieties: 'Varieties', producers: 'Producers', process: 'Process group', roast: 'Roast level',
-  water: 'Water', dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder'
+  water: 'Water', dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder', caffeine: 'Caffeine'
 };
 export const RANK_LABEL: Record<Rank, string> = { rating: 'Rating', brews: 'Brews', grams: 'Grams', spend: 'Spend', ppg: '$/g', like: 'vs like coffees' };
 

@@ -873,6 +873,7 @@
 {#if data.boards}
   <Leaderboards
     {part}
+    caffeine={s.caffeine}
     boards={data.boards}
     coverage={data.boardCoverage!}
     cut={data.boardsCut}

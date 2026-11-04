@@ -5,7 +5,7 @@ import type { BoardRow } from '$lib/server/insights/leaderboards';
 
 const rows = (vals: [string, number][]) => vals.map(([label, value]) => ({ key: label, label, value }) as unknown as BoardRow);
 const ORIGINS = rows([['Ethiopia', 8.42], ['Kenya', 8.1], ['Colombia', 7.94], ['Rwanda', 7.5], ['Burundi', 7.0], ['Peru', 6.9]]);
-const none = { roasters: [], coffees: [], origins: ORIGINS, varieties: [], producers: [], process: [], roast: [], water: rows([['Lab Water B', 12]]), dripper: [], filter: [], grinder: [] };
+const none = { roasters: [], coffees: [], origins: ORIGINS, varieties: [], producers: [], process: [], roast: [], water: rows([['Lab Water B', 12]]), dripper: [], filter: [], grinder: [], caffeine: [] };
 const base = {
   tab: 'leaderboards' as const, owner: 'fuhnoo', tabLabel: 'Leaderboards', period: 'All time', brews: 412, avgRating: 7.94, filters: ['Kenya', 'Washed'],
   rank: 'rating' as const, perPerson: false, boards: none, records: null

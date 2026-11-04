@@ -310,7 +310,7 @@ describe('/insights load', () => {
     expect(run().boards).toBeNull();
     const d = run('?tab=leaderboards&rank=grams');
     expect(d.explicit).toMatchObject({ tab: 'leaderboards', rank: 'grams' });
-    expect(Object.keys(d.boards)).toHaveLength(11);
+    expect(Object.keys(d.boards)).toHaveLength(12);
     expect(d.boards.roasters).toEqual([expect.objectContaining({ label: 'R', value: 15, bags: 1, brews: 1 })]);
   });
 
