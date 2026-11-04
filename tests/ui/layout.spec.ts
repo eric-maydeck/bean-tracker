@@ -893,13 +893,14 @@ export const STATES: State[] = [
             // the figure's first glyph and the line's sit on one left edge (the big has a small negative margin and glyph side bearing)
             dx: Math.abs(left(each) - left(fit)),
             fs: parseFloat(getComputedStyle(each).fontSize), subFs: sub ? parseFloat(getComputedStyle(sub).fontSize) : 99,
-            ctxFs: parseFloat(getComputedStyle(sl.querySelector('.context')!).fontSize), over: each.scrollWidth > each.clientWidth + 1 };
+            ctxFs: parseFloat(getComputedStyle(sl.querySelector('.context')!).fontSize), gap: rc(each).top - rc(fit).bottom, over: each.scrollWidth > each.clientWidth + 1 };
         });
         expect(r, id).toMatchObject({ lines: 1, right: true, below: true, over: false });
+        expect(r.fs, `${id}: the shrink-to-fit floor stays readable`).toBeGreaterThanOrEqual(12);
         expect(r.dx, `${id}: left-aligned with the big`).toBeLessThanOrEqual(8);
-        expect(r.fs, `${id}: smaller than .sub`).toBeLessThan(r.subFs);
-        expect(r.fs, `${id}: about the context size or a step below`).toBeLessThanOrEqual(r.ctxFs);
-        expect(r.fs, `${id}: still readable`).toBeGreaterThanOrEqual(12);
+        expect(r.fs, `${id}: no bigger than .sub`).toBeLessThanOrEqual(r.subFs);
+        expect(r.fs, `${id}: a headline over the context line`).toBeGreaterThan(r.ctxFs);
+        expect(r.gap, `${id}: tight under the big value`).toBeLessThanOrEqual(r.fs * 0.9);
         const [fg, bg] = await slide.evaluate((sl) => [getComputedStyle(sl.querySelector('.each')!).color, getComputedStyle(sl).backgroundColor]);
         expect(fg, 'same text color as the slide').toBe(await slide.evaluate((sl) => getComputedStyle(sl).color));
         void bg;

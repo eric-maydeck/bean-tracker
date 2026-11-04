@@ -71,9 +71,11 @@
   .more { color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
   .more:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
   /* The per-person companion under the big value: one nowrap line that shrinks to its box (cqi, ~0.56em per char), never wraps. */
-  .each { container-type: inline-size; margin: -0.1em 0 0.1em; font-weight: 600; opacity: 0.95; }
-  .each span { display: block; white-space: nowrap; font-size: min(1em, calc(100cqi / (var(--w) * 0.56))); }
-  .slide .each { font-size: clamp(1rem, 1.8vh, 1.2rem); }
+  .each { container-type: inline-size; margin: 0; font-family: var(--font-display); font-weight: 700; line-height: 1.15; letter-spacing: -0.01em; }
+  .each span { display: block; white-space: nowrap; font-size: min(1em, calc(100cqi / (var(--w) * 0.52))); }
+  /* Subtext to the big value: pulled up tight under it (cancels the flex gap and the big's bottom margin), a step below .sub. */
+  .slide .each { font-size: clamp(1.3rem, 5vw, 1.7rem); margin-top: calc(2px - clamp(12px, 1.6vh, 28px)); }
+  .slide .big:has(+ .each) { margin-bottom: 0; }
   .vizwrap { container-type: inline-size; }
   .traits { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
   .traits li { border-top: 2px solid currentColor; padding-top: 6px; line-height: 1.3; }
@@ -112,7 +114,7 @@
     .inner:not(:has(.vizwrap, .traits)) { max-width: 46rem; grid-template-columns: minmax(0, 1fr); }
     .inner > .lead, .inner > .big, .inner > .each, .inner > .sub, .inner > .context, .inner > .more { grid-column: 1; }
     .slide .sub { font-size: clamp(1.8rem, 3vw, 3rem); }
-    .slide .each { font-size: clamp(1rem, 1.5vw, 1.5rem); }
+    .slide .each { font-size: clamp(1.3rem, 2.1vw, 2.1rem); margin-top: calc(2px - clamp(12px, 2vh, 24px)); }
     .inner > .vizwrap, .inner > .traits { grid-column: 2; grid-row: 1 / span 5; align-self: center; }
     .slide .big { font-size: clamp(5rem, min(13vw, 26vh), 13rem); }
     .slide .big.long { font-size: clamp(3.5rem, min(8vw, 16vh), 8rem); }
@@ -137,7 +139,7 @@
     .slide .names { --cap: clamp(1.6rem, 10vh, 2.4rem); }
     .slide .sub { font-size: 1.15rem; margin: 0; }
     .slide .context { font-size: 1rem; }
-    .slide .each { font-size: 0.95rem; margin: -0.3em 0 0; }
+    .slide .each { font-size: 1.1rem; margin-top: -4px; }
   }
   @media (max-height: 640px) and (min-width: 700px) {
     .inner { max-width: 56rem; display: grid; grid-template-columns: 1fr 1fr; column-gap: 32px; row-gap: 8px; align-items: center; }
