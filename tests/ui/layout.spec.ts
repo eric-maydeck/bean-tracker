@@ -4167,6 +4167,19 @@ export const STATES: State[] = [
     }
   },
   {
+    // A file the server rejects: the error shows, the picked name stays and Import is enabled for a retry.
+    name: 'account-upload-error-retry', viewports: 'two',
+    path: () => '/account',
+    act: async (page) => {
+      await page.locator('input[name="file"]').setInputFiles({ name: 'broken.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') });
+      const go = page.getByRole('button', { name: 'Import', exact: true });
+      await go.click();
+      await expect(page.locator('.badge-urgent')).toContainText('Could not read that file as a .zip');
+      await expect(page.locator('.bq-file')).toHaveText('broken.zip');
+      await expect(go).toBeEnabled();
+    }
+  },
+  {
     // A tiny export (one water): the summary names what changed (or "Nothing changed." on a repeat run) and links to the stats.
     name: 'account-upload-summary', viewports: 'two',
     path: () => '/account',

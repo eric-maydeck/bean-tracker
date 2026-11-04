@@ -72,10 +72,11 @@
     enctype="multipart/form-data"
     use:enhance={() => {
       submitting = true;
-      return async ({ update }) => {
+      return async ({ result, update }) => {
         await update();
         submitting = false;
-        picked = null;
+        // update() resets the form (and its file input) only on success; after an error the file is still there to retry.
+        if (result.type === 'success') picked = null;
       };
     }}
   >
