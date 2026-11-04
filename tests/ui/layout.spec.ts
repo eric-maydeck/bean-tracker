@@ -4141,6 +4141,50 @@ export const STATES: State[] = [
     }
   },
   {
+    // Upload control: a roomy tonal "Choose export" + a disabled Import until a file is picked; no horizontal overflow.
+    name: 'account-upload-empty',
+    path: () => '/account',
+    act: async (page) => {
+      const choose = page.locator('.bq-choose');
+      const go = page.getByRole('button', { name: 'Import', exact: true });
+      await expect(go).toBeDisabled();
+      for (const el of [choose, go]) expect((await el.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await expect(page.locator('input[name="file"]')).toBeAttached();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
+  },
+  {
+    name: 'account-upload-picked',
+    path: () => '/account',
+    act: async (page) => {
+      const go = page.getByRole('button', { name: 'Import', exact: true });
+      const before = (await go.boundingBox())!;
+      await page.locator('input[name="file"]').setInputFiles('tests/ui/fixtures/bq-tiny.zip');
+      await expect(page.locator('.bq-file')).toHaveText('bq-tiny.zip');
+      await expect(go).toBeEnabled();
+      const after = (await go.boundingBox())!;
+      expect(Math.abs(after.width - before.width) + Math.abs(after.height - before.height)).toBeLessThan(1);
+    }
+  },
+  {
+    // A tiny export (one water): the summary names what changed (or "Nothing changed." on a repeat run) and links to the stats.
+    name: 'account-upload-summary', viewports: 'two',
+    path: () => '/account',
+    act: async (page) => {
+      await page.locator('input[name="file"]').setInputFiles('tests/ui/fixtures/bq-tiny.zip');
+      await page.getByRole('button', { name: 'Import', exact: true }).click();
+      const res = page.locator('.bq-result');
+      await expect(res).toBeVisible();
+      await expect(res).toContainText(/1 new water|Nothing changed\./);
+      await expect(res.getByRole('link', { name: 'See your stats' })).toHaveAttribute('href', '/insights');
+      await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled(); // form reset
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+      await checkLayout(page);
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
+      await checkLayout(page);
+    }
+  },
+  {
     // Add then remove a dose (a different one per viewport: both run against one DB): each shows a status toast.
     name: 'account-toasts', viewports: 'two',
     path: () => '/account',

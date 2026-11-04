@@ -4,6 +4,7 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { showToast } from '$lib/toast.svelte';
+  import { importSummary } from '$lib/importSummary';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   let { data, form } = $props();
   // A short toast when a dose/ratio add or remove saved, with Undo (the opposite action on the same value).
@@ -46,6 +47,10 @@
 
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-US', { timeZone: 'UTC' }) + ' UTC' : 'never');
   const s = $derived(data.status);
+  let picked = $state<string | null>(null);
+  let tooBig = $state(false);
+  let submitting = $state(false);
+  const summary = $derived(form && 'changes' in form && form.changes ? importSummary(form.changes) : null);
 </script>
 
 <svelte:head>
@@ -60,34 +65,65 @@
 
   <h3>Brew data (zip)</h3>
   <p class="text-muted">Last import: {when(data.lastImportedAt)}</p>
-  <form method="POST" action="?/importBeanConqueror" enctype="multipart/form-data" use:enhance>
-    <label>
-      Bean Conqueror export (.zip)
-      <!-- The server drops bodies over 20 MB (BODY_SIZE_LIMIT) with a bare error: stop them here.
-           Must match MAX_UPLOAD_BYTES in src/lib/server/beanConquerorJson.ts. -->
-      <input
-        type="file"
-        name="file"
-        accept=".zip"
-        required
-        onchange={(e) => {
-          const input = e.currentTarget;
-          input.setCustomValidity(
-            (input.files?.[0]?.size ?? 0) > 20 * 1024 * 1024
-              ? 'Over 20 MB: upload Beanconqueror.zip (the regular export, not the one with photos)'
-              : ''
-          );
-        }}
-      />
-    </label>
-    <button class="button" type="submit">Import</button>
+  <form
+    class="bq-upload"
+    method="POST"
+    action="?/importBeanConqueror"
+    enctype="multipart/form-data"
+    use:enhance={() => {
+      submitting = true;
+      return async ({ update }) => {
+        await update();
+        submitting = false;
+        picked = null;
+      };
+    }}
+  >
+    <div class="bq-pick">
+      <label class="button button-secondary bq-choose">
+        Choose export
+        <!-- The server drops bodies over 20 MB (BODY_SIZE_LIMIT) with a bare error: stop them here.
+             Must match MAX_UPLOAD_BYTES in src/lib/server/beanConquerorJson.ts. -->
+        <input
+          class="sr-only"
+          type="file"
+          name="file"
+          accept=".zip"
+          required
+          onchange={(e) => {
+            const input = e.currentTarget;
+            const f = input.files?.[0] ?? null;
+            const big = (f?.size ?? 0) > 20 * 1024 * 1024;
+            input.setCustomValidity(big ? 'Over 20 MB: upload Beanconqueror.zip (the regular export, not the one with photos)' : '');
+            picked = f && !big ? f.name : null;
+            tooBig = big;
+          }}
+        />
+      </label>
+      <span class="bq-file" class:text-muted={!picked}>{picked ?? 'Beanconqueror.zip'}</span>
+    </div>
+    <button class="button bq-go" type="submit" disabled={!picked || submitting}>
+      <span class:bq-hide={submitting}>Import</span>
+      <span class="bq-busy" class:bq-hide={!submitting} aria-hidden={!submitting}>Importing…</span>
+    </button>
   </form>
+  {#if tooBig}
+    <p class="badge badge-urgent">Over 20 MB: upload Beanconqueror.zip (the regular export, not the one with photos)</p>
+  {/if}
   {#if form && 'error' in form && form.error}
     <p class="badge badge-urgent"><CoffeeName text={form.error} /></p>
-  {:else if form && 'changes' in form && form.changes}
-    <p class="text-muted">
-      Imported: {form.changes.beans.new + form.changes.beans.updated} beans, {form.changes.brews.new + form.changes.brews.updated} brews, {form.changes.waters.new + form.changes.waters.updated} waters changed.
-    </p>
+  {:else if summary}
+    <div class="bq-result" role="status">
+      <ul>
+        {#each summary.lines as line (line)}<li>{line}</li>{/each}
+      </ul>
+      <p class="bq-links">
+        <a class="button button-secondary" href="/insights">See your stats</a>
+        {#if form && 'changes' in form && form.changes && form.changes.untracked.total > 0}
+          <a class="button button-ghost" href="#not-tracked">Review untracked beans</a>
+        {/if}
+      </p>
+    </div>
   {/if}
   <p class="text-muted">
     In Bean Conqueror: Settings → Export, then pick Beanconqueror.zip here. Do this before or after the flow upload;
@@ -195,4 +231,22 @@
   .bn-cell { display: flex; flex-direction: column; min-width: 3.75rem; line-height: 1.3; }
   .bn-cell .text-muted { font-size: 0.8rem; }
   .bn-confirm { max-width: 24rem; }
+  .bq-upload { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+  .bq-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); min-width: 0; }
+  .bq-choose, .bq-go { position: relative; min-height: 44px; margin: 0; display: inline-flex; align-items: center; justify-content: center; }
+  .bq-choose:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .bq-file { overflow-wrap: anywhere; min-width: 0; }
+  /* Both labels share one cell, so "Importing…" never changes the button's size. */
+  .bq-go { display: inline-grid; padding-inline: var(--space-5, 1.5rem); }
+  .bq-go > span { grid-area: 1 / 1; }
+  .bq-hide { visibility: hidden; }
+  .bq-result { margin-top: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); }
+  .bq-result ul { margin: 0; padding-left: 1.2em; }
+  .bq-links { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 0; }
+  .bq-links .button { margin: 0; min-height: 44px; display: inline-flex; align-items: center; }
+  @media (max-width: 600px) {
+    .bq-upload { flex-direction: column; align-items: stretch; }
+    .bq-pick { flex-direction: column; align-items: stretch; }
+    .bq-file { text-align: center; }
+  }
 </style>
