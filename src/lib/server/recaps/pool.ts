@@ -569,12 +569,15 @@ const consistent: FactDef = {
   }
 };
 
+// The smallest first-brew gap (rating points) worth a slide; /insights' generator has no such floor.
+const DIAL_IN_FLOOR = 0.1;
 const dialIn: FactDef = {
   id: 'dial-in', category: 'brewing',
   run: (y) => {
     const found = dialinCurve({ ...toGenCtx(y), brews: y.brews }); // /insights' dial-in input: onceDialed strips brew 1's rating
     const f = Array.isArray(found) ? found[0] : found;
     if (!f?.value || !f.series?.length || (f.strength !== 'solid' && f.strength !== 'hint')) return null;
+    if (Math.abs(Number(f.value)) < DIAL_IN_FLOOR) return null; // solid, but too small an effect to be a slide (user, gate 2)
     const best = f.series.reduce((a, b) => (b.value > a.value ? b : a));
     return {
       id: 'dial-in', category: 'brewing', lead: 'The first brews of a bag rate', big: f.value,

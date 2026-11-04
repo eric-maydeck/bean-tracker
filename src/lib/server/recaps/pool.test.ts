@@ -6,7 +6,9 @@ vi.mock('$lib/server/insights/lab', async (orig) => {
   return { ...m, sweetSpotsTab: (...a: Parameters<typeof m.sweetSpotsTab>) => (stub.spot ? { matching: { bags: 0, brews: 0 }, topBags: [], cards: [{ key: 'rest', name: 'Rest', spot: stub.spot }] } : m.sweetSpotsTab(...a)) };
 });
 import type { BagFact, BrewFact } from '$lib/server/insights/facts';
+import { dialinCurve } from '$lib/server/insights/insightGenerators';
 import { POOL, fact } from './pool';
+import { toGenCtx } from './year';
 import { brew, ctx, days } from './testFixtures';
 import type { YearCtx } from './year';
 
@@ -391,6 +393,14 @@ describe('consistent, dial-in, weekend, top-dripper', () => {
     // no first-brew effect: the finding is only 'early' (not solid or hint), so it is no slide
     const flat = shelf.brews.map((b) => ({ ...b, rating: 7 + (b.id % 5) * 0.2 }));
     expect(fact('dial-in').run(full({ brews: flat, scored: scoredOf(flat) }))).toBeNull();
+  });
+  it('dial-in: a solid but tiny gap (0.05) is below the 0.1 floor, so no slide', () => {
+    const tiny = shelf.brews.map((b) => ({ ...b, rating: b.brewIndex === 1 ? 6.95 : 7 + (b.id % 2) * 0.001 }));
+    const c = full({ brews: tiny, scored: scoredOf(tiny) });
+    const found = dialinCurve({ ...toGenCtx(c), brews: c.brews });
+    const f = Array.isArray(found) ? found[0] : found;
+    expect([f?.strength, f?.value]).toEqual(['solid', '-0.05']); // /insights would show it; the recap does not
+    expect(fact('dial-in').run(c)).toBeNull();
   });
   it('weekend: the lean, null for an even week', () => {
     const s = fact('weekend').run(full())!;
