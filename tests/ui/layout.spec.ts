@@ -723,6 +723,21 @@ async function expectNoMidWord(page: Page, sel: string, fit?: string, words: str
           if (tops.size > 1) bad.push(`${m[0]} split (${(el as HTMLElement).className})`);
         }
       }
+      // A number and a unit typed into the text itself ("22–30 d", "1,522 brews") stay on one line: the last two words of a .big.
+      if (el.matches('.big, .big *, b')) {
+        const txt = el.textContent ?? '';
+        const m = /(\d[^\s\u00a0]*)[ \u00a0]+([A-Za-z%°]{1,6})\s*$/.exec(txt);
+        if (m) {
+          const nodes: { n: Node; start: number }[] = [];
+          const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          for (let n = w.nextNode(), at = 0; n; n = w.nextNode()) { nodes.push({ n, start: at }); at += n.textContent!.length; }
+          const at = (pos: number) => { const x = [...nodes].reverse().find((q) => q.start <= pos)!; return [x.n, pos - x.start] as const; };
+          const rect = (from: number, to: number) => { const r = document.createRange(); r.setStart(...at(from)); r.setEnd(...at(to - 1)); r.setEnd(r.endContainer, r.endOffset + 1); return [...r.getClientRects()].filter((q) => q.width > 0); };
+          const numStart = m.index, unitStart = m.index + m[0].length - m[0].trimStart().length + m[0].indexOf(m[2], m[1].length);
+          const nr = rect(numStart, numStart + m[1].length).at(-1), ur = rect(unitStart, unitStart + m[2].length)[0];
+          if (nr && ur && (ur.top + ur.height / 2 < nr.top || ur.top + ur.height / 2 > nr.bottom)) bad.push(`"${m[1]} ${m[2]}": unit on another line than its number`);
+        }
+      }
       const box = (el.closest('.big, b') ?? el) as HTMLElement;
       const fitEl = box.querySelector('.fit');
       if (fitEl && !box.classList.contains('names')) {
@@ -844,6 +859,13 @@ export const STATES: State[] = [
     act: async (page) => { await expectChartLabelsClear(page); } },
   { name: 'recaps-no-midword', path: () => `/recaps/${recapYear() - 1}`,
     act: async (page) => {
+      // The preview year has the most facts, the rest slide ("22–30d") among them: the same words/units/overflow check there.
+      await page.goto(`/recaps/${recapYear()}?preview=1`);
+      await reloadReady(page);
+      await expect(page.locator('section.slide[data-id="rest"]'), 'the seed year has a rest slide').toHaveCount(1);
+      await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context, .hlist .k');
+      await page.goto(`/recaps/${recapYear() - 1}`);
+      await reloadReady(page);
       await expectNoMidWord(page, '.slide .big, .slide .names, .slide .lead, .slide .sub, .slide .context, .tile .big, .tile .names, .tile .lead, .tile .sub, .tile .context, .hlist .k');
       await expectNoMidWord(page, '.slide:not(.cover) .big:not(.names)', '.slide:not(.cover) .big:not(.names) .fit', LONG_NAMES);
       await expectNoMidWord(page, '.tile .big:not(.names)', '.tile .big:not(.names) .fit', LONG_NAMES);

@@ -325,6 +325,13 @@ describe('rest card figures', () => {
     expect(s.context).toBe('7.42 average since June, against 7.34 at 60–89d.');
     expect(s.score).toBeCloseTo(0.16);
   });
+  it('band labels that already carry a spaced " d" still read "22–30d" (a unit never parts from its number)', () => {
+    const sp = (label: string, v: number) => ({ ...band(label, v), label });
+    const s = run(t2({ best: { label: '22–30 d', value: 7.42, strength: 'solid' }, usual: { label: '0–21 d', mean: 7.02 }, bands: [sp('0–21 d', 7.0), sp('22–30 d', 7.42), sp('60+ d', 7.1)] }))!;
+    expect(s.big).toBe('22–30d');
+    expect(s.context).toBe('7.42 average since June, against 7.02 at 0–21d.');
+    expect((s.viz as any).rows.map((r: any) => r.label)).toEqual(['0–21d', '22–30d', '60d+']);
+  });
   it('tier 1: a signed same-bag gap', () => {
     const s = run({ tier: 1, verdict: 'win', best: { label: '45–59', value: 0.42, strength: 'solid' }, usual: { label: '45–59', mean: 7.4 }, bands: [band('30–44', -0.1), band('45–59', 0.42)] })!;
     expect(s.big).toBe('45–59d');

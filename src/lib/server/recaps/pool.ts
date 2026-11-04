@@ -426,7 +426,8 @@ const ratio: FactDef = {
   }
 };
 
-const dLabel = (l: string) => l.replace(/(\d+)(\+)?$/, '$1d$2');
+// A rest band's label as copy: "22–30" and the card's own "22–30 d" both become "22–30d" (a value and its unit are one word).
+const dLabel = (l: string) => l.replace(/\s*d(\+?)$/, '$1').replace(/(\d+)(\+)?$/, '$1d$2');
 
 const rest: FactDef = {
   id: 'rest', category: 'brewing',
