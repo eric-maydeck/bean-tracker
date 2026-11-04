@@ -877,6 +877,10 @@ export const STATES: State[] = [
       expect(page.url()).toContain('slide=total');
       for (const h of await page.locator('a.more').evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href))) expect(new URL(h).searchParams.get('people'), h).toBe('person');
       await expectNoMidWord(page, '.slide .big, .slide .context, .people-switch button');
+      // Opened directly, the toggle's replaceState is not an earlier in-app page: Back stays the plain link to the Recaps tab.
+      await page.evaluate(() => { history.back = () => {}; }); // a hijacked Back would call this and go nowhere
+      await page.getByRole('link', { name: /Back$/ }).click();
+      await expect(page).toHaveURL(/\/insights\?tab=recaps/);
       await page.goto(`/recaps/${recapYear() - 1}?people=person`);
       await reloadReady(page);
       await expect(page.locator('.slide .people-switch button[aria-pressed="true"]')).toHaveText('Per person');

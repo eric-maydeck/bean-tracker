@@ -23,7 +23,8 @@
 
   // Back is the browser's back whenever an in-app page came before (as the coffee page's Back); otherwise a plain link to the Recaps tab.
   let cameFromApp = $state(false);
-  afterNavigate(({ from }) => { cameFromApp = !!from; });
+  // The reel's own replaceState (people toggle, slide hash) is not an earlier page.
+  afterNavigate(({ from }) => { if (from && from.route.id !== '/recaps/[year]') cameFromApp = true; });
   function back(e: MouseEvent) {
     if (!cameFromApp || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
