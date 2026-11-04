@@ -34,7 +34,7 @@ test.afterAll(() => {
 
 test('link picker opens and filters within budget', { tag: '@stats' }, async ({ page }) => {
   test.skip(process.env.UI_PROFILE === 'background', 'wall-clock budget needs performance cores');
-  await gotoReady(page, '/account');
+  await gotoReady(page, '/account?untracked=all');
   const row = page.locator('.triage-row').filter({ hasText: 'Kenya Kiambu' }).first();
   await row.getByRole('button', { name: 'Link', exact: true }).click();
   await expect(page.getByRole('button', { name: /^Coffee to link/ })).toBeVisible();

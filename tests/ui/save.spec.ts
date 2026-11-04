@@ -2,6 +2,9 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 import { gotoReady } from './ready';
 import { localToday } from '../../src/lib/server/localToday';
 import { DatabaseSync } from 'node:sqlite';
+import { truncate, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { VIEWPORTS } from './viewports';
 import { checkLayout, expectStatRowsFull, expectTipInView } from './checkLayout';
 
@@ -495,4 +498,42 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     runK(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`, alertKey);
     runK(`DELETE FROM alerts WHERE source = 'recap'`);
   }
+});
+
+// Household panel on Account: a real save toasts with Undo, which restores the old size (layout checks stub this).
+test('account household: save toasts, Undo restores', { tag: '@stats' }, async ({ page }) => {
+  await gotoReady(page, '/account');
+  const panel = page.locator('#household');
+  const input = panel.getByLabel('Household size');
+  const size = await input.inputValue(); // earlier save tests may have left it at 1
+  await input.fill('3');
+  await panel.getByRole('button', { name: 'Save' }).click();
+  const toast = page.getByRole('status').filter({ hasText: 'Household size set to 3.' });
+  await expect(toast).toBeVisible();
+  await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: '3' });
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Undone.' })).toBeVisible();
+  await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: size });
+});
+
+// Last (it adds a water): after the over-20 MB message, the next good file really imports on the first try.
+test('account upload: a good file imports on the first try after a too-big one', { tag: '@stats' }, async ({ page }) => {
+  await gotoReady(page, '/account');
+  const big = join(tmpdir(), `bq-big-save-${process.pid}.zip`);
+  await truncate(big, 25 * 1024 * 1024).catch(async () => { await writeFile(big, ''); await truncate(big, 25 * 1024 * 1024); });
+  try {
+    const pick = async (file: string) => {
+      const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.bq-choose').click()]);
+      await fc.setFiles(file);
+    };
+    await pick(big);
+    await expect(page.locator('.bq-upload + .badge-urgent')).toBeVisible();
+    await pick('tests/ui/fixtures/bq-tiny.zip');
+    await expect(page.locator('.bq-upload + .badge-urgent')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    const res = page.locator('.bq-result');
+    await expect(res).toContainText(/1 new water|Nothing changed\./);
+    await expect(res.getByRole('link', { name: 'See your stats' })).toHaveAttribute('href', '/insights');
+    await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled(); // form reset
+  } finally { await rm(big, { force: true }); }
 });

@@ -4,6 +4,7 @@ import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
 import { truncate, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { stringify } from 'devalue';
 import { join } from 'node:path';
 import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody, outerHeight } from './collapsibleBar';
 import { glue } from '../../src/lib/unitGap';
@@ -17,6 +18,15 @@ interface Seed {
 }
 // Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
 // asserts each stays on one line).
+// A stubbed successful Bean Conqueror import (layout states never write).
+const stubImport = (page: Page) => page.route('**/account?/importBeanConqueror', (route) => route.fulfill({ json: {
+  type: 'success', status: 200,
+  data: stringify({ success: true, changes: {
+    beans: { new: 0, updated: 0 }, brews: { new: 0, updated: 0 }, waters: { new: 1, updated: 0 },
+    autoLinked: 0, untracked: { total: 2, added: 1 }
+  } })
+} }));
+
 const GRAMS = { big: '2kg (2kg left)', under: '999g (999g left)', part: '1.5kg (1.1kg left)' };
 type GramsKey = keyof typeof GRAMS;
 const GRAMS_KEYS = Object.keys(GRAMS) as GramsKey[];
@@ -3413,9 +3423,16 @@ export const STATES: State[] = [
   },
   {
     // Household panel on Account: save toasts with Undo (and restores); a bad size shows its error in the panel.
+    // Stubbed (layout states never save; the real save is in save.spec.ts).
     name: 'account-household', viewports: 'two',
     path: () => '/account',
     act: async (page) => {
+      await page.route('**/account?/updateHouseholdSize', async (route) => {
+        const bad = /householdSize(?:=|"\r\n\r\n)21(?:&|\r|$)/.test(route.request().postData() ?? '');
+        await route.fulfill({ json: bad
+          ? { type: 'failure', status: 400, data: stringify({ error: 'Household size must be a whole number from 1 to 20' }) }
+          : { type: 'success', status: 200, data: stringify({ success: true }) } });
+      });
       const panel = page.locator('#household');
       const input = panel.getByLabel('Household size');
       await expect(input).toHaveValue('2');
@@ -4358,16 +4375,18 @@ export const STATES: State[] = [
     }
   },
   {
-    // A tiny export (one water): the summary names what changed (or "Nothing changed." on a repeat run) and links to the stats.
+    // The summary names what changed and links to the stats and the untracked list. Stubbed (layout states never import).
     name: 'account-upload-summary', viewports: 'two',
     path: () => '/account',
     act: async (page) => {
+      await stubImport(page);
       await page.locator('input[name="file"]').setInputFiles('tests/ui/fixtures/bq-tiny.zip');
       await page.getByRole('button', { name: 'Import', exact: true }).click();
       const res = page.locator('.bq-result');
       await expect(res).toBeVisible();
-      await expect(res).toContainText(/1 new water|Nothing changed\./);
+      await expect(res).toContainText('1 new water');
       await expect(res.getByRole('link', { name: 'See your stats' })).toHaveAttribute('href', '/insights');
+      await expect(res.getByRole('link', { name: 'Review untracked beans' })).toHaveAttribute('href', '#not-tracked');
       await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled(); // form reset
       await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
       await checkLayout(page);
@@ -4377,11 +4396,13 @@ export const STATES: State[] = [
   },
   {
     // After the over-20 MB message, the next (good) file imports on the first try (user, 2026-11-04: the form reset).
+    // The import itself is stubbed; the real round-trip is in save.spec.ts.
     name: 'account-upload-after-too-big', viewports: 'two',
     path: () => '/account',
     act: async (page) => {
+      await stubImport(page);
       // Real picker round-trips with an on-disk sparse file (not committed): the way a phone picks.
-      const big = join(tmpdir(), `bq-big-${process.pid}.zip`);
+      const big = join(tmpdir(), `bq-big-${process.pid}-${isPhone(page) ? 'p' : 'd'}.zip`);
       await truncate(big, 25 * 1024 * 1024).catch(async () => { await writeFile(big, ''); await truncate(big, 25 * 1024 * 1024); });
       try {
         const pick = async (file: string) => {
@@ -4434,7 +4455,7 @@ export const STATES: State[] = [
     name: 'stats-bq-import-link', viewports: 'two',
     path: () => '/stats?tab=bq',
     act: async (page) => {
-      await expect(page.getByRole('main').getByRole('link', { name: 'Account', exact: true })).toHaveAttribute('href', '/account');
+      await expect(page.getByRole('main').getByRole('link', { name: 'Account', exact: true })).toHaveAttribute('href', '/account#not-tracked');
       await expect(page.locator('input[name="file"]')).toHaveCount(0);
     }
   },
