@@ -376,10 +376,10 @@ db.prepare(`INSERT INTO roaster_recipes (roaster, url, title, snippet, searched_
   'Nobody Brewed Roasters', 'https://example.com/brew-guide', 'Brew guide: ' + 'Pour-over-recipe-with-a-very-long-title-'.repeat(3),
   '15 g coffee to 250 g water at 93 C. ' + 'Pour in three stages, then swirl and let it drain. '.repeat(5).slice(0, 240), now);
 
-// Every open recap year counts as seen, so the admin "recap is ready" banner stays out of the layout states
-// (save.spec.ts deletes the key to test it).
+// Every open recap year counts as seen and alerted, so the admin "recap is ready" banner and inbox alert stay out of the layout states
+// (save.spec.ts deletes the keys to test them).
 for (const { y } of db.prepare(`SELECT DISTINCT substr(bc_created_at, 1, 4) AS y FROM beanconqueror_brews WHERE bc_created_at IS NOT NULL`).all() as { y: string }[])
-  if (Number(y) < priorYear + 1) db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`).run(`recap_seen_${y}`);
+  if (Number(y) < priorYear + 1) for (const k of ['recap_seen', 'recap_alert']) db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`).run(`${k}_${y}`); // no banner, no inbox alert
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
   slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], labTwo: labSlugs[7], sey: sey.slug, brew: bnBags[1].slug, brewNew: bnNew.slug, big: grams.big.slug,

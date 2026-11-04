@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { recapYears } from '$lib/recapsUrl';
+import { createAlert } from '$lib/server/alerts';
 
 const get = (db: DatabaseSync, key: string) =>
   (db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(key) as { value: string } | undefined)?.value ?? null;
@@ -23,4 +24,13 @@ export function brewYears(db: DatabaseSync): number[] {
 // The newest open year the admin hasn't seen; the layout shows its banner.
 export function recapReadyYear(db: DatabaseSync, today: string, isAdmin: boolean): number | null {
   return isAdmin ? (recapYears(brewYears(db), today).find((y) => !recapSeen(db, y)) ?? null) : null;
+}
+// One inbox alert per open year for the admin, created the first time we see the year open. The app_meta guard keeps it
+// from coming back after the admin dismisses it, and the banner's seen flag is separate (neither touches the other).
+export function ensureRecapAlerts(db: DatabaseSync, today: string, isAdmin: boolean): void {
+  if (!isAdmin) return;
+  for (const y of recapYears(brewYears(db), today)) {
+    const made = db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`).run(`recap_alert_${y}`);
+    if (made.changes) createAlert(db, { source: 'recap', message: `Your ${y} recap is ready`, severity: 'info', href: `/recaps/${y}` });
+  }
 }

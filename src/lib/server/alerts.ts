@@ -5,14 +5,15 @@ export interface NewAlertInput {
   source: string;
   message: string;
   severity?: string;
+  href?: string;
 }
 
 export function createAlert(db: DatabaseSync, input: NewAlertInput): AlertRow {
   const now = new Date().toISOString();
   const severity = input.severity ?? 'error';
   const result = db
-    .prepare(`INSERT INTO alerts (source, message, severity, created_at) VALUES (?, ?, ?, ?)`)
-    .run(input.source, input.message, severity, now);
+    .prepare(`INSERT INTO alerts (source, message, severity, created_at, href) VALUES (?, ?, ?, ?, ?)`)
+    .run(input.source, input.message, severity, now, input.href ?? null);
   return {
     id: Number(result.lastInsertRowid),
     source: input.source,
@@ -20,7 +21,8 @@ export function createAlert(db: DatabaseSync, input: NewAlertInput): AlertRow {
     severity,
     created_at: now,
     read_at: null,
-    dismissed_at: null
+    dismissed_at: null,
+    href: input.href ?? null
   };
 }
 

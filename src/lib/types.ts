@@ -74,4 +74,5 @@ export interface AlertRow {
   created_at: string;
   read_at: string | null;
   dismissed_at: string | null;
+  href?: string | null; // where the message links, when it does
 }

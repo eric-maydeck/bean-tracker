@@ -74,6 +74,7 @@ export function applySchema(db: DatabaseSync): void {
   db.exec(schema);
   // Databases created before these columns existed need them added on top
   // of CREATE TABLE IF NOT EXISTS, which only applies to brand-new tables.
+  ensureColumn(db, 'alerts', 'href', 'TEXT');
   ensureColumn(db, 'coffees', 'image_url', 'TEXT');
   ensureColumn(db, 'coffees', 'slug', 'TEXT');
   ensureColumn(db, 'coffees', 'opened_date', 'TEXT');

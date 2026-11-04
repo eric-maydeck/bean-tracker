@@ -418,8 +418,12 @@ test.describe('recipes', { tag: '@account' }, () => {
 test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ page }) => {
   const Y = new Date().getFullYear() - 1;
   const key = `recap_seen_${Y}`;
-  const run = (sql: string) => { const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 }); try { db.prepare(sql).run(key); } finally { db.close(); } };
+  const alertKey = `recap_alert_${Y}`;
+  const runK = (sql: string, ...k: string[]) => { const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 }); try { db.prepare(sql).run(...k); } finally { db.close(); } };
+  const run = (sql: string) => runK(sql, key);
   run(`DELETE FROM app_meta WHERE key = ?`);
+  runK(`DELETE FROM app_meta WHERE key = ?`, alertKey); // unalerted too: the first load creates the inbox alert
+  runK(`DELETE FROM alerts WHERE source = 'recap'`);
   try {
     const banner = page.locator('.recap-banner');
     for (const [width, height] of [[480, 909], [1003, 333]]) { // the phone, portrait and landscape
@@ -450,8 +454,25 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
       expect(tone).toMatch(/^var\(--t-[a-z]+\)$/);
       await checkLayout(page);
     }
-    await page.getByRole('button', { name: 'Dismiss' }).click();
+    // The same notice is in the bell's inbox (a link to the recap) and counts as unread; banner and alert are independent.
+    const bell = page.getByRole('button', { name: /^Alerts/ }).first();
+    await expect(bell).toHaveAccessibleName(/unread/);
+    const inbox = async () => { await bell.click(); return page.locator('.alert-list-item').filter({ hasText: `Your ${Y} recap is ready` }); };
+    let item = await inbox();
+    await expect(item.getByRole('link', { name: `Your ${Y} recap is ready` })).toHaveAttribute('href', `/recaps/${Y}`);
+    await page.getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: 'Dismiss' }).first().click(); // the banner's
     await expect(banner).toHaveCount(0);
+    item = await inbox();
+    await expect(item, 'dismissing the banner leaves the alert').toHaveCount(1);
+    await item.getByRole('button', { name: 'Mark as read' }).click();
+    await expect(item, 'mark as read keeps it').toHaveCount(1);
+    await expect(item.getByRole('button', { name: 'Mark as read' })).toHaveCount(0);
+    await item.getByRole('button', { name: 'Dismiss' }).click(); // only dismiss removes it
+    await expect(item).toHaveCount(0);
+    await page.getByRole('button', { name: 'Close' }).click();
+    await page.reload();
+    expect(await page.locator('.alert-list-item').count(), 'not recreated').toBe(0);
     await expect.poll(read(`SELECT value FROM app_meta WHERE key = ?`, key)).toEqual({ value: '1' });
     await page.reload();
     await expect(page.locator('.recap-banner')).toHaveCount(0);
@@ -460,5 +481,7 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     await expect(page.locator('.recap-banner')).toHaveCount(0);
   } finally {
     run(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`);
+    runK(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`, alertKey);
+    runK(`DELETE FROM alerts WHERE source = 'recap'`);
   }
 });
