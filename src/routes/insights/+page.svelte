@@ -283,6 +283,7 @@
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const TOTALS: Tile[] = [
     { key: 'brews', split: true, label: 'Brews', fmt: count, up: 'good' },
+    { key: 'roasters', label: 'Roasters', fmt: count },
     { key: 'grams', split: true, label: 'Grams', fmt: formatGrams },
     { key: 'spend', split: true, label: 'Spend', fmt: usd, up: 'bad' },
     { key: 'bagsFinished', split: true, label: 'Bags finished', fmt: count, up: 'good' },
@@ -294,7 +295,9 @@
     { key: 'brewsPerDay', split: true, label: 'Brews per day', fmt: (n) => n.toFixed(1), up: 'good' },
     { key: 'avgDose', label: 'Avg dose', fmt: (n) => `${n.toFixed(1)}g` },
     { key: 'avgRestDays', label: 'Avg rest', fmt: (n) => String(Math.round(n)), suffix: 'days' },
-    { key: 'avgBrewTime', label: 'Avg brew time', fmt: mss }
+    { key: 'avgBrewTime', label: 'Avg brew time', fmt: mss },
+    { key: 'avgBagSize', label: 'Avg bag size', fmt: formatGrams },
+    { key: 'avgTempC', label: 'Avg brew temp', fmt: (n) => `${Number(n.toFixed(1))}°C` }
   ];
   const CONSUMPTION: Tile[] = [
     { key: 'perDay', label: 'Per day', fmt: formatGrams, split: true },
@@ -323,7 +326,6 @@
     { key: 'avgPpg', label: 'Avg $/g', fmt: (n) => `${usd(n)}/g`, up: 'bad', keepSub: true,
       sub: () => { const f = data.spend?.free ?? 0; return f ? `${f} free bag${f === 1 ? '' : 's'} not in $/g` : null; } },
     { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd, up: 'bad' },
-    { key: 'avgBagSize', label: 'Avg bag size', fmt: formatGrams },
     { key: 'newRoasters', label: 'New roasters', fmt: count, up: 'good' },
     { key: 'subShare', label: 'Subscription share', fmt: pct },
     { key: 'plansPerMonth', split: true, label: 'Plans per month', fmt: usd, sub: () => 'this month' }
@@ -1824,23 +1826,30 @@
     }
   }
   /* Right now: two rows of four; two columns below 520px (4 columns leave two-line captions spilling at ~100px tiles). */
-  .fit.n8 {
+  .fit.n8,
+  .fit.n7 {
     --c: 4;
+  }
+  /* Spending's seven: a row of four, then three stretched (content stays one tile wide). */
+  .fit.n7 .stat-item:nth-last-child(-n + 3) {
+    --q: 3;
   }
   @container (max-width: 520px) {
     .fit.n8 .stat-item {
       --c: 2;
     }
     /* Spending: 3 across like Consumption's tiles (2 across made 229px squares on a phone); the last two share a row. */
-    .fit.n8.spending .stat-item {
+    .fit.spending .stat-item {
       --c: 3;
     }
-    .fit.n8.spending .stat-item:nth-last-child(-n + 2) {
+    .fit.n8.spending .stat-item:nth-last-child(-n + 2),
+    .fit.n7.spending .stat-item:nth-last-child(-n + 4) {
       --q: 2;
     }
   }
   @container (max-width: 380px) {
-    .fit.n8.spending .stat-item {
+    .fit.spending .stat-item,
+    .fit.n7.spending .stat-item:nth-last-child(-n + 4) {
       --c: 2;
       --q: 2;
     }

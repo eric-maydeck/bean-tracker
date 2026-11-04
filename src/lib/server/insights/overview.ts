@@ -5,6 +5,7 @@ import { countsForRating } from './ratings';
 
 export interface OverviewTiles {
   brews: number;
+  roasters: number; // distinct roasters brewed
   grams: number;
   spend: number;
   avgRating: number | null;
@@ -15,11 +16,14 @@ export interface OverviewTiles {
   avgDose: number | null; // g
   avgRestDays: number | null;
   avgBrewTime: number | null; // seconds
+  avgBagSize: number | null; // g, bags bought in the period
+  avgTempC: number | null;
 }
 
 // A total sums over the period; an average doesn't grow with its length.
 export const TILE_KIND: Record<keyof OverviewTiles, 'total' | 'average'> = {
   brews: 'total',
+  roasters: 'total',
   grams: 'total',
   spend: 'total',
   bagsFinished: 'total',
@@ -29,17 +33,19 @@ export const TILE_KIND: Record<keyof OverviewTiles, 'total' | 'average'> = {
   brewsPerDay: 'average',
   avgDose: 'average',
   avgRestDays: 'average',
-  avgBrewTime: 'average'
+  avgBrewTime: 'average',
+  avgBagSize: 'average',
+  avgTempC: 'average'
 };
 
-// Per person: totals and brews per day ÷ household size, an even split (Bean Conqueror
+// Per person: totals (not roasters: a count of who, not an amount) and brews per day ÷ household size, an even split (Bean Conqueror
 // doesn't record who brewed). Averages don't change. Applied before compareTiles, so
 // deltas, % and "vs N at that pace" read per person too.
 export function perPerson(t: OverviewTiles, size: number): OverviewTiles {
   if (size === 1) return t;
   const out: Record<string, number | null> = { ...t };
   for (const k of Object.keys(t) as (keyof OverviewTiles)[]) {
-    if ((TILE_KIND[k] === 'total' || k === 'brewsPerDay') && t[k] !== null) out[k] = t[k]! / size;
+    if (k !== 'roasters' && (TILE_KIND[k] === 'total' || k === 'brewsPerDay') && t[k] !== null) out[k] = t[k]! / size;
   }
   return out as unknown as OverviewTiles;
 }
@@ -61,6 +67,7 @@ export function overviewTiles(
   const days = trackedDays(p, dataStart, today);
   return {
     brews: inP.length,
+    roasters: new Set(inP.flatMap((b) => (b.roaster ? [b.roaster] : []))).size,
     grams: inP.reduce((s, b) => s + (b.dose ?? 0), 0),
     spend: bags.reduce((s, g) => s + (g.purchaseDate && inPeriod(g.purchaseDate, p) ? (g.cost ?? 0) : 0), 0),
     avgRating: mean(rated),
@@ -71,7 +78,9 @@ export function overviewTiles(
     avgDose: mean(inP.flatMap((b) => (b.dose ? [b.dose] : []))),
     // Negative rest = a brew logged before its bag's roast date: missing, like dose 0.
     avgRestDays: mean(inP.flatMap((b) => (b.restDays !== null && b.restDays >= 0 ? [b.restDays] : []))),
-    avgBrewTime: mean(present(inP.map((b) => b.brewTimeSeconds)))
+    avgBrewTime: mean(present(inP.map((b) => b.brewTimeSeconds))),
+    avgBagSize: mean(bags.flatMap((g) => (g.purchaseDate && inPeriod(g.purchaseDate, p) && g.amountG !== null && g.amountG > 0 ? [g.amountG] : []))),
+    avgTempC: mean(present(inP.map((b) => b.tempC)))
   };
 }
 

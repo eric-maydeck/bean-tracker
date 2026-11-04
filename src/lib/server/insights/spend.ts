@@ -32,12 +32,12 @@ export const pricedPpg = (bags: readonly BagFact[]): number | null => {
 };
 
 export type SpendTiles = {
-  spent: number; bags: number; avgPpg: number | null; avgBagCost: number | null; avgBagSize: number | null;
+  spent: number; bags: number; avgPpg: number | null; avgBagCost: number | null;
   newRoasters: number; subShare: number | null; plansPerMonth: number | null;
 };
 export const SPEND_KIND: Record<keyof SpendTiles, 'total' | 'average'> = {
   spent: 'total', bags: 'total', newRoasters: 'total',
-  avgPpg: 'average', avgBagCost: 'average', avgBagSize: 'average', subShare: 'average', plansPerMonth: 'average'
+  avgPpg: 'average', avgBagCost: 'average', subShare: 'average', plansPerMonth: 'average'
 };
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
@@ -55,7 +55,6 @@ export function spendTiles(bags: readonly BagFact[], plans: readonly Plan[], p: 
     bags: inP.length,
     avgPpg: pricedPpg(inP),
     avgBagCost: mean(inP.flatMap((b) => (b.cost !== null && b.cost > 0 ? [b.cost] : []))),
-    avgBagSize: mean(inP.flatMap((b) => (b.amountG !== null && b.amountG > 0 ? [b.amountG] : []))),
     newRoasters: [...first.values()].filter((d) => inPeriod(d, p)).length,
     subShare: grams ? subG / grams : null,
     plansPerMonth: monthly.length ? monthly.reduce((s, x) => s + x.price!, 0) / size : null,

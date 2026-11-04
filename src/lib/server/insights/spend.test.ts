@@ -42,7 +42,7 @@ describe('spendTiles', () => {
   it('averages leave out missing and free bags', () => {
     expect(t.avgPpg).toBeCloseTo(64.5 / 575);
     expect(t.avgBagCost).toBeCloseTo((20 + 14.5 + 30 + 18) / 4);
-    expect(t.avgBagSize).toBeCloseTo((250 + 125 + 200 + 100 + 250) / 5);
+    expect(t).not.toHaveProperty('avgBagSize');
   });
   it('subscription share is grams over grams bought', () => expect(t.subShare).toBeCloseTo(125 / 925));
   it('new roasters: first bag ever in the period', () => expect(t.newRoasters).toBe(2)); // A, B; C was bought in August
@@ -54,7 +54,7 @@ describe('spendTiles', () => {
   });
   it('empty', () => {
     expect(spendTiles([], [], SEPT)).toEqual({
-      spent: 0, bags: 0, avgPpg: null, avgBagCost: null, avgBagSize: null, newRoasters: 0, subShare: null, plansPerMonth: null, free: 0
+      spent: 0, bags: 0, avgPpg: null, avgBagCost: null, newRoasters: 0, subShare: null, plansPerMonth: null, free: 0
     });
   });
 });

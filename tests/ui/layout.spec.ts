@@ -4593,12 +4593,12 @@ export const STATES: State[] = [
       await expectDataTip(page.locator('.cell-tip'));
     }
   },
-  // Spend: eight tiles; the Spent ? tip says the date rule. Later panels extend insights-spend-empty and add their own states.
+  // Spend: seven tiles; the Spent ? tip says the date rule. Later panels extend insights-spend-empty and add their own states.
   {
     name: 'insights-spend', path: () => '/insights?tab=spend&range=12m',
     act: async (page) => {
       await expect(page.locator('.stat-item .stat-label')).toHaveText(
-        ['Spent', 'Bags bought', 'Avg $/g', 'Avg bag cost', 'Avg bag size', 'New roasters', 'Subscription share', 'Plans per month'], { useInnerText: true, ignoreCase: true }
+        ['Spent', 'Bags bought', 'Avg $/g', 'Avg bag cost', 'New roasters', 'Subscription share', 'Plans per month'], { useInnerText: true, ignoreCase: true }
       );
       await expect(page.locator('#spend-plans-per-month .stat-unit')).toHaveText('this month');
       // Phone tiles: 3 across like Consumption's (2 across made them 229px squares).

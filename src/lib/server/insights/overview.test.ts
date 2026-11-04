@@ -33,10 +33,25 @@ describe('overviewTiles', () => {
 
   it('aggregates each tile over the period', () =>
     expect(overviewTiles(brews, bags, SEPT, 'all')).toEqual({
-      brews: 2, grams: 31, spend: 25, avgRating: 8, rated: 1, bagsFinished: 1, costPerBrew: 1.5,
-      brewsPerDay: 2 / 30, avgDose: 15.5, avgRestDays: null, avgBrewTime: null
+      brews: 2, roasters: 0, grams: 31, spend: 25, avgRating: 8, rated: 1, bagsFinished: 1, costPerBrew: 1.5,
+      brewsPerDay: 2 / 30, avgDose: 15.5, avgRestDays: null, avgBrewTime: null, avgBagSize: null, avgTempC: null
     }));
 
+  it('roasters counts distinct roasters brewed in the period', () => {
+    const t = overviewTiles(
+      [brew({ roaster: 'A' }), brew({ roaster: 'A' }), brew({ roaster: 'B' }), brew({ roaster: 'C', localDate: '2026-08-01' })], [], SEPT, 'all'
+    );
+    expect(t.roasters).toBe(2);
+  });
+  it('avgTempC skips brews without a temp', () =>
+    expect(overviewTiles([brew({ tempC: 90 }), brew({ tempC: 93 }), brew({ tempC: null })], [], SEPT, 'all').avgTempC).toBe(91.5));
+  it('avgBagSize averages bags bought in the period', () => {
+    const bs = [
+      bag({ purchaseDate: '2026-09-02', amountG: 250 }), bag({ purchaseDate: '2026-09-03', amountG: 100 }),
+      bag({ purchaseDate: '2026-09-04', amountG: 0 }), bag({ purchaseDate: '2026-09-05', amountG: null }), bag({ purchaseDate: '2026-08-05', amountG: 900 })
+    ];
+    expect(overviewTiles([], bs, SEPT, 'all').avgBagSize).toBe(175);
+  });
   it('averages skip missing values (dose 0 is missing)', () => {
     const t = overviewTiles(
       [
@@ -83,14 +98,14 @@ describe('overviewTiles', () => {
 
   it('an empty period is zeros and nulls', () =>
     expect(overviewTiles([], [], SEPT, 'current')).toEqual({
-      brews: 0, grams: 0, spend: 0, avgRating: null, rated: 0, bagsFinished: 0, costPerBrew: null,
-      brewsPerDay: null, avgDose: null, avgRestDays: null, avgBrewTime: null
+      brews: 0, roasters: 0, grams: 0, spend: 0, avgRating: null, rated: 0, bagsFinished: 0, costPerBrew: null,
+      brewsPerDay: null, avgDose: null, avgRestDays: null, avgBrewTime: null, avgBagSize: null, avgTempC: null
     }));
 
   it('every tile has a kind', () => {
     expect(Object.keys(TILE_KIND).sort()).toEqual(Object.keys(overviewTiles([], [], SEPT, 'all')).sort());
     expect(Object.entries(TILE_KIND).filter(([, k]) => k === 'total').map(([t]) => t).sort())
-      .toEqual(['bagsFinished', 'brews', 'grams', 'rated', 'spend']);
+      .toEqual(['bagsFinished', 'brews', 'grams', 'rated', 'roasters', 'spend']);
   });
 });
 
@@ -110,8 +125,8 @@ describe('tileDelta', () => {
 
 describe('compareTiles', () => {
   const t = {
-    brews: 2, grams: 30, spend: 0, avgRating: null, rated: 1, bagsFinished: 1, costPerBrew: 1,
-    brewsPerDay: 0.5, avgDose: 15, avgRestDays: null, avgBrewTime: 180
+    brews: 2, roasters: 1, grams: 30, spend: 0, avgRating: null, rated: 1, bagsFinished: 1, costPerBrew: 1,
+    brewsPerDay: 0.5, avgDose: 15, avgRestDays: null, avgBrewTime: 180, avgBagSize: null, avgTempC: null
   };
   it('equal day counts compare as they are', () => {
     const { deltas: d, scaled } = compareTiles(t, { ...t, brews: 1, avgDose: 12, avgBrewTime: null }, 30, 30);
@@ -149,13 +164,14 @@ describe('compareTiles', () => {
 
 describe('perPerson', () => {
   const T: OverviewTiles = {
-    brews: 13, grams: 195, spend: 30, avgRating: 8, rated: 4, bagsFinished: 1, costPerBrew: 1.5,
-    brewsPerDay: 1.3, avgDose: 15, avgRestDays: 10, avgBrewTime: 180
+    brews: 13, roasters: 3, grams: 195, spend: 30, avgRating: 8, rated: 4, bagsFinished: 1, costPerBrew: 1.5,
+    brewsPerDay: 1.3, avgDose: 15, avgRestDays: 10, avgBrewTime: 180, avgBagSize: 250, avgTempC: 91
   };
   it('divides totals and brews per day; averages stay', () =>
     expect(perPerson(T, 2)).toEqual({
       ...T, brews: 6.5, grams: 97.5, spend: 15, rated: 2, bagsFinished: 0.5, brewsPerDay: 0.65
     }));
+  it('per person leaves roasters alone', () => expect(perPerson(T, 2).roasters).toBe(T.roasters));
   it('a household of one is the household', () => expect(perPerson(T, 1)).toBe(T));
   it('a missing brews per day stays missing', () =>
     expect(perPerson({ ...T, brewsPerDay: null }, 2).brewsPerDay).toBeNull());
