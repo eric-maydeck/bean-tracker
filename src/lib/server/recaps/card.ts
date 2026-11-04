@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import satori from 'satori';
 import sharp from 'sharp';
@@ -10,7 +10,7 @@ import loraExt from './fonts/lora-latin-ext-600-normal.woff?inline';
 import type { Tone } from './types';
 
 export const CARD = { width: 1200, height: 630 };
-const CARD_VERSION = 1; // bump when the template changes (cache file name)
+const CARD_VERSION = 2; // bump when the template changes (cache file name)
 const PAD = 72;
 
 // Fonts are inlined (base64) so the adapter-node bundle needs no asset paths; text becomes paths, so no system fonts.
@@ -36,7 +36,7 @@ const WIDTH = CARD.width - 2 * PAD;
 const fit = (text: string, size: number) => Math.max(24, Math.min(size, Math.floor(WIDTH / (0.62 * Math.max(1, ...text.split(/\s+/).map((w) => [...w].length))))));
 const el = (type: string, style: Record<string, unknown>, children?: unknown) => ({ type, props: { style, children } });
 
-export async function cardSvg(c: { big: string; label: string; year: number; tone: Tone; dark?: false }): Promise<string> {
+export async function cardSvg(c: { big: string; label: string; year: number; tone: Tone; dark?: false; cover?: true }): Promise<string> {
   const color = fg(c.tone);
   // "Roaster · Coffee" (a bag): two lines, the roaster smaller above the coffee name.
   const [rn, cn] = c.big.includes(' · ') ? c.big.split(' · ', 2) : [null, c.big];
@@ -50,7 +50,7 @@ export async function cardSvg(c: { big: string; label: string; year: number; ton
       el('div', { fontFamily: 'Karla', fontWeight: 700, fontSize: lblSize, lineHeight: 1.2, marginTop: 20, display: 'block', lineClamp: 2, textOverflow: 'ellipsis' }, glue(c.label))
     ]),
     el('div', { display: 'flex', justifyContent: 'space-between', fontFamily: 'Karla', fontWeight: 700, fontSize: 30, opacity: 0.85 }, [
-      el('div', {}, `${c.year} in coffee`), el('div', {}, 'Bean Tracker')
+      el('div', {}, c.cover ? '' : `${c.year} in coffee`), el('div', {}, 'Bean Tracker')
     ])
   ]);
   return satori(tree as never, { width: CARD.width, height: CARD.height, fonts: FONTS });
@@ -63,12 +63,17 @@ export function cardsRoot(dbPath = process.env.DB_PATH ?? 'data/bean-tracker.db'
   return join(dbPath === ':memory:' ? 'data' : dirname(dbPath), 'recap-cards');
 }
 
+// "_" can't occur in a slide id, so a prefix is exact. Written to a temp name (no "_" prefix match) then renamed: readers never see a partial file.
 export async function cachedCard(key: { year: number; slide: string; people: 'household' | 'person'; stamp: string }, make: () => Promise<Buffer>): Promise<Buffer> {
-  const root = cardsRoot(), prefix = `${key.year}-${key.slide}-${key.people}-`, file = join(root, `${prefix}${key.stamp}-v${CARD_VERSION}.png`);
+  const root = cardsRoot(), prefix = `${key.year}_${key.slide}_${key.people}_`, name = `${prefix}${key.stamp}_v${CARD_VERSION}.png`, file = join(root, name);
   if (existsSync(file)) return readFileSync(file);
   const png = await make();
-  mkdirSync(root, { recursive: true });
-  writeFileSync(file, png);
-  for (const f of readdirSync(root)) if (f.startsWith(prefix) && join(root, f) !== file) unlinkSync(join(root, f));
+  try {
+    mkdirSync(root, { recursive: true });
+    const tmp = join(root, `.tmp-${process.pid}-${Math.random().toString(36).slice(2)}`);
+    writeFileSync(tmp, png);
+    renameSync(tmp, file);
+    for (const f of readdirSync(root)) if (f.startsWith(prefix) && f !== name) try { unlinkSync(join(root, f)); } catch { /* already gone */ }
+  } catch { /* the cache is best effort: serve the card anyway */ }
   return png;
 }

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { localToday } from '$lib/server/localToday';
+vi.mock('node:fs', async (orig) => { const a = await orig<typeof import('node:fs')>(); return { ...a, unlinkSync: vi.fn(a.unlinkSync) }; });
 import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard } from './card';
 
 const dir = mkdtempSync(join(tmpdir(), 'card-'));
@@ -42,7 +43,25 @@ describe('card', () => {
     await cachedCard({ ...k, stamp: 'b' }, make);
     await cachedCard({ ...k, slide: 'streak', stamp: 'a' }, make);
     expect(make).toHaveBeenCalledTimes(3);
-    expect(readdirSync(cardsRoot()).sort()).toEqual(['2025-streak-household-a-v1.png', '2025-total-household-b-v1.png']);
+    expect(readdirSync(cardsRoot()).sort()).toEqual(['2025_streak_household_a_v2.png', '2025_total_household_b_v2.png']);
+  });
+});
+
+describe('cachedCard robustness', () => {
+  it('leaves no temp files, keeps a slide whose id ends in -household, tolerates a vanished stale file', async () => {
+    const make = async () => Buffer.from('x');
+    await cachedCard({ year: 2024, slide: 'x', people: 'household', stamp: 'a' }, make);
+    await cachedCard({ year: 2024, slide: 'x-household', people: 'person', stamp: 'a' }, make);
+    await cachedCard({ year: 2024, slide: 'x', people: 'household', stamp: 'b' }, make);
+    const files = readdirSync(cardsRoot()).filter((f) => f.startsWith('2024_'));
+    expect(files.sort()).toEqual(['2024_x-household_person_a_v2.png', '2024_x_household_b_v2.png']);
+    expect(readdirSync(cardsRoot()).some((f) => f.startsWith('.tmp-'))).toBe(false);
+    // a stale file listed but deleted underneath us (ENOENT) must not fail the request
+    const fs = await import('node:fs');
+    const real = vi.mocked(fs.unlinkSync).getMockImplementation()!;
+    vi.mocked(fs.unlinkSync).mockImplementation(((p: string) => { real(p); throw Object.assign(new Error('gone'), { code: 'ENOENT' }); }) as never);
+    await expect(cachedCard({ year: 2024, slide: 'x', people: 'household', stamp: 'c' }, make)).resolves.toEqual(Buffer.from('x'));
+    vi.mocked(fs.unlinkSync).mockImplementation(real);
   });
 });
 

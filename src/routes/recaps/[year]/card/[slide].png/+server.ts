@@ -26,7 +26,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
   if (!r) error(404, 'Not found');
   const s = r.slides.find((x) => x.id === params.slide);
   const total = r.slides.find((x) => x.id === 'total');
-  const card = params.slide === 'cover' ? { big: r.cover.title, label: `${total?.big ?? r.slides.length} brews`, tone: r.cover.tone }
+  const card = params.slide === 'cover' ? { big: r.cover.title, label: `${total?.big ?? r.slides.length} brews`, tone: r.cover.tone, cover: true as const }
     : params.slide === POSTER_ID ? { big: r.poster.title, label: `${r.slides.length} things your brewing said`, tone: r.cover.tone }
     : s ? { ...s.card, tone: s.tone ?? r.cover.tone } : null;
   if (!card) error(404, 'Not found');
