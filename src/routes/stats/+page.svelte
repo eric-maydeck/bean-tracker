@@ -54,7 +54,7 @@
   let bc = $derived(people === 'person' ? bcPerPerson(data.beanConquerorStats, data.householdSize) : data.beanConquerorStats);
   // 6.5 brews per person, not "6.5000001" or a rounded 7.
   const tenth = (n: number) => String(Math.round(n * 10) / 10);
-  const PEOPLE_HELP = $derived(peopleHelp(data.householdSize, data.isAdmin));
+  const PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let use = $derived(data.consumption[range][people]);
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
 
@@ -357,7 +357,7 @@
   </div>
   {#if data.householdSize > 1}
     <div class="form-field group-field">
-      <span>People</span>
+      <span>People{#if data.isAdmin} <a class="people-set" href="/account#household">Set it on Account</a>{/if}</span>
       <div class="tab-group" role="group" aria-label="People">
         {#each PEOPLE as m (m)}
           <button

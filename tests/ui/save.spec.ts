@@ -60,34 +60,31 @@ test('cards: two inline edits open, Save on A writes A and leaves B open', { tag
 });
 
 // The layout workers share the DB and never save, so a household of one is checked here:
-// Save size 1 through the form, then both pages at every viewport size (width x height;
+// Save size 1 on Account, then both pages at every viewport size (width x height;
 // no DPR/touch emulation). The switch and every "per person" are gone, even from a shared
 // people=person link, and nothing leaves empty space.
 test('household of one hides the people switch everywhere', { tag: ['@stats', '@insights'] }, async ({ page }) => {
-  // Saving from a held ?people=person view, without reloading, drops back to the household view.
+  // The size is saved on Account; a shared ?people=person link then drops back to the household view.
+  const saveSize = async (n: string) => {
+    await gotoReady(page, '/account');
+    await page.getByLabel('Household size').fill(n);
+    await page.locator('#household').getByRole('button', { name: 'Save', exact: true }).click();
+    await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: n });
+  };
   await gotoReady(page, '/stats?people=person');
   await expect(page.getByRole('group', { name: 'People' })).toBeVisible();
   await gotoReady(page, `/recaps/${Number(localToday().slice(0, 4)) - 1}`); // size 2: the recap's companion line shows
   await expect(page.locator('.slide[data-id="total"] .each')).toContainText('per person');
+  await saveSize('1');
   await gotoReady(page, '/stats?people=person');
-  await page.getByRole('button', { name: 'Edit household size' }).click();
-  await page.getByLabel('Household size').fill('1');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: '1' });
   await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
   await expect(page.getByText(/per person/i)).toHaveCount(0);
-  expect(page.url()).not.toContain('people=');
   // Back to 2: the earlier per-person choice must not come back.
-  await page.getByRole('button', { name: 'Edit household size' }).click();
-  await page.getByLabel('Household size').fill('2');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: '2' });
+  await saveSize('2');
+  await gotoReady(page, '/stats');
   await expect(page.getByRole('button', { name: 'Household', exact: true })).toHaveAttribute('aria-pressed', 'true');
   expect(page.url()).not.toContain('people=');
-  await page.getByRole('button', { name: 'Edit household size' }).click();
-  await page.getByLabel('Household size').fill('1');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: '1' });
+  await saveSize('1');
   for (const v of VIEWPORTS) {
     await page.setViewportSize(v.viewport);
     for (const path of ['/insights?people=person', '/stats?people=person', '/stats?tab=bq&people=person', `/recaps/${Number(localToday().slice(0, 4)) - 1}?people=person`]) {

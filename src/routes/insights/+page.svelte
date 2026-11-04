@@ -466,7 +466,7 @@
   let span2 = $derived(barCells(2));
   let span3 = $derived(barCells(3));
   const cell = (k: string) => `--s2:${span2[k]};--s3:${span3[k]}`;
-  let PEOPLE_HELP = $derived(peopleHelp(data.householdSize, data.isAdmin));
+  let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let perPersonOn = $derived(s.people === 'person');
   // The brew filters in play on this tab: panels of whole-bag figures say they don't apply (wholeNote).
   const wholeKeys = $derived(Object.keys(data.brewFilters) as BrewFilterKey[]);
@@ -637,7 +637,7 @@
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
   {#if peopleOn}
     <div class="form-field group-field people-field" style={cell('people')}>
-      <span>People</span>
+      <span>People{#if data.isAdmin} <a class="people-set" href="/account#household">Set it on Account</a>{/if}</span>
       <div class="tab-group people-switch" role="group" aria-label="People">
         {#each PEOPLE as m (m)}
           <button
