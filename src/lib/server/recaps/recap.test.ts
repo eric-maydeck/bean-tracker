@@ -110,16 +110,4 @@ describe('route load', () => {
     expect(call(String(cur - 1), '', false)).toMatchObject({ isAdmin: false, recap: { year: cur - 1, preview: false } });
     expect(call(String(cur), '?preview=1', true)).toMatchObject({ isAdmin: true, recap: { preview: true }, state: { preview: true } });
   });
-  // Last: it empties the brews.
-  it('/recaps redirects to the Recaps tab, params dropped', async () => {
-    const { load: idx } = await import('../../../routes/recaps/+page.server');
-    try { idx({ locals: { isAdmin: false } } as never); expect.unreachable(); } catch (e) { expect(e).toMatchObject({ status: 307, location: '/insights?tab=recaps' }); }
-  });
-  it('public /recaps has nothing to show without an open year', async () => {
-    const { getDb } = await import('$lib/server/db');
-    const { load: idx } = await import('../../../routes/recaps/+page.server');
-    const db = getDb();
-    db.exec('DELETE FROM beanconqueror_brews');
-    try { idx({ locals: { isAdmin: false } } as never); expect.unreachable(); } catch (e) { expect(e).toMatchObject({ status: 404 }); }
-  });
 });

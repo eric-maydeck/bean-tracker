@@ -1,4 +1,3 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { hasRecaps, recapTiles } from '$lib/server/recaps/recap';
 import { getDb, getHouseholdSize } from '$lib/server/db';
@@ -47,14 +46,9 @@ export const load: PageServerLoad = ({ url, locals }) => {
     drippers: opts.drippers, filters: opts.filters, waters: opts.waters, doses: opts.doses, temps: opts.temps
   });
   const s = withDefaults(explicit);
-  // The Recaps tab exists only while there is a recap to show (an admin's preview counts); otherwise the bare page.
+  // The Recaps tab's rail entry shows while there is a recap; tab=recaps itself always renders (an empty state says why).
   const isAdmin = !!locals?.isAdmin;
   const recapsTab = hasRecaps(db, today, isAdmin);
-  if (s.tab === 'recaps' && !recapsTab) {
-    const u = new URL(url);
-    u.searchParams.delete('tab');
-    redirect(307, `${u.pathname}${u.search}`);
-  }
   const lab = (LAB_TABS as readonly string[]).includes(s.tab) ? opts : null;
   const grinder = lab ? (lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? null : null;
   const period = periodBounds(s.range, today);

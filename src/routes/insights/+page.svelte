@@ -228,7 +228,7 @@
   }
 
   // The Recaps group appears only while there is a recap to open.
-  const groups = $derived(TAB_GROUPS.filter((g) => data.recapsTab || g.label !== 'Recaps'));
+  const groups = $derived(TAB_GROUPS.filter((g) => data.recapsTab || s.tab === 'recaps' || g.label !== 'Recaps'));
   const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', onhand: 'On hand', spend: 'Spend', sweetspots: 'Sweet spots', brewing: 'Brewing', pours: 'Pours', water: 'Water', gear: 'Gear', recaps: 'Recaps' };
   // A rail link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
   function tabHref(tab: Tab) {
@@ -949,7 +949,7 @@
     {#snippet tiles()}{@render panel('On the shelf', ONHAND, data.onHand!.tiles, null)}{/snippet}
   </OnHand>
 {:else if s.tab === 'recaps' && data.recaps}
-  <Recaps tiles={data.recaps} empty="No recaps in {span(data.period)}. Pick a wider period to see them." />
+  <Recaps tiles={data.recaps} admin={data.isAdmin} period={data.recapsTab ? span(data.period) : null} />
 {:else if s.tab === 'spend' && data.spend}
   <Spend t={data.spend} {choose} {placeTip} spendView={s.spendView} spendSeries={s.spendSeries} rcSort={s.rcSort} rcDir={s.rcDir} rcTop={s.rcTop} {compareLabel} {compareDates} {link}>
     {#snippet tiles()}{@render panel('Spending', SPEND, data.spend!.tiles, data.spend!.deltas)}{/snippet}

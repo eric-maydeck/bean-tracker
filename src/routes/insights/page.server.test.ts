@@ -45,9 +45,15 @@ describe('/insights load', () => {
     expect(d.tileKinds.brews).toBe('total');
   });
 
-  it('tab=recaps: no recap to show redirects to the bare page; the tab flag follows', () => {
+  it('tab=recaps with no recap to show still loads (an empty state), and the tab flag is off', () => {
     expect(run().recapsTab).toBe(false);
-    expect(() => run('?tab=recaps&range=all')).toThrowError(expect.objectContaining({ status: 307, location: '/insights?range=all' }));
+    expect(run('?tab=recaps&range=all')).toMatchObject({ recapsTab: false, recaps: [], explicit: { tab: 'recaps' } });
+  });
+
+  it('public tab=recaps: an open year shows; a Period that misses it is an empty list with the tab still on', () => {
+    seed([['2020-05-01', 15]]);
+    expect(run('?tab=recaps&range=all')).toMatchObject({ recapsTab: true, recaps: [{ year: 2020, preview: false }] });
+    expect(run('?tab=recaps&range=2024-01-01..2024-02-01')).toMatchObject({ recapsTab: true, recaps: [] });
   });
 
   it('reads the URL and counts the period', () => {

@@ -1032,7 +1032,8 @@ export const STATES: State[] = [
       await expect(page.locator('.recap-tile .badge')).toHaveCount(0);
       await page.goto('/insights?tab=recaps&range=2015-01-01..2015-02-01');
       await expect(page.locator('.recap-tile')).toHaveCount(0);
-      await expect(page.locator('main .chart-note').first()).toContainText('No recaps in Jan 1, 2015');
+      await expect(page.locator('.recaps-empty h2')).toContainText('No recaps in Jan 1, 2015');
+      await expect(page.locator('.recaps-empty')).not.toContainText('sign in'); // signed in: no sign-in line
     } },
   { name: 'insights-recaps-tile-size', path: () => '/insights?tab=recaps',
     act: async (page) => {
@@ -11321,6 +11322,20 @@ test.describe('signed out', () => {
     await expectRecapTiles(page, [String(recapYear() - 1)]);
     await expect(page.locator('.recap-tile .badge')).toHaveCount(0);
     await checkLayout(page);
+  });
+  // Signed out, nothing to show: the tab says so and offers Sign in (it never bounces to another tab).
+  test('insights-recaps-signed-out-empty', { tag: ['@insights', '@insights:recaps', '@two'] }, async ({ page }) => {
+    await gotoReady(page, '/insights?tab=recaps&range=2015-01-01..2015-02-01');
+    await expect(page).toHaveURL(/tab=recaps/);
+    await expect(page.locator('.recap-tile')).toHaveCount(0);
+    await expect(page.locator('.recaps-empty h2')).toContainText('No recaps in Jan 1, 2015');
+    await expect(page.locator('.recaps-empty')).toContainText('Recaps for the current year are visible once you sign in.');
+    const href = (await page.locator('.recaps-empty').getByRole('link', { name: 'Sign in' }).getAttribute('href'))!;
+    expect(decodeURIComponent(href)).toBe('/login?redirectTo=/insights?tab=recaps&range=2015-01-01..2015-02-01');
+    await expectNoMidWord(page, '.recaps-empty h2, .recaps-empty p');
+    await checkLayout(page);
+    expect((await page.goto('/recaps'))!.status(), '/recaps lands on the tab').toBe(200);
+    await expect(page).toHaveURL(/\/insights\?tab=recaps$/);
   });
   test('account-signed-out', async ({ page }) => {
     await page.goto('/account');
