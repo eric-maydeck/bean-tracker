@@ -77,7 +77,7 @@ function makeTip(node: HTMLElement, label: Label, follow: boolean) {
 // exists only while the text is cut (checked on hover and focus, the node and its next 3 ancestors, where the clip is set:
 // only a hidden or clipped overflow counts, so visible or scrolling ancestors never raise a tip for fully shown text).
 // `use:truncTip={text}`: the visible label (keeps a caption's " · " separators); absent = the node's text.
-export function truncTip(node: HTMLElement, text?: string) {
+export function truncTip(node: HTMLElement, text?: string | null) {
   const clips = (e: HTMLElement) => {
     const s = getComputedStyle(e);
     const hid = (o: string) => o === 'hidden' || o === 'clip';
@@ -87,9 +87,9 @@ export function truncTip(node: HTMLElement, text?: string) {
     for (let e: HTMLElement | null = node, i = 0; e && i < 4; e = e.parentElement, i++) if (clips(e)) return true;
     return false;
   };
-  const set = () => tip.update(cut() ? (text ?? node.textContent)?.trim() : undefined);
+  const set = () => tip.update(cut() ? (text || node.textContent)?.trim() : undefined);
   node.addEventListener('pointerenter', set); // before labelTip's own listeners: the label is current when it opens
   node.addEventListener('focus', set);
   const tip = labelTip(node, undefined);
-  return { update(next?: string) { text = next; }, destroy() { node.removeEventListener('pointerenter', set); node.removeEventListener('focus', set); tip.destroy(); } };
+  return { update(next?: string | null) { text = next; }, destroy() { node.removeEventListener('pointerenter', set); node.removeEventListener('focus', set); tip.destroy(); } };
 }
