@@ -53,10 +53,10 @@ export const actions: Actions = {
     const formData = await request.formData();
     const file = formData.get('file');
     if (!(file instanceof File)) {
-      return fail(400, { error: 'No file uploaded' });
+      return fail(400, { importError: 'No file uploaded' });
     }
     if (file.size > MAX_UPLOAD_BYTES) {
-      return fail(400, { error: 'That file is over 20 MB. Upload Beanconqueror.zip (the regular export).' });
+      return fail(400, { importError: 'That file is over 20 MB. Upload Beanconqueror.zip (the regular export).' });
     }
     // Parse errors carry an admin-readable message (bad zip, changed format), so
     // they surface as a clean 400 rather than a 500.
@@ -64,7 +64,7 @@ export const actions: Actions = {
     try {
       parsed = parseBeanConquerorJson(await readBeanConquerorZip(await file.arrayBuffer()));
     } catch (err) {
-      return fail(400, { error: err instanceof Error ? err.message : 'Could not parse that Bean Conqueror export' });
+      return fail(400, { importError: err instanceof Error ? err.message : 'Could not parse that Bean Conqueror export' });
     }
     const db = getDb();
     const changes = importBeanConquerorData(db, parsed);

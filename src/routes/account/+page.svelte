@@ -141,8 +141,8 @@
   {#if tooBig}
     <p class="badge badge-urgent">Over 20 MB: upload Beanconqueror.zip (the regular export, not the one with photos)</p>
   {/if}
-  {#if form && 'error' in form && form.error}
-    <p class="badge badge-urgent"><CoffeeName text={form.error} /></p>
+  {#if form && 'importError' in form && form.importError}
+    <p class="badge badge-urgent"><CoffeeName text={form.importError} /></p>
   {:else if summary}
     <div class="bq-result" role="status">
       {#if summary.headline}<p class="bq-nothing">{summary.headline}</p>{/if}

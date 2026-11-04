@@ -63,7 +63,7 @@ describe('?/importBeanConqueror', () => {
     const xlsx = new Uint8Array(await wb.xlsx.writeBuffer());
     const f = failure(await actions.importBeanConqueror(upload(xlsx, 'export.xlsx')));
     expect(f?.status).toBe(400);
-    expect((f?.data as unknown as { error: string }).error).toMatch(/isn't a Bean Conqueror export/);
+    expect((f?.data as unknown as { importError: string }).importError).toMatch(/isn't a Bean Conqueror export/);
   });
 
   it('imports the .zip export and reports what it read', async () => {
@@ -77,14 +77,14 @@ describe('?/importBeanConqueror', () => {
 
   it('400s on a file that is not a zip', async () => {
     expect(failure(await actions.importBeanConqueror(upload(new TextEncoder().encode('hi'), 'x.txt')))).toEqual({
-      status: 400, data: { error: 'Could not read that file as a .zip' }
+      status: 400, data: { importError: 'Could not read that file as a .zip' }
     });
   });
 
   it('400s on an upload over 20 MB without reading it', async () => {
     const f = failure(await actions.importBeanConqueror(upload(new Uint8Array(MAX_UPLOAD_BYTES + 1))));
     expect(f?.status).toBe(400);
-    expect((f?.data as unknown as { error: string }).error).toMatch(/over 20 MB/);
+    expect((f?.data as unknown as { importError: string }).importError).toMatch(/over 20 MB/);
   });
 });
 
