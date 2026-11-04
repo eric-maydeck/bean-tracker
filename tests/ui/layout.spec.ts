@@ -4207,7 +4207,10 @@ export const STATES: State[] = [
       const input = page.locator('input[name="file"]');
       await input.setInputFiles({ name: 'Beanconqueror.zip', mimeType: 'application/zip', buffer: Buffer.alloc(21 * 1024 * 1024) });
       expect(await input.evaluate((el: HTMLInputElement) => el.validationMessage)).toContain('Over 20 MB');
-      await expect(page.locator('.bq-upload + .badge-urgent')).toContainText('Over 20 MB'); // visible, not just a greyed button
+      const badge = page.locator('.bq-upload + .badge-urgent');
+      await expect(badge).toContainText('Over 20 MB'); // visible, not just a greyed button
+      const [bx, px] = await badge.evaluate((el) => [el.getBoundingClientRect().right, el.closest('section')!.getBoundingClientRect().right]);
+      expect(bx, 'badge wraps inside its panel').toBeLessThanOrEqual(px);
       await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled();
       await expect(page.locator('.bq-file')).toHaveText('No file chosen');
       await input.setInputFiles({ name: 'Beanconqueror.zip', mimeType: 'application/zip', buffer: Buffer.alloc(1024) });
