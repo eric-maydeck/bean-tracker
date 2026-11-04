@@ -147,9 +147,9 @@ export const load: PageServerLoad = ({ url, locals }) => {
     decafHidden: !!boards && s.rank === 'rating' && !s.caffeine
       && (s.dial === 'all' ? everyBrew : onceDialed(everyBrew, dialIn)).filter(matches).filter(matchesBrew(bf)).some((b) => b.decaf && b.rating !== null && b.rating > 0 && countsForRating(b, s.ratings) && inPeriod(b.localDate, period)),
     boardCoverage: boards ? fieldCoverage(scored, bags, period, s.rank) : null,
-    // Over time: only the small boards switched to it (views=water-time); the others cost nothing.
+    // Over time: the small boards switched to it (views=water-time) and Caffeine, which always is; the others cost nothing.
     boardSeries: boards
-      ? Object.fromEntries(VIEW_BOARDS.filter((b) => s.views?.[b]).map((b) => [b,
+      ? Object.fromEntries(([...VIEW_BOARDS.filter((b) => s.views?.[b]), 'caffeine'] as const).map((b) => [b,
           boardSeries(scored, bags, { period, dataStart, today }, b, boards[b].map((r) => r.key), s.rank, s.ratings, boardAvg(b, explicit.avg), size)]))
       : null,
     boardsSmall: boards ? smallHidden(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : {},

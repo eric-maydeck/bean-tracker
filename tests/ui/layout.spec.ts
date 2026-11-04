@@ -5368,7 +5368,7 @@ export const STATES: State[] = [
       await link.evaluate((a) => { const p = a.parentElement!; p.style.overflow = 'visible'; p.style.textOverflow = 'clip'; });
       await link.hover();
       await page.waitForTimeout(300);
-      const clipped = await link.evaluate((a) => { for (let e: HTMLElement | null = a, i = 0; e && i < 4; e = e.parentElement, i++) { const s = getComputedStyle(e); if ((s.overflowX === 'hidden' && e.scrollWidth > e.clientWidth + 1) || (s.overflowY === 'hidden' && e.scrollHeight > e.clientHeight + 1)) return true; } return false; });
+      const clipped = await link.evaluate((a) => { for (let e: Element | null = a, i = 0; e && i < 4; e = e.parentElement, i++) { const s = getComputedStyle(e); if ((s.overflowX === 'hidden' && e.scrollWidth > e.clientWidth + 1) || (s.overflowY === 'hidden' && e.scrollHeight > e.clientHeight + 1)) return true; } return false; });
       if (!clipped) await expect(tip).toHaveCount(0);
       await link.evaluate((a) => { a.parentElement!.style.overflow = 'hidden'; }); // the layout check runs after the act
     }
@@ -6887,27 +6887,35 @@ export const STATES: State[] = [
     act: async (page) => {
       const board = page.locator('[data-board="caffeine"]');
       await board.scrollIntoViewIfNeeded();
-      await expect(board.locator('.board-row:not(.placeholder)', { hasText: 'Regular' })).toBeVisible();
-      await expect(board.locator('.board-row', { hasText: 'Decaf' })).toHaveCount(0); // decaf has no rating by default
+      await expect(board.locator('.time-chart canvas')).toBeVisible();
+      // Rated decaf brews are left out by default (note); Include decaf puts them in the chart and drops the note.
       await board.getByRole('button', { name: 'Include decaf' }).click();
       await expect(page).toHaveURL(/caffeine=all/);
-      // One decaf bag is under the Score's 3+ bags cutoff: Decaf shows with the small samples (avg=adjusted).
-      await page.goto('/insights?tab=leaderboards&range=all&dial=all&caffeine=all&avg=adjusted');
-      await expect(page.locator('[data-board="caffeine"] .board-row', { hasText: 'Decaf' })).toBeVisible();
-      await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
+      await expect(board.getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
+      await expect(board.locator('.time-chart canvas')).toBeVisible();
       // Counts keep decaf with no filter, so no note.
       await page.goto('/insights?tab=leaderboards&range=all&rank=brews');
-      await expect(page.locator('[data-board="caffeine"] .board-row', { hasText: 'Decaf' })).toBeVisible();
       await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
       // The default view hides the rated decaf brew (note); a roaster with no decaf has nothing to hide (no note).
       await page.goto('/insights?tab=leaderboards&range=all');
       await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(1);
       await page.goto('/insights?tab=leaderboards&range=all&roaster=Kurasu');
       await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
-      // Over time on Caffeine: the card already spans its row, so no Expand control, and the -wide link looks the same.
-      await page.goto('/insights?tab=leaderboards&range=all&views=caffeine-time-wide');
-      await expect(page.locator('[data-board="caffeine"] .time-chart canvas')).toBeVisible();
-      await expect(page.locator('[data-board="caffeine"] .expand')).toHaveCount(0);
+      // Caffeine is Over time only: no List rows, no List / Over time or Lowest first control, no Expand; the chart is there and
+      // the card is its head + chart + note (no big empty area). The old views=caffeine-time[-wide] links look the same.
+      for (const q of ['', '&views=caffeine-time-wide']) {
+        await page.goto(`/insights?tab=leaderboards&range=all${q}`);
+        const c = page.locator('[data-board="caffeine"]');
+        await c.scrollIntoViewIfNeeded();
+        await expect(c.locator('.time-chart canvas')).toBeVisible();
+        await expect(c.locator('.board-row')).toHaveCount(0);
+        await expect(c.locator('.group-field, .low-switch, .expand')).toHaveCount(0);
+        const [card, chart, head] = await Promise.all(['', '.time-chart', '.board-head'].map((s) => (s ? c.locator(s) : c).boundingBox()));
+        expect(chart!.height).toBeGreaterThan(200);
+        expect(chart!.height).toBeLessThan(300);
+        const extra = card!.height - chart!.height - head!.height;
+        expect(extra, 'head + chart + note + padding only').toBeLessThan(150);
+      }
       await expectEqualBoardHeights(page);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     } },
@@ -6944,7 +6952,7 @@ export const STATES: State[] = [
   // No board head wraps: its children share a top, in List and Over time, Lowest first on and off, for every board.
   ...[false, true].flatMap((low) => [false, true].map((time) => ({
     name: `insights-board-head-one-row-${low ? 'low' : 'high'}-${time ? 'time' : 'list'}`,
-    path: () => `/insights?tab=leaderboards&range=all${time ? '&views=process-time,roast-time,water-time,dripper-time,filter-time,grinder-time,caffeine-time' : ''}${low ? '&low=roasters,coffees,origins,varieties,producers,process,roast,water,dripper,filter,grinder,caffeine' : ''}`,
+    path: () => `/insights?tab=leaderboards&range=all${time ? '&views=process-time,roast-time,water-time,dripper-time,filter-time,grinder-time' : ''}${low ? '&low=roasters,coffees,origins,varieties,producers,process,roast,water,dripper,filter,grinder,caffeine' : ''}`,
     act: async (page: Page) => {
       await expect(page.locator('.board-head')).toHaveCount(12);
       // One row: the title and every tool are centred on the same line (they're align-items: center, so tops differ by height).
@@ -7248,7 +7256,7 @@ export const STATES: State[] = [
     act: async (page) => {
       // Show all and the expand toggle are view-only: no data request, and the other tiles' charts are not rebuilt (a rebuilt
       // chart re-runs its animation, which rewrites data-dashed-segments; the marker below is cleared first).
-      const charts = page.locator('.board canvas');
+      const charts = page.locator('.board:not([data-board=caffeine]) canvas'); // caffeine's is always on
       await expect(charts).toHaveCount(2);
       await expect.poll(() => charts.evaluateAll((cs) => cs.every((c) => c.hasAttribute('data-dashed-segments')))).toBe(true);
       await page.waitForTimeout(600); // the first animation has finished

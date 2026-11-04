@@ -163,8 +163,9 @@ export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', '
 // vs like coffees ranks coffees and their roasters only.
 export const LIKE_BOARDS: readonly Board[] = ['coffees', 'roasters'];
 // The small boards' List · Over time switch: views=roast-time,water-time-wide (absent = List; `wide`: the Over time card
-// expanded to the band's full row).
-export const VIEW_BOARDS = ['process', 'roast', 'water', 'dripper', 'filter', 'grinder', 'caffeine'] as const satisfies readonly Board[];
+// expanded to the band's full row). Caffeine is not one: its card is always Over time (a fixed-height chart), so
+// views=caffeine-time[-wide] is ignored.
+export const VIEW_BOARDS = ['process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const satisfies readonly Board[];
 export type ViewBoard = (typeof VIEW_BOARDS)[number];
 export type BoardView = 'time' | 'wide';
 export type BoardViews = Partial<Record<ViewBoard, BoardView>>;

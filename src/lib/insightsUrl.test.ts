@@ -482,8 +482,9 @@ describe('highlights params', () => {
   it('views: per-board Over time (+ wide), junk and the retired -bars dropped, board order, round trip', () => {
     expect(parse('views=water-time,Roast-TIME-wide,roasters-time,grinder-list,dripper-,filter-bars,process-time-wider,grinder-time-wide-x').views)
       .toEqual({ roast: 'wide', water: 'time' });
-    expect(parse('views=caffeine-time').views).toEqual({ caffeine: 'time' });
-    expect(insightsParams(parse('views=caffeine-time-wide')).toString()).toBe('views=caffeine-time-wide');
+    // Caffeine is always Over time: its views entry is ignored.
+    expect(parse('views=caffeine-time').views).toBeUndefined();
+    expect(parse('views=caffeine-time-wide,water-time').views).toEqual({ water: 'time' });
     expect(parse('views=roast-bars').views).toBeUndefined();
     expect(parse('views=junk').views).toBeUndefined();
     expect(parse('').views).toBeUndefined();

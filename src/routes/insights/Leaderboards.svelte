@@ -266,7 +266,8 @@
   <!-- One money format per board (ui-rules 46): whole dollars for all when any amount is $1,000+. -->
   {@const whole = (rank === 'spend' || rank === 'ppg') && wholeUsd(rows.map((r) => r.value))}
   {@const costWhole = rank === 'ppg' && wholeUsd(rows.map((r) => r.cost))}
-  {@const isLow = low.includes(b)}
+  {@const fixed = b === 'caffeine'}
+  {@const isLow = low.includes(b) && !fixed}
   {@const ordered = isLow ? lowFirst(b, rows) : rows}
   {@const shown = isOpen ? ordered : ordered.slice(0, size)}
   {@const top = Math.max(...shown.map((r) => r.value), 0)}
@@ -276,17 +277,17 @@
   {@const span = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9)}
   {@const switchable = (VIEW_BOARDS as readonly Board[]).includes(b) && !unranked(b) && rows.length > 0}
   {@const pick = switchable ? viewOf(b) : undefined}
-  {@const view = pick ? 'time' : 'list'}
-  <!-- Caffeine already spans its row (CSS), so it has no Expand/Shrink and a views=caffeine-time-wide link just shows Over time. -->
-  {@const spans = b === 'caffeine'}
+  {@const view = pick || fixed ? 'time' : 'list'}
+  <!-- Caffeine is always Over time, in a fixed-height chart, and spans its row (CSS): no List, Lowest first or Expand. -->
+  {@const spans = fixed}
   {@const wide = pick === 'wide' && !spans}
-  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:timeview={view === 'time'} class:wide data-board={b} style:--rows={size}
+  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:timeview={view === 'time'} class:fixed class:wide data-board={b} style:--rows={size}
     data-lines={view === 'time' ? (isOpen ? pool.length : Math.min(size, pool.length)) : undefined}>
     <div class="board-head">
       <HeadingAnchor id="leaderboard-{b}">{TITLE[b]}</HeadingAnchor>
       <div class="board-tools">
         <!-- First in the tools, one box pressed or not; gone (the head keeps its height) where there is nothing to order. -->
-        {#if rows.length && !unranked(b)}
+        {#if rows.length && !unranked(b) && !fixed}
           <button class="icon-button low-switch" aria-pressed={isLow} aria-label="Lowest first" use:labelTip={'Lowest first'}
             onclick={() => toggleLow(b)}><Icon name={isLow ? 'sort-ascending' : 'sort-descending'} /></button>
         {/if}
@@ -325,7 +326,7 @@
             {#if !spans}<button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
               onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>{/if}
             <Chart type="line" padTop={roomy.current && !spans ? 36 : 0} labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
-              series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height="fill" />
+              series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={fixed ? 260 : 'fill'} />
           </div>
           <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === pool.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `${isLow ? 'lowest' : 'top'} ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
         {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}
@@ -360,9 +361,9 @@
       {/if}
       {#if isLow && !unranked(b) && ordered.length < rows.length}<p class="chart-note">Groups with one bag are left out.</p>{/if}
     </div>
-    {#if bandNote(b) && rows.length && !unranked(b)}
+    {#if bandNote(b) && rows.length && !unranked(b) && (!fixed || small[b])}
       <!-- The hidden twin holds the band's longest line, so a card without the note (or with a shorter one) is as tall. -->
-      <p class="chart-note small-note"><span class="twin" aria-hidden="true">{bandNote(b)}</span>
+      <p class="chart-note small-note">{#if !fixed}<span class="twin" aria-hidden="true">{bandNote(b)}</span>{/if}
         {#if small[b]}<span class="real">{smallLine(b).lead}<button class="link-like" onclick={() => choose({ avg: showingAll(b) ? undefined : rank === 'like' ? 'raw' : SHOW_ALL_AVG })}>{smallLine(b).show}</button></span>{/if}</p>
     {/if}
     <!-- The footer exists only for a Show all button. A band with one reserves that space in its other cards (.has-foot,
@@ -627,6 +628,17 @@
     position: relative;
     flex: 1 1 0;
     min-height: 12rem;
+  }
+  /* Caffeine: the chart's own height, not the List's (it has no List). */
+  .fixed .board-body.time {
+    min-height: 0;
+  }
+  .fixed .like-note {
+    padding: var(--space-2) 0;
+  }
+  .fixed .time-chart {
+    flex: none;
+    height: 260px;
   }
   .time-chart :global(.chart-container) {
     position: absolute;
