@@ -369,15 +369,20 @@ describe('busiest-day, bags-finished, spend, best-value', () => {
     expect((s.viz as any).values.reduce((a: number, b: number) => a + b, 0)).toBe(121);
     expect(fact('bags-finished').run(noBags())).toBeNull();
   });
-  it('spend: the companion divides dollars, not bags, in the household amount\'s precision', () => {
+  it('spend: the companion divides dollars, not bags, with cents on every amount, even past $1,000', () => {
     const one = fact('spend').run(full())!;
     const num = (t: string) => Number(t.replace(/[^0-9.]/g, ''));
     expect(one.lead).toBe('You spent');
     expect(one.context).toMatch(/^on 121 bags, \$[\d.,]+\/100g on average\.$/);
     const each = one.each!.replace(/^An average of | per person$/g, '');
     expect(Math.abs(num(each) - num(one.big) / 2)).toBeLessThanOrEqual(0.5);
-    expect(each.includes('.'), `${one.big} / ${each}`).toBe(one.big.includes('.')); // both cents or neither
-    const cheap = fact('spend').run(full({ bags: shelf.bags.map((b) => (b.cost ? { ...b, cost: 1 } : b)) }))!; // under $1,000: 2 decimals on both
+    const cents = /^\$[\d,]+\.\d\d$/; // the big (over $1,000 here), the companion, the $/100g and every bar
+    expect(one.big).toMatch(cents);
+    expect(each).toMatch(cents);
+    expect(Number(num(one.big))).toBeGreaterThan(1000);
+    expect(one.context).toMatch(/, \$[\d,]+\.\d\d\/100g/);
+    for (const r of (one.viz as any).rows) expect(r.texts[0]).toMatch(cents);
+    const cheap = fact('spend').run(full({ bags: shelf.bags.map((b) => (b.cost ? { ...b, cost: 1 } : b)) }))!; // under $1,000: the same
     expect(cheap.big).toMatch(/\.\d\d$/);
     expect(cheap.each).toMatch(/^An average of \$[\d,]+\.\d\d per person$/);
     expect(fact('spend').run(full({ size: 1 }))!.each).toBeUndefined();

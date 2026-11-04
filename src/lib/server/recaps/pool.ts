@@ -11,7 +11,6 @@ import { pick, RECORDS } from '$lib/server/insights/records';
 import { addDays, daysBetween } from '$lib/server/insights/time';
 import { isFinished } from '$lib/server/insights/overview';
 import { spendTiles } from '$lib/server/insights/spend';
-import { isWholeUsd, wholeUsd } from '$lib/money';
 import { sweetSpotsTab } from '$lib/server/insights/lab';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
 import { recipeBand } from '$lib/server/insights/pours';
@@ -536,15 +535,15 @@ const spend: FactDef = {
     const by = new Map<string, number>();
     for (const b of inYear) by.set(b.roaster, (by.get(b.roaster) ?? 0) + (b.cost ?? 0));
     const top = [...by].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3);
-    const whole = wholeUsd(top.map((x) => x[1]));
-    const big = usd(t.spent);
-    // Same precision as the household amount: whole dollars when it has no cents.
-    const pp = usd(t.spent / y.size, isWholeUsd(t.spent));
+    // Cents on every amount of this slide (user, 2026-11-03), even past $1,000: the pair, the bars and the $/100g all match.
+    const d = (n: number) => usd(n, false);
+    const big = d(t.spent);
+    const pp = d(t.spent / y.size);
     return {
       id: 'spend',
       lead: 'You spent', big,
-      context: `on ${nBags(t.bags)}, ${usd(t.avgPpg! * 100)}/100g on average.`,
-      viz: { kind: 'hlist', rows: top.map(([label, value]) => ({ label, value, texts: [usd(value, whole)] })) },
+      context: `on ${nBags(t.bags)}, ${d(t.avgPpg! * 100)}/100g on average.`,
+      viz: { kind: 'hlist', rows: top.map(([label, value]) => ({ label, value, texts: [d(value)] })) },
       link: { tab: 'Habits', section: 'Habits · Spend', href: seeMoreHref(y.year, 'spend') },
       each: each(y, pp), card: { big, label: 'spent' }, score: 0.3
     };
