@@ -326,7 +326,7 @@
             {#if !spans}<button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
               onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>{/if}
             <Chart type="line" padTop={roomy.current && !spans ? 36 : 0} labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
-              series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={fixed ? 260 : 'fill'} />
+              series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={fixed ? 200 : 'fill'} />
           </div>
           <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === pool.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `${isLow ? 'lowest' : 'top'} ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
         {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}
@@ -638,7 +638,7 @@
   }
   .fixed .time-chart {
     flex: none;
-    height: 260px;
+    height: 200px;
   }
   .time-chart :global(.chart-container) {
     position: absolute;

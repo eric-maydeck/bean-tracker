@@ -6911,10 +6911,10 @@ export const STATES: State[] = [
         await expect(c.locator('.board-row')).toHaveCount(0);
         await expect(c.locator('.group-field, .low-switch, .expand')).toHaveCount(0);
         const [card, chart, head] = await Promise.all(['', '.time-chart', '.board-head'].map((s) => (s ? c.locator(s) : c).boundingBox()));
-        expect(chart!.height).toBeGreaterThan(200);
-        expect(chart!.height).toBeLessThan(300);
+        expect(chart!.height).toBeGreaterThan(150);
+        expect(chart!.height).toBeLessThan(230);
         const extra = card!.height - chart!.height - head!.height;
-        expect(extra, 'head + chart + note + padding only').toBeLessThan(150);
+        expect(extra, 'head + chart + note + padding only').toBeLessThan(140);
       }
       await expectEqualBoardHeights(page);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
