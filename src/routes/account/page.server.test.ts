@@ -10,6 +10,7 @@ import { fixtureZip } from '$lib/server/fixtures/beanconqueror/fixture';
 import { MAX_UPLOAD_BYTES } from '$lib/server/beanConquerorJson';
 import { linkMarks } from '$lib/server/brewNow/outcome';
 import type { ImportChanges } from '$lib/server/beanconqueror';
+import { createCoffee } from '$lib/server/coffees';
 import { actions, load } from './+page.server';
 
 vi.mock('$lib/server/brewNow/outcome', () => ({ linkMarks: vi.fn(() => 0) }));
@@ -115,5 +116,61 @@ describe('brew now dose and ratio lists', () => {
   it('rejects a non-admin with 401', async () => {
     for (const a of ['addDose', 'removeDose', 'addRatio', 'removeRatio'] as const)
       await expect(actions[a](post('18', false))).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+function post(fields: Record<string, string>, isAdmin = true) {
+  const body = new FormData();
+  for (const [k, v] of Object.entries(fields)) body.set(k, v);
+  return { request: new Request('http://localhost/account', { method: 'POST', body }), locals: { isAdmin } } as never;
+}
+
+function addBeanAndCoffee(name: string) {
+  const db = getDb();
+  const { id } = createCoffee(db, {
+    roaster: 'R', coffee_name: name, origin: null, roast_level: null, processing: null, amount_g: null, cost: null,
+    roast_date: null, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null
+  });
+  db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at) VALUES (?, ?, '2026-10-01')`).run(`bean-${name}`, name);
+  return id;
+}
+
+describe('not yet tracked: load', () => {
+  it('lists unmatched beans with their total and the linkable coffees', () => {
+    const db = getDb();
+    db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at) VALUES ('bean-u', 'Unmatched', '2026-10-01')`).run();
+    const coffeeId = addBeanAndCoffee('Loadable');
+    const d = load(event(true)) as { unmatchedBeans: { beans: { id: string }[]; total: number }; linkableCoffees: { id: number }[] };
+    expect(d.unmatchedBeans.total).toBeGreaterThanOrEqual(1);
+    expect(d.unmatchedBeans.beans.map((b) => b.id)).toContain('bean-u');
+    expect(d.linkableCoffees.map((c) => c.id)).toContain(coffeeId);
+  });
+});
+
+describe('not yet tracked: actions', () => {
+  for (const name of ['linkBeanConqueror', 'dismissBeanConqueror', 'create'] as const) {
+    it(`${name} rejects a signed-out request with 401`, async () => {
+      await expect(actions[name](post({}, false))).rejects.toMatchObject({ status: 401 });
+    });
+  }
+
+  it('links, then rejects a second link to the same coffee with a clean 400', async () => {
+    const coffeeId = addBeanAndCoffee('Alpha');
+    getDb().prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at) VALUES ('bean-x', 'X', '2026-10-01')`).run();
+    expect(await actions.linkBeanConqueror(post({ beanId: 'bean-Alpha', coffeeId: String(coffeeId) }))).toEqual({ success: true });
+    const again = await actions.linkBeanConqueror(post({ beanId: 'bean-x', coffeeId: String(coffeeId) }));
+    expect(failure(again)).toEqual({ status: 400, data: { error: 'Alpha is already linked to a Bean Conqueror bean' } });
+  });
+
+  it('400s on a missing or bad coffee id', async () => {
+    expect(failure(await actions.linkBeanConqueror(post({ beanId: 'bean-x', coffeeId: 'abc' })))?.status).toBe(400);
+  });
+
+  it('dismiss removes the bean from the list; 400s without an id', async () => {
+    getDb().prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at) VALUES ('bean-d', 'D', '2026-10-01')`).run();
+    expect(await actions.dismissBeanConqueror(post({ id: 'bean-d' }))).toEqual({ success: true });
+    const d = load(event(true)) as { unmatchedBeans: { beans: { id: string }[] } };
+    expect(d.unmatchedBeans.beans.map((b) => b.id)).not.toContain('bean-d');
+    expect(failure(await actions.dismissBeanConqueror(post({})))?.status).toBe(400);
   });
 });

@@ -165,7 +165,7 @@ export async function checkLayout(page: Page): Promise<void> {
       if (!buttons.length) continue;
       const top = Math.min(...buttons.map((b) => b.getBoundingClientRect().top));
       const box = row.getBoundingClientRect();
-      const scope = row.closest('form, .card, .compact-row-wrap, tr, dialog') ?? document.body;
+      const scope = row.closest('form, .card, .compact-row-wrap, .triage-row, tr, dialog') ?? document.body;
       let above = -Infinity;
       for (const el of scope.querySelectorAll('input, select, textarea, button, .button, img, p, label, h2, h3, .stat-grid, .form-field')) {
         if (row.contains(el) || el.contains(row) || !shown(el)) continue;

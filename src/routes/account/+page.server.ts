@@ -2,13 +2,29 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
-import { importBeanConquerorData } from '$lib/server/beanconqueror';
+import {
+  importBeanConquerorData,
+  getUnmatchedBeanConquerorBeans,
+  countUnmatchedBeanConquerorBeans,
+  dismissBeanConquerorBean
+} from '$lib/server/beanconqueror';
+import { getDistinctFieldValues, getFillHistory } from '$lib/server/coffees';
+import { getRoasterImages } from '$lib/server/roasterImages';
+import { getRoastLevels } from '$lib/server/roastLevels';
+import { getSubscriptionOptions } from '$lib/server/subscriptions';
+import { handleCoffeeCreateAndLink } from '$lib/server/coffeeFormActions';
+import { queueFillMissing } from '$lib/server/imageFills';
+import { linkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '$lib/server/beanConquerorLinks';
 import { editBrewList, getBrewDoses, getBrewRatios } from '$lib/server/brewNow/prefs';
 import { linkMarks } from '$lib/server/brewNow/outcome';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '$lib/server/beanConquerorJson';
 import { queueReadings } from '$lib/server/pourReadings';
 import { discoverGroups, listRecipes } from '$lib/server/recipes';
 import { uploadStatus, UPLOAD_USERNAME } from '$lib/server/visualizerUpload';
+
+// Matches the "Showing top N of M" treatment elsewhere: a real export can have a couple hundred
+// unmatched beans, and rendering every one buries the rest of the page.
+const UNMATCHED_BEAN_LIMIT = 20;
 
 export const load: PageServerLoad = ({ locals, url }) => {
   if (!locals.isAdmin) redirect(303, '/login?redirectTo=%2Faccount');
@@ -17,7 +33,17 @@ export const load: PageServerLoad = ({ locals, url }) => {
     .prepare(`SELECT value FROM app_meta WHERE key = 'beanconqueror_last_imported_at'`)
     .get() as { value: string } | undefined;
   // Without ORIGIN, adapter-node builds url.origin from the Host header, so each domain shows its own URL.
-  return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImported?.value ?? null, doses: getBrewDoses(db), ratios: getBrewRatios(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME };
+  return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImported?.value ?? null, doses: getBrewDoses(db), ratios: getBrewRatios(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME,
+    unmatchedBeans: { beans: getUnmatchedBeanConquerorBeans(db, UNMATCHED_BEAN_LIMIT), total: countUnmatchedBeanConquerorBeans(db) },
+    linkableCoffees: getLinkableCoffees(db),
+    roastLevels: getRoastLevels(db),
+    roasters: getDistinctFieldValues(db, 'roaster'),
+    origins: getDistinctFieldValues(db, 'origin'),
+    processingMethods: getDistinctFieldValues(db, 'processing'),
+    roasterImages: getRoasterImages(db),
+    restHistory: getFillHistory(db),
+    subscriptions: getSubscriptionOptions(db)
+  };
 };
 
 export const actions: Actions = {
@@ -44,6 +70,42 @@ export const actions: Actions = {
     linkMarks(db);
     queueReadings(db).catch((e) => console.error('pour readings failed', e));
     return { success: true as const, changes };
+  },
+  create: async ({ request, locals }) => {
+    requireAdmin(locals);
+    // The Create modal from "Not yet tracked" sends beanconqueror_id: link it too.
+    const db = getDb();
+    const result = handleCoffeeCreateAndLink(db, await request.formData());
+    void queueFillMissing(db); // a new image → its backdrop fill, in the background
+    return result;
+  },
+  linkBeanConqueror: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const formData = await request.formData();
+    const beanId = formData.get('beanId');
+    const coffeeId = Number(formData.get('coffeeId'));
+    if (typeof beanId !== 'string' || !beanId) {
+      return fail(400, { error: 'Missing bean id' });
+    }
+    if (!Number.isInteger(coffeeId) || coffeeId <= 0) {
+      return fail(400, { error: 'Choose a coffee to link' });
+    }
+    try {
+      linkBeanConquerorBean(getDb(), beanId, coffeeId);
+    } catch (err) {
+      if (err instanceof BeanLinkError) return fail(400, { error: err.message });
+      throw err;
+    }
+    return { success: true as const };
+  },
+  dismissBeanConqueror: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const id = (await request.formData()).get('id');
+    if (typeof id !== 'string' || !id) {
+      return fail(400, { error: 'Missing bean id' });
+    }
+    dismissBeanConquerorBean(getDb(), id);
+    return { success: true as const };
   },
   addDose: (e) => editList(e, 'doses', 'add'),
   removeDose: (e) => editList(e, 'doses', 'remove'),

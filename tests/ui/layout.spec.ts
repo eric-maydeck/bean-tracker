@@ -74,7 +74,7 @@ async function expectEditAligned(page: Page) {
   expect(size.y - (lbl.y + lbl.height), 'label to input').toBeLessThan(7);
 }
 
-// Stats → Not yet tracked → Link on the bean row containing `text`.
+// Account → Not yet tracked → Link on the bean row containing `text`.
 // A row's action buttons' boxes relative to the row, so scrolling the table
 // doesn't count as moving them.
 function buttonBoxes(scope: Locator) {
@@ -343,7 +343,7 @@ function stubSubFill(page: Page, body: object, status = 200) {
 }
 
 async function showPicker(page: Page, text: string) {
-  const row = page.locator('.compact-row-wrap, tbody tr').filter({ hasText: text }).first();
+  const row = page.locator('.triage-row').filter({ hasText: text }).first();
   await row.getByRole('button', { name: 'Link', exact: true }).click();
   await expect(page.getByRole('button', { name: /^Coffee to link/ })).toBeVisible();
 }
@@ -3127,10 +3127,41 @@ export const STATES: State[] = [
     }
   },
   {
+    // The triage list sits in the Bean Conqueror panel under the upload; the import result links to it.
+    name: 'account-not-tracked',
+    path: () => '/account',
+    act: async (page) => {
+      const h = page.getByRole('heading', { name: /^Not yet tracked \(\d+\)$/ });
+      await expect(h).toHaveAttribute('id', 'not-tracked');
+      await expect(h.locator('xpath=ancestor::section[1]').getByRole('heading', { level: 2 })).toHaveText('Bean Conqueror');
+      const row = page.locator('.triage-row').filter({ hasText: 'Kenya Kiambu' }).first();
+      for (const name of ['Create', 'Link', 'Dismiss']) await expect(row.getByRole('button', { name, exact: true })).toBeVisible();
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
+        await checkLayout(page);
+      }
+    }
+  },
+  {
+    // Create opens the same CoffeeForm modal, prefilled from the bean; Cancel closes it without saving.
+    name: 'account-not-tracked-create', viewports: 'two',
+    path: () => '/account',
+    act: async (page) => {
+      const row = page.locator('.triage-row').filter({ hasText: 'Rwanda Gitega' }).first();
+      await row.getByRole('button', { name: 'Create', exact: true }).click();
+      const dlg = page.locator('.modal');
+      await expect(dlg.getByRole('heading', { name: /Create coffee from/ })).toBeVisible();
+      await expect(dlg.getByLabel('Coffee', { exact: true })).toHaveValue(/Rwanda Gitega/);
+      await checkLayout(page);
+      await dlg.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dlg).toHaveCount(0);
+    }
+  },
+  {
     // Closed, after a keyboard pick (nothing is submitted): ↓ + Enter takes the
     // second twin; Esc closes without changing it. Focus returns to the button.
-    name: 'stats-link-picker', viewports: 'two',
-    path: () => '/stats?tab=bq',
+    name: 'account-not-tracked-link-picker', viewports: 'two',
+    path: () => '/account',
     act: async (page) => {
       await openPicker(page, 'Kenya Kiambu');
       const button = page.getByRole('button', { name: /^Coffee to link/ });
@@ -3147,8 +3178,8 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'stats-link-picker-open',
-    path: () => '/stats?tab=bq',
+    name: 'account-not-tracked-link-picker-open',
+    path: () => '/account',
     act: async (page) => {
       await openPicker(page, 'Kenya Kiambu');
       const top = page.getByRole('group', { name: 'Top match' }).getByRole('option');
@@ -3158,8 +3189,8 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'stats-link-picker-search', viewports: 'two',
-    path: () => '/stats?tab=bq',
+    name: 'account-not-tracked-link-picker-search', viewports: 'two',
+    path: () => '/account',
     act: async (page) => {
       await openPicker(page, 'Kenya Kiambu');
       await page.getByRole('searchbox', { name: 'Search coffees' }).fill('ethiopia');
@@ -3168,8 +3199,8 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'stats-link-picker-long',
-    path: () => '/stats?tab=bq',
+    name: 'account-not-tracked-link-picker-long',
+    path: () => '/account',
     act: (page, s) => openPicker(page, s.names.long.slice(0, 20))
   },
   {

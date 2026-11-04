@@ -32,48 +32,6 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
-  let createModalBean = $state<UnmatchedBean | null>(null);
-  // Which "Not yet tracked" row has its Link picker open. Inline action
-  // state, like the Create modal, so it's never in the URL.
-  let linkingBeanId = $state<string | null>(null);
-  let linkCoffeeId = $state<number | null>(null);
-
-  // Same width-based default the Coffees/Subscriptions pages use (List on
-  // desktop, Compact on mobile) — deliberately no manual toggle or
-  // localStorage persistence here, unlike those pages: this is a
-  // candidate-review section, not a page people spend a lot of time
-  // choosing a preferred layout for.
-  let candidateView = $state<'list' | 'compact'>('list');
-
-  $effect(() => {
-    if (!browser) return;
-    candidateView = defaultViewForWidth(window.innerWidth);
-  });
-
-  function prefillFor(bean: UnmatchedBean): Partial<CoffeeRow> {
-    return {
-      roaster: bean.roaster ?? '',
-      coffee_name: bean.name,
-      origin: bean.origin,
-      processing: bean.processing,
-      amount_g: bean.weightG,
-      cost: bean.cost,
-      roast_date: bean.roastDate,
-      decaf: bean.decaffeinated ? 1 : 0,
-      // A new coffee is a blend only when BQ says so; a missing mix stays single origin.
-      blend: bean.blend === 'Blend' ? 1 : 0
-    };
-  }
-
-  function openCreateModal(bean: UnmatchedBean) {
-    createModalBean = bean;
-  }
-
-  async function closeCreateModal() {
-    createModalBean = null;
-    await invalidateAll();
-  }
-
   type Dimension = 'roaster' | 'origin' | 'processing' | 'roastLevel' | 'caffeine';
   type Metric = 'grams' | 'count';
 
@@ -301,11 +259,6 @@
   // One money format for the chart (ui-rules 46): its labels round, its tips keep the cents.
   let costWhole = $derived(wholeUsd(bcVisibleCostByRoaster.map((g) => g.averageCostPerGram)));
   let bcCostChartHeight = $derived(Math.max(220, bcVisibleCostByRoaster.length * 34 + 40));
-
-  // The "top N of M" cap on the not-yet-tracked candidate list is now
-  // applied server-side (+page.server.ts) via a SQL LIMIT, with the total
-  // count from a separate COUNT(*) query — data.unmatchedBeans.beans is
-  // already the capped list.
 
   let bcRatingsDates = $derived(bc.ratingsOverTime.map((r) => r.date));
   let bcRatingsValues = $derived(bc.ratingsOverTime.map((r) => r.rating));
@@ -793,134 +746,7 @@
       : 'never'}
   </p>
   {#if data.isAdmin}
-    <p class="text-muted">Import moved to <a href="/account">Account</a>.</p>
-  {/if}
-
-  {#snippet candidateActions(bean: UnmatchedBean)}
-    {#if linkingBeanId === bean.id}
-      {@const groups = linkPickerGroups(
-        { roaster: bean.roaster, likelyMatchId: bean.likelyMatch?.id ?? null },
-        data.linkableCoffees
-      )}
-      <form
-        class="link-picker"
-        method="POST"
-        action="?/linkBeanConqueror&tab=bq"
-        use:enhance={() => {
-          return async ({ result, update }) => {
-            await update();
-            if (result.type === 'success') linkingBeanId = null;
-          };
-        }}
-      >
-        <input type="hidden" name="beanId" value={bean.id} />
-        <LinkPicker {groups} label={`Coffee to link ${bean.name} to`} bind:value={linkCoffeeId} />
-        <div class="action-buttons candidate-actions link-picker-actions">
-          <button class="button" type="submit" disabled={linkCoffeeId == null}>Link</button>
-          <button class="button button-secondary" type="button" onclick={() => (linkingBeanId = null)}>Cancel</button>
-        </div>
-      </form>
-    {:else}
-      <div class="action-buttons candidate-actions">
-        <button class="button button-secondary" type="button" onclick={() => openCreateModal(bean)}>Create</button>
-        <button class="button button-secondary" type="button" onclick={() => {
-          linkingBeanId = bean.id;
-          linkCoffeeId = null;
-        }}>Link</button>
-        <form
-          method="POST"
-          action="?/dismissBeanConqueror&tab=bq"
-          use:enhance={() => {
-            return async ({ update }) => {
-              await update();
-            };
-          }}
-        >
-          <input type="hidden" name="id" value={bean.id} />
-          <button class="button button-danger" type="submit">Dismiss</button>
-        </form>
-      </div>
-    {/if}
-  {/snippet}
-
-  {#if data.unmatchedBeans.total > 0}
-    <h3>Not yet tracked ({data.unmatchedBeans.total})</h3>
-    {#if data.unmatchedBeans.beans.length < data.unmatchedBeans.total}<p class="text-muted">Showing top {data.unmatchedBeans.beans.length} of {data.unmatchedBeans.total}.</p>{/if}
-    {#if candidateView === 'compact'}
-      <div class="compact-list bean-cards">
-        {#each data.unmatchedBeans.beans as bean (bean.id)}
-          <div class="compact-row-wrap">
-            <div class="compact-row">
-              <div class="compact-row-main">
-                <div class="compact-row-title">
-                  <CoffeeName name={bean.name} />
-                  {#if bean.decaffeinated}<span class="badge badge-decaf">Decaf</span>{/if}
-                </div>
-                <div class="compact-row-sub text-muted">{bean.roaster ?? 'Unknown roaster'}</div>
-              </div>
-            </div>
-            <div class="compact-row-detail">
-              <div class="compact-detail-grid">
-                <div><span class="eyebrow">Origin</span>{bean.origin ?? '—'}</div>
-                <div><span class="eyebrow">Processing</span>{bean.processing ?? '—'}</div>
-                <div><span class="eyebrow">Roast date</span>{bean.roastDate ?? '—'}</div>
-              </div>
-              {#if bean.likelyMatch}
-                <p class="text-muted">
-                  Possibly already tracked as <a href={`/coffees/${bean.likelyMatch.slug}`}
-                    ><CoffeeName name={bean.likelyMatch.coffeeName} /></a
-                  >
-                  ({bean.likelyMatch.roastDate ? `Roasted ${bean.likelyMatch.roastDate}` : 'No roast date'} · {cap(bean.likelyMatch.status)})
-                </p>
-              {/if}
-            </div>
-            {#if data.isAdmin}
-              {@render candidateActions(bean)}
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <div class="table-scroll">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Roaster</th>
-              <th>Origin</th>
-              <th>Processing</th>
-              <th>Roast date</th>
-              <th>Decaf</th>
-              <th>Possible match</th>
-              {#if data.isAdmin}<th>Actions</th>{/if}
-            </tr>
-          </thead>
-          <tbody>
-            {#each data.unmatchedBeans.beans as bean (bean.id)}
-              <tr>
-                <td><CoffeeName name={bean.name} /></td>
-                <td>{bean.roaster ?? 'Unknown roaster'}</td>
-                <td>{bean.origin ?? '—'}</td>
-                <td>{bean.processing ?? '—'}</td>
-                <td>{bean.roastDate ?? '—'}</td>
-                <td>{bean.decaffeinated ? 'Yes' : 'No'}</td>
-                <td>
-                  {#if bean.likelyMatch}
-                    <a href={`/coffees/${bean.likelyMatch.slug}`}><CoffeeName name={bean.likelyMatch.coffeeName} /></a><br />
-                    <span class="text-muted">{bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status}</span>
-                  {:else}
-                    —
-                  {/if}
-                </td>
-                {#if data.isAdmin}
-                  <td>{@render candidateActions(bean)}</td>
-                {/if}
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    {/if}
+    <p class="text-muted">Import and untracked beans moved to <a href="/account">Account</a>.</p>
   {/if}
 
   {#if bc.totalBrews > 0 || bc.totalBeans > 0}
@@ -1166,27 +992,6 @@
     {/if}
   {/if}
 
-  {#if createModalBean}
-    <div class="modal-backdrop">
-      <div class="modal">
-        <h2>Create coffee from <CoffeeName name={createModalBean.name} /></h2>
-        <CoffeeForm
-          prefill={prefillFor(createModalBean)}
-          roastLevels={data.roastLevels}
-          roasters={data.roasters}
-          roasterImages={data.roasterImages}
-          origins={data.origins}
-          processingMethods={data.processingMethods}
-          restHistory={data.restHistory}
-          subscriptions={data.subscriptions}
-          formError={form?.error ?? null}
-          beanConquerorId={createModalBean.id}
-          oncancel={() => (createModalBean = null)}
-          onsuccess={closeCreateModal}
-        />
-      </div>
-    </div>
-  {/if}
 </section>
 {/if}
 

@@ -3,6 +3,7 @@
   import { invalidateAll } from '$app/navigation';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import BeanTriage from './BeanTriage.svelte';
   import { showToast } from '$lib/toast.svelte';
   import { importSummary } from '$lib/importSummary';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
@@ -130,6 +131,19 @@
     In Bean Conqueror: Settings → Export, then pick Beanconqueror.zip here. Do this before or after the flow upload;
     brews and flows join up either way.
   </p>
+
+  <BeanTriage
+    unmatched={data.unmatchedBeans}
+    linkable={data.linkableCoffees}
+    roastLevels={data.roastLevels}
+    roasters={data.roasters}
+    roasterImages={data.roasterImages}
+    origins={data.origins}
+    processingMethods={data.processingMethods}
+    restHistory={data.restHistory}
+    subscriptions={data.subscriptions}
+    formError={form && 'error' in form && form.error ? String(form.error) : null}
+  />
 
   <h3>Flow data (automatic upload)</h3>
   <p>
