@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
-import { getDb, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from '$lib/server/db';
+import { getDb, getHouseholdSize, lastImportedAt, setHouseholdSize, InvalidHouseholdSizeError } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import {
   importBeanConquerorData,
@@ -29,11 +29,8 @@ const UNMATCHED_BEAN_LIMIT = 20;
 export const load: PageServerLoad = ({ locals, url }) => {
   if (!locals.isAdmin) redirect(303, '/login?redirectTo=%2Faccount');
   const db = getDb();
-  const lastImported = db
-    .prepare(`SELECT value FROM app_meta WHERE key = 'beanconqueror_last_imported_at'`)
-    .get() as { value: string } | undefined;
   // Without ORIGIN, adapter-node builds url.origin from the Host header, so each domain shows its own URL.
-  return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImported?.value ?? null, doses: getBrewDoses(db), ratios: getBrewRatios(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME,
+  return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImportedAt(db), doses: getBrewDoses(db), ratios: getBrewRatios(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME,
     householdSize: getHouseholdSize(db),
     unmatchedBeans: { beans: getUnmatchedBeanConquerorBeans(db, UNMATCHED_BEAN_LIMIT), total: countUnmatchedBeanConquerorBeans(db) },
     linkableCoffees: getLinkableCoffees(db),

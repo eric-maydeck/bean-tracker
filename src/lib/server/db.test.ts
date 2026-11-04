@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createDb, applySchema, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from './db';
+import { createDb, applySchema, lastImportedAt, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from './db';
 import { schema } from './schema';
 import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear';
 import { createSubscription, deleteSubscription } from './subscriptions';
@@ -414,5 +414,14 @@ describe('createDb origin columns', () => {
     applySchema(raw);
     const cols = (raw.prepare(`PRAGMA table_info(coffees)`).all() as { name: string }[]).map((c) => c.name);
     expect(cols).toEqual(expect.arrayContaining(['producer', 'farm', 'variety', 'region', 'elevation', 'harvest_time', 'certification']));
+  });
+});
+
+describe('lastImportedAt', () => {
+  it('is null before any upload, then the stored time', () => {
+    const db = createDb(':memory:');
+    expect(lastImportedAt(db)).toBeNull();
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)`).run('2026-11-01T10:00:00Z');
+    expect(lastImportedAt(db)).toBe('2026-11-01T10:00:00Z');
   });
 });

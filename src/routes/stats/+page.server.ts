@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { getDb, getHouseholdSize } from '$lib/server/db';
+import { getDb, getHouseholdSize, lastImportedAt } from '$lib/server/db';
 import { getArchivedCoffees, getBacklogCoffees, getOpenCoffees } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { loadFacts } from '$lib/server/insights/facts';
@@ -30,16 +30,13 @@ export const load: PageServerLoad = () => {
   const consumptionByRange = Object.fromEntries(
     [...RANGES, ...years.map(String)].map((r) => [r, { household: use(r, 1), person: use(r, householdSize) }])
   );
-  const lastImportedRow = db
-    .prepare(`SELECT value FROM app_meta WHERE key = 'beanconqueror_last_imported_at'`)
-    .get() as { value: string } | undefined;
   return {
     stats,
     householdSize,
     onHand,
     years,
     consumption: consumptionByRange,
-    beanConquerorLastImportedAt: lastImportedRow?.value ?? null,
+    beanConquerorLastImportedAt: lastImportedAt(db),
     beanConquerorStats: buildBeanConquerorStats(db, day)
   };
 };

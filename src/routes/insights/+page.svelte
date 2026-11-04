@@ -769,7 +769,7 @@
   </dialog>
 
 <div class="period-row">
-  <p class="insights-period">{periodText}</p>
+  <p class="insights-period">{periodText}{#if s.tab === 'overview'}{' · '}<span data-last-updated>Last updated: {data.lastImportedAt ? `${new Date(data.lastImportedAt).toLocaleString('en-US', { timeZone: 'UTC' })} UTC` : 'never'}</span>{/if}</p>
 <!-- See all (gate 3): what the Score/Ratings/Brews settings hide on this tab; once everything shows, the way back.
        It shares the period line's row (right-aligned), so it appearing moves nothing below; on a phone it wraps under it only when it does not fit. -->
   {#if data.hidden}
@@ -1852,6 +1852,10 @@
     .fit.n7.spending .stat-item:nth-last-child(-n + 4) {
       --c: 2;
       --q: 2;
+    }
+    /* Seven tiles in two columns: the last one is alone on its row, content still one tile wide. */
+    .fit.n7.spending .stat-item:last-child {
+      --q: 1;
     }
   }
   /* "9 free bags not in $/g" is wider than a 3-up phone tile: wrap it, never cut it off with an ellipsis. */

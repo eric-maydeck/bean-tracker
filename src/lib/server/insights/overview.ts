@@ -38,7 +38,8 @@ export const TILE_KIND: Record<keyof OverviewTiles, 'total' | 'average'> = {
   avgTempC: 'average'
 };
 
-// Per person: totals (not roasters: a count of who, not an amount) and brews per day ÷ household size, an even split (Bean Conqueror
+// Per person: totals (not roasters: a count of who, not an amount) and brews per day ÷ household size,
+// an even split (Bean Conqueror
 // doesn't record who brewed). Averages don't change. Applied before compareTiles, so
 // deltas, % and "vs N at that pace" read per person too.
 export function perPerson(t: OverviewTiles, size: number): OverviewTiles {
@@ -79,7 +80,8 @@ export function overviewTiles(
     // Negative rest = a brew logged before its bag's roast date: missing, like dose 0.
     avgRestDays: mean(inP.flatMap((b) => (b.restDays !== null && b.restDays >= 0 ? [b.restDays] : []))),
     avgBrewTime: mean(present(inP.map((b) => b.brewTimeSeconds))),
-    avgBagSize: mean(bags.flatMap((g) => (g.purchaseDate && inPeriod(g.purchaseDate, p) && g.amountG !== null && g.amountG > 0 ? [g.amountG] : []))),
+    avgBagSize: mean(bags.flatMap((g) =>
+      g.purchaseDate && inPeriod(g.purchaseDate, p) && g.amountG !== null && g.amountG > 0 ? [g.amountG] : [])),
     avgTempC: mean(present(inP.map((b) => b.tempC)))
   };
 }

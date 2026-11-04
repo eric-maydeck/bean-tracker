@@ -4532,6 +4532,15 @@ export const STATES: State[] = [
     path: () => '/insights',
     act: async (page) => {
       await expect(page.locator('.chart-panel h2', { hasText: 'Right now' })).toBeVisible();
+      // Totals and Averages tiles, with the roasters / bag size / brew temp ones; the last-updated line sits in the period line.
+      const labels = (title: string) =>
+        page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) }).locator('.stat-item .stat-label');
+      await expect(labels('Totals')).toHaveCount(6);
+      await expect(labels('Averages')).toHaveCount(8);
+      await expect(labels('Totals').filter({ hasText: 'Roasters' })).toHaveCount(1);
+      await expect(labels('Averages').filter({ hasText: /Avg bag size/i })).toHaveCount(1);
+      await expect(labels('Averages').filter({ hasText: /Avg brew temp/i })).toHaveCount(1);
+      await expect(page.locator('.insights-period [data-last-updated]')).toContainText(/^Last updated: \S/);
       // Every click-for-explanation trigger ends with its circled ?.
       expect(await page.locator('.mode-tip-button').count()).toBeGreaterThan(0);
       expect(await page.locator('.mode-tip-button').evaluateAll((bs) => bs.filter((b) => !b.querySelector('svg.icon')).length)).toBe(0);

@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { hasRecaps, recapTiles } from '$lib/server/recaps/recap';
-import { getDb, getHouseholdSize } from '$lib/server/db';
+import { getDb, getHouseholdSize, lastImportedAt } from '$lib/server/db';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
@@ -120,6 +120,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
     }
   }
   return {
+    lastImportedAt: lastImportedAt(db),
     explicit,
     // What applied on this tab, and the pickers' values (from the unfiltered data, every tab).
     brewFilters: bf,

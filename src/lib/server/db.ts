@@ -230,6 +230,14 @@ const HOUSEHOLD_SIZE_KEY = 'household_size';
 const DEFAULT_HOUSEHOLD_SIZE = 2;
 const isHouseholdSize = (n: number) => Number.isInteger(n) && n >= 1 && n <= 20;
 
+// When the last Bean Conqueror upload landed (ISO), or null before the first.
+export function lastImportedAt(db: DatabaseSync): string | null {
+  const row = db.prepare(`SELECT value FROM app_meta WHERE key = 'beanconqueror_last_imported_at'`).get() as
+    | { value: string }
+    | undefined;
+  return row?.value ?? null;
+}
+
 // How many people share the brews: Per person divides totals and rates by it.
 export function getHouseholdSize(db: DatabaseSync): number {
   const row = db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(HOUSEHOLD_SIZE_KEY) as
