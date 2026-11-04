@@ -459,10 +459,14 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     await expect(bell).toHaveAccessibleName(/unread/);
     const inbox = async () => { await bell.click(); return page.locator('.alert-list-item').filter({ hasText: `Your ${Y} recap is ready` }); };
     let item = await inbox();
-    await expect(item.getByRole('link', { name: `Your ${Y} recap is ready` })).toHaveAttribute('href', `/recaps/${Y}`);
+    const link = item.getByRole('link', { name: `Your ${Y} recap is ready` });
+    await expect(link).toHaveAttribute('href', `/recaps/${Y}`);
     await expect(item.locator('.alert-meta'), 'no redundant source prefix').not.toContainText('recap ·');
     await expect(item.locator('.alert-meta')).toContainText('UTC');
-    await page.getByRole('button', { name: 'Close' }).click();
+    await link.click();
+    await expect(page).toHaveURL(new RegExp(`/recaps/${Y}$`));
+    await expect(page.locator('.alert-list'), 'following the link closes the inbox').toHaveCount(0);
+    await page.goBack();
     await page.getByRole('button', { name: 'Dismiss' }).first().click(); // the banner's
     await expect(banner).toHaveCount(0);
     item = await inbox();
