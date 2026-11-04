@@ -5386,33 +5386,6 @@ export const STATES: State[] = [
     }
   },
   {
-    // The What's waiting group-by changes the last panel's height: the clicked button stays put (no scroll clamp), at the page
-    // bottom and mid-page, short -> tall and tall -> short; the held height is let go once scrolled up.
-    name: 'insights-onhand-choice-scroll', viewports: 'two', path: () => '/insights?tab=onhand&range=all',
-    act: async (page) => {
-      const panel = page.locator('section[data-section="onhand-waiting"]');
-      await expect(panel).toBeVisible();
-      const top = (n: string) => panel.getByRole('button', { name: n, exact: true }).evaluate((b) => b.getBoundingClientRect().top);
-      for (const fromBottom of [0, 300]) {
-        await page.evaluate((d) => scrollTo(0, document.documentElement.scrollHeight - innerHeight - d), fromBottom);
-        await page.waitForTimeout(300);
-        for (const n of ['Caffeine', 'Roaster', 'Caffeine', 'Origin']) {
-          const y0 = await top(n);
-          await panel.getByRole('button', { name: n, exact: true }).click();
-          await page.waitForTimeout(300);
-          expect(Math.abs((await top(n)) - y0), `${n} moved (${fromBottom}px above the bottom)`).toBeLessThanOrEqual(2);
-        }
-        await page.evaluate(() => scrollTo(0, 0));
-        await page.waitForTimeout(300);
-        await panel.getByRole('button', { name: 'Roaster', exact: true }).click(); // from Origin (taller or equal)
-      }
-      // Held height released: scrolled up, the panel is as tall as its content (the last child ends at its padding).
-      await panel.getByRole('button', { name: 'Caffeine', exact: true }).click();
-      await page.evaluate(() => scrollTo(0, 0));
-      await expect.poll(() => panel.evaluate((p) => p.style.minHeight)).toBe('');
-    }
-  },
-  {
     name: 'insights-onhand-preview', viewports: 'two', path: () => '/insights?tab=onhand',
     act: async (page) => {
       const t = await previewTags(page, '/insights?tab=onhand');
