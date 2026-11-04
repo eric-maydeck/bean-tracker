@@ -5,7 +5,7 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import RecapViz from './RecapViz.svelte';
-  import { unitGap } from '$lib/unitGap';
+  import { unitGap, glue } from '$lib/unitGap';
 
   // One fact: a full-screen story slide (`section`), or a tile on the poster (`tile`).
   let { slide, year, people, preview, index, total, tile = false, spans = [1, 1, 1], cover = false, shareHref }: {
@@ -23,7 +23,6 @@
     return Math.max(1, ...words);
   });
   // No line break after a hyphen, en dash or slash inside a value ("22–30d" stays whole): a word joiner glues them.
-  const glue = (s: string) => s.replace(/([-–—/])(?=\S)/g, '$1\u2060');
 </script>
 
 {#snippet body()}

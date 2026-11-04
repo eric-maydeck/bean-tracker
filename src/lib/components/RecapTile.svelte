@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { RecapTileData } from '$lib/server/recaps/recap';
+  import { glue } from '$lib/unitGap';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
 
   let { tile }: { tile: RecapTileData } = $props();
@@ -11,7 +12,7 @@
   <header><h2>{tile.year}</h2>{#if tile.preview}<span class="badge">Preview</span>{/if}</header>
   <ul>
     {#each tile.headlines as h (h.label)}
-      <li><b class:long={h.big.length > 7}><span class="fit" style:--w={Math.max(1, ...h.big.split(/\s+/).map((w) => w.length))}><CoffeeName text={h.big.replace(/([-–—/])(?=\S)/g, '$1\u2060')} /></span></b><span>{h.label}</span></li>
+      <li><b class:long={h.big.length > 7}><span class="fit" style:--w={Math.max(1, ...h.big.split(/\s+/).map((w) => w.length))}><CoffeeName text={glue(h.big)} /></span></b><span>{h.label}</span></li>
     {/each}
   </ul>
   <span class="open">Open the recap <span aria-hidden="true">→</span></span>

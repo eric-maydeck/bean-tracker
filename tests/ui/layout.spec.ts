@@ -3,6 +3,7 @@ import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
 import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody, outerHeight } from './collapsibleBar';
+import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
@@ -759,11 +760,11 @@ async function expectNoMidWord(page: Page, sel: string, fit?: string, words: str
   expect(await check(), `${sel}: words split across lines`).toEqual([]);
   if (!fit) return;
   for (const word of words) {
-    await page.evaluate(([fit, word]) => {
+    await page.evaluate(([fit, word, glued]) => {
       const el = document.querySelector(fit) as HTMLElement;
-      el.textContent = word.replace(/([-–—/])(?=\S)/g, '$1\u2060');
+      el.textContent = glued;
       el.style.setProperty('--w', String(Math.max(...word.split(/\s+/).map((x) => x.length))));
-    }, [fit, word]);
+    }, [fit, word, glue(word)]);
     expect(await check(), `${sel} with "${word}"`).toEqual([]);
   }
 }
@@ -841,7 +842,8 @@ export const STATES: State[] = [
       for (let i = 0; i <= n; i++) {
         await page.locator('.recap-progress button').nth(i).click();
         await expect(page.locator('.recap-progress button').nth(i)).toHaveAttribute('aria-current', 'true');
-        await page.waitForTimeout(500);
+        // wait for the smooth scroll to settle on this slide
+        await expect.poll(() => page.evaluate(() => [...document.querySelectorAll('.recap-reel > section')].some((s) => Math.abs(s.getBoundingClientRect().top) < 4))).toBe(true);
         const r = await page.evaluate(() => {
           const rect = (e: Element) => e.getBoundingClientRect();
           const navs = [...document.querySelectorAll('.recap-nav a')].map(rect);
@@ -849,10 +851,10 @@ export const STATES: State[] = [
           const cur = [...document.querySelectorAll('.recap-reel > section')].find((s) => Math.abs(rect(s).top) < 4);
           const others = cur ? [...cur.querySelectorAll('.share-button, .lead, .big, .names, .inner > *, .page > header > *')].map(rect).filter((x) => x.width > 0) : [];
           const hit = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-          return { sizes: navs.map((x) => [Math.round(x.width), Math.round(x.height)]), belowProgress: navs.every((x) => x.top >= prog - 1), apart: navs[0].right <= navs[1].left, hits: others.filter((o) => navs.some((nv) => hit(nv, o))).length, inView: navs.every((x) => x.left >= 0 && x.right <= innerWidth) };
+          return { found: !!cur, sizes: navs.map((x) => [Math.round(x.width), Math.round(x.height)]), belowProgress: navs.every((x) => x.top >= prog - 1), apart: navs[0].right <= navs[1].left, hits: others.filter((o) => navs.some((nv) => hit(nv, o))).length, inView: navs.every((x) => x.left >= 0 && x.right <= innerWidth) };
         });
         for (const [w, h] of r.sizes) { expect(h, `slide ${i}: nav target height`).toBeGreaterThanOrEqual(44); expect(w).toBeGreaterThanOrEqual(44); }
-        expect(r, `slide ${i}`).toMatchObject({ belowProgress: true, apart: true, hits: 0, inView: true });
+        expect(r, `slide ${i}`).toMatchObject({ found: true, belowProgress: true, apart: true, hits: 0, inView: true });
       }
     } },
   { name: 'recaps-chart-labels', path: () => `/recaps/${recapYear()}?preview=1`,
