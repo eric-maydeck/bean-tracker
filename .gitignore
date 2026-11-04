@@ -13,3 +13,6 @@ data/images/
 # Product page backfill review: marks, shipped list, DB copies (scripts/backfill-review.py)
 data/backfill-review/
 .preview-data/
+
+# Recap link-preview card cache (server/recaps/card.ts)
+data/recap-cards/
