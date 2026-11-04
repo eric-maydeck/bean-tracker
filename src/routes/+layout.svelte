@@ -55,7 +55,7 @@
   // /recipes/<slug> is the Recipes page too.
   const current = (href: string) => page.url.pathname === href || (href === '/recipes' && page.url.pathname.startsWith('/recipes/'));
   // The recap story is full-screen: no site header, tab bar or footer.
-  const recapPage = $derived(page.route.id === '/recaps/[year]');
+  const recapPage = $derived(page.route.id === '/recaps/[year]' && !page.error); // a 404 keeps the site chrome
   const onAccount = $derived(page.url.pathname === '/account' || page.url.pathname.startsWith('/account/'));
 
   async function markAlertReadClick(id: number) {

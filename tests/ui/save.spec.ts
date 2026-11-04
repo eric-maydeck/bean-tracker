@@ -417,7 +417,7 @@ test.describe('recipes', { tag: '@account' }, () => {
 // The admin "recap ready" banner. ui-seed marks every open year seen, so delete the key to show it, then restore.
 // Geometry at the run's viewports (phone portrait + landscape in the push gate); dismiss records it.
 test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ page }) => {
-  const Y = new Date().getFullYear() - 1;
+  const Y = Number(localToday().slice(0, 4)) - 1;
   const key = `recap_seen_${Y}`;
   const alertKey = `recap_alert_${Y}`;
   const runK = (sql: string, ...k: string[]) => { const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 }); try { db.prepare(sql).run(...k); } finally { db.close(); } };
@@ -479,7 +479,10 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     await expect(item).toHaveCount(0);
     await page.getByRole('button', { name: 'Close' }).click();
     await page.reload();
-    expect(await page.locator('.alert-list-item').count(), 'not recreated').toBe(0);
+    await bell.click();
+    await expect(page.getByRole('heading', { name: 'Alerts' }), 'inbox open').toBeVisible();
+    await expect(page.locator('.alert-list-item').filter({ hasText: `Your ${Y} recap is ready` }), 'not recreated').toHaveCount(0);
+    await page.getByRole('button', { name: 'Close' }).click();
     await expect.poll(read(`SELECT value FROM app_meta WHERE key = ?`, key)).toEqual({ value: '1' });
     await page.reload();
     await expect(page.locator('.recap-banner')).toHaveCount(0);
