@@ -4,7 +4,7 @@ export const THEME_VERSION = 1; // bump when TONES or the generator change (card
 
 const TONES: Tone[] = ['espresso', 'red', 'sun', 'plum', 'brown', 'green', 'blue', 'teal', 'amber', 'violet', 'gold', 'ink'];
 
-export function rng(seed: number): () => number { // mulberry32
+function rng(seed: number): () => number { // mulberry32
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;

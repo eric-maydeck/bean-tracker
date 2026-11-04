@@ -24,7 +24,6 @@
     return Math.max(1, ...words);
   });
   const choose = (p?: People) => goto(recapHref(year, { slide: slide.id, people: p, ...(preview && { preview: true as const }) }), { replaceState: true, noScroll: true, keepFocus: true });
-  // No line break after a hyphen, en dash or slash inside a value ("22–30d" stays whole): a word joiner glues them.
 </script>
 
 {#snippet body()}

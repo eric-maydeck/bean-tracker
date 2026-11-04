@@ -181,7 +181,7 @@ describe('recipePreview', () => {
 });
 
 describe('recapPreview', () => {
-  const slide = (o: object) => ({ category: 'habits', big: '', context: 'ctx', link: { tab: '', section: '', href: '' }, card: { big: '', label: '' }, ...o });
+  const slide = (o: object) => ({ big: '', context: 'ctx', link: { tab: '', section: '', href: '' }, card: { big: '', label: '' }, ...o });
   const r = {
     year: 2026, preview: false, span: { from: '2026-01-01', to: '2026-12-31' }, householdSize: 2,
     slides: [

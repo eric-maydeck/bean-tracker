@@ -34,7 +34,7 @@ const clockHolder = (y: YearCtx, key: string) => {
 };
 
 const total: FactDef = {
-  id: 'total', category: 'amounts',
+  id: 'total',
   run: (y) => {
     const first = y.brews[0].localDate, last = y.brews.at(-1)!.localDate;
     const m0 = Number(first.slice(5, 7)) - 1, m1 = Number(last.slice(5, 7)) - 1;
@@ -47,7 +47,7 @@ const total: FactDef = {
     const labels = values.map((_, i) => MON[m0 + i]);
     const big = fmtInt(y.brews.length / y.per);
     return {
-      id: 'total', category: 'amounts',
+      id: 'total',
       lead: y.preview ? `So far in ${y.year} you brewed` : `In ${y.year} you brewed`, big, unit: 'brews',
       context: `${fmtKg(grams)} of coffee through ${fmtLitres(water)} of water, ${md(first)} to ${md(last)}. ${labels[hi]} was the peak at ${values[hi]}.`,
       viz: { kind: 'bars', values, labels, tips: values.map((v, i) => `${labels[i]}: ${v} brews`), hi, hiText: String(values[hi]) },
@@ -58,7 +58,7 @@ const total: FactDef = {
 };
 
 const streak: FactDef = {
-  id: 'streak', category: 'habits',
+  id: 'streak',
   run: (y) => {
     const days = sorted(y.brews.map((b) => b.localDate));
     const best = longestStreak(days);
@@ -81,7 +81,7 @@ const streak: FactDef = {
     else if (runStart !== from) context += ` Since ${md(runStart)} you have not missed a day.`;
     const cells = span.map((d) => (d >= from && d <= to ? 'streak' : have.has(d) ? 'on' : 'miss') as 'streak' | 'on' | 'miss');
     return {
-      id: 'streak', category: 'habits',
+      id: 'streak',
       lead: 'You brewed every day for', big: String(best.length), unit: 'days', context,
       viz: { kind: 'calendar', start: addDays(first, -dow(first)), days: [...Array<'none'>(dow(first)).fill('none'), ...cells] },
       link: { tab: 'Highlights', section: 'Highlights · Milestones', href: seeMoreHref(y.year, 'milestones') },
@@ -92,11 +92,11 @@ const streak: FactDef = {
 };
 
 // Brews with a real time of day (backfilled ones were typed in later).
-export const timed = (y: YearCtx): BrewFact[] => y.brews.filter((b) => !b.backfilled);
-export const hourOf = (b: BrewFact) => Number(b.localTime.slice(11, 13));
+const timed = (y: YearCtx): BrewFact[] => y.brews.filter((b) => !b.backfilled);
+const hourOf = (b: BrewFact) => Number(b.localTime.slice(11, 13));
 
 const hour: FactDef = {
-  id: 'hour', category: 'habits',
+  id: 'hour',
   run: (y) => {
     const bs = timed(y);
     if (bs.length < 50) return null;
@@ -110,7 +110,7 @@ const hour: FactDef = {
     const hrs = values.map((_, i) => lo + i);
     const labels = hrs.map((h, i) => (i === 0 || i === hrs.length - 1 || (h % 6 === 0 && i > 1 && i < hrs.length - 2) ? h12(h) : ''));
     return {
-      id: 'hour', category: 'habits',
+      id: 'hour',
       lead: 'Your coffee hour is', big: h12(top),
       context: `${fmtInt(n)} brews: that's 1 in ${Math.round(bs.length / n)} brews at ${h12(top)}. Your brew day spans anywhere from ${clockText(early.value)} to ${clockText(late.value)}.`,
       viz: { kind: 'bars', values, labels, tips: hrs.map((h, i) => `${h12(h)}: ${values[i]} brews`), hi: top - lo, hiText: String(n) },
@@ -124,7 +124,7 @@ const hour: FactDef = {
 // Timed brews from 7pm on, and how many were decaf.
 export const evening = (y: YearCtx) => { const e = timed(y).filter((b) => hourOf(b) >= 19); return { eve: e.length, decaf: e.filter((b) => b.decaf).length }; };
 const decaf: FactDef = {
-  id: 'decaf', category: 'habits',
+  id: 'decaf',
   run: (y) => {
     const bs = timed(y);
     const day = bs.filter((b) => hourOf(b) < 19);
@@ -136,12 +136,12 @@ const decaf: FactDef = {
     if (after - before < 0.3) { // no evening habit: the decaf share is the same day and night
       const all = bs.filter((b) => b.decaf).length / bs.length;
       return {
-        id: 'decaf', category: 'habits', lead: 'Day or night, your brews were', big: pct(all), unit: 'decaf',
+        id: 'decaf', lead: 'Day or night, your brews were', big: pct(all), unit: 'decaf',
         context: `${pct(after)} after 7pm, ${pct(before)} before: steady all day.`, viz, link, card: { big: pct(all), label: 'decaf, day or night' }, score: 0.25
       };
     }
     return {
-      id: 'decaf', category: 'habits',
+      id: 'decaf',
       lead: 'After 7pm, your brews were', big: pct(after), unit: 'decaf',
       context: `${eveDecaf} of your ${eve} evening brews skipped the caffeine. Before 7pm, decaf is ${pct(before)}.`,
       viz, link, card: { big: pct(after), label: 'decaf after 7pm' },
@@ -151,24 +151,24 @@ const decaf: FactDef = {
 };
 
 // ---- Coffees: who the coffee came from -------------------------------------------------------
-export const poss = (n: string) => (n.endsWith('s') ? `${n}'` : `${n}'s`);
+const poss = (n: string) => (n.endsWith('s') ? `${n}'` : `${n}'s`);
 const nBags = (n: number) => `${n} bag${n === 1 ? '' : 's'}`;
 export const andList = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 export const grams = (y: YearCtx) => y.brews.reduce((s, b) => s + (b.dose ?? 0), 0); // unlinked brews count: "of your coffee"
 const bagCount = (y: YearCtx) => new Set(y.brews.map((b) => b.coffeeId).filter((c) => c !== null)).size;
-export const MONTH = (m: number) => new Date(Date.UTC(2000, m, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+const MONTH = (m: number) => new Date(Date.UTC(2000, m, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
 
 export const boardRows = (y: YearCtx, board: Board) => leaderboard(y.brews, y.bags, y.period, board, 'grams', 'current', 'raw', false);
 // Share-of-coffee boards (roasters, origins, producers): [null] under 2 rows.
 function shareFact(id: string, board: Board, lead: string, section: string, label: string, extra: { href?: Record<string, string>; context: (top: BoardRowLite, share: number, rows: BoardRowLite[], y: YearCtx) => string; texts: (r: BoardRowLite, share: number) => string[]; minBags?: number }): FactDef {
   return {
-    id, category: 'coffees',
+    id,
     run: (y) => {
       const rows = boardRows(y, board);
       if (rows.length < 2 || bagCount(y) < (extra.minBags ?? 0)) return null;
       const all = grams(y), top = rows[0], share = top.value / all;
       return {
-        id, category: 'coffees', lead, big: top.label, context: extra.context(top, share, rows, y),
+        id, lead, big: top.label, context: extra.context(top, share, rows, y),
         viz: { kind: 'hlist', rows: rows.slice(0, 5).map((r) => ({ label: r.label, value: r.value, texts: extra.texts(r, r.value / all) })) },
         link: { tab: 'Leaderboards', section: `Leaderboards · ${section}`, href: seeMoreHref(y.year, 'leaderboards', extra.href ?? { rank: 'grams' }) },
         card: { big: top.label, label }, score: share
@@ -210,14 +210,14 @@ function producerRoasterMap(y: YearCtx) {
 const byBags = (rs: Map<string, Set<number>>) => [...rs].map(([r, s]) => ({ r, n: s.size })).sort((a, b) => b.n - a.n || a.r.localeCompare(b.r));
 
 const producerRoasters: FactDef = {
-  id: 'producer-roasters', category: 'coffees',
+  id: 'producer-roasters',
   run: (y) => {
     const best = [...producerRoasterMap(y)].filter(([, rs]) => rs.size >= 5)
       .sort((a, b) => b[1].size - a[1].size || a[0].localeCompare(b[0]))[0];
     if (!best) return null;
     const [p, rs] = best, rows = byBags(rs);
     return {
-      id: 'producer-roasters', category: 'coffees',
+      id: 'producer-roasters',
       lead: `At ${rs.size} different roasters you bought coffee from`, big: p,
       context: `You bought ${poss(p)} coffee from ${andList(rows.map((x) => x.r))}.`,
       viz: { kind: 'hlist', rows: rows.map((x) => ({ label: x.r, value: x.n, texts: [nBags(x.n)] })) },
@@ -228,7 +228,7 @@ const producerRoasters: FactDef = {
 };
 
 const turn: FactDef = {
-  id: 'turn', category: 'coffees',
+  id: 'turn',
   run: (y) => {
     const m0 = Number(y.brews[0].localDate.slice(5, 7)) - 1, m1 = Number(y.brews.at(-1)!.localDate.slice(5, 7)) - 1;
     const n = m1 - m0 + 1;
@@ -266,7 +266,7 @@ const turn: FactDef = {
       return { name, segs: rest > 0 ? [...segs, { label: 'Other', pct: rest }] : segs };
     };
     return {
-      id: 'turn', category: 'coffees',
+      id: 'turn',
       lead: calm ? 'Start to finish, your most brewed origin was' : `Since ${MONTH(m1 - k + 1)}, your most brewed origin is`, big: B, context,
       viz: { kind: 'split', periods: [seg(wE, ke), seg(wL, kl)], keys },
       // ponytail: Leaderboards has no origin over-time view yet (VIEW_BOARDS), so this opens the Origins board.
@@ -277,7 +277,7 @@ const turn: FactDef = {
 };
 
 const record: FactDef = {
-  id: 'record', category: 'coffees',
+  id: 'record',
   run: (y) => {
     const def = RECORDS.find((r) => r.key === 'bestBag')!;
     const cands = def.run({ brews: y.scored, bags: y.bags, ratings: 'current', today: y.today }).sort((a, b) => b.value - a.value);
@@ -298,7 +298,7 @@ const record: FactDef = {
     if (others.length) context += `${context ? ' ' : ''}${poss(bag.producer!.trim())} coffee also came from ${andList(others)}.`;
     const top = cands.slice(0, 5), vals = top.map((c) => c.value);
     return {
-      id: 'record', category: 'coffees', lead: 'Your best bag of the year was', big: bag.name, roaster: bag.roaster, sub: `${val} average · ${n} brews`, context,
+      id: 'record', lead: 'Your best bag of the year was', big: bag.name, roaster: bag.roaster, sub: `${val} average · ${n} brews`, context,
       viz: {
         kind: 'dots', stack: true,
         rows: top.map((c) => { const b = bagOf(c.holder)!; return { label: `${b.roaster} · ${b.name}`, value: c.value, brews: stats.get(b.id)!.rated.length }; }),
@@ -310,7 +310,7 @@ const record: FactDef = {
   }
 };
 const price: FactDef = {
-  id: 'price', category: 'money',
+  id: 'price',
   run: (y) => {
     const priced = y.brews.filter((b) => b.costPerBrew !== null && b.coffeeId !== null);
     if (priced.length < 10) return null;
@@ -320,7 +320,7 @@ const price: FactDef = {
     const rated = countsForRating(top, 'current') ? ` You rated it ${top.rating}.` : '';
     const big = usd(top.costPerBrew!);
     return {
-      id: 'price', category: 'money', lead: 'Your priciest cup cost', big,
+      id: 'price', lead: 'Your priciest cup cost', big,
       context: `${top.dose}g of ${poss(bag?.roaster ?? top.roaster ?? '')} ${bag?.name ?? 'coffee'} on ${md(top.localDate)}.${rated} Your average cup costs ${usd(avg)}.`,
       viz: { kind: 'hlist', rows: [{ label: 'Priciest cup', value: top.costPerBrew!, texts: [big] }, { label: 'Average cup', value: avg, texts: [usd(avg)] }] },
       link: { tab: 'Habits', section: 'Habits · Spend', href: seeMoreHref(y.year, 'spend') },
@@ -346,7 +346,7 @@ export const monthMeans = (y: YearCtx, f: (b: BrewFact) => number | null, min: n
   byMonth(y.brews).map(({ m, bs }) => ({ m, bs: bs.filter((b) => f(b) !== null) })).filter((x) => x.bs.length >= min);
 
 const recipe: FactDef = {
-  id: 'recipe', category: 'brewing',
+  id: 'recipe',
   run: (y) => {
     const band = recipeBand(y.pours.facts, y.pours.recipes);
     const label = (b: BrewFact) => { const l = band(b)?.label; return l && l !== 'No recipe' ? l : null; };
@@ -368,7 +368,7 @@ const recipe: FactDef = {
     if (best.rise < 0.3) { // no recipe took over: the headline is the one you kept using
       const big = pct(topN / y.brews.length);
       return {
-        id: 'recipe', category: 'brewing', lead: 'You kept coming back to', big: topName,
+        id: 'recipe', lead: 'You kept coming back to', big: topName,
         context: `${big} of all brews (${fmtInt(topN)}), steady month to month.`,
         viz: spark(months, (x) => Math.round(share(x, topName) * 100), (v) => `${v}%`), link, wide: true, card: { big: topName, label: `${big} of brews` }, score: 0.25
       };
@@ -377,7 +377,7 @@ const recipe: FactDef = {
     let context = `of ${MONTH(peak.m)}'s brews, from ${pct(best.first)} in ${MONTH(months[0].m)}.`;
     if (topName !== r) context += ` ${topName} is still the year's most-used recipe: ${pct(topN / y.brews.length)} of all brews (${fmtInt(topN)}).`;
     return {
-      id: 'recipe', category: 'brewing', lead: `You used ${r} for`, big: pct(best.top), context,
+      id: 'recipe', lead: `You used ${r} for`, big: pct(best.top), context,
       viz: spark(months, (x) => Math.round(share(x, r) * 100), (v) => `${v}%`),
       link, wide: true, card: { big: pct(best.top), label: `${r} brews` }, score: best.rise
     };
@@ -401,7 +401,7 @@ export function ratioMode(y: YearCtx) {
   return { mode, n, of: withRatio.length, share: n / withRatio.length };
 }
 const ratio: FactDef = {
-  id: 'ratio', category: 'brewing',
+  id: 'ratio',
   run: (y) => {
     const m = ratioMode(y);
     if (!m || m.share < 0.4) return null;
@@ -418,7 +418,7 @@ const ratio: FactDef = {
       }
     }
     return {
-      id: 'ratio', category: 'brewing',
+      id: 'ratio',
       lead: f ? `${f[0]} in ${f[1]} brews used a` : `${pct(share)} of brews used a`, big: `1:${mode}`, unit: 'brew ratio', context, ...(viz && { viz }),
       link: { tab: 'Lab', section: 'Lab · Brewing', href: seeMoreHref(y.year, 'brewing', { temp: 'exact' }) },
       card: { big: `1:${mode}`, label: 'brew ratio' }, score: share
@@ -430,7 +430,7 @@ const ratio: FactDef = {
 const dLabel = (l: string) => l.replace(/\s*d(\+?)$/, '$1').replace(/(\d+)(\+)?$/, '$1d$2');
 
 const rest: FactDef = {
-  id: 'rest', category: 'brewing',
+  id: 'rest',
   run: (y) => {
     const link = { tab: 'Lab', section: 'Lab · Sweet spots', href: seeMoreHref(y.year, 'sweetspots') };
     const spot = sweetSpotsTab(y.scored, y.bags, { period: y.period, ratings: 'current', grinder: null, filters: {}, all: y.scored }).cards.find((c) => c.key === 'rest')?.spot;
@@ -446,7 +446,7 @@ const rest: FactDef = {
         const vals = rows.map((r) => r.value);
         const big = dLabel(spot.best.label);
         return {
-          id: 'rest', category: 'brewing', lead: 'Your beans rest best at', big,
+          id: 'rest', lead: 'Your beans rest best at', big,
           context: cmp ? `${spot.best.value.toFixed(2)} average ${since}, against ${cmp.v.toFixed(2)} at ${dLabel(cmp.label)}.` : `+${gap.toFixed(2)} ${since}, against the same bags at other rests.`,
           viz: { kind: 'dots', rows, lo: Math.floor(Math.min(...vals) * 10) / 10, hi: Math.ceil(Math.max(...vals) * 10) / 10 },
           link, card: { big, label: 'rest sweet spot' }, score: Math.min(1, gap / 0.5)
@@ -459,7 +459,7 @@ const rest: FactDef = {
     if (Math.abs(shift) < 14) { // no real shift: how steady the rest is
       const all = avg(v), big = `${Math.round(all)}d`;
       return {
-        id: 'rest', category: 'brewing', lead: 'Your beans typically rest', big,
+        id: 'rest', lead: 'Your beans typically rest', big,
         context: `on average, steady month to month: ${Math.round(Math.min(...v)) === Math.round(Math.max(...v)) ? `${big} every month` : `${Math.round(Math.min(...v))}d to ${Math.round(Math.max(...v))}d`}.`,
         viz: spark(ms, (x) => Math.round(avg(x.bs.map((b) => b.restDays!))), (n) => `${n}d`),
         link, card: { big, label: 'typical rest' }, score: 0.25
@@ -467,7 +467,7 @@ const rest: FactDef = {
     }
     const d = `${Math.round(v.at(-1)!)}d`;
     return {
-      id: 'rest', category: 'brewing', lead: 'Your beans now wait', big: d,
+      id: 'rest', lead: 'Your beans now wait', big: d,
       context: `on average, ${shift > 0 ? 'up' : 'down'} from ${Math.round(v[0])}d in ${MONTH(ms[0].m)}.`,
       viz: spark(ms, (x) => Math.round(avg(x.bs.map((b) => b.restDays!))), (n) => `${n}d`),
       link, card: { big: d, label: 'average rest' }, score: Math.min(1, Math.abs(shift) / 60)
@@ -477,7 +477,7 @@ const rest: FactDef = {
 
 // ---- Amounts and money, extra --------------------------------------------------------------------
 const busiestDay: FactDef = {
-  id: 'busiest-day', category: 'amounts',
+  id: 'busiest-day',
   run: (y) => {
     const by = new Map<string, number>();
     for (const b of y.brews) by.set(b.localDate, (by.get(b.localDate) ?? 0) + 1);
@@ -491,7 +491,7 @@ const busiestDay: FactDef = {
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const big = fmtInt(n / y.per);
     return {
-      id: 'busiest-day', category: 'amounts',
+      id: 'busiest-day',
       lead: spike ? 'On your busiest day you brewed' : 'Even your busiest day was a steady one: you brewed', big, unit: 'brews',
       context: `That was ${md(day)}. A usual brew day has ${fmtInt(usual / y.per)}.`,
       viz: { kind: 'bars', values, labels, tips: week.map((d, i) => `${labels[i]} ${md(d)}: ${values[i]} brews`), hi: dow(day), hiText: String(values[dow(day)]) },
@@ -502,7 +502,7 @@ const busiestDay: FactDef = {
 };
 
 const bagsFinished: FactDef = {
-  id: 'bags-finished', category: 'amounts',
+  id: 'bags-finished',
   run: (y) => {
     const done = y.bags.filter((b) => isFinished(b) && b.firstBrew && b.lastBrew!.startsWith(`${y.year}-`));
     if (done.length < 3) return null;
@@ -514,7 +514,7 @@ const bagsFinished: FactDef = {
     const labels = values.map((_, i) => MON[m0 + i]), hi = values.indexOf(Math.max(...values));
     const big = fmtInt(done.length);
     return {
-      id: 'bags-finished', category: 'amounts',
+      id: 'bags-finished',
       lead: 'You finished', big, unit: 'bags',
       context: `The fastest went in ${days} days: ${fast.roaster} · ${fast.name}.`,
       viz: { kind: 'bars', values, labels, tips: values.map((v, i) => `${labels[i]}: ${nBags(v)}`), hi, hiText: String(values[hi]) },
@@ -525,7 +525,7 @@ const bagsFinished: FactDef = {
 };
 
 const spend: FactDef = {
-  id: 'spend', category: 'money',
+  id: 'spend',
   run: (y) => {
     const inYear = y.bags.filter((b) => b.purchaseDate?.startsWith(`${y.year}-`));
     if (inYear.filter((b) => (b.cost ?? 0) > 0).length < 3) return null;
@@ -536,7 +536,7 @@ const spend: FactDef = {
     const whole = wholeUsd(top.map((x) => x[1]));
     const big = usd(t.spent);
     return {
-      id: 'spend', category: 'money',
+      id: 'spend',
       lead: 'You spent', big,
       context: `on ${nBags(t.bags)}, ${usd(t.avgPpg! * 100)}/100g on average.`,
       viz: { kind: 'hlist', rows: top.map(([label, value]) => ({ label, value, texts: [usd(value, whole)] })) },
@@ -547,7 +547,7 @@ const spend: FactDef = {
 };
 
 const bestValue: FactDef = {
-  id: 'best-value', category: 'money',
+  id: 'best-value',
   run: (y) => {
     const def = RECORDS.find((r) => r.key === 'bestValue')!;
     const cands = def.run({ brews: y.scored, bags: y.bags, ratings: 'current', today: y.today }).sort((a, b) => b.value - a.value);
@@ -560,7 +560,7 @@ const bestValue: FactDef = {
     if (top.some((x) => !x.bag)) return null;
     const vals = top.map((x) => x.c.mean!), second = cands[1]?.value;
     return {
-      id: 'best-value', category: 'money', lead: 'Your best value bag was', big: win.holder.label, roaster: win.holder.sub,
+      id: 'best-value', lead: 'Your best value bag was', big: win.holder.label, roaster: win.holder.sub,
       sub: `${usd(win.per100!)}/100g · ${win.mean!.toFixed(2)} average`, context: '',
       viz: {
         kind: 'dots',
@@ -575,7 +575,7 @@ const bestValue: FactDef = {
 
 // ---- Extra facts B: consistency, dial-in, weekends, dripper -----------------------------------------
 const consistent: FactDef = {
-  id: 'consistent', category: 'coffees',
+  id: 'consistent',
   run: (y) => {
     const def = RECORDS.find((r) => r.key === 'consistent')!;
     const win = pick(def.run({ brews: y.scored, bags: y.bags, ratings: 'current', today: y.today }), 'min');
@@ -586,7 +586,7 @@ const consistent: FactDef = {
     const lo = Math.min(...rated), hi = Math.max(...rated), at = (r: number) => rated.filter((x) => x === r).length;
     const rows = [...new Set(rated)].sort((a, b) => a - b).map((r) => ({ label: String(r), value: r, brews: at(r) }));
     return {
-      id: 'consistent', category: 'coffees', lead: 'Your most consistent bag was', big: bag.name, roaster: bag.roaster,
+      id: 'consistent', lead: 'Your most consistent bag was', big: bag.name, roaster: bag.roaster,
       sub: `±${win.value.toFixed(2)} over ${rated.length} brews`, context: `All within ${+lo.toFixed(2)}–${+hi.toFixed(2)}.`,
       viz: { kind: 'dots', rows, lo: Math.floor(lo * 2) / 2 - 0.5, hi: Math.ceil(hi * 2) / 2 + 0.5 },
       link: { tab: 'Highlights', section: 'Highlights · Taste', href: seeMoreHref(y.year, 'records') },
@@ -599,7 +599,7 @@ const consistent: FactDef = {
 // bag's settled level (the median of its brews from #3 on) less 0.25. Averaged over bags; null under 5 such bags.
 const median = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 const dialIn: FactDef = {
-  id: 'dial-in', category: 'brewing',
+  id: 'dial-in',
   run: (y) => {
     const byBag = new Map<number, BrewFact[]>();
     for (const b of y.brews) if (b.coffeeId !== null && countsForRating(b, 'current') && b.rating !== null && b.rating > 0) (byBag.get(b.coffeeId) ?? byBag.set(b.coffeeId, []).get(b.coffeeId)!).push(b);
@@ -620,7 +620,7 @@ const dialIn: FactDef = {
     const hi = values.indexOf(Math.max(...values));
     const big = mean.toFixed(1);
     return {
-      id: 'dial-in', category: 'brewing', lead: 'On average, dialing in a new bag took', big, unit: 'brews',
+      id: 'dial-in', lead: 'On average, dialing in a new bag took', big, unit: 'brews',
       context: `Across ${k} bags.${Math.abs(gap) >= 0.1 ? ` First brews rated ${Math.abs(gap).toFixed(1)} ${gap < 0 ? 'lower' : 'higher'} than the rest.` : ''}`,
       viz: { kind: 'bars', values, labels: ['1', '2', '3', '4+'], tips: values.map((v, i) => `${nBags(v)} settled at brew ${i === 3 ? '4+' : i + 1}`), hi, hiText: String(values[hi]) },
       link: { tab: 'Lab', section: 'Lab · Dial-in', href: seeMoreHref(y.year, 'brewing', {}) + '#brewing-dialin' },
@@ -630,7 +630,7 @@ const dialIn: FactDef = {
 };
 
 const weekend: FactDef = {
-  id: 'weekend', category: 'habits',
+  id: 'weekend',
   run: (y) => {
     const f = weekendVsWeekday({ ...toGenCtx(y), brews: y.brews }) as ReturnType<typeof weekendVsWeekday> & { sides?: { label: string; value: string }[]; series?: { label: string; value: number }[] };
     if (!f || Array.isArray(f) || f.sides?.[0]?.label !== 'Weekdays' || f.sides[1]?.label !== 'Weekends' || !f.series) return null;
@@ -643,13 +643,13 @@ const weekend: FactDef = {
     if (ratio >= 0.9 && ratio <= 1.1) {
       const big = (f.series.reduce((s, x) => s + x.value, 0) / f.series.length).toFixed(1);
       return {
-        id: 'weekend', category: 'habits', lead: 'Weekends or weekdays, you brewed', big, unit: 'a day',
+        id: 'weekend', lead: 'Weekends or weekdays, you brewed', big, unit: 'a day',
         context: `${a.toFixed(1)} on weekends, ${b.toFixed(1)} on weekdays: steady all week.`, viz, link, card: { big, label: 'a day, all week' }, score: 0.25
       };
     }
     const big = `${Math.round(Math.abs(ratio - 1) * 100)}% ${ratio > 1 ? 'more' : 'fewer'}`;
     return {
-      id: 'weekend', category: 'habits', lead: 'On weekends you brew', big,
+      id: 'weekend', lead: 'On weekends you brew', big,
       context: `${a.toFixed(1)} brews a day on weekends, ${b.toFixed(1)} on weekdays.`,
       viz, link, card: { big, label: 'on weekends' }, score: Math.min(1, Math.abs(ratio - 1))
     };
@@ -657,14 +657,14 @@ const weekend: FactDef = {
 };
 
 const topDripper: FactDef = {
-  id: 'top-dripper', category: 'brewing',
+  id: 'top-dripper',
   run: (y) => {
     const ds = y.trophies.filter((t) => t.kind === 'dripper').sort((a, b) => b.brews - a.brews || a.name.localeCompare(b.name));
     if (ds.length < 2) return null;
     const top = ds[0], share = top.brews / y.brews.length;
     if (share < 0.25) return null;
     return {
-      id: 'top-dripper', category: 'brewing', lead: 'Your go-to dripper was', big: top.name,
+      id: 'top-dripper', lead: 'Your go-to dripper was', big: top.name,
       context: `${pct(share)} of brews, out of ${ds.length} drippers.${!top.sample.small && top.rating !== null ? ` It averaged ${top.rating.toFixed(2)}.` : ''}`,
       viz: { kind: 'hlist', rows: ds.slice(0, 4).map((d) => ({ label: d.name, value: d.brews, texts: [pct(d.brews / y.brews.length), `${fmtInt(d.brews)} brews`] })) },
       link: { tab: 'Lab', section: 'Lab · Ratings by dripper', href: seeMoreHref(y.year, 'gear') },
