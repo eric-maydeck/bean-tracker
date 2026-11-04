@@ -29,6 +29,8 @@ export function recapReadyYear(db: DatabaseSync, today: string, isAdmin: boolean
 // from coming back after the admin dismisses it, and the banner's seen flag is separate (neither touches the other).
 export function ensureRecapAlerts(db: DatabaseSync, today: string, isAdmin: boolean): void {
   if (!isAdmin) return;
+  // ponytail: newest open year already alerted => done, one small read, no brew scan (an older year gaining brews later is not alerted)
+  if (get(db, `recap_alert_${Number(today.slice(0, 4)) - 1}`) !== null) return;
   for (const y of recapYears(brewYears(db), today)) {
     const made = db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`).run(`recap_alert_${y}`);
     if (made.changes) createAlert(db, { source: 'recap', message: `Your ${y} recap is ready`, severity: 'info', href: `/recaps/${y}` });
