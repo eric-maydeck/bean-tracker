@@ -8,7 +8,6 @@
   import { placeTip } from '$lib/components/modeTip';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd, usdPrecise, wholeUsd } from '$lib/money';
-  import { enhance } from '$app/forms';
   import { afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import Chart from '$lib/components/Chart.svelte';
@@ -21,9 +20,9 @@
   import { bcPerPerson, type RatedGroup, type PeriodWindow } from './beanConquerorStatsData';
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
   import { ownerName, statsPreview } from '$lib/linkPreview';
-  import type { PageData, ActionData } from './$types';
+  import type { PageData } from './$types';
 
-  let { data, form }: { data: PageData; form: ActionData } = $props();
+  let { data }: { data: PageData } = $props();
 
   type Dimension = 'roaster' | 'origin' | 'processing' | 'roastLevel' | 'caffeine';
   type Metric = 'grams' | 'count';
@@ -46,7 +45,6 @@
   let explicitMetric = $state<Metric | undefined>(pickOne(currentParams(page.url), 'metric', METRICS));
   let dimension = $derived(explicitDimension ?? 'roaster');
   let metric = $derived(explicitMetric ?? 'grams');
-  let editingHousehold = $state(false);
   // Time to Clear's own Period (temporary panel) and the people mode (every tab).
   let explicitRange = $state(parseRange(currentParams(page.url), data.years));
   let explicitPeople = $state(parsePeople(currentParams(page.url), data.householdSize));
@@ -56,7 +54,7 @@
   let bc = $derived(people === 'person' ? bcPerPerson(data.beanConquerorStats, data.householdSize) : data.beanConquerorStats);
   // 6.5 brews per person, not "6.5000001" or a rounded 7.
   const tenth = (n: number) => String(Math.round(n * 10) / 10);
-  const PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
+  const PEOPLE_HELP = $derived(peopleHelp(data.householdSize, data.isAdmin));
   let use = $derived(data.consumption[range][people]);
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
 
@@ -373,38 +371,6 @@
     </div>
     <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
     <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
-  {/if}
-  {#if data.isAdmin}
-    {#if editingHousehold}
-      <form
-        method="POST"
-        action="?/updateHouseholdSize"
-        class="household-edit-form"
-        use:enhance={() => {
-          return async ({ update, result }) => {
-            await update();
-            if (result.type === 'success') {
-              editingHousehold = false;
-              if (data.householdSize === 1) explicitPeople = undefined;
-            }
-          };
-        }}
-      >
-        <label>
-          Household size
-          <input type="number" name="householdSize" min="1" max="20" step="1" value={data.householdSize} required />
-        </label>
-        <button class="button" type="submit">Save</button>
-        <button class="button button-ghost" type="button" onclick={() => (editingHousehold = false)}>Cancel</button>
-        {#if form?.error}
-          <span class="badge badge-urgent"><CoffeeName text={form.error} /></span>
-        {/if}
-      </form>
-    {:else}
-      <button class="button button-secondary" type="button" onclick={() => (editingHousehold = true)}>
-        Edit household size
-      </button>
-    {/if}
   {/if}
 </div>
 

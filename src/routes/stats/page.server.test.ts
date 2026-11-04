@@ -1,41 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { isActionFailure } from '@sveltejs/kit';
 
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
 process.env.DB_PATH = ':memory:';
 
-import { getDb, getHouseholdSize, setHouseholdSize } from '$lib/server/db';
+import { getDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
-import { actions, load } from './+page.server';
-
-function post(fields: Record<string, string>, isAdmin = true) {
-  const body = new FormData();
-  for (const [k, v] of Object.entries(fields)) body.set(k, v);
-  const request = new Request('http://localhost/stats', { method: 'POST', body });
-  return { request, locals: { isAdmin } } as never;
-}
-
-describe('stats actions: auth', () => {
-  it('updateHouseholdSize rejects a signed-out request with 401', async () => {
-    await expect(actions.updateHouseholdSize(post({}, false))).rejects.toMatchObject({ status: 401 });
-  });
-});
-
-describe('?/updateHouseholdSize', () => {
-  it('saves a whole number from 1 to 20', async () => {
-    expect(await actions.updateHouseholdSize(post({ householdSize: '3' }))).toEqual({ success: true });
-    expect(getHouseholdSize(getDb())).toBe(3);
-    setHouseholdSize(getDb(), 2);
-  });
-
-  it('400s on anything else and keeps the old size', async () => {
-    for (const v of ['0', '21', '1.5', 'x', '']) {
-      const r = await actions.updateHouseholdSize(post({ householdSize: v }));
-      expect(isActionFailure(r) && r.status).toBe(400);
-    }
-    expect(getHouseholdSize(getDb())).toBe(2);
-  });
-});
+import { load } from './+page.server';
 
 // Seeds one 300 g bag and its bean; brews are added by the caller.
 function seedBag(beanId: string) {

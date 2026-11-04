@@ -1,9 +1,7 @@
-import { fail } from '@sveltejs/kit';
-import type { Actions, PageServerLoad } from './$types';
-import { getDb, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from '$lib/server/db';
+import type { PageServerLoad } from './$types';
+import { getDb, getHouseholdSize } from '$lib/server/db';
 import { getArchivedCoffees, getBacklogCoffees, getOpenCoffees } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
-import { requireAdmin } from '$lib/server/auth';
 import { loadFacts } from '$lib/server/insights/facts';
 import { periodBounds, yearsSince } from '$lib/server/insights/time';
 import { localToday } from '$lib/server/localToday';
@@ -44,20 +42,4 @@ export const load: PageServerLoad = () => {
     beanConquerorLastImportedAt: lastImportedRow?.value ?? null,
     beanConquerorStats: buildBeanConquerorStats(db, day)
   };
-};
-
-export const actions: Actions = {
-  updateHouseholdSize: async ({ request, locals }) => {
-    requireAdmin(locals);
-    const n = Number((await request.formData()).get('householdSize'));
-    try {
-      setHouseholdSize(getDb(), n);
-    } catch (err) {
-      if (err instanceof InvalidHouseholdSizeError) {
-        return fail(400, { error: 'Household size must be a whole number from 1 to 20' });
-      }
-      throw err;
-    }
-    return { success: true };
-  }
 };

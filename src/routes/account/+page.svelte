@@ -48,6 +48,31 @@
 
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-US', { timeZone: 'UTC' }) + ' UTC' : 'never');
   const s = $derived(data.status);
+  // Household size: a failure shows here (not as the page-level form error above the upload); a save toasts with Undo.
+  let householdError = $state<string | null>(null);
+  const saveHousehold: import('@sveltejs/kit').SubmitFunction = ({ formData }) => {
+    const before = data.householdSize;
+    const n = String(formData.get('householdSize') ?? '').trim();
+    return async ({ result, update }) => {
+      if (result.type === 'failure') {
+        householdError = String(result.data?.error ?? 'Could not save that');
+        return;
+      }
+      householdError = null;
+      await update();
+      if (result.type !== 'success') return;
+      showToast(`Household size set to ${n}.`, {
+        undo: async () => {
+          const body = new FormData();
+          body.set('householdSize', String(before));
+          const res = await fetch('?/updateHouseholdSize', { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
+          const out = (await res.json().catch(() => null)) as { type?: string } | null;
+          if (out?.type !== 'success') throw new Error('Could not undo that.');
+          await invalidateAll();
+        }
+      });
+    };
+  };
   let picked = $state<string | null>(null);
   let tooBig = $state(false);
   let submitting = $state(false);
@@ -65,7 +90,7 @@
   <h2>Bean Conqueror</h2>
 
   <h3>Brew data (zip)</h3>
-  <p class="text-muted">Last import: {when(data.lastImportedAt)}</p>
+  <p class="text-muted">Last updated: {when(data.lastImportedAt)}</p>
   <form
     class="bq-upload"
     method="POST"
@@ -171,6 +196,17 @@
   <p><a class="button button-secondary" href="/recipes">Open recipes</a></p>
 </section>
 
+<section data-row-scope class="chart-panel" id="household">
+  <h2>Household</h2>
+  <p class="text-muted">Per-person stats divide your totals by this number: an even split, since Bean Conqueror doesn't record who brewed.</p>
+  <form class="bn-add" method="POST" action="?/updateHouseholdSize" use:enhance={saveHousehold}>
+    <label for="household-size">Household size</label>
+    <input id="household-size" name="householdSize" type="number" min="1" max="20" step="1" inputmode="numeric" value={data.householdSize} required />
+    <button class="button button-secondary" type="submit">Save</button>
+  </form>
+  {#if householdError}<p class="badge badge-urgent" role="alert">{householdError}</p>{/if}
+</section>
+
 <section data-row-scope class="chart-panel" id="brew-now">
   <h2>Brew now</h2>
   <p class="text-muted">The dose and ratio choices on each coffee's Brew now page, up to 6 of each.</p>
@@ -236,10 +272,10 @@
 {/if}
 
 <style>
-  /* Wide screens: Bean Conqueror left (spanning), Recipes and Brew now stacked right. */
+  /* Wide screens: Bean Conqueror left (spanning), Recipes, Household and Brew now stacked right. */
   @media (min-width: 1100px) {
     .acct { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-4); align-items: start; }
-    .acct > :global(section:first-child) { grid-row: span 2; }
+    .acct > :global(section:first-child) { grid-row: span 3; }
   }
   #brew-now { scroll-margin-top: var(--space-4); }
   .bn-cells { display: flex; flex-wrap: wrap; flex: 0 1 auto; gap: var(--space-1) var(--space-4); padding: var(--space-2) 0; min-width: 0; }

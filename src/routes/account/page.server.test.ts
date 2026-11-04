@@ -4,7 +4,7 @@ import { isActionFailure } from '@sveltejs/kit';
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
 process.env.DB_PATH = ':memory:';
 
-import { getDb } from '$lib/server/db';
+import { getDb, getHouseholdSize, setHouseholdSize } from '$lib/server/db';
 import ExcelJS from 'exceljs';
 import { fixtureZip } from '$lib/server/fixtures/beanconqueror/fixture';
 import { MAX_UPLOAD_BYTES } from '$lib/server/beanConquerorJson';
@@ -172,5 +172,28 @@ describe('not yet tracked: actions', () => {
     const d = load(event(true)) as { unmatchedBeans: { beans: { id: string }[] } };
     expect(d.unmatchedBeans.beans.map((b) => b.id)).not.toContain('bean-d');
     expect(failure(await actions.dismissBeanConqueror(post({})))?.status).toBe(400);
+  });
+});
+
+describe('?/updateHouseholdSize', () => {
+  it('load returns the size; a signed-out request is 401', async () => {
+    expect((load(event(true)) as { householdSize: number }).householdSize).toBe(2);
+    await expect(actions.updateHouseholdSize(post({}, false))).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('saves a whole number from 1 to 20', async () => {
+    expect(await actions.updateHouseholdSize(post({ householdSize: '3' }))).toEqual({ success: true });
+    expect(getHouseholdSize(getDb())).toBe(3);
+    setHouseholdSize(getDb(), 2);
+  });
+
+  it('400s on anything else and keeps the old size', async () => {
+    for (const v of ['0', '21', '1.5', 'x', '']) {
+      expect(failure(await actions.updateHouseholdSize(post({ householdSize: v })))).toEqual({
+        status: 400,
+        data: { error: 'Household size must be a whole number from 1 to 20' }
+      });
+    }
+    expect(getHouseholdSize(getDb())).toBe(2);
   });
 });

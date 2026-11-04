@@ -466,7 +466,7 @@
   let span2 = $derived(barCells(2));
   let span3 = $derived(barCells(3));
   const cell = (k: string) => `--s2:${span2[k]};--s3:${span3[k]}`;
-  let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
+  let PEOPLE_HELP = $derived(peopleHelp(data.householdSize, data.isAdmin));
   let perPersonOn = $derived(s.people === 'person');
   // The brew filters in play on this tab: panels of whole-bag figures say they don't apply (wholeNote).
   const wholeKeys = $derived(Object.keys(data.brewFilters) as BrewFilterKey[]);

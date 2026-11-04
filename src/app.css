@@ -2417,25 +2417,6 @@ html {
   font-size: 0.85rem;
 }
 
-.household-edit-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.household-edit-form label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 0.9rem;
-  color: var(--color-text-muted);
-}
-
-.household-edit-form input {
-  width: 4.5rem;
-}
-
 .modal-backdrop {
   position: fixed;
   inset: 0;

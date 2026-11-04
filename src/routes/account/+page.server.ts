@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import {
   importBeanConquerorData,
@@ -34,6 +34,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
     .get() as { value: string } | undefined;
   // Without ORIGIN, adapter-node builds url.origin from the Host header, so each domain shows its own URL.
   return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImported?.value ?? null, doses: getBrewDoses(db), ratios: getBrewRatios(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME,
+    householdSize: getHouseholdSize(db),
     unmatchedBeans: { beans: getUnmatchedBeanConquerorBeans(db, UNMATCHED_BEAN_LIMIT), total: countUnmatchedBeanConquerorBeans(db) },
     linkableCoffees: getLinkableCoffees(db),
     roastLevels: getRoastLevels(db),
@@ -105,6 +106,19 @@ export const actions: Actions = {
       return fail(400, { error: 'Missing bean id' });
     }
     dismissBeanConquerorBean(getDb(), id);
+    return { success: true as const };
+  },
+  updateHouseholdSize: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const n = Number((await request.formData()).get('householdSize'));
+    try {
+      setHouseholdSize(getDb(), n);
+    } catch (err) {
+      if (err instanceof InvalidHouseholdSizeError) {
+        return fail(400, { error: 'Household size must be a whole number from 1 to 20' });
+      }
+      throw err;
+    }
     return { success: true as const };
   },
   addDose: (e) => editList(e, 'doses', 'add'),

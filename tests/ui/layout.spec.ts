@@ -3326,13 +3326,31 @@ export const STATES: State[] = [
     }
   },
   {
-    // Household size: Edit opens the form with nothing focused (no autofocus). Nothing saved.
-    name: 'stats-household-size-edit',
-    path: () => '/stats',
+    // Household panel on Account: save toasts with Undo (and restores); a bad size shows its error in the panel.
+    name: 'account-household', viewports: 'two',
+    path: () => '/account',
     act: async (page) => {
-      await page.getByRole('button', { name: 'Edit household size' }).click();
-      await expect(page.getByLabel('Household size')).toHaveValue('2');
+      const panel = page.locator('#household');
+      const input = panel.getByLabel('Household size');
+      await expect(input).toHaveValue('2');
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+      await input.fill('3');
+      await panel.getByRole('button', { name: 'Save' }).click();
+      const toast = page.getByRole('status').filter({ hasText: 'Household size set to 3.' });
+      await expect(toast).toBeVisible();
+      await toast.getByRole('button', { name: 'Undo' }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'Undone.' })).toBeVisible();
+      await expect(input).toHaveValue('2');
+      await input.fill('21'); // over the 1-20 range: the browser's own check stops it, so go around it
+      await input.evaluate((el: HTMLInputElement) => el.removeAttribute('max'));
+      await panel.getByRole('button', { name: 'Save' }).click();
+      await expect(panel.getByRole('alert')).toHaveText('Household size must be a whole number from 1 to 20');
+      // The panel is no shorter than its content needs and sits inside the viewport at every width.
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      for (const theme of ['dark', 'light']) {
+        await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
+        await checkLayout(page);
+      }
     }
   },
   {
@@ -4161,13 +4179,16 @@ export const STATES: State[] = [
     name: 'account-columns', path: () => '/account',
     act: async (page) => {
       const secs = await page.locator('.acct > section').evaluateAll((els) => els.map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, right: b.right, y: b.y, bottom: b.bottom }; }));
-      expect(secs).toHaveLength(3);
-      const [a, b, c] = secs;
+      expect(secs).toHaveLength(4); // Bean Conqueror, Recipes, Household, Brew now
+      const [a, b, h, c] = secs;
       if (page.viewportSize()!.width >= 1100) {
         expect(b.x).toBeGreaterThan(a.right); // right column
         expect(Math.abs(c.x - b.x)).toBeLessThan(2);
-        expect(c.y).toBeGreaterThan(b.bottom);
+        expect(Math.abs(h.x - b.x)).toBeLessThan(2);
+        expect(h.y).toBeGreaterThan(b.bottom);
+        expect(c.y).toBeGreaterThan(h.bottom);
         expect(Math.abs(a.y - b.y)).toBeLessThan(2);
+        expect(Math.abs(Math.max(a.bottom, c.bottom) - Math.min(a.bottom, c.bottom)), 'columns end together').toBeLessThan(400);
       } else {
         expect(Math.abs(b.x - a.x)).toBeLessThan(2); // single column
         expect(b.y).toBeGreaterThanOrEqual(a.bottom);

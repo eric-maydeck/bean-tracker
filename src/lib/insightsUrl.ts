@@ -180,9 +180,9 @@ function parseViews(v: string | null): BoardViews | undefined {
 const viewsText = (v: BoardViews) => VIEW_BOARDS.filter((b) => v[b]).map((b) => `${b}-time${v[b] === 'wide' ? '-wide' : ''}`).join(',');
 
 // Shared by /insights and /stats: the People switch's help text.
-export const peopleHelp = (size: number): Record<People, string> => ({
+export const peopleHelp = (size: number, admin = false): Record<People, string> => ({
   household: "Everyone's brews together.",
-  person: `Totals and rates ÷ ${size}: an even split (Bean Conqueror doesn't record who brewed).`
+  person: `Totals and rates ÷ ${size}: an even split (Bean Conqueror doesn't record who brewed).${admin ? ' Set the size on Account.' : ''}`
 });
 
 // people=person splits totals evenly by household size; a household of one has nothing to
