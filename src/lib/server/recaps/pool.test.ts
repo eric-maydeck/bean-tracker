@@ -151,9 +151,10 @@ describe('decaf', () => {
     expect(s.context).toBe('19 of your 20 evening brews skipped the caffeine. Before 7pm, decaf is 5%.');
     expect(s.score).toBeCloseTo(0.9);
   });
-  it('null without decaf, or when the gap is under 30 points', () => {
+  it('null without decaf; steady headline when the gap is under 30 points', () => {
     expect(fact('decaf').run(ctx(mix(0, 0)))).toBeNull();
-    expect(fact('decaf').run(ctx(mix(12, 8)))).toBeNull();
+    // decaf about the same day and night: the calm headline
+    expect(fact('decaf').run(ctx(mix(12, 8)))).toMatchObject({ lead: 'Day or night, your brews were', big: '50%', unit: 'decaf', context: '60% after 7pm, 40% before: steady all day.', score: 0.25 });
   });
 });
 
@@ -223,7 +224,8 @@ describe('coffees facts', () => {
   });
   it('turn: null when the leader did not change or a window is thin', () => {
     const same = (n: number, from: string, o: string) => days(from, n).map((b) => ({ ...b, origin: o }));
-    expect(fact('turn').run(ctx([...same(40, '2026-01-01', 'Peru'), ...same(40, '2026-07-01', 'Peru')]))).toBeNull(); // same leader
+    // the same leader at both ends: a calm headline, not a null
+    expect(fact('turn').run(ctx([...same(40, '2026-01-01', 'Peru'), ...same(40, '2026-07-01', 'Peru')]))).toMatchObject({ lead: 'Start to finish, your most brewed origin was', big: 'Peru', context: 'Peru led both ways: 100% of Jan\u2060–\u2060Feb brews, 100% of Jul\u2060–\u2060Aug brews.', score: 0.25, viz: { kind: 'split' } });
     expect(fact('turn').run(ctx([...same(40, '2026-01-01', 'Peru'), ...same(40, '2026-07-01', 'Kenya')]))).not.toBeNull();
     expect(fact('turn').run(ctx([...same(40, '2026-01-01', 'Peru'), ...same(29, '2026-07-01', 'Kenya')]))).toBeNull(); // thin late window
     expect(fact('turn').run(ctx([...same(40, '2026-01-01', 'Peru'), ...same(40, '2026-04-10', 'Kenya')]))).toBeNull(); // under 6 months
@@ -274,6 +276,12 @@ describe('recipe, ratio, rest', () => {
     expect(fact('recipe').run(ctx(rich, { pours: { facts: new Map(), recipes: [] } } as any))).toBeNull();
     expect(fact('recipe').run(ctx(days('2026-03-01', 25), { pours: { facts: pourFacts, recipes: RECIPES } } as any))).toBeNull();
   });
+  it('recipe: no riser, enough months: the recipe you kept using', () => {
+    const bs = ['2026-03-01', '2026-04-01', '2026-05-01'].flatMap((d) => days(d, 25));
+    const pf = new Map(bs.map((b) => [b.id, { recipeId: 1, reading: null }]));
+    const s = fact('recipe').run(ctx(bs, { pours: { facts: pf, recipes: RECIPES } } as any))!;
+    expect(s).toMatchObject({ lead: 'You kept coming back to', context: '100% of all brews (75), steady month to month.', score: 0.25, viz: { kind: 'spark' } });
+  });
   it('ratio: 1:17 brew ratio; temperature sentence only with a 1.0C drift', () => {
     const s = fact('ratio').run(full())!;
     expect(`${s.big} ${s.unit}`).toBe('1:17 brew ratio');
@@ -293,8 +301,10 @@ describe('recipe, ratio, rest', () => {
     expect(s.big).toBe('94d');
     expect(s.context).toBe('on average, up from 38d in March.');
     expect(s.score).toBeCloseTo(56 / 60);
-    expect(fact('rest').run(ctx(rich.map((b) => ({ ...b, restDays: 40 }))))).toBeNull();
-    expect(fact('rest').run(ctx(rich.map((b, i) => ({ ...b, restDays: i % 2 ? 100 : 20, localDate: b.localDate.slice(0, 5) + (b.localDate.slice(5, 7) < '04' ? '02' : '03') + b.localDate.slice(7) }))))).toBeNull();
+    // no shift: a calm headline about how steady the rest is, not a null
+    expect(fact('rest').run(ctx(rich.map((b) => ({ ...b, restDays: 40 }))))).toMatchObject({ lead: 'Your beans typically rest', big: '40d', context: 'on average, steady month to month: 40d every month.', score: 0.25, viz: { kind: 'spark' } });
+    expect(fact('rest').run(ctx(rich.map((b, i) => ({ ...b, restDays: i % 2 ? 100 : 20, localDate: b.localDate.slice(0, 5) + (b.localDate.slice(5, 7) < '04' ? '02' : '03') + b.localDate.slice(7) }))))!.big).toBe('60d');
+    expect(fact('rest').run(ctx(days('2026-03-01', 5).map((b) => ({ ...b, restDays: 40 }))))).toBeNull(); // thin: under 2 months of 10
   });
 });
 
@@ -324,9 +334,9 @@ describe('rest card figures', () => {
   it('a small best band is no win: backup copy', () => {
     expect(run(t2({ bands: [band('45–59', 7.42, true)] }))!.lead).toBe('Your beans now wait');
   });
-  it('non-win verdicts: backup copy on a big shift, null on a small one', () => {
+  it('non-win verdicts: backup copy on a big shift, the steady headline on a small one', () => {
     expect(run(t2({ verdict: 'tie' }))!.lead).toBe('Your beans now wait');
-    expect(run(t2({ verdict: 'early' }), rich.map((b) => ({ ...b, restDays: 40 })))).toBeNull();
+    expect(run(t2({ verdict: 'early' }), rich.map((b) => ({ ...b, restDays: 40 })))!.lead).toBe('Your beans typically rest');
   });
 });
 
@@ -340,6 +350,10 @@ describe('busiest-day, bags-finished, spend, best-value', () => {
     expect((s.viz as any).values).toHaveLength(7);
     expect((s.viz as any).values[(s.viz as any).hi]).toBe(Number(s.big));
     expect(fact('busiest-day').run(full({ per: 2 }))!.big).toBe(String(Math.round(Number(s.big) / 2)));
+  });
+  it('busiest-day: an ordinary busiest day gets a steady headline when the data is not thin', () => {
+    const many = days('2026-03-01', 30).map((b, i) => ({ ...b, coffeeId: 1 + (i % 3) }));
+    expect(fact('busiest-day').run(ctx(many))).toMatchObject({ lead: 'Even your busiest day was a steady one: you brewed', big: '1', unit: 'brews', score: 0.25 });
   });
   it('busiest-day: null when the busiest day is ordinary', () => {
     expect(fact('busiest-day').run(ctx(days('2026-03-01', 20)))).toBeNull();
@@ -399,13 +413,17 @@ describe('consistent, dial-in, weekend, top-dripper', () => {
     expect(fact('dial-in').run(ctx(bagsOf(6, [6, 7, 8]))) ).toBeNull(); // under 4 rated brews each
     expect(fact('dial-in').run(full())).not.toBeNull();
   });
-  it('weekend: the lean, null for an even week', () => {
+  it('weekend: an even week gets the steady headline', () => {
+    const w = fact('weekend').run(ctx(days('2026-03-02', 140), { prevBrews: [] }))!;
+    expect(w).toMatchObject({ lead: 'Weekends or weekdays, you brewed', big: '0.5', unit: 'a day', context: '0.5 on weekends, 0.5 on weekdays: steady all week.', score: 0.25, viz: { kind: 'bars' } });
+    expect(fact('weekend').run(ctx(days('2026-03-02', 70), { prevBrews: [] }))).toBeNull(); // thin: under the sample minimum
+  });
+  it('weekend: the lean', () => {
     const s = fact('weekend').run(full())!;
     expect(s.lead).toBe('On weekends you brew');
     expect(s.big).toMatch(/^\d+% more$/);
     expect(s.context).toMatch(/^[\d.]+ brews a day on weekends, [\d.]+ on weekdays\.$/);
     expect((s.viz as any).values).toHaveLength(7);
-    expect(fact('weekend').run(ctx(days('2026-03-02', 70), { prevBrews: [] }))).toBeNull();
   });
   it('top-dripper: the go-to dripper, null under 2 drippers or 25%', () => {
     const s = fact('top-dripper').run(full())!;

@@ -15,6 +15,7 @@ import { wholeUsd } from '$lib/money';
 import { sweetSpotsTab } from '$lib/server/insights/lab';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
 import { recipeBand } from '$lib/server/insights/pours';
+import { pooled } from '$lib/sample';
 import type { FactDef, Viz } from './types';
 import { weekendVsWeekday } from '$lib/server/insights/insightGenerators';
 import { toGenCtx, type YearCtx } from './year';
@@ -130,14 +131,20 @@ const decaf: FactDef = {
     const { eve, decaf: eveDecaf } = evening(y);
     if (eve < 10 || bs.filter((b) => b.decaf).length < 5) return null;
     const after = eveDecaf / eve, before = day.length ? day.filter((b) => b.decaf).length / day.length : 0;
-    if (after - before < 0.3) return null;
+    const link = { tab: 'Habits', section: 'Habits · By hour of day', href: seeMoreHref(y.year, 'habits') };
+    const viz = { kind: 'hlist', rows: [{ label: 'After 7pm', value: after * 100, texts: [pct(after)] }, { label: 'Before 7pm', value: before * 100, texts: [pct(before)] }] } satisfies Viz;
+    if (after - before < 0.3) { // no evening habit: the decaf share is the same day and night
+      const all = bs.filter((b) => b.decaf).length / bs.length;
+      return {
+        id: 'decaf', category: 'habits', lead: 'Day or night, your brews were', big: pct(all), unit: 'decaf',
+        context: `${pct(after)} after 7pm, ${pct(before)} before: steady all day.`, viz, link, card: { big: pct(all), label: 'decaf, day or night' }, score: 0.25
+      };
+    }
     return {
       id: 'decaf', category: 'habits',
       lead: 'After 7pm, your brews were', big: pct(after), unit: 'decaf',
       context: `${eveDecaf} of your ${eve} evening brews skipped the caffeine. Before 7pm, decaf is ${pct(before)}.`,
-      viz: { kind: 'hlist', rows: [{ label: 'After 7pm', value: after * 100, texts: [pct(after)] }, { label: 'Before 7pm', value: before * 100, texts: [pct(before)] }] } satisfies Viz,
-      link: { tab: 'Habits', section: 'Habits · By hour of day', href: seeMoreHref(y.year, 'habits') },
-      card: { big: pct(after), label: 'decaf after 7pm' },
+      viz, link, card: { big: pct(after), label: 'decaf after 7pm' },
       score: after - before
     };
   }
@@ -237,12 +244,13 @@ const turn: FactDef = {
     };
     const ke = share(early, (b) => country(b.origin)), kl = share(late, (b) => country(b.origin));
     const A = ke.top[0]?.[0], B = kl.top[0]?.[0];
-    if (!A || !B || A === B) return null;
+    if (!A || !B) return null;
+    const calm = A === B; // the same origin led both ends of the year
     const pe = (ke.c.get(B) ?? 0) / ke.of, pl = kl.c.get(B)! / kl.of;
     const win = (a: number, z: number) => `${MON[a]}–${MON[z]}`;
     const wE = win(m0, m0 + k - 1), wL = win(m1 - k + 1, m1);
     const nb = (w: string) => w.replace('–', '\u2060–\u2060'); // no line break inside a month range
-    let context = `${A} was ${pct(ke.c.get(A)! / ke.of)} of ${nb(wE)} brews. ${nb(wL)}, ${B} leads at ${pct(pl)}.`;
+    let context = calm ? `${A} led both ways: ${pct(pe)} of ${nb(wE)} brews, ${pct(pl)} of ${nb(wL)} brews.` : `${A} was ${pct(ke.c.get(A)! / ke.of)} of ${nb(wE)} brews. ${nb(wL)}, ${B} leads at ${pct(pl)}.`;
     const group = (b: BrewFact) => (b.processGroup === 'Other / Unknown' ? null : b.processGroup);
     const g = share(y.brews, group).top[0]?.[0];
     if (g) {
@@ -251,7 +259,7 @@ const turn: FactDef = {
     }
     const both = new Map<string, number>();
     for (const x of [ke, kl]) for (const [o, c] of x.c) both.set(o, (both.get(o) ?? 0) + c);
-    const keys = [A, B, ...[...both].sort((a, b) => b[1] - a[1]).map(([o]) => o).filter((o) => o !== A && o !== B)].slice(0, 3);
+    const keys = [...new Set([A, B, ...[...both].sort((a, b) => b[1] - a[1]).map(([o]) => o)])].slice(0, 3);
     const seg = (name: string, x: ReturnType<typeof share>) => {
       const segs = keys.map((o) => ({ label: o, pct: Math.round(((x.c.get(o) ?? 0) / x.of) * 100) })).filter((s) => s.pct > 0).sort((a, b) => b.pct - a.pct);
       const rest = 100 - segs.reduce((s, x) => s + x.pct, 0);
@@ -259,11 +267,11 @@ const turn: FactDef = {
     };
     return {
       id: 'turn', category: 'coffees',
-      lead: `Since ${MONTH(m1 - k + 1)}, your most brewed origin is`, big: B, context,
+      lead: calm ? 'Start to finish, your most brewed origin was' : `Since ${MONTH(m1 - k + 1)}, your most brewed origin is`, big: B, context,
       viz: { kind: 'split', periods: [seg(wE, ke), seg(wL, kl)], keys },
       // ponytail: Leaderboards has no origin over-time view yet (VIEW_BOARDS), so this opens the Origins board.
       link: { tab: 'Leaderboards', section: 'Leaderboards · Origins', href: seeMoreHref(y.year, 'leaderboards', { open: 'origins' }) },
-      wide: true, card: { big: B, label: `since ${MONTH(m1 - k + 1)}` }, score: pl - pe
+      wide: true, card: { big: B, label: calm ? 'all year' : `since ${MONTH(m1 - k + 1)}` }, score: calm ? 0.25 : pl - pe
     };
   }
 };
@@ -352,18 +360,26 @@ const recipe: FactDef = {
       const rise = shares[top] - shares[0];
       if (!best || rise > best.rise) best = { r, rise, peak: months[top], first: shares[0], top: shares[top] };
     }
-    if (!best || best.rise < 0.3) return null;
-    const { r, peak } = best;
     const counts = new Map<string, number>();
     for (const b of y.brews) { const l = label(b); if (l) counts.set(l, (counts.get(l) ?? 0) + 1); }
-    const [topName, topN] = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+    const [topName, topN] = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] ?? [];
+    if (!best || !topName) return null;
+    const link = { tab: 'Lab', section: 'Lab · Pours', href: seeMoreHref(y.year, 'pours') };
+    if (best.rise < 0.3) { // no recipe took over: the headline is the one you kept using
+      const big = pct(topN / y.brews.length);
+      return {
+        id: 'recipe', category: 'brewing', lead: 'You kept coming back to', big: topName,
+        context: `${big} of all brews (${fmtInt(topN)}), steady month to month.`,
+        viz: spark(months, (x) => Math.round(share(x, topName) * 100), (v) => `${v}%`), link, wide: true, card: { big: topName, label: `${big} of brews` }, score: 0.25
+      };
+    }
+    const { r, peak } = best;
     let context = `of ${MONTH(peak.m)}'s brews, from ${pct(best.first)} in ${MONTH(months[0].m)}.`;
     if (topName !== r) context += ` ${topName} is still the year's most-used recipe: ${pct(topN / y.brews.length)} of all brews (${fmtInt(topN)}).`;
     return {
       id: 'recipe', category: 'brewing', lead: `You used ${r} for`, big: pct(best.top), context,
       viz: spark(months, (x) => Math.round(share(x, r) * 100), (v) => `${v}%`),
-      link: { tab: 'Lab', section: 'Lab · Pours', href: seeMoreHref(y.year, 'pours') },
-      wide: true, card: { big: pct(best.top), label: `${r} brews` }, score: best.rise
+      link, wide: true, card: { big: pct(best.top), label: `${r} brews` }, score: best.rise
     };
   }
 };
@@ -439,7 +455,15 @@ const rest: FactDef = {
     const ms = monthMeans(y, (b) => b.restDays, 10);
     if (ms.length < 2) return null;
     const v = ms.map((x) => avg(x.bs.map((b) => b.restDays!))), shift = v.at(-1)! - v[0];
-    if (Math.abs(shift) < 14) return null;
+    if (Math.abs(shift) < 14) { // no real shift: how steady the rest is
+      const all = avg(v), big = `${Math.round(all)}d`;
+      return {
+        id: 'rest', category: 'brewing', lead: 'Your beans typically rest', big,
+        context: `on average, steady month to month: ${Math.round(Math.min(...v)) === Math.round(Math.max(...v)) ? `${big} every month` : `${Math.round(Math.min(...v))}d to ${Math.round(Math.max(...v))}d`}.`,
+        viz: spark(ms, (x) => Math.round(avg(x.bs.map((b) => b.restDays!))), (n) => `${n}d`),
+        link, card: { big, label: 'typical rest' }, score: 0.25
+      };
+    }
     const d = `${Math.round(v.at(-1)!)}d`;
     return {
       id: 'rest', category: 'brewing', lead: 'Your beans now wait', big: d,
@@ -458,7 +482,8 @@ const busiestDay: FactDef = {
     for (const b of y.brews) by.set(b.localDate, (by.get(b.localDate) ?? 0) + 1);
     const [day, n] = [...by].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
     const usual = y.brews.length / by.size;
-    if (n < 5 || n < 2 * usual) return null;
+    const spike = n >= 5 && n >= 2 * usual;
+    if (!spike && pooled(new Set(y.brews.map((b) => b.coffeeId)).size, y.brews.length).small) return null; // thin data: nothing to say
     const start = addDays(day, -dow(day));
     const week = Array.from({ length: 7 }, (_, i) => addDays(start, i));
     const values = week.map((d) => Math.round((by.get(d) ?? 0) / y.per));
@@ -466,11 +491,11 @@ const busiestDay: FactDef = {
     const big = fmtInt(n / y.per);
     return {
       id: 'busiest-day', category: 'amounts',
-      lead: 'On your busiest day you brewed', big, unit: 'brews',
+      lead: spike ? 'On your busiest day you brewed' : 'Even your busiest day was a steady one: you brewed', big, unit: 'brews',
       context: `That was ${md(day)}. A usual brew day has ${fmtInt(usual / y.per)}.`,
       viz: { kind: 'bars', values, labels, tips: week.map((d, i) => `${labels[i]} ${md(d)}: ${values[i]} brews`), hi: dow(day), hiText: String(values[dow(day)]) },
       link: { tab: 'Habits', section: 'Habits · Brew calendar', href: seeMoreHref(y.year, 'habits') },
-      perPerson: true, card: { big, label: 'brews on your busiest day' }, score: Math.min(1, n / usual / 4)
+      perPerson: true, card: { big, label: 'brews on your busiest day' }, score: spike ? Math.min(1, n / usual / 4) : 0.25
     };
   }
 };
@@ -609,15 +634,23 @@ const weekend: FactDef = {
     const f = weekendVsWeekday({ ...toGenCtx(y), brews: y.brews }) as ReturnType<typeof weekendVsWeekday> & { sides?: { label: string; value: string }[]; series?: { label: string; value: number }[] };
     if (!f || Array.isArray(f) || f.sides?.[0]?.label !== 'Weekdays' || f.sides[1]?.label !== 'Weekends' || !f.series) return null;
     const b = Number(f.sides[0].value), a = Number(f.sides[1].value), ratio = a / b;
-    if (!(ratio > 0) || (ratio >= 0.9 && ratio <= 1.1)) return null;
-    const big = `${Math.round(Math.abs(ratio - 1) * 100)}% ${ratio > 1 ? 'more' : 'fewer'}`;
+    if (!(ratio > 0)) return null;
     const values = f.series.map((x) => +x.value.toFixed(1)), hi = values.indexOf(Math.max(...values));
+    const viz = { kind: 'bars' as const, values, labels: f.series.map((x) => x.label), tips: f.series.map((x, i) => `${x.label}: ${values[i]} brews a day`), hi, hiText: String(values[hi]) };
+    const link = { tab: 'Habits', section: 'Habits · By day of week', href: seeMoreHref(y.year, 'habits') };
+    // No lean (within 10%): the headline is how steady the week is, not a trend.
+    if (ratio >= 0.9 && ratio <= 1.1) {
+      const big = (f.series.reduce((s, x) => s + x.value, 0) / f.series.length).toFixed(1);
+      return {
+        id: 'weekend', category: 'habits', lead: 'Weekends or weekdays, you brewed', big, unit: 'a day',
+        context: `${a.toFixed(1)} on weekends, ${b.toFixed(1)} on weekdays: steady all week.`, viz, link, card: { big, label: 'a day, all week' }, score: 0.25
+      };
+    }
+    const big = `${Math.round(Math.abs(ratio - 1) * 100)}% ${ratio > 1 ? 'more' : 'fewer'}`;
     return {
       id: 'weekend', category: 'habits', lead: 'On weekends you brew', big,
       context: `${a.toFixed(1)} brews a day on weekends, ${b.toFixed(1)} on weekdays.`,
-      viz: { kind: 'bars', values, labels: f.series.map((x) => x.label), tips: f.series.map((x, i) => `${x.label}: ${values[i]} brews a day`), hi, hiText: String(values[hi]) },
-      link: { tab: 'Habits', section: 'Habits · By day of week', href: seeMoreHref(y.year, 'habits') },
-      card: { big, label: 'on weekends' }, score: Math.min(1, Math.abs(ratio - 1))
+      viz, link, card: { big, label: 'on weekends' }, score: Math.min(1, Math.abs(ratio - 1))
     };
   }
 };
