@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import { labelTip } from '$lib/components/labelTip';
   import Icon from '$lib/components/Icon.svelte';
   import BeanTriage from './BeanTriage.svelte';
   import { showToast } from '$lib/toast.svelte';
@@ -130,7 +131,7 @@
           }}
         />
       </label>
-      <span class="bq-file" class:text-muted={!picked}>{picked ?? 'No file chosen'}</span>
+      <span class="bq-file" class:text-muted={!picked} use:labelTip={picked ?? undefined}>{picked ?? 'No file chosen'}</span>
     </div>
     <button class="button bq-go" type="submit" disabled={!picked || submitting}>
       <span class:bq-hide={submitting}>Import</span>
@@ -284,18 +285,18 @@
 <style>
   /* Wide screens: Bean Conqueror and Household left, Recipes and Brew now right. */
   @media (min-width: 1100px) {
-    .acct { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-4); align-items: start; }
+    .acct { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--space-4); align-items: start; }
   }
   #brew-now { scroll-margin-top: var(--space-4); }
   .bn-cells { display: flex; flex-wrap: wrap; flex: 0 1 auto; gap: var(--space-1) var(--space-4); padding: var(--space-2) 0; min-width: 0; }
   .bn-cell { display: flex; flex-direction: column; min-width: 3.75rem; line-height: 1.3; }
   .bn-cell .text-muted { font-size: 0.8rem; }
   .bn-confirm { max-width: 24rem; }
-  .bq-upload { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
-  .bq-pick { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); min-width: 0; }
+  .bq-upload { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-2) var(--space-4); }
+  .bq-pick { display: flex; flex: 1; align-items: center; gap: var(--space-1) var(--space-3); min-width: 0; }
   .bq-choose, .bq-go { position: relative; min-height: 44px; margin: 0; display: inline-flex; align-items: center; justify-content: center; }
   .bq-choose:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .bq-file { overflow-wrap: anywhere; min-width: 0; }
+  .bq-file { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* Both labels share one cell, so "Importing…" never changes the button's size. */
   .bq-go { display: inline-grid; padding-inline: var(--space-5, 1.5rem); }
   .bq-go > span { grid-area: 1 / 1; }
@@ -311,6 +312,6 @@
   @media (max-width: 600px) {
     .bq-upload { flex-direction: column; align-items: stretch; }
     .bq-pick { flex-direction: column; align-items: stretch; }
-    .bq-file { text-align: center; }
+    .bq-file { text-align: center; white-space: normal; overflow-wrap: anywhere; }
   }
 </style>

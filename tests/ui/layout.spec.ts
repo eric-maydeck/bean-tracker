@@ -4330,6 +4330,18 @@ export const STATES: State[] = [
       await expect(go).toBeEnabled();
       const after = (await go.boundingBox())!;
       expect(Math.abs(after.width - before.width) + Math.abs(after.height - before.height)).toBeLessThan(1);
+      // Wide rows: the name takes the free width and Import sits at the row's right end; a very long name ellipsizes and Import stays put.
+      const long = 'Beanconqueror-export-with-a-really-quite-long-file-name-for-testing-the-ellipsis-behaviour-1234567890.zip';
+      await page.locator('input[name="file"]').setInputFiles({ name: long, mimeType: 'application/zip', buffer: Buffer.from('x') });
+      await expect(page.locator('.bq-file')).toHaveText(long);
+      const long2 = (await go.boundingBox())!;
+      const form = (await page.locator('.bq-upload').boundingBox())!;
+      // (stacked below 600px: a long name wraps there and Import moves down with it, as before)
+      if ((await page.locator('.bq-upload').evaluate((el) => getComputedStyle(el).flexDirection)) === 'row') {
+        expect(Math.abs(long2.x - after.x) + Math.abs(long2.y - after.y) + Math.abs(long2.width - after.width)).toBeLessThan(1);
+        expect(form.x + form.width - (long2.x + long2.width), 'Import at the right end').toBeLessThan(2);
+      }
+      await checkLayout(page);
     }
   },
   {
