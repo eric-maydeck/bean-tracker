@@ -633,8 +633,12 @@
   .fixed .board-body.time {
     min-height: 0;
   }
+  /* Its note leads into the chart, and its head has no tools to make room for. */
   .fixed .like-note {
-    padding: var(--space-2) 0;
+    padding: 0 0 var(--space-2);
+  }
+  .fixed .board-head {
+    min-height: 0;
   }
   .fixed .time-chart {
     flex: none;
