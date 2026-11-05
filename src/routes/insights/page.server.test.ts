@@ -555,6 +555,14 @@ describe('page-wide coffees filter', () => {
     // The other boards still follow it.
     expect(run('?range=all&tab=leaderboards&rank=brews&caffeine=decaf').boards.coffees).toHaveLength(1);
   });
+  it('Caffeine board is absent while only one kind has rated brews, present with both', () => {
+    const rows = (q = '') => run(`?range=all&tab=leaderboards&rank=rating&ratings=all&dial=all${q}`).boards.caffeine;
+    seedTwo();
+    expect(rows()).toEqual([]);
+    seedTwo(true);
+    expect(rows()).toHaveLength(2);
+    expect(rows('&roaster=R1')).toEqual([]); // the other filters narrow it to the decaf bag alone
+  });
   it('See all shows every bag: a roaster of one 1-brew decaf bag (the seed\'s Onyx) is on the rating board (user, 2026-10-17)', () => {
     seedTwo(true, 0); // R1: one decaf bag, one rated brew
     const roasters = (q: string) => run(`?range=all&tab=leaderboards&caffeine=all${q}`).boards.roasters.map((r: { label: string }) => r.label);

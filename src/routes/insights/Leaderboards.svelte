@@ -10,7 +10,7 @@
   export function jumpLinks(boards: Rows, cut: Board[], rank: Rank): JumpLink[] {
     // A whole tab with nothing to rank is one empty panel: no chips.
     if (!cut.length && BANDS.flat().every((b) => !boards[b].length)) return [];
-    return BANDS.flat().filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b)).map((b) => [`leaderboard-${b}`, TITLE[b]] as const);
+    return BANDS.flat().filter((b) => (rank !== 'like' || LIKE_BOARDS.includes(b)) && (b !== 'caffeine' || boards.caffeine.length)).map((b) => [`leaderboard-${b}`, TITLE[b]] as const);
   }
 </script>
 
@@ -382,7 +382,7 @@
 {:else}
   <!-- Under like only coffees and roasters rank; the rest are left out, with one line saying so (no empty cards). -->
   {#each BANDS as full, i (i)}
-    {@const band = full.filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b))}
+    {@const band = full.filter((b) => (rank !== 'like' || LIKE_BOARDS.includes(b)) && (b !== 'caffeine' || boards.caffeine.length))}
     {#if band.length}
       <div class="board-band band-{band.length}" class:has-like={rank !== 'like' && band.some((b) => boards[b].some((r) => r.like))} class:has-foot={footed(band)}>
         {#each band as b (b)}{@render board(b)}{/each}

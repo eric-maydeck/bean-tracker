@@ -6953,6 +6953,26 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
+  // One caffeine kind with rated brews (Kurasu has no decaf): the Caffeinated vs. decaf board is left out, the band ends earlier with
+  // no hole, no jump chip, and a deep link to it does not break the page. The layout check covers every viewport.
+  { name: 'insights-board-caffeine-hidden', path: () => '/insights?tab=leaderboards&range=all&dial=all&roaster=Kurasu#leaderboard-caffeine',
+    act: async (page) => {
+      const errors: string[] = [];
+      page.on('pageerror', (e) => errors.push(String(e)));
+      await expect(page.locator('[data-board="roasters"]')).toBeVisible();
+      await expect(page.locator('[data-board="caffeine"]')).toHaveCount(0);
+      await expect(page.getByRole('link', { name: 'Caffeinated vs. decaf' })).toHaveCount(0);
+      const bands = page.locator('.board-band');
+      expect(await bands.count()).toBeGreaterThan(0);
+      for (const band of await bands.all()) expect(await band.locator('> .board').count(), 'no empty band').toBeGreaterThan(0);
+      await gotoReady(page, '/insights?tab=leaderboards&range=all&dial=all&roaster=Kurasu&chart=leaderboard-caffeine');
+      await expect(page.locator('[data-board="roasters"]')).toBeVisible();
+      expect(errors).toEqual([]);
+      // Both kinds present again: the board is back.
+      await gotoReady(page, '/insights?tab=leaderboards&range=all&dial=all');
+      await expect(page.locator('[data-board="caffeine"]')).toHaveCount(1);
+      await gotoReady(page, '/insights?tab=leaderboards&range=all&dial=all&roaster=Kurasu');
+    } },
   { name: 'insights-board-caffeine', path: () => '/insights?tab=leaderboards&range=all&dial=all',
     act: async (page) => {
       const board = page.locator('[data-board="caffeine"]');

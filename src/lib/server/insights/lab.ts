@@ -15,6 +15,10 @@ import { inPeriod, type Period } from './time';
 export const ratedIn = (brews: readonly BrewFact[], period: Period, ratings: Ratings): BrewFact[] =>
   brews.filter((b) => b.coffeeId !== null && inPeriod(b.localDate, period) && countsForRating(b, ratings) && b.rating! > 0);
 
+// Both caffeine kinds have a rated brew in the period: the only case the Caffeinated vs. decaf board has anything to compare.
+export const bothCaffeineKinds = (brews: readonly BrewFact[], period: Period, ratings: Ratings): boolean =>
+  new Set(ratedIn(brews, period, ratings).map((b) => b.decaf)).size === 2;
+
 export type BandFn = (b: BrewFact) => Band | null;
 export const labFn = (v: LabVar, grinder: string | null = null): BandFn => (b) => bandOf(v, b, grinder);
 

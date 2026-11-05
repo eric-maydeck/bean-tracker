@@ -21,7 +21,7 @@ import { trophyCase, gearArchive } from '$lib/server/insights/trophies';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { loadPourFacts, poursTab } from '$lib/server/insights/pours';
-import { labOptions, matchesBrew, matchesCoffee, ratedIn, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
+import { labOptions, matchesBrew, matchesCoffee, ratedIn, bothCaffeineKinds, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
 import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, VIEW_BOARDS, boardAvg, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn, activeBrewFilters } from '$lib/insightsUrl';
 
 // Public, like /stats.
@@ -86,6 +86,9 @@ export const load: PageServerLoad = ({ url, locals }) => {
   const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, explicit.avg, size) : null;
   // ponytail: a second full leaderboards() pass only to take its caffeine board; narrow it to one board if it gets slow.
   if (boards) boards.caffeine = leaderboards(cafBrews, cafBags, period, prev, s.rank, s.ratings, explicit.avg, size).caffeine;
+  // One kind with rated brews would only be an overall-ratings card: the board is left out of the page (user, 2026-11-05).
+  // Done on the returned copy so the cut/hidden bookkeeping below still sees the board as computed.
+  const pageBoards = boards && !bothCaffeineKinds(cafBrews, period, s.ratings) ? { ...boards, caffeine: [] } : boards;
   const h = boards && ratingsMenuOn(s) ? hiddenRows(boards, scored, brews, bags, period, s.rank, s.ratings) : null;
   const rated = (xs: typeof brews, r: typeof s.ratings) => ratedIn(xs, period, r).length;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
@@ -151,7 +154,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
     period,
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
-    boards,
+    boards: pageBoards,
     boardCoverage: boards ? fieldCoverage(scored, bags, period, s.rank) : null,
     // Over time: the small boards switched to it (views=water-time) and Caffeine, which always is; the others cost nothing.
     boardSeries: boards
