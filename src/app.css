@@ -2634,6 +2634,8 @@ html {
   flex-direction: column;
   gap: var(--space-1);
   max-height: 16rem;
+  min-height: 6.5rem; /* short screens: the editor scrolls instead of squeezing the list to nothing */
+  flex: none;
   overflow-y: auto;
   padding-right: var(--space-5); /* an overlay scrollbar (phones, macOS) must not cover the counts */
 }
@@ -2807,7 +2809,7 @@ select.quick-filter-select {
 
   .filter-values {
     flex: 1;
-    min-height: 0;
+    min-height: 6.5rem; /* short screens: the sheet scrolls instead of squeezing the list to nothing */
     max-height: none;
   }
 }
