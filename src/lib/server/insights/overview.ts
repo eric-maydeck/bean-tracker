@@ -137,7 +137,7 @@ export const remaining = (b: BagFact, logged: Map<number, number>) =>
 export const isFinished = (b: BagFact): boolean => b.status === 'archive' && b.lastBrew !== null;
 
 // Grams on hand: what's left of the open and backlog bags (bag weight minus doses logged so far,
-// floored at 0). One rule for Overview, /stats Time to Clear, the Consumption tab and Right now.
+// floored at 0). One rule for Overview, the Consumption tab and Right now.
 export const gramsOnHand = (bags: readonly BagFact[], brews: readonly BrewFact[]): number => {
   const logged = loggedGrams(brews);
   return bags.reduce((g, b) => g + (b.status === 'archive' ? 0 : remaining(b, logged)), 0);
@@ -148,7 +148,7 @@ export type RightNow = {
   opened: number; unopened: number; onHand: number; finished: number;
 };
 
-// Overview's Right now (ports /stats Weight + Bag Count): a snapshot by status, plus bags
+// Overview's Right now (ports the old Weight + Bag Count tiles): a snapshot by status, plus bags
 // finished in `p` (archived, last brew in it; the Bags finished rule), which splits per person.
 export function rightNow(bags: readonly BagFact[], brews: readonly BrewFact[], p: Period, size = 1): RightNow {
   const logged = loggedGrams(brews);

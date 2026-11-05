@@ -4347,11 +4347,11 @@ export const STATES: State[] = [
       await gotoReady(page, '/coffees');
     }
   },
-  // The old /insights URL redirects to /stats with its query (the hash is the browser's).
-  { name: 'insights-redirect', path: () => '/insights?tab=leaderboards&rank=grams',
+  // The old /insights URL redirects to /stats with its query; the hash is the browser's and survives.
+  { name: 'insights-redirect', path: () => '/insights?tab=leaderboards&rank=grams#leaderboard-origins',
     act: async (page) => {
       const u = new URL(page.url());
-      expect(u.pathname + u.search).toBe('/stats?tab=leaderboards&rank=grams');
+      expect(u.pathname + u.search + u.hash).toBe('/stats?tab=leaderboards&rank=grams#leaderboard-origins');
     } },
   { name: 'insights-sticky', path: () => '/stats?range=1w&compare=1', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {

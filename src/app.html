@@ -22,7 +22,7 @@
   <body data-sveltekit-preload-data="hover">
     <div style="display: contents">%sveltekit.body%</div>
     <!-- Phones (≤480): swap in the short option words (data-short) before first paint, so the server's long
-         text never flashes (insights Period / Compare). Hydration then agrees with it. -->
+         text never flashes (stats Period / Compare). Hydration then agrees with it. -->
     <script nonce="%sveltekit.nonce%">
       if (matchMedia('(max-width: 480px)').matches)
         for (const o of document.querySelectorAll('option[data-short]')) o.textContent = o.dataset.short;

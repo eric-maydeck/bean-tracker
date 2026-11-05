@@ -277,7 +277,7 @@ describe('people', () => {
   });
 });
 
-describe('shared readers (/stats)', () => {
+describe('shared readers (people, range)', () => {
   const q = (s: string) => new URLSearchParams(s);
   it('parsePeople: only above one person', () => {
     expect(parsePeople(q('people=person'), 2)).toBe('person');
@@ -292,7 +292,7 @@ describe('shared readers (/stats)', () => {
     expect(parseRange(q('range=2024'), [2025, 2026])).toBeUndefined();
     expect(parseRange(q('range=5y'), [2026])).toBeUndefined();
     expect(parseRange(q(''), [2026])).toBeUndefined();
-    expect(parseRange(q(''), [2026]) ?? DEFAULTS.range).toBe('all'); // /stats' bare URL: All time
+    expect(parseRange(q(''), [2026]) ?? DEFAULTS.range).toBe('all'); // a bare URL: All time
   });
 });
 
@@ -410,7 +410,7 @@ describe('custom Period (range=YYYY-MM-DD..YYYY-MM-DD)', () => {
     'ignores %s', (r) => expect(p(`range=${r}`).range).toBeUndefined());
   it('round-trips through the URL', () =>
     expect(insightsParams(p('range=2026-03-01..2026-05-31')).toString()).toBe('range=2026-03-01..2026-05-31'));
-  it('/stats parseRange ignores it', () =>
+  it('parseRange ignores a custom range', () =>
     expect(parseRange(new URLSearchParams('range=2026-03-01..2026-05-31'), YEARS)).toBeUndefined());
   it('compare menu: Previous period, plus All before when it fits', () => {
     const o = compareOptions('2026-03-01..2026-05-31', YEARS, YEARS, fits);
