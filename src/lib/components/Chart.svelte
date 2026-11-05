@@ -333,6 +333,7 @@
     const tokAt = (k: number) => (colors?.[k] ? colors[k].slice(4, -1) : seriesToken(k % 14, palette));
     const hueTok = (x: { hue?: string }) => x.hue!.slice(4, -1);
     const hasTrend = series.some((x) => x.trend);
+    const mixed = hasTrend || series.some((x) => x.dashed); // a bar chart with a line over it
     // Bars are a little see-through with an opaque outline (ui-rules 42), a trend line on top.
     const soft = (c: string) => `${c}b3`;
     const lineColor = themeColor(tokAt(0)); // brown up to 3 series, else the palette's first slot
@@ -457,8 +458,8 @@
         },
         // A tip opens only on a mark (ui-rules 50): a bar or a slice, never the plot's empty space. A line chart's tip opens
         // for the nearest x anywhere in the plot (every line chart, as Runway at your pace) and shows every series there (index mode).
-        // A trend chart's bar also lights the trend line's point at its bucket (index mode), the compare bar's value in its tip.
-        interaction: { mode: type === 'line' || hasTrend ? 'index' : 'nearest', intersect: type !== 'line' },
+        // A bar chart with a line over it (trend, dashed average) opens for the nearest x anywhere in the plot too, and lists bars and lines together (index mode).
+        interaction: { mode: type === 'line' || mixed ? 'index' : 'nearest', intersect: type !== 'line' && !mixed },
         elements: { point: { hitRadius: 8 } },
         onClick: (_e, els) => {
           if (!tipLink) return;

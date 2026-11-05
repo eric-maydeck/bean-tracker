@@ -5157,6 +5157,9 @@ export const STATES: State[] = [
       await check(page.locator('[data-board="caffeine"] .time-chart canvas'));
       await page.goto('/insights?tab=onhand&range=all');
       await check(page.locator('section.chart-panel:has(#onhand-runway-at-your-pace) canvas'));
+      // A bar chart with a trend line over it (Brewed over time): same.
+      await page.goto('/insights?tab=consumption&range=all');
+      await check(page.locator('section.chart-panel:has(#consumption-chart-brewed) canvas'));
     }
   },
   {
