@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import { setBrewingZone } from '$lib/localDate';
 import { localToday, localTodayDate } from './localToday';
 
 describe('localToday / localTodayDate (America/Denver)', () => {
@@ -12,4 +13,15 @@ describe('localToday / localTodayDate (America/Denver)', () => {
     ['2026-12-15T06:30:00Z', '2026-12-14'], // MST: 23:30 on the 14th
     ['2026-10-14T06:00:00Z', '2026-10-14'] // MDT: exactly midnight
   ])('%s → %s', (instant, day) => expect(localToday(new Date(instant))).toBe(day));
+});
+
+describe('localToday follows the brewing zone', () => {
+  afterEach(() => setBrewingZone('America/Denver'));
+  it('UTC is already the next day at 21:00 local; Tokyo is later still', () => {
+    const evening = new Date('2026-10-14T03:00:00Z');
+    setBrewingZone('UTC');
+    expect(localToday(evening)).toBe('2026-10-14');
+    setBrewingZone('Asia/Tokyo');
+    expect(localToday(new Date('2026-10-14T16:00:00Z'))).toBe('2026-10-15');
+  });
 });

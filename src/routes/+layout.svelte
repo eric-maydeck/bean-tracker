@@ -10,11 +10,15 @@
   import Toast from '$lib/components/Toast.svelte';
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
   import { formatUpdated } from '$lib/formatDate';
+  import { setBrewingZone } from '$lib/localDate';
   import { onMount } from 'svelte';
   import { captionItems } from '$lib/capItems';
   import { tipOver, tipOut, tipClick } from '$lib/components/modeTip';
   import { scrollBehavior } from '$lib/scrollToBottom';
   let { children, data } = $props();
+  // The brewing zone, applied before anything renders so the client's local dates match the server's.
+  setBrewingZone(data.brewingZone);
+  $effect.pre(() => setBrewingZone(data.brewingZone));
   // Root layout mounts last, so this marks the whole page as hydrated (tests/ui/ready.ts).
   onMount(() => { document.documentElement.dataset.hydrated = ''; return captionItems(); });
 

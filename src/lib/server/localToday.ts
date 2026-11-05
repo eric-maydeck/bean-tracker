@@ -1,5 +1,4 @@
-// "Today" is the local calendar date (the user's zone, APP_TIME_ZONE), never UTC's: from 18:00 local
-// UTC is already tomorrow. Relative .ts import so node scripts (ui-seed) can load coffees.ts.
+// "Today" is the calendar date in the brewing zone (src/lib/localDate.ts), not UTC's. Relative .ts import so node scripts (ui-seed) can load coffees.ts.
 import { localDate } from '../localDate.ts';
 
 export const localToday = (now = new Date()): string => localDate(now.toISOString());

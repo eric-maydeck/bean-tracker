@@ -1,5 +1,5 @@
 import type { LayoutServerLoad } from './$types';
-import { getDb, getLastDeployed } from '$lib/server/db';
+import { getDb, getLastDeployed, getBrewingZone } from '$lib/server/db';
 import { getActiveAlerts } from '$lib/server/alerts';
 import { nameColor } from '$lib/nameColor';
 import { contactEmailFor } from '$lib/aboutAi';
@@ -29,5 +29,5 @@ export const load: LayoutServerLoad = ({ locals, url }) => {
   const coloredNames = names.map((r) => r.n).filter((n) => nameColor(n));
   const recapReady = recapReadyYear(db, localToday(), locals.isAdmin);
   return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts, coloredNames, contactEmail: contactEmailFor(url.host),
-    recapReady, recapTone: recapReady ? coverTone(recapReady) : null };
+    recapReady, brewingZone: getBrewingZone(db), recapTone: recapReady ? coverTone(recapReady) : null };
 };

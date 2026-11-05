@@ -1,8 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import { setBrewingZone } from '$lib/localDate';
 import {
   bcLocalTime, localToday, addMonths, daysBetween, periodBounds, previousPeriod, inPeriod, yearsSince,
   trackedDays, comparePeriod, compareFits, trackedBounds, weekday, autoBy, BY_FITS, byFits
 } from './time';
+
+describe('bcLocalTime in another brewing zone', () => {
+  afterEach(() => setBrewingZone('America/Denver'));
+  it('reads local walls in UTC', () => {
+    setBrewingZone('UTC');
+    expect(bcLocalTime('2026-11-01T23:30:00Z')).toBe('2026-11-02T06:30'); // MST
+    expect(bcLocalTime('2026-03-08T01:30:00Z')).toBe('2026-03-08T08:30'); // the night DST starts
+  });
+});
 
 describe('bcLocalTime (stored Bean Conqueror times are already local)', () => {
   it('reads the wall time as-is, no shift', () => expect(bcLocalTime('2026-03-08T01:30:00.000Z')).toBe('2026-03-08T01:30'));

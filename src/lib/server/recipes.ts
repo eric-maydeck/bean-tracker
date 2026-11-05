@@ -14,6 +14,7 @@ import {
 } from '$lib/recipes';
 import { DEFAULT_NOTE_WORDS, parseNoteWords, type NoteWord } from '$lib/agitation';
 import { parseMethod } from './insights/facts';
+import { bcLocalTime } from './insights/time';
 
 export class RecipeError extends Error {}
 export const MIN_GROUP = 10;
@@ -382,7 +383,7 @@ export function brewsFor(db: DatabaseSync, item: Item, order: 'latest' | 'top' =
     }
     const g = parseMethod(r.method, r.tools);
     return {
-      date: r.at.slice(0, 10), // local wall time with a fake Z: never converted
+      date: bcLocalTime(r.at).slice(0, 10),
       coffeeName: r.coffee,
       slug: r.slug,
       rating: r.rating,

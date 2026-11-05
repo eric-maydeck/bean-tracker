@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { schema } from './schema.ts';
+import { STORE_ZONE, setBrewingZone as setProcessZone } from '../localDate.ts';
 import { COFFEE_ORIGIN_FIELDS } from '../types.ts';
 import { applyCoffeeFixes } from './coffees.ts';
 import { PRODUCT_PAGE_BACKFILLS } from './productPageBackfill.ts';
@@ -254,6 +255,31 @@ export function setHouseholdSize(db: DatabaseSync, n: number): void {
   ).run(HOUSEHOLD_SIZE_KEY, String(n));
 }
 
+export class InvalidTimeZoneError extends Error {}
+
+const BREWING_ZONE_KEY = 'brewing_time_zone';
+
+// The account's brewing zone (day and hour lines); UTC until set.
+export function getBrewingZone(db: DatabaseSync): string {
+  const row = db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(BREWING_ZONE_KEY) as { value: string } | undefined;
+  return row?.value || 'UTC';
+}
+
+// Saves the zone and applies it to this process.
+export function setBrewingZone(db: DatabaseSync, z: string): void {
+  if (z !== 'UTC' && !Intl.supportedValuesOf('timeZone').includes(z)) throw new InvalidTimeZoneError(`unknown time zone: ${z}`);
+  db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(BREWING_ZONE_KEY, z);
+  setProcessZone(z);
+}
+
+// An account that already has brews or bags keeps its numbers: it was America/Denver before the setting existed.
+function bootBrewingZone(db: DatabaseSync, path: string): void {
+  const has = (t: string) => db.prepare(`SELECT 1 FROM ${t} LIMIT 1`).get() !== undefined;
+  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(BREWING_ZONE_KEY) && (has('beanconqueror_brews') || has('coffees')))
+    setBrewingZone(db, STORE_ZONE);
+  if (path !== ':memory:') setProcessZone(getBrewingZone(db)); // tests (in-memory) pick their own zone; vitest.setup.ts
+}
+
 export function createDb(path: string): DatabaseSync {
   if (path !== ':memory:') {
     mkdirSync(dirname(path), { recursive: true });
@@ -266,6 +292,7 @@ export function createDb(path: string): DatabaseSync {
   db.exec(`PRAGMA busy_timeout = 5000`);
   applySchema(db);
   recordDeploy(db);
+  bootBrewingZone(db, path);
   return db;
 }
 

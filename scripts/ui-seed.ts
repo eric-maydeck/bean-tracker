@@ -2,7 +2,7 @@
 // it refuses any path outside .ui-test/. Usage: npx vite-node --config scripts/vite-node.config.mjs scripts/ui-seed.ts .ui-test/ui.db
 import { rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
-import { createDb } from '../src/lib/server/db.ts';
+import { createDb, setBrewingZone } from '../src/lib/server/db.ts';
 import { createCoffee, type NewCoffeeInput } from '../src/lib/server/coffees.ts';
 import { createSubscription } from '../src/lib/server/subscriptions.ts';
 import { setRoasterImage } from '../src/lib/server/roasterImages.ts';
@@ -35,6 +35,7 @@ const LONG_ROASTER = 'The Extraordinarily Long-Named Specialty Roasting Collecti
 const LONG_NAME = 'Finca El Paraíso Lychee Double Anaerobic Thermal Shock Gesha Lot 42 Competition Reserve';
 
 const db = createDb(path);
+setBrewingZone(db, 'America/Denver'); // the states were drawn in America/Denver; the seed's dates assume it
 
 function coffee(over: Partial<NewCoffeeInput> & Pick<NewCoffeeInput, 'roaster' | 'coffee_name'>) {
   return createCoffee(db, {

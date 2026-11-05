@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createDb, applySchema, lastImportedAt, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from './db';
+import { createDb, applySchema, lastImportedAt, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError, getBrewingZone, setBrewingZone, InvalidTimeZoneError } from './db';
+import { brewingZone, setBrewingZone as setProcessZone } from '../localDate';
 import { schema } from './schema';
 import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear';
 import { createSubscription, deleteSubscription } from './subscriptions';
@@ -423,5 +424,31 @@ describe('lastImportedAt', () => {
     expect(lastImportedAt(db)).toBeNull();
     db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)`).run('2026-11-01T10:00:00Z');
     expect(lastImportedAt(db)).toBe('2026-11-01T10:00:00Z');
+  });
+});
+
+describe('brewing zone', () => {
+  afterEach(() => setProcessZone('America/Denver'));
+  it('empty db defaults to UTC', () => expect(getBrewingZone(createDb(':memory:'))).toBe('UTC'));
+  it('db with brews gets America/Denver on boot, and the process follows', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'zone-'));
+    try {
+      const first = createDb(join(dir, 'a.db'));
+      first.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES ('2026-03-08T01:30:00.000Z', 'x')`).run();
+      first.close();
+      setProcessZone('UTC');
+      const again = createDb(join(dir, 'a.db'));
+      expect(getBrewingZone(again)).toBe('America/Denver');
+      expect(brewingZone()).toBe('America/Denver');
+      setBrewingZone(again, 'Asia/Tokyo');
+      expect(getBrewingZone(createDb(join(dir, 'a.db')))).toBe('Asia/Tokyo'); // a set zone is not overwritten
+      again.close();
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it("setBrewingZone rejects 'Mars/Base' and accepts UTC", () => {
+    const db = createDb(':memory:');
+    expect(() => setBrewingZone(db, 'Mars/Base')).toThrow(InvalidTimeZoneError);
+    setBrewingZone(db, 'UTC');
+    expect(getBrewingZone(db)).toBe('UTC');
   });
 });

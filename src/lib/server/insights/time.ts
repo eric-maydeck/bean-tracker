@@ -1,15 +1,18 @@
+import { STORE_ZONE, brewingZone, localStamp, wallToInstant } from '$lib/localDate';
 import { CUSTOM_RANGE, isCustom, isDate, type By, type ByFits } from '$lib/insightsUrl';
 
-// Insights count days in the app's zone (APP_TIME_ZONE, src/lib/localDate.ts). Dates here are
+// Insights count days in the brewing zone (src/lib/localDate.ts). Dates here are
 // local 'YYYY-MM-DD' strings, compared as strings.
 
-// beanconqueror_*.bc_created_at is ALREADY America/Denver local wall time
+// beanconqueror_*.bc_created_at is ALREADY STORE_ZONE (America/Denver) local wall time
 // with a misleading trailing 'Z' (the xlsx import stored it that way, verified
 // 1345/1345 brews against Bean Conqueror's unix timestamps; the JSON import
-// keeps the format via bcTimestamp()). So read it as-is: no zone conversion.
-export const bcLocalTime = (stored: string): string => stored.slice(0, 16);
+// keeps the format via bcTimestamp()). Stored data never changes; reading converts it
+// to the brewing zone (as-is when they match).
+export const bcLocalTime = (stored: string): string =>
+  brewingZone() === STORE_ZONE ? stored.slice(0, 16) : localStamp(wallToInstant(stored), brewingZone()).slice(0, 16);
 
-// The zone is only needed for "now": today's date in local, DST-aware.
+// "Today" in the brewing zone, DST-aware.
 export { localToday } from '../localToday';
 
 const DAY = 86_400_000;

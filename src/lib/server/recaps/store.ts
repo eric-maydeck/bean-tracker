@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { recapYears } from '$lib/recapsUrl';
+import { bcLocalTime } from '$lib/server/insights/time';
 import { createAlert } from '$lib/server/alerts';
 
 const get = (db: DatabaseSync, key: string) =>
@@ -21,8 +22,8 @@ export function markRecapSeen(db: DatabaseSync, year: number): void {
   db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, ?)`).run(`recap_seen_${year}`, '1');
 }
 export function brewYears(db: DatabaseSync): number[] {
-  return (db.prepare(`SELECT DISTINCT substr(bc_created_at, 1, 4) AS y FROM beanconqueror_brews WHERE bc_created_at IS NOT NULL ORDER BY y`).all() as { y: string }[])
-    .map((r) => Number(r.y)).filter(Boolean);
+  const rows = db.prepare(`SELECT bc_created_at AS t FROM beanconqueror_brews WHERE bc_created_at IS NOT NULL`).all() as { t: string }[];
+  return [...new Set(rows.map((r) => Number(bcLocalTime(r.t).slice(0, 4))).filter(Boolean))].sort((a, b) => a - b);
 }
 // The newest open year the admin hasn't seen; the layout shows its banner.
 export function recapReadyYear(db: DatabaseSync, today: string, isAdmin: boolean): number | null {

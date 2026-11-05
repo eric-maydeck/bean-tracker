@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { setBrewingZone } from '$lib/localDate';
 import { createDb } from '$lib/server/db';
 import { brewYears, ensureRecapAlerts, freezeIds, frozenIds, markRecapSeen, recapReadyYear, recapSeen } from './store';
 import { dismissAlert, getActiveAlerts, markAlertRead } from '$lib/server/alerts';
@@ -18,6 +19,13 @@ describe('store', () => {
     for (const d of ['2024-03-01T10:00:00.000Z', '2026-01-05T10:00:00.000Z', '2026-02-05T10:00:00.000Z'])
       db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES (?, ?)`).run(d, d);
     expect(brewYears(db)).toEqual([2024, 2026]);
+  });
+  it('brew years follow the brewing zone: local Dec 31 evening is next year in UTC', () => {
+    const db = createDb(':memory:');
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES ('2025-12-31T23:30:00.000Z', 'x')`).run();
+    expect(brewYears(db)).toEqual([2025]);
+    setBrewingZone('UTC');
+    try { expect(brewYears(db)).toEqual([2026]); } finally { setBrewingZone('America/Denver'); }
   });
   it('recapReadyYear: newest unseen open year, admin only', () => {
     const db = createDb(':memory:');
