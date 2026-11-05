@@ -4030,6 +4030,23 @@ export const STATES: State[] = [
       }
     }
   },
+  // Clock times (footer, Account) show in the display zone: "browser time" renders UTC on a first visit (no tz cookie), then
+  // the browser's zone after mount, with a clean console (no hydration warning).
+  { name: 'display-zone-stamps', path: () => '/account',
+    act: async (page) => {
+      const bad: string[] = [];
+      page.on('console', (m) => { if (['warning', 'error'].includes(m.type())) bad.push(m.text()); });
+      page.on('pageerror', (e) => bad.push(String(e)));
+      await page.context().clearCookies({ name: 'tz' });
+      await gotoReady(page, '/account');
+      const foot = page.locator('.site-footer');
+      await expect(foot).toContainText(/Last updated: \d{4}-\d\d-\d\d \d\d:\d\d/);
+      await expect(page.getByText(/^Last updated: .*(AM|PM)/).first()).toBeVisible();
+      const tz = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+      await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === 'tz')?.value).toBe(tz);
+      if (tz !== 'UTC') await expect(foot).not.toContainText('UTC');
+      expect(bad.filter((t) => /hydrat|mismatch/i.test(t)), 'no hydration warning').toEqual([]);
+    } },
   {
     // Footer line: one muted centered line that wraps cleanly (checkLayout covers overflow), links on one row.
     name: 'ai-footer',

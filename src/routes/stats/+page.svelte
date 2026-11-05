@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Stamp from '$lib/components/Stamp.svelte';
   import Recaps from './Recaps.svelte';
   import WholeNote from './WholeNote.svelte';
   import { labelTip, truncTip } from '$lib/components/labelTip';
@@ -802,7 +803,7 @@
   </dialog>
 
 <div class="period-row">
-  <p class="insights-period">{periodText}{#if s.tab === 'overview'}{' · '}<span data-last-updated>Last updated: {data.lastImportedAt ? `${new Date(data.lastImportedAt).toLocaleString('en-US', { timeZone: 'UTC' })} UTC` : 'never'}</span>{/if}</p>
+  <p class="insights-period">{periodText}{#if s.tab === 'overview'}{' · '}<span data-last-updated>Last updated: <Stamp iso={data.lastImportedAt} /></span>{/if}</p>
 <!-- See all (gate 3): what the Score/Ratings/Brews settings hide on this tab; once everything shows, the way back.
        It shares the period line's row (right-aligned), so it appearing moves nothing below; on a phone it wraps under it only when it does not fit. -->
   {#if data.hidden}

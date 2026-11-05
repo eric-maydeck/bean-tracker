@@ -4,7 +4,7 @@
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField } from '$lib/gear';
   import { formatDate } from '$lib/formatDate';
-  import { brewingZone, formatInstant } from '$lib/localDate';
+  import Stamp from '$lib/components/Stamp.svelte';
   import { formatGrams } from '$lib/grams';
   import { backdrop } from '$lib/imageBackdrop';
   import { hostOf } from '$lib/imageSuggest';
@@ -28,10 +28,6 @@
   let current = $derived(list.find((t) => t.key === s.card));
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
   const kindVars = (t: Trophy) => `--kc:var(--series-${KIND_COLOR[t.kind]});--kc-ink:var(--series-${KIND_COLOR[t.kind]}-ink)`;
-
-  // Timestamps render in the brewing zone on the server, then in the browser's once mounted (no hydration mismatch).
-  let zone = $state<string>(brewingZone());
-  $effect(() => { zone = Intl.DateTimeFormat().resolvedOptions().timeZone; });
 
   let dlg: HTMLDialogElement | undefined = $state();
   // The URL is the state: the dialog follows `card`, and its own closes (✕, Esc, backdrop) clear it.
@@ -85,7 +81,7 @@
   </div>
 {/snippet}
 
-{#snippet stamp(iso: string)}<b>{formatInstant(iso, zone)}</b>{/snippet}
+{#snippet stamp(iso: string)}<b><Stamp {iso} /></b>{/snippet}
 
 {#snippet heading(t: Trophy)}
   <div class="detail-header">

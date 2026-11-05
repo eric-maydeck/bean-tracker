@@ -18,7 +18,8 @@
   import { isFrozen } from '$lib/coffeeFilters';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { originWithFlag } from '$lib/countryFlags';
-  import { formatDate, formatUpdated } from '$lib/formatDate';
+  import { formatDate } from '$lib/formatDate';
+  import Stamp from '$lib/components/Stamp.svelte';
   import { localDate } from '$lib/localDate';
   import {
     stageFieldChange,
@@ -421,7 +422,7 @@
             </p>
           {/if}
           <p class="text-muted">
-            <small>Added {formatDate(data.coffee.created_at)} · Updated {formatUpdated(data.coffee.updated_at)}</small>
+            <small>Added {formatDate(data.coffee.created_at)} · Updated <Stamp iso={data.coffee.updated_at} minute /></small>
           </p>
           {#if data.beanConqueror}
             <div class="bc-link-line text-muted">

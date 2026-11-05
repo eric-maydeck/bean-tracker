@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { schema } from './schema.ts';
+import { isTimeZone } from '../displayZone.ts';
 import { STORE_ZONE, setBrewingZone as setProcessZone } from '../localDate.ts';
 import { COFFEE_ORIGIN_FIELDS } from '../types.ts';
 import { applyCoffeeFixes } from './coffees.ts';
@@ -265,13 +266,26 @@ export function getBrewingZone(db: DatabaseSync): string {
   return v && isZone(v) ? v : 'UTC';
 }
 
-const isZone = (z: string) => z === 'UTC' || Intl.supportedValuesOf('timeZone').includes(z);
+const isZone = isTimeZone;
 
 // Saves the zone and applies it to this process.
 export function setBrewingZone(db: DatabaseSync, z: string): void {
   if (!isZone(z)) throw new InvalidTimeZoneError(`unknown time zone: ${z}`);
   db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(BREWING_ZONE_KEY, z);
   setProcessZone(z);
+}
+
+const DISPLAY_ZONE_KEY = 'display_time_zone';
+
+// Zone for clock times shown to a reader: 'browser' (the default) or an IANA zone.
+export function getDisplayZone(db: DatabaseSync): string {
+  const row = db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(DISPLAY_ZONE_KEY) as { value: string } | undefined;
+  return row && isZone(row.value) ? row.value : 'browser';
+}
+
+export function setDisplayZone(db: DatabaseSync, z: string): void {
+  if (z !== 'browser' && !isZone(z)) throw new InvalidTimeZoneError(`unknown time zone: ${z}`);
+  db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(DISPLAY_ZONE_KEY, z);
 }
 
 // First boot with the setting absent: an account that already has brews or bags was America/Denver before the setting

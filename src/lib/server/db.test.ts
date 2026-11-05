@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createDb, applySchema, lastImportedAt, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError, getBrewingZone, setBrewingZone, InvalidTimeZoneError } from './db';
+import { createDb, applySchema, lastImportedAt, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError, getBrewingZone, setBrewingZone, InvalidTimeZoneError, getDisplayZone, setDisplayZone } from './db';
 import { brewingZone, setBrewingZone as setProcessZone } from '../localDate';
 import { schema } from './schema';
 import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear';
@@ -468,5 +468,17 @@ describe('brewing zone', () => {
     expect(() => setBrewingZone(db, 'Mars/Base')).toThrow(InvalidTimeZoneError);
     setBrewingZone(db, 'UTC');
     expect(getBrewingZone(db)).toBe('UTC');
+  });
+});
+
+describe('display zone', () => {
+  it("defaults to 'browser', stores a zone, rejects a bad one", () => {
+    const db = createDb(':memory:');
+    expect(getDisplayZone(db)).toBe('browser');
+    setDisplayZone(db, 'Asia/Tokyo');
+    expect(getDisplayZone(db)).toBe('Asia/Tokyo');
+    setDisplayZone(db, 'browser');
+    expect(getDisplayZone(db)).toBe('browser');
+    expect(() => setDisplayZone(db, 'Mars/Base')).toThrow(InvalidTimeZoneError);
   });
 });

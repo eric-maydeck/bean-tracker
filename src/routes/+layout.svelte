@@ -9,7 +9,7 @@
   import RecapBanner from '$lib/components/RecapBanner.svelte';
   import Toast from '$lib/components/Toast.svelte';
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
-  import { formatUpdated } from '$lib/formatDate';
+  import Stamp from '$lib/components/Stamp.svelte';
   import { setBrewingZone } from '$lib/localDate';
   import { onMount } from 'svelte';
   import { captionItems } from '$lib/capItems';
@@ -20,7 +20,11 @@
   setBrewingZone(data.brewingZone);
   $effect.pre(() => setBrewingZone(data.brewingZone));
   // Root layout mounts last, so this marks the whole page as hydrated (tests/ui/ready.ts).
-  onMount(() => { document.documentElement.dataset.hydrated = ''; return captionItems(); });
+  onMount(() => {
+    // Remember the browser's zone so the next server render already shows it (no flash from UTC).
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (data.displayZone.browser && tz !== data.displayZone.zone) document.cookie = `tz=${tz}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    document.documentElement.dataset.hydrated = ''; return captionItems(); });
 
   const links = [
     { href: '/coffees', label: 'Coffees' },
@@ -224,8 +228,8 @@
     <AiNote email={data.contactEmail} />
     <div>
       <span class="fi">v{data.version}<span class="d" aria-hidden="true">&nbsp;·</span></span>
-      <span class="fi">Last updated: {formatUpdated(data.lastUpdated)}<span class="d" aria-hidden="true">&nbsp;·</span></span>
-      <span class="fi">Last deployed: {formatUpdated(data.lastDeployed)}</span>
+      <span class="fi">Last updated: <Stamp iso={data.lastUpdated} empty="no data yet" minute /><span class="d" aria-hidden="true">&nbsp;·</span></span>
+      <span class="fi">Last deployed: <Stamp iso={data.lastDeployed} empty="no data yet" minute /></span>
     </div>
   </footer>
   {/if}
@@ -259,7 +263,7 @@
           {#each data.alerts as alert (alert.id)}
             <li class="alert-list-item" class:alert-unread={alert.read_at === null}>
               <p class="alert-message">{#if alert.href}<a href={alert.href} onclick={() => (showAlerts = false)}>{alert.message}</a>{:else}{alert.message}{/if}</p>
-              <p class="alert-meta">{#if alert.source !== 'recap'}{alert.source} · {/if}{formatUpdated(alert.created_at)}</p>
+              <p class="alert-meta">{#if alert.source !== 'recap'}{alert.source} · {/if}<Stamp iso={alert.created_at} minute /></p>
               <div class="alert-actions">
                 {#if alert.read_at === null}
                   <button class="button button-secondary" type="button" onclick={() => markAlertReadClick(alert.id)}

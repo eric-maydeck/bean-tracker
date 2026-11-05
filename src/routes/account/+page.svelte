@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Stamp from '$lib/components/Stamp.svelte';
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
@@ -49,7 +50,6 @@
     f.requestSubmit();
   }
 
-  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-US', { timeZone: 'UTC' }) + ' UTC' : 'never');
   const s = $derived(data.status);
   // Household size: a failure shows here (not as the page-level form error above the upload); a save toasts with Undo.
   let householdError = $state<string | null>(null);
@@ -94,7 +94,7 @@
   <h2>Bean Conqueror</h2>
 
   <h3>Brew data (zip)</h3>
-  <p class="text-muted">Last updated: {when(data.lastImportedAt)}</p>
+  <p class="text-muted">Last updated: <Stamp iso={data.lastImportedAt} /></p>
   <form
     class="bq-upload"
     method="POST"
@@ -180,7 +180,7 @@
 
   <h3>Flow data (automatic upload)</h3>
   <p>
-    Flow data for {s.joined} of {s.brewsWithFlow} brews · last upload {when(s.lastUploadAt)}{#if s.waiting > 0}<br />
+    Flow data for {s.joined} of {s.brewsWithFlow} brews · last upload <Stamp iso={s.lastUploadAt} />{#if s.waiting > 0}<br />
       {s.waiting} {s.waiting === 1 ? 'brew' : 'brews'} not on the site yet: import the Bean Conqueror .zip above to
       add {s.waiting === 1 ? 'it and its coffee' : 'them and their coffees'}{/if}
   </p>
