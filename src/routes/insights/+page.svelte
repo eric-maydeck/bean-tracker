@@ -741,9 +741,10 @@
       {/each}
       <label class="form-field">
         <span>Caffeine</span>
-        <select class="ctl-select" aria-label="Caffeine" value={s.caffeine === 'caffeinated' ? '' : (s.caffeine ?? '')}
+        <select class="ctl-select" aria-label="Caffeine" value={s.caffeine ?? ''}
           onchange={(e) => choose({ caffeine: (e.currentTarget.value || undefined) as Caffeine | undefined })}>
-          <option value="">Caffeinated</option>
+          <option value="" data-short="Default">{phone.current ? 'Default' : 'Default (caffeinated)'}</option>
+          <option value="caffeinated">Caffeinated</option>
           <option value="decaf">Decaf</option>
           <option value="all">All</option>
         </select>
@@ -769,6 +770,8 @@
         </label>
       {/if}
     </div>
+    <!-- Under the fields, its space always reserved: nothing above or below moves when the Default hint comes and goes. -->
+    <p class="coffees-note" class:off={!!s.caffeine}>Ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.</p>
     <footer><button type="button" class="button" onclick={() => coffeesDialog?.close()}>Done</button></footer>
   </dialog>
 
@@ -1197,6 +1200,14 @@
   }
   .coffees-fields .form-field {
     margin-bottom: 0;
+  }
+  .coffees-note {
+    margin: 0 0 var(--space-3);
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+  }
+  .coffees-note.off {
+    visibility: hidden;
   }
   /* Phone landscape (333px tall): the fields in five columns so the panel fits without scrolling. */
   @media (max-height: 450px) {

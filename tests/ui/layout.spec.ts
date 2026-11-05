@@ -8561,6 +8561,36 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('2');
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Washed/, /Decaf/]);
     } },
+  { name: 'insights-coffees-caffeine-default', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      // Default (caffeinated) shows the hint; an explicit Caffeinated writes caffeine=caffeinated, gets a chip and no hint;
+      // Default returns to bare. The dialog doesn't change size or move its controls when the hint comes and goes.
+      await page.getByRole('button', { name: /^Filters/ }).click();
+      const dlg = page.getByRole('dialog', { name: 'Filters' });
+      const sel = dlg.getByLabel('Caffeine');
+      const hint = dlg.locator('.coffees-note');
+      await expect(hint).toBeVisible();
+      await expect(hint).toHaveText('Ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.');
+      const geom = async () => [await dlg.boundingBox(), await sel.boundingBox(), await dlg.getByRole('button', { name: 'Done' }).boundingBox()].map((b) => [b!.x, b!.y, b!.width, b!.height].map(Math.round));
+      const before = await geom();
+      await sel.selectOption('caffeinated');
+      await expect(page).toHaveURL(/caffeine=caffeinated/);
+      await expect(hint).toBeHidden();
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Caffeinated/]);
+      expect(await geom(), 'nothing moves when the hint hides').toEqual(before);
+      await sel.selectOption('decaf');
+      await expect(page).toHaveURL(/caffeine=decaf/);
+      await sel.selectOption('');
+      await expect(page).not.toHaveURL(/caffeine=/);
+      await expect(hint).toBeVisible();
+      expect(await geom()).toEqual(before);
+      await expect(sel.locator('option').first()).toHaveText(/^Default/);
+      const box = (await dlg.boundingBox())!;
+      expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+      expect(await dlg.evaluate((d) => d.scrollHeight - d.clientHeight)).toBeLessThanOrEqual(1);
+      const sb = (await sel.boundingBox())!, field = (await sel.locator('xpath=..').boundingBox())!;
+      expect(sb.x + sb.width, 'select stays in its cell').toBeLessThanOrEqual(field.x + field.width + 1);
+    } },
   // Brew filters in the Filters dialog (Part 1): one select each on the tabs that use it; chips for any tab, muted off-tab.
   { name: 'insights-brew-dialog', path: () => '/insights',
     act: async (page) => {
