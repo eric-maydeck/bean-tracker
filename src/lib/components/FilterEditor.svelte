@@ -10,6 +10,7 @@
     valueCounts,
     isComplete,
     normalizeFilter,
+    upsertFilter,
     QUICK_FILTERS,
     PLAN_ANY,
     PLAN_NONE,
@@ -32,20 +33,14 @@
     filters,
     start = null,
     onapply,
-    onclear,
     onclose,
-    onquickset,
-    onplanset,
     plans = []
   }: {
     coffees: CoffeeWithComputed[]; // current status tab: source of the "Is any of" list
     filters: Filter[]; // active filters: picking a column that has one reopens it
     start?: ColumnKey | null; // open straight into this column (chip click)
-    onapply: (f: Filter) => void;
-    onclear: (key: ColumnKey) => void;
-    onclose: () => void;
-    onquickset: (key: ColumnKey, value: boolean | null) => void; // Decaf/Frozen quick filters: applies without closing
-    onplanset: (value: PlanValue | null) => void; // the Subscription select: applies without closing
+    onapply: (next: Filter[]) => void; // the window's Apply: the whole draft, once
+    onclose: () => void; // Cancel, Esc, click-out: nothing applied
     plans?: PlanOption[];
   } = $props();
 
@@ -63,17 +58,23 @@
   let b = $state('');
   let search = $state('');
 
-  const existing = (k: ColumnKey) => filters.find((f) => f.column === k) ?? null;
+  // The window edits a draft of the filters (quick filters, Subscription, each column's Apply); only its own Apply reaches the page.
+  let dfilters = $state<Filter[]>($state.snapshot(filters) as Filter[]);
+  // True when the column editor was opened from the list (its Apply/Cancel/Esc return to the list); false when a chip opened it straight in (it is then the top-level window).
+  let fromList = $state(false);
+
+  const existing = (k: ColumnKey) => dfilters.find((f) => f.column === k) ?? null;
+  const setQuick = (k: ColumnKey, value: boolean | null) =>
+    (dfilters = value === null ? dfilters.filter((f) => f.column !== k) : upsertFilter(dfilters, { column: k, mode: 'bool', value }));
+  const setPlan = (value: PlanValue | null) =>
+    (dfilters = value === null ? dfilters.filter((f) => f.column !== 'subscription') : upsertFilter(dfilters, { column: 'subscription', mode: 'plan', value }));
 
   // Loads the column's current filter (if any) so the editor opens pre-filled.
   // Bool columns (Decaf/Frozen) have no step of their own -- they're the
   // always-visible Quick filters switches on this screen -- so picking one
   // is a no-op; `start` can still name one (chip click) and just leaves the
   // picker screen showing, switches included.
-  function pick(k: ColumnKey) {
-    if (column(k).kind === 'bool' || column(k).kind === 'plan') return;
-    const f = existing(k);
-    key = k;
+  function blank(k: ColumnKey) {
     mode = column(k).kind === 'window' ? 'includes' : 'any';
     values = [];
     text = '';
@@ -81,6 +82,14 @@
     a = '';
     b = '';
     search = '';
+  }
+
+  function pick(k: ColumnKey, viaList = false) {
+    if (column(k).kind === 'bool' || column(k).kind === 'plan') return;
+    const f = existing(k);
+    key = k;
+    fromList = viaList;
+    blank(k);
     if (f?.mode === 'any') values = [...f.values];
     else if (f?.mode === 'contains') {
       mode = 'contains';
@@ -125,9 +134,17 @@
     values = values.includes(v) ? values.filter((x) => x !== v) : [...values, v];
   }
 
-  function apply(f: Filter) {
-    onapply(normalizeFilter($state.snapshot(f) as Filter));
+  // A column's Apply: an emptied (Reset) editor removes that filter. Into the list's draft when it came from the list, else the page.
+  function applyColumn(k: ColumnKey) {
+    const next = draft && isComplete(draft) ? upsertFilter(dfilters, normalizeFilter($state.snapshot(draft) as Filter)) : dfilters.filter((f) => f.column !== k);
+    if (fromList) {
+      dfilters = next;
+      key = null;
+    } else onapply(next);
   }
+
+  // Esc, click-out and Cancel: a list-opened column editor goes back to the list, anything else closes. Nothing applied.
+  const dismiss = () => (key && fromList ? (key = null) : onclose());
 
   let editorEl = $state<HTMLDivElement>();
 
@@ -207,12 +224,12 @@
 
 <svelte:window
   onkeydown={(e) => {
-    if (e.key === 'Escape') onclose();
+    if (e.key === 'Escape') dismiss();
     else if (e.key === 'Tab') trapFocus(e);
   }}
 />
 
-<div class="filter-backdrop" role="presentation" onclick={onclose}></div>
+<div class="filter-backdrop" role="presentation" onclick={dismiss}></div>
 <div
   bind:this={editorEl}
   class="filter-editor"
@@ -225,7 +242,7 @@
       <p class="eyebrow">{title}</p>
       <div class="tab-group filter-columns">
         {#each COLUMNS.filter((c) => kinds.includes(c.kind)) as c (c.key)}
-          <button type="button" aria-pressed={filters.some((f) => f.column === c.key)} onclick={() => pick(c.key)}>
+          <button type="button" aria-pressed={filters.some((f) => f.column === c.key)} onclick={() => pick(c.key, true)}>
             {editorLabel(c)}
           </button>
         {/each}
@@ -240,7 +257,7 @@
         <div class="quick-filter-switch" role="radiogroup" aria-label={qf.switchLabel}>
           {#each qf.segments as seg (String(seg.value))}
             {@const checked = seg.value === null ? current === null : current?.mode === 'bool' && current.value === seg.value}
-            <button type="button" role="radio" aria-checked={checked} onclick={() => onquickset(qf.column, seg.value)}>
+            <button type="button" role="radio" aria-checked={checked} onclick={() => setQuick(qf.column, seg.value)}>
               {seg.label}
             </button>
           {/each}
@@ -256,7 +273,7 @@
           value={cur?.mode === 'plan' ? String(cur.value) : ''}
           onchange={(e) => {
             const v = e.currentTarget.value;
-            onplanset(v === '' ? null : v === 'any' || v === 'none' ? v : Number(v));
+            setPlan(v === '' ? null : v === 'any' || v === 'none' ? v : Number(v));
           }}
         >
           <option value="">All</option>
@@ -266,6 +283,11 @@
         </select>
       </label>
     {/if}
+    <div class="filter-editor-footer">
+      <button class="button button-ghost" type="button" onclick={onclose}>Cancel</button>
+      <button class="button button-secondary" type="button" onclick={() => (dfilters = [])}>Reset</button>
+      <button class="button" type="button" onclick={() => onapply(dfilters)}>Apply</button>
+    </div>
   {:else}
     {@const k = key}
     {@const kind = column(k).kind}
@@ -332,10 +354,9 @@
     {/if}
 
     <div class="filter-editor-footer">
-      <button class="button button-secondary" type="button" onclick={() => onclear(k)}>Clear</button>
-      {#if draft}
-        <button class="button" type="button" disabled={!isComplete(draft)} onclick={() => draft && apply(draft)}>Apply</button>
-      {/if}
+      <button class="button button-ghost" type="button" onclick={dismiss}>Cancel</button>
+      <button class="button button-secondary" type="button" onclick={() => blank(k)}>Reset</button>
+      <button class="button" type="button" disabled={!(draft && isComplete(draft)) && !existing(k)} onclick={() => applyColumn(k)}>Apply</button>
     </div>
   {/if}
 </div>

@@ -2,7 +2,7 @@
   import { labelTip } from '$lib/components/labelTip';
   import { tick } from 'svelte';
   import FilterEditor from './FilterEditor.svelte';
-  import { chipLabel, chipTitle, upsertFilter, type ColumnKey, type Filter, type PlanOption, type PlanValue } from '$lib/coffeeFilters';
+  import { chipLabel, chipTitle, type ColumnKey, type Filter, type PlanOption } from '$lib/coffeeFilters';
   import type { CoffeeWithComputed } from '$lib/server/urgency';
 
   let {
@@ -40,20 +40,10 @@
     open = key;
   }
 
-  function apply(f: Filter) {
-    filters = upsertFilter(filters, f);
+  // The editor's Apply hands over its whole draft: one write, then close.
+  function apply(next: Filter[]) {
+    filters = next;
     close();
-  }
-
-  // Decaf/Frozen quick filters (see FilterEditor): applies immediately
-  // without closing the menu, so both switches can be set in one visit.
-  function setQuickFilter(key: ColumnKey, value: boolean | null) {
-    filters = value === null ? filters.filter((f) => f.column !== key) : upsertFilter(filters, { column: key, mode: 'bool', value });
-  }
-
-  // The Subscription select: applies immediately, like the quick filters.
-  function setPlan(value: PlanValue | null) {
-    filters = value === null ? filters.filter((f) => f.column !== 'subscription') : upsertFilter(filters, { column: 'subscription', mode: 'plan', value });
   }
 
   function remove(key: ColumnKey) {
@@ -79,7 +69,7 @@
     onclick={(e) => (open === 'new' ? close() : openEditor('new', e.currentTarget))}>+ Filter</button
   >
   {#if open === 'new'}
-    <FilterEditor {coffees} {filters} onapply={apply} onclear={remove} onclose={close} onquickset={setQuickFilter} onplanset={setPlan} {plans} />
+    <FilterEditor {coffees} {filters} onapply={apply} onclose={close} {plans} />
   {/if}
 </div>
 
@@ -111,10 +101,7 @@
             {filters}
             start={f.column}
             onapply={apply}
-            onclear={remove}
             onclose={close}
-            onquickset={setQuickFilter}
-            onplanset={setPlan}
             {plans}
           />
         {/if}

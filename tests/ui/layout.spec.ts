@@ -7534,7 +7534,9 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
       await page.getByRole('button', { name: /^Filters/ }).click();
-      await page.getByRole('dialog', { name: 'Filters' }).getByLabel('Caffeine').selectOption('decaf');
+      const dlg = page.getByRole('dialog', { name: 'Filters' });
+      await dlg.getByLabel('Caffeine').selectOption('decaf');
+      await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).toHaveURL(/caffeine=decaf#record-nightOwl$/);
     } },
   { name: 'insights-overview-anchor', path: () => '/insights?tab=overview#overview-avg-brew-time',
@@ -8546,15 +8548,17 @@ export const STATES: State[] = [
       await expect(dlg).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT'); // no keyboard pop
       await dlg.getByLabel('Process').selectOption('Washed');
-      await expect(page).toHaveURL(/process=Washed/);
       await dlg.getByLabel('Caffeine').selectOption('decaf');
-      await expect(page).toHaveURL(/caffeine=decaf/);
+      await expect(page).toHaveURL(/\/insights$/); // a draft: nothing applied yet
       // The whole panel fits the viewport (phone landscape is 333px tall).
       const box = (await dlg.boundingBox())!;
       expect(box.y).toBeGreaterThanOrEqual(0);
       expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
       expect(await dlg.evaluate((d) => d.scrollHeight - d.clientHeight)).toBeLessThanOrEqual(1);
-      await dlg.getByRole('button', { name: 'Done' }).click();
+      await expect(dlg.getByRole('button', { name: 'Done' })).toHaveCount(0);
+      await dlg.getByRole('button', { name: 'Apply' }).click();
+      await expect(page).toHaveURL(/process=Washed/);
+      await expect(page).toHaveURL(/caffeine=decaf/);
       await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('2');
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Washed/, /Decaf/]);
     } },
@@ -8569,15 +8573,14 @@ export const STATES: State[] = [
       await expect(hint).toBeVisible();
       await expect(hint).toHaveText('Caffeine, Default (caffeinated): ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.');
       await expect(hint.locator('.setting-name')).toHaveText(['Caffeine', 'Default (caffeinated)']);
-      const geom = async () => [await dlg.boundingBox(), await sel.boundingBox(), await dlg.getByRole('button', { name: 'Done' }).boundingBox()].map((b) => [b!.x, b!.y, b!.width, b!.height].map(Math.round));
+      const geom = async () => [await dlg.boundingBox(), await sel.boundingBox(), await dlg.getByRole('button', { name: 'Apply' }).boundingBox()].map((b) => [b!.x, b!.y, b!.width, b!.height].map(Math.round));
       const before = await geom();
       await sel.selectOption('decaf');
-      await expect(page).toHaveURL(/caffeine=decaf/);
+      await expect(page).not.toHaveURL(/caffeine=/); // the hint follows the draft, the URL waits for Apply
       await expect(hint).toBeHidden();
       expect(await geom(), 'nothing moves when the hint hides').toEqual(before);
       await expect(sel.locator('option')).toHaveText([/^Default/, 'Decaf', 'All']);
       await sel.selectOption('');
-      await expect(page).not.toHaveURL(/caffeine=/);
       await expect(hint).toBeVisible();
       expect(await geom()).toEqual(before);
       await expect(sel.locator('option').first()).toHaveText(/^Default/);
@@ -8586,6 +8589,49 @@ export const STATES: State[] = [
       expect(await dlg.evaluate((d) => d.scrollHeight - d.clientHeight)).toBeLessThanOrEqual(1);
       const sb = (await sel.boundingBox())!, field = (await sel.locator('xpath=..').boundingBox())!;
       expect(sb.x + sb.width, 'select stays in its cell').toBeLessThanOrEqual(field.x + field.width + 1);
+    } },
+  // Apply / Reset / click-out: the dialog edits a draft; only Apply (or Reset) reaches the URL; Esc and the backdrop discard.
+  { name: 'insights-filters-apply', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all&process=Washed',
+    act: async (page) => {
+      const open = async () => { await page.getByRole('button', { name: /^Filters/ }).click(); return page.getByRole('dialog', { name: 'Filters' }); };
+      let dlg = await open();
+      await expect(dlg.getByLabel('Process')).toHaveValue('Washed'); // seeded from the URL
+      await dlg.getByLabel('Roast level').selectOption({ index: 1 });
+      await dlg.getByLabel('Process').selectOption('');
+      await page.waitForTimeout(300);
+      await expect(page).toHaveURL(/process=Washed/); // nothing applied
+      await page.keyboard.press('Escape');
+      await expect(dlg).toBeHidden();
+      await expect(page).toHaveURL(/process=Washed/);
+      dlg = await open();
+      await expect(dlg.getByLabel('Roast level')).toHaveValue(''); // the discarded draft does not come back
+      await expect(dlg.getByLabel('Process')).toHaveValue('Washed');
+      await dlg.getByLabel('Roast level').selectOption({ index: 1 });
+      await page.mouse.click(2, 2); // the backdrop
+      await expect(dlg).toBeHidden();
+      await expect(page).not.toHaveURL(/roast=/);
+      dlg = await open();
+      await dlg.getByLabel('Caffeine').selectOption('decaf');
+      await dlg.getByRole('button', { name: 'Apply' }).click();
+      await expect(dlg).toBeHidden();
+      await expect(page).toHaveURL(/caffeine=decaf/);
+      await expect(page).toHaveURL(/process=Washed/);
+      dlg = await open();
+      await dlg.getByRole('button', { name: 'Reset' }).click(); // in place: back to defaults, nothing applied, still open
+      await expect(dlg).toBeVisible();
+      await expect(dlg.getByLabel('Process')).toHaveValue('');
+      await expect(dlg.getByLabel('Caffeine')).toHaveValue('');
+      await expect(page).toHaveURL(/caffeine=decaf/);
+      await dlg.getByRole('button', { name: 'Cancel' }).click(); // leaves what was set
+      await expect(dlg).toBeHidden();
+      await expect(page).toHaveURL(/caffeine=decaf/);
+      dlg = await open();
+      await dlg.getByRole('button', { name: 'Reset' }).click();
+      await dlg.getByRole('button', { name: 'Apply' }).click(); // filters only: tab and range survive
+      await expect(dlg).toBeHidden();
+      await expect(page).toHaveURL(/tab=leaderboards/);
+      await expect(page).toHaveURL(/range=all/);
+      await expect(page).not.toHaveURL(/process=|caffeine=/);
     } },
   // Brew filters in the Filters dialog (Part 1): one select each on the tabs that use it; chips for any tab, muted off-tab.
   { name: 'insights-brew-dialog', path: () => '/insights',
@@ -8596,13 +8642,14 @@ export const STATES: State[] = [
       for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT');
       await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
-      await expect(page).toHaveURL(/dripper=V60/);
       await dlg.getByLabel('Dose', { exact: true }).selectOption({ label: '15g' });
-      await expect(page).toHaveURL(/brewDose=15/);
       const box = (await dlg.boundingBox())!;
       expect(box.y).toBeGreaterThanOrEqual(0);
       expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
       expect(await dlg.evaluate((d) => d.scrollHeight - d.clientHeight)).toBeLessThanOrEqual(1);
+      await dlg.getByRole('button', { name: 'Apply' }).click();
+      await expect(page).toHaveURL(/dripper=V60/);
+      await expect(page).toHaveURL(/brewDose=15/);
     } },
   { name: 'insights-brew-dialog-gear', viewports: 'two', path: () => '/insights?tab=gear',
     act: async (page) => {
@@ -8620,9 +8667,12 @@ export const STATES: State[] = [
       await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
+      await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).toHaveURL(/dripper=V60/);
       await expect(drippers).toHaveCount(1);
+      await page.locator('.filters-button').click();
       await dlg.getByLabel('Dripper', { exact: true }).selectOption('');
+      await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).not.toHaveURL(/dripper=/);
       await expect(drippers).toHaveCount(all);
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(0);
@@ -8632,9 +8682,12 @@ export const STATES: State[] = [
       await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
+      await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).toHaveURL(/dripper=V60/);
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(1);
+      await page.locator('.filters-button').click();
       await dlg.getByLabel('Dripper', { exact: true }).selectOption('');
+      await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).not.toHaveURL(/dripper=/);
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(0);
       await page.waitForTimeout(500);
@@ -8646,8 +8699,9 @@ export const STATES: State[] = [
       const all = await drippers.count();
       const pick = async (v: string) => {
         await page.locator('.filters-button').click();
-        await page.getByRole('dialog', { name: 'Filters' }).getByLabel('Dripper', { exact: true }).selectOption(v);
-        await page.keyboard.press('Escape');
+        const d = page.getByRole('dialog', { name: 'Filters' });
+        await d.getByLabel('Dripper', { exact: true }).selectOption(v);
+        await d.getByRole('button', { name: 'Apply' }).click();
       };
       await page.locator('.trophy-card[data-key="dripper-origami"] .trophy-toggle').click(); // a shallow open and Esc first
       await page.keyboard.press('Escape');
@@ -9716,9 +9770,9 @@ export const STATES: State[] = [
       await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await dlg.getByLabel('Grinder', { exact: true }).selectOption('a4z-femobook');
+      await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).toHaveURL(/grinder=a4z-femobook/);
       await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(1);
-      await page.keyboard.press('Escape');
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/A4Z/]);
       await expect(page.locator('.filters-button')).toContainText('1');
       await page.getByRole('button', { name: 'Clear all' }).click();
@@ -10548,26 +10602,111 @@ export const STATES: State[] = [
     act: async (page) => {
       const count = async () => Number((await page.getByText(/^\d+ coffees?/).first().innerText()).match(/^\d+/)![0]);
       const total = await count();
+      const apply = async (label: string) => {
+        await page.getByRole('button', { name: '+ Filter' }).click();
+        await page.getByRole('combobox', { name: 'Subscription' }).selectOption({ label });
+        await page.locator('.filter-editor').getByRole('button', { name: 'Apply', exact: true }).click();
+      };
       await page.getByRole('button', { name: '+ Filter' }).click();
-      const select = page.getByRole('combobox', { name: 'Subscription' });
-      await select.selectOption({ label: 'Any plan' });
+      await page.getByRole('combobox', { name: 'Subscription' }).selectOption({ label: 'Any plan' });
+      await page.waitForTimeout(200);
+      expect(page.url(), 'a draft until Apply').not.toContain('subscription');
+      await page.locator('.filter-editor').getByRole('button', { name: 'Apply', exact: true }).click();
       await expect(page).toHaveURL(/subscription=any/);
       const any = await count();
       expect(any).toBeGreaterThanOrEqual(2);
-      await select.selectOption({ label: 'No plan' });
+      await apply('No plan');
       await expect(page).toHaveURL(/subscription=none/);
       expect(await count()).toBe(total - any);
-      await select.selectOption({ label: 'Sey · 1x250g' });
+      await apply('Sey · 1x250g');
       await expect(page).toHaveURL(/subscription=\d+/);
       expect(await count()).toBe(1);
       await expect(page.locator('.filter-chip-label')).toHaveText(/^Plan: Sey/);
-      await select.selectOption({ label: 'All' });
+      await apply('All');
       expect(page.url()).not.toContain('subscription');
-      await select.selectOption({ label: 'Sey · 1x250g' }); // end with the filter on, editor open
     }
   },
   {
-    // A URL naming a deleted plan: no blank select, no chip, no filtering; the param leaves the address bar.
+    // Main window: Cancel, Esc and click-out leave the page as it was; Reset clears the draft in place (Apply still needed).
+    name: 'coffees-filter-window-cancel', viewports: 'two',
+    path: () => '/coffees?status=all&view=cards&subscription=any',
+    act: async (page) => {
+      const url = page.url();
+      const ed = page.locator('.filter-editor');
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      await ed.getByRole('radio', { name: 'Decaf only' }).click();
+      await ed.getByRole('button', { name: 'Reset' }).click();
+      await expect(ed).toBeVisible();
+      expect(page.url()).toBe(url);
+      await expect(ed.getByRole('combobox', { name: 'Subscription' })).toHaveValue('');
+      await ed.getByRole('button', { name: 'Cancel' }).click();
+      await expect(ed).toHaveCount(0);
+      expect(page.url()).toBe(url);
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      await expect(ed.getByRole('combobox', { name: 'Subscription' })).not.toHaveValue(''); // the discarded Reset did not stick
+      await page.keyboard.press('Escape');
+      await expect(ed).toHaveCount(0);
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      await page.mouse.click(2, 2);
+      await expect(ed).toHaveCount(0);
+      expect(page.url()).toBe(url);
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      await ed.getByRole('button', { name: 'Reset' }).click();
+      await ed.getByRole('button', { name: 'Apply', exact: true }).click();
+      await expect(page).not.toHaveURL(/subscription=/);
+    }
+  },
+  {
+    // A column sub-menu (from the list): Apply returns to the list with the URL untouched (the main Apply writes it);
+    // Cancel / Esc / click-out go back to the list without applying; Reset empties it in place.
+    name: 'coffees-filter-submenu', viewports: 'two',
+    path: () => '/coffees?status=all&view=compact',
+    act: async (page) => {
+      const url = page.url();
+      const ed = page.locator('.filter-editor');
+      const list = page.getByRole('radiogroup', { name: 'In Bean Conqueror' });
+      const apply = ed.getByRole('button', { name: 'Apply', exact: true });
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      await ed.getByRole('button', { name: 'Origin', exact: true }).click();
+      await ed.locator('.filter-values input').first().check();
+      await ed.getByRole('button', { name: 'Cancel' }).click();
+      await expect(list).toBeVisible();
+      await ed.getByRole('button', { name: 'Origin', exact: true }).click();
+      await expect(ed.locator('.filter-values input:checked')).toHaveCount(0); // the cancelled pick is gone
+      await ed.locator('.filter-values input').first().check();
+      await page.keyboard.press('Escape'); // one level only
+      await expect(list).toBeVisible();
+      await ed.getByRole('button', { name: 'Origin', exact: true }).click();
+      await ed.locator('.filter-values input').first().check();
+      await page.mouse.click(2, 2);
+      await expect(list).toBeVisible();
+      await ed.getByRole('button', { name: 'Origin', exact: true }).click();
+      await ed.locator('.filter-values input').first().check();
+      await ed.getByRole('button', { name: 'Reset' }).click();
+      await expect(ed.locator('.filter-values input:checked')).toHaveCount(0);
+      await expect(apply).toBeDisabled();
+      await ed.locator('.filter-values input').first().check();
+      await apply.click(); // back to the list, page untouched
+      await expect(list).toBeVisible();
+      expect(page.url()).toBe(url);
+      await expect(page.locator('.filter-chip')).toHaveCount(0);
+      await apply.click(); // the list's Apply
+      await expect(ed).toHaveCount(0);
+      await expect(page).toHaveURL(/origin=/);
+      await expect(page.locator('.filter-chip')).toHaveCount(1);
+      // A chip opens the editor straight in: it is top-level, Apply writes the page and Cancel just closes.
+      await page.locator('.filter-chip-label').click();
+      await ed.getByRole('button', { name: 'Reset' }).click();
+      await ed.getByRole('button', { name: 'Cancel' }).click();
+      await expect(ed).toHaveCount(0);
+      await expect(page.locator('.filter-chip')).toHaveCount(1);
+      await page.locator('.filter-chip-label').click();
+      await ed.getByRole('button', { name: 'Reset' }).click();
+      await apply.click();
+      await expect(page).not.toHaveURL(/origin=/);
+    }
+  },
+  {
     name: 'coffees-filter-subscription-stale', viewports: 'two',
     path: () => '/coffees?status=all&view=cards&subscription=999999',
     act: async (page) => {
@@ -10592,6 +10731,7 @@ export const STATES: State[] = [
       await expect(options.first()).toContainText(/rest window/i);
       await options.first().locator('input').check();
       await page.getByRole('button', { name: /^Apply/ }).click();
+      await page.getByRole('button', { name: 'Apply', exact: true }).click();
       await expect(page).toHaveURL(/rest_state=/);
       await expect(page.locator('.filter-chip-label').filter({ hasText: /^Rest state: .*rest window$/i })).toHaveCount(1);
     }
@@ -11232,7 +11372,7 @@ export const STATES: State[] = [
       const filters = page.getByRole('dialog', { name: 'Filters' });
       const roast = filters.getByRole('combobox', { name: 'Roast level' });
       await roast.selectOption(await roast.evaluate((s: HTMLSelectElement) => [...s.options].map((o) => o.value).find((v) => v)!));
-      await filters.getByRole('button', { name: 'Done' }).click();
+      await filters.getByRole('button', { name: 'Apply' }).click();
       await expect(filters).toHaveCount(0);
       await check(/roast=/, true);
       // the Group by control (a tab control) is on Consumption, so it goes before leaving the tab
