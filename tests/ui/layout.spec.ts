@@ -8579,7 +8579,11 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/caffeine=/); // the hint follows the draft, the URL waits for Apply
       await expect(hint).toBeHidden();
       expect(await geom(), 'nothing moves when the hint hides').toEqual(before);
-      await expect(sel.locator('option')).toHaveText([/^Default/, 'Decaf', 'All']);
+      await expect(sel.locator('option')).toHaveText([/^Default/, 'Caffeinated', 'Decaf', 'All']);
+      await sel.selectOption('caffeinated'); // distinct from Default: the hint goes too
+      await expect(hint).toBeHidden();
+      expect(await geom()).toEqual(before);
+      await sel.selectOption('decaf');
       await sel.selectOption('');
       await expect(hint).toBeVisible();
       expect(await geom()).toEqual(before);

@@ -500,12 +500,13 @@ describe('highlights params', () => {
     expect(resetInsights(parse('tab=brewing&dial=all&range=1w&caffeine=all&roast=light'))).toEqual({ tab: 'brewing' }));
   it('reset keeps the tab only', () =>
     expect(resetInsights(parse('tab=records&brewer=soup&caffeine=decaf&top=20'))).toEqual({ tab: 'records' }));
-  it('caffeine: absent = Caffeinated; decaf and all explicit, old caf and junk drop, sticky across tabs', () => {
+  it('caffeine: absent = Default; caffeinated, decaf and all explicit, old caf and junk drop, sticky across tabs', () => {
     expect(parse('').caffeine).toBeUndefined();
     expect(parse('caffeine=Decaf').caffeine).toBe('decaf');
     expect(parse('caffeine=ALL').caffeine).toBe('all');
-    expect(parse('caffeine=Caffeinated').caffeine).toBeUndefined(); // no explicit value: it would change nothing
-    expect(insightsParams(parse('caffeine=caffeinated')).toString()).toBe('');
+    expect(parse('caffeine=Caffeinated').caffeine).toBe('caffeinated'); // explicit, round-trips
+    expect(insightsParams({ caffeine: 'caffeinated' }).get('caffeine')).toBe('caffeinated');
+    expect(insightsParams(parse('caffeine=caffeinated')).toString()).toBe('caffeine=caffeinated');
     expect(parse('caffeine=CAF').caffeine).toBeUndefined();
     expect(parse('caffeine=bogus').caffeine).toBeUndefined();
     expect(parse('tab=habits&caffeine=decaf').caffeine).toBe('decaf');
