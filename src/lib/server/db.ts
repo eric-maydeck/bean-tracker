@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { schema } from './schema.ts';
 import { isTimeZone } from '../displayZone.ts';
-import { STORE_ZONE, setBrewingZone as setProcessZone } from '../localDate.ts';
+import { STORE_ZONE, setBrewingZone as setProcessZone, DATE_FORMATS, DEFAULT_DATE_FORMAT, type DateFormat } from '../localDate.ts';
 import { COFFEE_ORIGIN_FIELDS } from '../types.ts';
 import { applyCoffeeFixes } from './coffees.ts';
 import { PRODUCT_PAGE_BACKFILLS } from './productPageBackfill.ts';
@@ -286,6 +286,37 @@ export function getDisplayZone(db: DatabaseSync): string {
 export function setDisplayZone(db: DatabaseSync, z: string): void {
   if (z !== 'browser' && !isZone(z)) throw new InvalidTimeZoneError(`unknown time zone: ${z}`);
   db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(DISPLAY_ZONE_KEY, z);
+}
+
+const DATE_FORMAT_KEY = 'date_format';
+
+// How dates and times are written; a missing or junk stored value is the default.
+export function getDateFormat(db: DatabaseSync): DateFormat {
+  const row = db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(DATE_FORMAT_KEY) as { value: string } | undefined;
+  return DATE_FORMATS.find((f) => f === row?.value) ?? DEFAULT_DATE_FORMAT;
+}
+
+export class InvalidSettingError extends Error {}
+
+export function setDateFormat(db: DatabaseSync, f: string): void {
+  if (!(DATE_FORMATS as readonly string[]).includes(f)) throw new InvalidSettingError(`unknown date format: ${f}`);
+  db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(DATE_FORMAT_KEY, f);
+}
+
+const DEFAULT_CAFFEINE_KEY = 'default_caffeine';
+// Same values as insightsUrl's CAFFEINES (not imported: that module is client-sized).
+const CAFFEINE_DEFAULTS = ['caffeinated', 'decaf', 'all'] as const;
+export type CaffeineDefault = (typeof CAFFEINE_DEFAULTS)[number];
+
+// The Stats Caffeine filter's value when the URL has none; a missing or junk stored value is 'caffeinated'.
+export function getDefaultCaffeine(db: DatabaseSync): CaffeineDefault {
+  const row = db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(DEFAULT_CAFFEINE_KEY) as { value: string } | undefined;
+  return CAFFEINE_DEFAULTS.find((c) => c === row?.value) ?? 'caffeinated';
+}
+
+export function setDefaultCaffeine(db: DatabaseSync, c: string): void {
+  if (!(CAFFEINE_DEFAULTS as readonly string[]).includes(c)) throw new InvalidSettingError(`unknown caffeine filter: ${c}`);
+  db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(DEFAULT_CAFFEINE_KEY, c);
 }
 
 // First boot with the setting absent: an account that already has brews or bags was America/Denver before the setting

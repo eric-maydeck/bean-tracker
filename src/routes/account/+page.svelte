@@ -8,6 +8,7 @@
   import BeanTriage from './BeanTriage.svelte';
   import { showToast } from '$lib/toast.svelte';
   import { page } from '$app/state';
+  import { DATE_FORMAT_LABEL, type DateFormat } from '$lib/localDate';
   import { parseAccount } from '$lib/accountUrl';
   import { importSummary } from '$lib/importSummary';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
@@ -23,6 +24,40 @@
           const body = new FormData();
           body.set('value', v);
           const res = await fetch(`?/${reverse}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
+          const out = (await res.json().catch(() => null)) as { type?: string } | null;
+          if (out?.type !== 'success') throw new Error('Could not undo that.');
+          await invalidateAll();
+        }
+      });
+    };
+  };
+  // Time and Stats settings: a select saves on change, toasts with Undo (the previous value posted back), and a bad value
+  // shows its error in the panel. `settings` holds what is saved; the select follows it after each save.
+  type SettingName = 'brewingZone' | 'displayZone' | 'dateFormat' | 'defaultCaffeine';
+  const SETTING_LABEL: Record<SettingName, string> = { brewingZone: 'Brewing timezone', displayZone: 'Display timezone', dateFormat: 'Date format', defaultCaffeine: 'Default caffeine filter' };
+  const SETTING_ACTION: Record<SettingName, string> = { brewingZone: 'setBrewingZone', displayZone: 'setDisplayZone', dateFormat: 'setDateFormat', defaultCaffeine: 'setDefaultCaffeine' };
+  const FORMAT_OPTIONS = (Object.keys(DATE_FORMAT_LABEL) as DateFormat[]).map((k) => [k, DATE_FORMAT_LABEL[k]] as const);
+  const CAFFEINE_OPTIONS = [['caffeinated', 'Caffeinated'], ['decaf', 'Decaf'], ['all', 'All']] as const;
+  const shown = (name: SettingName, v: string) =>
+    name === 'dateFormat' ? DATE_FORMAT_LABEL[v as DateFormat] : v === 'browser' ? 'Browser time' : name === 'defaultCaffeine' ? v[0].toUpperCase() + v.slice(1) : v;
+  let settingError = $state<{ name: SettingName; text: string } | null>(null);
+  const saveSetting = (name: SettingName): import('@sveltejs/kit').SubmitFunction => ({ formData }) => {
+    const before = data.settings[name];
+    const v = String(formData.get('value') ?? '');
+    return async ({ result, update }) => {
+      if (result.type === 'failure') {
+        settingError = { name, text: `Could not save ${SETTING_LABEL[name].toLowerCase()}.` };
+        await update({ reset: false });
+        return;
+      }
+      settingError = null;
+      await update({ reset: false });
+      if (result.type !== 'success') return;
+      showToast(`${SETTING_LABEL[name]} set to ${shown(name, v)}.`, {
+        undo: async () => {
+          const body = new FormData();
+          body.set('value', before);
+          const res = await fetch(`?/${SETTING_ACTION[name]}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
           const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
           await invalidateAll();
@@ -85,6 +120,17 @@
 <svelte:head>
   <title>Bean Tracker - Account</title>
 </svelte:head>
+
+{#snippet setting(name: SettingName, hint: string, options: readonly (readonly [string, string])[])}
+  <form class="form-field set-field" method="POST" action="?/{SETTING_ACTION[name]}" use:enhance={saveSetting(name)}>
+    <label for="set-{name}">{SETTING_LABEL[name]}</label>
+    <select id="set-{name}" name="value" value={data.settings[name]} onchange={(e) => e.currentTarget.form?.requestSubmit()}>
+      {#each options as [v, label] (v)}<option value={v}>{label}</option>{/each}
+    </select>
+    <small class="text-muted">{hint}</small>
+    {#if settingError?.name === name}<p class="badge badge-urgent" role="alert">{settingError.text}</p>{/if}
+  </form>
+{/snippet}
 
 <h1>Account</h1>
 
@@ -209,6 +255,11 @@
   {#if householdError}<p class="badge badge-urgent" role="alert">{householdError}</p>{/if}
 </section>
 
+<section data-row-scope class="chart-panel" id="stats-settings">
+  <h2>Stats</h2>
+  {@render setting('defaultCaffeine', 'What the Stats Caffeine filter shows when it is on Default', CAFFEINE_OPTIONS)}
+</section>
+
 </div>
 <div>
 <section data-row-scope class="chart-panel">
@@ -264,6 +315,12 @@
   {#if form && 'listError' in form && form.list === 'ratios'}<p class="badge badge-urgent" role="alert">{form.listError}</p>{/if}
   {#if data.ratios.derived}<p class="text-muted">From your brews: your most common ratios over the last year. Editing the list makes it yours.</p>{/if}
 </section>
+<section data-row-scope class="chart-panel" id="time">
+  <h2>Time</h2>
+  {@render setting('brewingZone', 'Where day and hour lines are drawn in your stats', data.zones.map((z) => [z, z] as const))}
+  {@render setting('displayZone', 'How update and upload times are shown', [['browser', 'Browser time'], ...data.zones.map((z) => [z, z] as const)])}
+  {@render setting('dateFormat', 'How dates and times are written', FORMAT_OPTIONS)}
+</section>
 </div>
 </div>
 
@@ -287,6 +344,8 @@
   @media (min-width: 1100px) {
     .acct { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--space-4); align-items: start; }
   }
+  .set-field { margin-bottom: var(--space-3); }
+  .set-field select { min-width: 0; max-width: 100%; }
   #brew-now { scroll-margin-top: var(--space-4); }
   .bn-cells { display: flex; flex-wrap: wrap; flex: 0 1 auto; gap: var(--space-1) var(--space-4); padding: var(--space-2) 0; min-width: 0; }
   .bn-cell { display: flex; flex-direction: column; min-width: 3.75rem; line-height: 1.3; }

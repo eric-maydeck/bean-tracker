@@ -1,6 +1,9 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
-import { getDb, getHouseholdSize, lastImportedAt, setHouseholdSize, InvalidHouseholdSizeError } from '$lib/server/db';
+import {
+  getDb, getHouseholdSize, lastImportedAt, setHouseholdSize, InvalidHouseholdSizeError, InvalidTimeZoneError, InvalidSettingError,
+  getBrewingZone, setBrewingZone, getDisplayZone, setDisplayZone, getDateFormat, setDateFormat, getDefaultCaffeine, setDefaultCaffeine
+} from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import {
   importBeanConquerorData,
@@ -26,12 +29,17 @@ import { uploadStatus, UPLOAD_USERNAME } from '$lib/server/visualizerUpload';
 // unmatched beans, and rendering every one buries the rest of the page.
 const UNMATCHED_BEAN_LIMIT = 20;
 
+// The browser's list of zones is not the server's: the page renders this one (UTC is always offered).
+const timeZones = () => ['UTC', ...Intl.supportedValuesOf('timeZone').filter((z) => z !== 'UTC')];
+
 export const load: PageServerLoad = ({ locals, url }) => {
   if (!locals.isAdmin) redirect(303, '/login?redirectTo=%2Faccount');
   const db = getDb();
   // Without ORIGIN, adapter-node builds url.origin from the Host header, so each domain shows its own URL.
   return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImportedAt(db), doses: getBrewDoses(db), ratios: getBrewRatios(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME,
     householdSize: getHouseholdSize(db),
+    settings: { brewingZone: getBrewingZone(db), displayZone: getDisplayZone(db), dateFormat: getDateFormat(db), defaultCaffeine: getDefaultCaffeine(db) },
+    zones: timeZones(),
     unmatchedBeans: { beans: getUnmatchedBeanConquerorBeans(db, UNMATCHED_BEAN_LIMIT), total: countUnmatchedBeanConquerorBeans(db) },
     linkableCoffees: getLinkableCoffees(db),
     roastLevels: getRoastLevels(db),
@@ -118,6 +126,10 @@ export const actions: Actions = {
     }
     return { success: true as const };
   },
+  setBrewingZone: (e) => saveSetting(e, 'brewingZone', setBrewingZone),
+  setDisplayZone: (e) => saveSetting(e, 'displayZone', setDisplayZone),
+  setDateFormat: (e) => saveSetting(e, 'dateFormat', setDateFormat),
+  setDefaultCaffeine: (e) => saveSetting(e, 'defaultCaffeine', setDefaultCaffeine),
   addDose: (e) => editList(e, 'doses', 'add'),
   removeDose: (e) => editList(e, 'doses', 'remove'),
   addRatio: (e) => editList(e, 'ratios', 'add'),
@@ -128,4 +140,17 @@ async function editList({ request, locals }: RequestEvent, name: 'doses' | 'rati
   requireAdmin(locals);
   const error = editBrewList(getDb(), name, op, String((await request.formData()).get('value') ?? ''));
   return error ? fail(400, { listError: error, list: name }) : { listSaved: true as const };
+}
+
+// One select's save: the form field is named `value`; an unknown value is a 400 (the setters validate).
+async function saveSetting({ request, locals }: RequestEvent, name: string, set: (db: ReturnType<typeof getDb>, v: string) => void) {
+  requireAdmin(locals);
+  const v = String((await request.formData()).get('value') ?? '');
+  try {
+    set(getDb(), v);
+  } catch (err) {
+    if (err instanceof InvalidTimeZoneError || err instanceof InvalidSettingError) return fail(400, { settingError: `Unknown ${name} value`, setting: name });
+    throw err;
+  }
+  return { settingSaved: true as const };
 }

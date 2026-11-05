@@ -1,8 +1,9 @@
 import type { LayoutServerLoad } from './$types';
-import { getDb, getLastDeployed, getBrewingZone, getDisplayZone } from '$lib/server/db';
+import { getDb, getLastDeployed, getBrewingZone, getDisplayZone, getDateFormat } from '$lib/server/db';
 import { getActiveAlerts } from '$lib/server/alerts';
 import { nameColor } from '$lib/nameColor';
 import { contactEmailFor } from '$lib/aboutAi';
+import { DEFAULT_DATE_FORMAT } from '$lib/localDate';
 import { resolveDisplayZone } from '$lib/displayZone';
 import { localToday } from '$lib/server/localToday';
 import { ensureRecapAlerts, recapReadyYear } from '$lib/server/recaps/store';
@@ -31,5 +32,5 @@ export const load: LayoutServerLoad = ({ locals, url, cookies }) => {
   const recapReady = recapReadyYear(db, localToday(), locals.isAdmin);
   return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts, coloredNames, contactEmail: contactEmailFor(url.host),
     recapReady, brewingZone: getBrewingZone(db),
-    displayZone: resolveDisplayZone({ signedIn: locals.isAdmin, setting: getDisplayZone(db), cookie: cookies.get('tz') ?? null }), recapTone: recapReady ? coverTone(recapReady) : null };
+    displayZone: resolveDisplayZone({ signedIn: locals.isAdmin, setting: getDisplayZone(db), cookie: cookies.get('tz') ?? null }), dateFormat: locals.isAdmin ? getDateFormat(db) : DEFAULT_DATE_FORMAT, recapTone: recapReady ? coverTone(recapReady) : null };
 };

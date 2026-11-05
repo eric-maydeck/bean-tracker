@@ -45,13 +45,27 @@ export function wallToInstant(wall: string): string {
   return new Date(at).toISOString();
 }
 
-// 'YYYY-MM-DDTHH:mm[:ss]' wall time as "2026-10-22 8:05:23 PM" (12-hour, no leading zero, seconds).
-export function formatStamp(wall: string): string {
+// How dates and times are written (Account > Time > Date format); the label shows 2026-10-22 8:05:23 PM in each.
+export const DATE_FORMATS = ['iso12', 'iso24', 'us', 'eu'] as const;
+export type DateFormat = (typeof DATE_FORMATS)[number];
+export const DEFAULT_DATE_FORMAT: DateFormat = 'iso12';
+export const DATE_FORMAT_LABEL: Record<DateFormat, string> = {
+  iso12: '2026-10-22 8:05:23 PM', iso24: '2026-10-22 20:05:23', us: '10/22/2026, 8:05:23 PM', eu: '22/10/2026 20:05:23'
+};
+export const asDateFormat = (v: unknown): DateFormat => ((DATE_FORMATS as readonly unknown[]).includes(v) ? (v as DateFormat) : DEFAULT_DATE_FORMAT);
+
+// 'YYYY-MM-DDTHH:mm[:ss]' wall time in a format (default "2026-10-22 8:05:23 PM"); `seconds` false drops them.
+export function formatStamp(wall: string, format: DateFormat = DEFAULT_DATE_FORMAT, seconds = true): string {
   const [date, time = '00:00:00'] = wall.slice(0, 19).split('T');
   const [h, m, sec = '00'] = time.split(':');
   const hh = Number(h);
-  return `${date} ${hh % 12 || 12}:${m}:${sec} ${hh < 12 ? 'AM' : 'PM'}`;
+  const [y, mo, d] = date.split('-');
+  const hm = (twelve: boolean) => `${twelve ? hh % 12 || 12 : h.padStart(2, '0')}:${m}${seconds ? `:${sec}` : ''}${twelve ? (hh < 12 ? ' AM' : ' PM') : ''}`;
+  if (format === 'iso24') return `${date} ${hm(false)}`;
+  if (format === 'us') return `${mo}/${d}/${y}, ${hm(true)}`;
+  if (format === 'eu') return `${d}/${mo}/${y} ${hm(false)}`;
+  return `${date} ${hm(true)}`;
 }
 
-// An instant as "2026-10-22 8:05:23 PM" in a zone (default: the brewing zone, what the server renders; the page re-renders it in the browser's).
-export const formatInstant = (iso: string, zone?: string): string => formatStamp(localStamp(iso, zone));
+// An instant as a stamp in a zone (default: the brewing zone, what the server renders; the page re-renders it in the browser's).
+export const formatInstant = (iso: string, zone?: string, format?: DateFormat, seconds?: boolean): string => formatStamp(localStamp(iso, zone), format, seconds);

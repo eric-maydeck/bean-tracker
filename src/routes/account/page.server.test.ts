@@ -11,6 +11,8 @@ import { MAX_UPLOAD_BYTES } from '$lib/server/beanConquerorJson';
 import { linkMarks } from '$lib/server/brewNow/outcome';
 import type { ImportChanges } from '$lib/server/beanconqueror';
 import { createCoffee } from '$lib/server/coffees';
+import { brewingZone, localDate } from '$lib/localDate';
+import { localToday } from '$lib/server/localToday';
 import { actions, load } from './+page.server';
 
 vi.mock('$lib/server/brewNow/outcome', () => ({ linkMarks: vi.fn(() => 0) }));
@@ -195,5 +197,54 @@ describe('?/updateHouseholdSize', () => {
       });
     }
     expect(getHouseholdSize(getDb())).toBe(2);
+  });
+});
+
+describe('time and stats settings', () => {
+  type Settings = { settings: { brewingZone: string; displayZone: string; dateFormat: string; defaultCaffeine: string }; zones: string[] };
+  const settings = () => (load(event(true)) as unknown as Settings).settings;
+
+  it('load returns the settings and a zone list that includes UTC', () => {
+    const d = load(event(true)) as unknown as Settings;
+    expect(d.settings).toMatchObject({ displayZone: 'browser', dateFormat: 'iso12', defaultCaffeine: 'caffeinated' });
+    expect(d.zones).toContain('UTC');
+    expect(d.zones).toContain('America/Denver');
+  });
+
+  it('signed out is 401', async () => {
+    for (const a of ['setBrewingZone', 'setDisplayZone', 'setDateFormat', 'setDefaultCaffeine'] as const)
+      await expect(actions[a](post({ value: 'UTC' }, false))).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('a valid zone saves; setBrewingZone also moves the process zone (localToday follows)', async () => {
+    expect(await actions.setBrewingZone(post({ value: 'Pacific/Kiritimati' }))).toEqual({ settingSaved: true });
+    expect(settings().brewingZone).toBe('Pacific/Kiritimati');
+    expect(brewingZone()).toBe('Pacific/Kiritimati');
+    expect(localToday()).toBe(localDate(new Date().toISOString()));
+    expect(await actions.setDisplayZone(post({ value: 'Asia/Tokyo' }))).toEqual({ settingSaved: true });
+    expect(await actions.setDisplayZone(post({ value: 'browser' }))).toEqual({ settingSaved: true });
+    expect(settings().displayZone).toBe('browser');
+    await actions.setBrewingZone(post({ value: 'America/Denver' }));
+  });
+
+  it('an unknown zone is a 400 and changes nothing', async () => {
+    expect(failure(await actions.setBrewingZone(post({ value: 'Mars/Base' })))?.status).toBe(400);
+    expect(failure(await actions.setDisplayZone(post({ value: 'Mars/Base' })))?.status).toBe(400);
+    expect(failure(await actions.setBrewingZone(post({ value: 'browser' })))?.status).toBe(400); // only Display has "browser"
+    expect(settings().brewingZone).toBe('America/Denver');
+    expect(brewingZone()).toBe('America/Denver');
+  });
+
+  it('date format and default caffeine save; junk is a 400', async () => {
+    for (const v of ['iso24', 'us', 'eu', 'iso12']) expect(await actions.setDateFormat(post({ value: v }))).toEqual({ settingSaved: true });
+    for (const v of ['decaf', 'all', 'caffeinated']) expect(await actions.setDefaultCaffeine(post({ value: v }))).toEqual({ settingSaved: true });
+    await actions.setDateFormat(post({ value: 'eu' }));
+    await actions.setDefaultCaffeine(post({ value: 'decaf' }));
+    expect(settings()).toMatchObject({ dateFormat: 'eu', defaultCaffeine: 'decaf' });
+    expect(failure(await actions.setDateFormat(post({ value: 'zz' })))?.status).toBe(400);
+    expect(failure(await actions.setDefaultCaffeine(post({ value: '' })))?.status).toBe(400);
+    expect(settings()).toMatchObject({ dateFormat: 'eu', defaultCaffeine: 'decaf' });
+    await actions.setDateFormat(post({ value: 'iso12' }));
+    await actions.setDefaultCaffeine(post({ value: 'caffeinated' }));
   });
 });

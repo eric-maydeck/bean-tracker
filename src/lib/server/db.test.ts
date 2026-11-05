@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createDb, applySchema, lastImportedAt, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError, getBrewingZone, setBrewingZone, InvalidTimeZoneError, getDisplayZone, setDisplayZone } from './db';
+import { createDb, applySchema, lastImportedAt, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError, getBrewingZone, setBrewingZone, InvalidTimeZoneError, getDisplayZone, setDisplayZone, getDateFormat, setDateFormat, getDefaultCaffeine, setDefaultCaffeine, InvalidSettingError } from './db';
 import { brewingZone, setBrewingZone as setProcessZone } from '../localDate';
 import { schema } from './schema';
 import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear';
@@ -480,5 +480,19 @@ describe('display zone', () => {
     setDisplayZone(db, 'browser');
     expect(getDisplayZone(db)).toBe('browser');
     expect(() => setDisplayZone(db, 'Mars/Base')).toThrow(InvalidTimeZoneError);
+  });
+});
+
+describe('date format and default caffeine', () => {
+  it('default, store, reject junk, and read a junk stored value as the default', () => {
+    const db = createDb(':memory:');
+    expect([getDateFormat(db), getDefaultCaffeine(db)]).toEqual(['iso12', 'caffeinated']);
+    setDateFormat(db, 'eu');
+    setDefaultCaffeine(db, 'all');
+    expect([getDateFormat(db), getDefaultCaffeine(db)]).toEqual(['eu', 'all']);
+    expect(() => setDateFormat(db, 'zz')).toThrow(InvalidSettingError);
+    expect(() => setDefaultCaffeine(db, 'zz')).toThrow(InvalidSettingError);
+    db.prepare(`UPDATE app_meta SET value = 'zz' WHERE key IN ('date_format', 'default_caffeine')`).run();
+    expect([getDateFormat(db), getDefaultCaffeine(db)]).toEqual(['iso12', 'caffeinated']);
   });
 });

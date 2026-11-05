@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatInstant, formatStamp, localDate, localDateTime, localStamp, wallToInstant } from './localDate';
+import { DATE_FORMATS, asDateFormat, formatInstant, formatStamp, localDate, localDateTime, localStamp, wallToInstant } from './localDate';
 
 describe('localDate (a stored date as a local calendar date)', () => {
   it.each([
@@ -45,5 +45,32 @@ describe('localDateTime', () => {
       expect(localDateTime(iso)).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d$/);
     }
     expect(localDateTime('2026-10-28T06:30:00.000Z')).toBe('2026-10-28T00:30');
+  });
+});
+
+describe('date formats', () => {
+  const table = {
+    iso12: ['2026-10-22 8:05:23 PM', '2026-10-22 8:05 PM'],
+    iso24: ['2026-10-22 20:05:23', '2026-10-22 20:05'],
+    us: ['10/22/2026, 8:05:23 PM', '10/22/2026, 8:05 PM'],
+    eu: ['22/10/2026 20:05:23', '22/10/2026 20:05']
+  } as const;
+  it.each(DATE_FORMATS)('%s, with and without seconds', (f) => {
+    expect(formatStamp('2026-10-22T20:05:23', f)).toBe(table[f][0]);
+    expect(formatStamp('2026-10-22T20:05:23', f, false)).toBe(table[f][1]);
+  });
+  it('iso12 is the default; morning and midnight read right', () => {
+    expect(formatStamp('2026-10-22T20:05:23')).toBe(table.iso12[0]);
+    expect(formatStamp('2026-03-04T00:09:01', 'us')).toBe('03/04/2026, 12:09:01 AM');
+    expect(formatStamp('2026-03-04T07:09:01', 'iso24', false)).toBe('2026-03-04 07:09');
+  });
+  it('formats an instant in a zone (the UTC suffix is Stamp\'s)', () => {
+    expect(formatInstant('2026-10-23T02:05:23.000Z', 'UTC', 'eu')).toBe('23/10/2026 02:05:23');
+    expect(formatInstant('2026-10-23T02:05:23.000Z', 'Asia/Tokyo', 'us', false)).toBe('10/23/2026, 11:05 AM');
+  });
+  it('junk is the default', () => {
+    expect(asDateFormat('nope')).toBe('iso12');
+    expect(asDateFormat(undefined)).toBe('iso12');
+    expect(asDateFormat('eu')).toBe('eu');
   });
 });
