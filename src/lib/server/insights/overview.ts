@@ -20,10 +20,11 @@ export interface OverviewTiles {
   avgTempC: number | null;
 }
 
-// A total sums over the period; an average doesn't grow with its length.
+// A total sums over the period; an average doesn't grow with its length. Roasters is a distinct count: it doesn't scale
+// with days either (8 over 60 days is not 4 over 30), so it compares raw like an average.
 export const TILE_KIND: Record<keyof OverviewTiles, 'total' | 'average'> = {
   brews: 'total',
-  roasters: 'total',
+  roasters: 'average',
   grams: 'total',
   spend: 'total',
   bagsFinished: 'total',

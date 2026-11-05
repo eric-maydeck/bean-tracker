@@ -847,7 +847,7 @@
         {@const pp = t.split && perPersonOn}
         <div class="stat-item" id={tileId(t.key)} class:stack={t.stack?.() && t.sub?.()}>
           <span class="stat-value" style:--len={valueText(t, v).length}
-            >{#if t.fmt === usd && v !== null}<Usd n={v} />{:else}{valueText(t, v)}{/if}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
+            >{#if t.fmt === usd && v !== null}<Usd n={v} />{:else}{valueText(t, v)}{/if}{#if t.suffix && v !== null}<small>{` ${valueText(t, v) === '1' ? t.suffix.replace(/s$/, '') : t.suffix}`}</small>{/if}</span
           >
           {#if d}
             <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and the hover tip. -->

@@ -105,7 +105,14 @@ describe('overviewTiles', () => {
   it('every tile has a kind', () => {
     expect(Object.keys(TILE_KIND).sort()).toEqual(Object.keys(overviewTiles([], [], SEPT, 'all')).sort());
     expect(Object.entries(TILE_KIND).filter(([, k]) => k === 'total').map(([t]) => t).sort())
-      .toEqual(['bagsFinished', 'brews', 'grams', 'rated', 'roasters', 'spend']);
+      .toEqual(['bagsFinished', 'brews', 'grams', 'rated', 'spend']);
+  });
+
+  it('roasters (a distinct count) compares raw, not paced, across different window lengths', () => {
+    const r = (roasters: number) => ({ ...overviewTiles([], [], SEPT, 'all'), roasters });
+    const { deltas } = compareTiles(r(8), r(4), 60, 30);
+    expect(deltas.roasters).toMatchObject({ abs: 4, base: 4 });
+    expect(deltas.roasters).not.toHaveProperty('paced');
   });
 });
 
