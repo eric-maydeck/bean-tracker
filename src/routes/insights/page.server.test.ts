@@ -551,10 +551,10 @@ describe('page-wide coffees filter', () => {
   it('Caffeine board: both kinds by default and under All; one each under Decaf and Caffeinated', () => {
     seedTwo(true);
     const kinds = (q: string) => run(`?range=all&tab=leaderboards&rank=rating&ratings=all&dial=all${q}`).boards.caffeine.map((r: { label: string }) => r.label).sort();
-    expect(kinds('')).toEqual(['Decaf', 'Regular']);
-    expect(kinds('&caffeine=all')).toEqual(['Decaf', 'Regular']);
+    expect(kinds('')).toEqual(['Caffeinated', 'Decaf']);
+    expect(kinds('&caffeine=all')).toEqual(['Caffeinated', 'Decaf']);
     expect(kinds('&caffeine=decaf')).toEqual(['Decaf']);
-    expect(kinds('&caffeine=caffeinated')).toEqual(['Regular']);
+    expect(kinds('&caffeine=caffeinated')).toEqual(['Caffeinated']);
     // Everywhere else Caffeinated is the same as absent: decaf's ratings stay out of the other boards.
     const tiles = (q: string) => run(`?range=all&ratings=all${q}`).tiles;
     expect(tiles('&caffeine=caffeinated')).toMatchObject({ brews: 5, rated: 2 });

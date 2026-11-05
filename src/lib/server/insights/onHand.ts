@@ -80,7 +80,7 @@ export function whatsWaiting(bags: readonly BagFact[], logged: Map<number, numbe
       origin: by((b) => country(b.origin), (l) => ({ column: 'origin', mode: 'any', values: l === null ? [...new Set(rows.filter((r) => country(r.b.origin) === null).map((r) => r.b.origin || null))] : [l] })),
       process: by((b) => b.processGroup, (l) => { const v = processLabels(rows.map((r) => r.b), l ?? ''); return v.length ? { column: 'processing', mode: 'any', values: v } : null; }),
       roast: by((b) => b.roastLevel, (l) => ({ column: 'roast_level', mode: 'any', values: l === null ? [null] : roastLevelLabels(l) })),
-      caffeine: by((b) => (b.decaf ? 'Decaf' : 'Regular'), (l) => ({ column: 'decaf', mode: 'bool', value: l === 'Decaf' }))
+      caffeine: by((b) => (b.decaf ? 'Decaf' : 'Caffeinated'), (l) => ({ column: 'decaf', mode: 'bool', value: l === 'Decaf' }))
     },
     sub, oneOff: rows.reduce((s, r) => s + r.g, 0) - sub
   };

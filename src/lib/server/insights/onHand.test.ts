@@ -205,7 +205,7 @@ describe('whatsWaiting', () => {
 describe('whatsWaiting caffeine', () => {
   it('whatsWaiting groups by caffeine', () => {
     const w = whatsWaiting([fact({ id: 1, amountG: 100 }), fact({ id: 2, amountG: 300, decaf: true }), fact({ id: 3, amountG: 50 })], new Map(), 1);
-    expect(w.by.caffeine.map((r) => [r.label, r.grams, r.bags])).toEqual([['Decaf', 300, 1], ['Regular', 150, 2]]);
+    expect(w.by.caffeine.map((r) => [r.label, r.grams, r.bags])).toEqual([['Decaf', 300, 1], ['Caffeinated', 150, 2]]);
   });
 });
 

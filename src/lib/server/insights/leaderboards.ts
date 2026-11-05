@@ -49,7 +49,7 @@ export const BREW_KEY: Record<Board, (b: BrewFact) => string | null> = {
   grinder: (b) => b.grinder,
   varieties: (b) => b.variety?.trim() || null,
   producers: (b) => b.producer?.trim() || null,
-  caffeine: (b) => (b.decaf ? 'Decaf' : 'Regular')
+  caffeine: (b) => (b.decaf ? 'Decaf' : 'Caffeinated')
 };
 // Spend and $/g group bags; only bag attributes have a key.
 const BAG_KEY: Partial<Record<Board, (b: BagFact) => string | null>> = {
@@ -60,7 +60,7 @@ const BAG_KEY: Partial<Record<Board, (b: BagFact) => string | null>> = {
   roast: (b) => b.roastLevel,
   varieties: (b) => b.variety?.trim() || null,
   producers: (b) => b.producer?.trim() || null,
-  caffeine: (b) => (b.decaf ? 'Decaf' : 'Regular')
+  caffeine: (b) => (b.decaf ? 'Decaf' : 'Caffeinated')
 };
 // Boards whose rows open the coffee list filtered to them.
 const FILTER_COLUMN: Partial<Record<Board, ColumnKey>> = { roasters: 'roaster', origins: 'origin', roast: 'roast_level', producers: 'producer' };
@@ -79,7 +79,7 @@ const byRank = (a: BoardRow, b: BoardRow) =>
 
 // The confident cutoff: rows the Low confidence chip would mark are left out under min3 (Raw average, confident)
 // and under like unless See all set avg=raw (stats audit 2026-10-17: a 1-brew bag topped the like board).
-// The Caffeine board is exempt (user, 2026-11-04: Regular and Decaf always both show; a small kind is marked, not hidden).
+// The Caffeine board is exempt (user, 2026-11-04: Caffeinated and Decaf always both show; a small kind is marked, not hidden).
 const confident = (rank: Rank, avg: Avg) => (rank === 'rating' && avg === 'min3') || (rank === 'like' && avg !== 'raw');
 
 // `status`: all by default; a Leaderboards row follows its rank (statusFor): Backlog bags have no brews.
