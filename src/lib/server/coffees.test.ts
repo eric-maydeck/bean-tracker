@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { setBrewingZone } from '$lib/localDate';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import { setImageFill } from './imageFills';
@@ -53,6 +54,7 @@ let db: DatabaseSync;
 
 beforeEach(() => {
   db = createDb(':memory:');
+  setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
 });
 
 describe('createCoffee', () => {
@@ -383,6 +385,7 @@ describe('product_url', () => {
 describe('in_bean_conqueror on list rows', () => {
   it('is 1 only for coffees with a linked bean', () => {
     const db = createDb(':memory:');
+    setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
     const a = createCoffee(db, sampleInput({ coffee_name: 'A' }));
     createCoffee(db, sampleInput({ coffee_name: 'B' }));
     db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('b', 'A', 'x', ?)`).run(a.id);

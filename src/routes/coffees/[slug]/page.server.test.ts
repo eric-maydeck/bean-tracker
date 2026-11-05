@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { setBrewingZone } from '$lib/localDate';
 import { isRedirect, isActionFailure } from '@sveltejs/kit';
 
 // getDb() is a lazily-created singleton keyed off DB_PATH — set before the
@@ -53,6 +54,8 @@ describe('load (coffee detail page)', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
 
+    getDb();
+    setBrewingZone('America/Denver'); // getDb makes the db (UTC when empty) on first use
     try {
       await load(fakeEvent);
       expect.unreachable('load should have thrown a redirect');

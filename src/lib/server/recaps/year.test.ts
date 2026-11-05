@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { setBrewingZone } from '$lib/localDate';
 import { createDb, setHouseholdSize } from '$lib/server/db';
 import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { loadYear, toGenCtx, dataStamp } from './year';
 
 function seed() {
   const db = createDb(':memory:');
+  setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
   const now = '2026-10-09T00:00:00.000Z';
   const coffee = db.prepare(`INSERT INTO coffees (roaster, coffee_name, slug, decaf, created_at, updated_at) VALUES ('R', ?, ?, ?, '2025-01-01', '2025-01-01')`);
   const reg = coffee.run('Reg', 'r-reg', 0).lastInsertRowid;

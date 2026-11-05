@@ -259,25 +259,28 @@ export class InvalidTimeZoneError extends Error {}
 
 const BREWING_ZONE_KEY = 'brewing_time_zone';
 
-// The account's brewing zone (day and hour lines); UTC until set.
+// The account's brewing zone (day and hour lines); UTC until set, and UTC if the stored value is not a zone.
 export function getBrewingZone(db: DatabaseSync): string {
-  const row = db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(BREWING_ZONE_KEY) as { value: string } | undefined;
-  return row?.value || 'UTC';
+  const v = (db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(BREWING_ZONE_KEY) as { value: string } | undefined)?.value;
+  return v && isZone(v) ? v : 'UTC';
 }
+
+const isZone = (z: string) => z === 'UTC' || Intl.supportedValuesOf('timeZone').includes(z);
 
 // Saves the zone and applies it to this process.
 export function setBrewingZone(db: DatabaseSync, z: string): void {
-  if (z !== 'UTC' && !Intl.supportedValuesOf('timeZone').includes(z)) throw new InvalidTimeZoneError(`unknown time zone: ${z}`);
+  if (!isZone(z)) throw new InvalidTimeZoneError(`unknown time zone: ${z}`);
   db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(BREWING_ZONE_KEY, z);
   setProcessZone(z);
 }
 
-// An account that already has brews or bags keeps its numbers: it was America/Denver before the setting existed.
-function bootBrewingZone(db: DatabaseSync, path: string): void {
+// First boot with the setting absent: an account that already has brews or bags was America/Denver before the setting
+// existed (it keeps its numbers); an empty one starts on UTC. Either way the choice is stored, so it never flips later.
+function bootBrewingZone(db: DatabaseSync): void {
   const has = (t: string) => db.prepare(`SELECT 1 FROM ${t} LIMIT 1`).get() !== undefined;
-  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(BREWING_ZONE_KEY) && (has('beanconqueror_brews') || has('coffees')))
-    setBrewingZone(db, STORE_ZONE);
-  if (path !== ':memory:') setProcessZone(getBrewingZone(db)); // tests (in-memory) pick their own zone; vitest.setup.ts
+  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(BREWING_ZONE_KEY))
+    setBrewingZone(db, has('beanconqueror_brews') || has('coffees') ? STORE_ZONE : 'UTC');
+  setProcessZone(getBrewingZone(db));
 }
 
 export function createDb(path: string): DatabaseSync {
@@ -292,7 +295,7 @@ export function createDb(path: string): DatabaseSync {
   db.exec(`PRAGMA busy_timeout = 5000`);
   applySchema(db);
   recordDeploy(db);
-  bootBrewingZone(db, path);
+  bootBrewingZone(db);
   return db;
 }
 

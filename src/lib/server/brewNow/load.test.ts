@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { setBrewingZone } from '$lib/localDate';
 import { OWN_DATA_ONLY } from '$lib/gear';
 import { createDb } from '../db';
 import { createCoffee } from '../coffees';
@@ -6,6 +7,8 @@ import { saveGearDetails } from '../gearDetails';
 import { loadBrewRows, loadGearClass, gearOptions, gearDefaults, coffeeGearDefaults, coffeeDetails, type BrewRow } from './load';
 
 const db = createDb(':memory:');
+
+setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
 let n = 0; // a unique second per brew (the importer's identity index)
 const coffee = (roaster: string, name: string, o: { roast?: string | null; amount?: number | null; processing?: string | null; fs?: string | null; fe?: string | null } = {}) => {
   const id = createCoffee(db, { roaster, coffee_name: name, origin: 'Kenya', roast_level: 'Light', processing: o.processing ?? 'Washed',

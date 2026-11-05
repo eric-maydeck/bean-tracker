@@ -434,6 +434,7 @@ describe('brewing zone', () => {
     const dir = mkdtempSync(join(tmpdir(), 'zone-'));
     try {
       const first = createDb(join(dir, 'a.db'));
+      first.prepare(`DELETE FROM app_meta WHERE key = 'brewing_time_zone'`).run(); // a db from before the setting
       first.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES ('2026-03-08T01:30:00.000Z', 'x')`).run();
       first.close();
       setProcessZone('UTC');
@@ -444,6 +445,23 @@ describe('brewing zone', () => {
       expect(getBrewingZone(createDb(join(dir, 'a.db')))).toBe('Asia/Tokyo'); // a set zone is not overwritten
       again.close();
     } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it('a new account stays UTC across a restart after it adds a coffee', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'zone-'));
+    try {
+      const first = createDb(join(dir, 'b.db'));
+      expect(getBrewingZone(first)).toBe('UTC');
+      first.prepare(`INSERT INTO coffees (roaster, coffee_name, slug, created_at, updated_at) VALUES ('R', 'C', 'c', 'x', 'x')`).run();
+      first.close();
+      const again = createDb(join(dir, 'b.db'));
+      expect(getBrewingZone(again)).toBe('UTC');
+      again.close();
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+  it('a stored value that is not a zone reads as UTC', () => {
+    const db = createDb(':memory:');
+    db.prepare(`UPDATE app_meta SET value = 'Mars/Base' WHERE key = 'brewing_time_zone'`).run();
+    expect(getBrewingZone(db)).toBe('UTC');
   });
   it("setBrewingZone rejects 'Mars/Base' and accepts UTC", () => {
     const db = createDb(':memory:');

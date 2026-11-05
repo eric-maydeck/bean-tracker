@@ -7,12 +7,14 @@ import { dismissAlert, getActiveAlerts, markAlertRead } from '$lib/server/alerts
 describe('store', () => {
   it('freezeIds keeps the first write', () => {
     const db = createDb(':memory:');
+    setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
     expect(frozenIds(db, 2026)).toBeNull();
     expect(freezeIds(db, 2026, ['total', 'a'])).toEqual(['total', 'a']);
     expect(freezeIds(db, 2026, ['total', 'b'])).toEqual(['total', 'a']);
   });
   it('seen flag and brew years', () => {
     const db = createDb(':memory:');
+    setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
     expect(recapSeen(db, 2026)).toBe(false);
     markRecapSeen(db, 2026);
     expect(recapSeen(db, 2026)).toBe(true);
@@ -22,6 +24,7 @@ describe('store', () => {
   });
   it('brew years follow the brewing zone: local Dec 31 evening is next year in UTC', () => {
     const db = createDb(':memory:');
+    setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
     db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES ('2025-12-31T23:30:00.000Z', 'x')`).run();
     expect(brewYears(db)).toEqual([2025]);
     setBrewingZone('UTC');
@@ -29,6 +32,7 @@ describe('store', () => {
   });
   it('recapReadyYear: newest unseen open year, admin only', () => {
     const db = createDb(':memory:');
+    setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
     expect(recapReadyYear(db, '2026-11-01', true)).toBeNull();
     for (const d of ['2024-03-01T10:00:00.000Z', '2025-03-01T10:00:00.000Z', '2026-03-01T10:00:00.000Z'])
       db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES (?, ?)`).run(d, d);
@@ -41,6 +45,7 @@ describe('store', () => {
   });
   it('ensureRecapAlerts: one inbox alert per open year, kept by mark-read, never back after a dismiss, none for public', () => {
     const db = createDb(':memory:');
+    setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
     for (const d of ['2025-03-01T10:00:00.000Z', '2026-03-01T10:00:00.000Z'])
       db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES (?, ?)`).run(d, d);
     ensureRecapAlerts(db, '2026-11-01', false);

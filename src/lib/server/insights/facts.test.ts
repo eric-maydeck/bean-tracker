@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { setBrewingZone } from '$lib/localDate';
 import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, brewerType, grindKey, grindValue, MIXED_FILTER, waitBucket, windowState } from './facts';
 import { createDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
@@ -115,6 +116,7 @@ describe('grindKey', () => {
 describe('loadFacts', () => {
   it('loads a bag\'s subscription link, null when unlinked', () => {
     const db = createDb(':memory:');
+    setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
     const planId = createSubscription(db, {
       roaster_service: 'S', subscription_name: null, price: 20, bag_count: 1, amount_per_bag_g: 250, renewal_day: 1
     });
@@ -135,6 +137,7 @@ describe('loadFacts', () => {
 
   function seed() {
     const db = createDb(':memory:');
+    setBrewingZone('America/Denver'); // createDb pins UTC for an empty db
     const now = '2026-10-09T00:00:00.000Z';
     const { id: coffeeId } = createCoffee(db, {
       roaster: 'Sey', coffee_name: 'Kiambu', origin: 'Kenya', roast_level: 'Light/Med', processing: 'Double Ferment Washed',
