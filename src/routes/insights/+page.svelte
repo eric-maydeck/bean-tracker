@@ -76,7 +76,7 @@
     ['origin', 'Origin', data.coffeeOptions.origins], ['roaster', 'Roaster', data.coffeeOptions.roasters]
   ] as const);
   // Caffeine's chip shows only when explicit (absent = Caffeinated, the default).
-  const CAFFEINE_CHIP: Record<Caffeine, string> = { decaf: 'Decaf', all: 'Caf + decaf' };
+  const CAFFEINE_CHIP: Record<Caffeine, string> = { caffeinated: 'Caffeinated', decaf: 'Decaf', all: 'Caf + decaf' };
   let coffeeChips = $derived([
     ...COFFEE_FIELDS.flatMap(([k]) => (s[k] ? [[k, s[k]!] as const] : [])),
     ...(s.caffeine ? [['caffeine', CAFFEINE_CHIP[s.caffeine]] as const] : [])
@@ -741,7 +741,7 @@
       {/each}
       <label class="form-field">
         <span>Caffeine</span>
-        <select class="ctl-select" aria-label="Caffeine" value={s.caffeine ?? ''}
+        <select class="ctl-select" aria-label="Caffeine" value={s.caffeine === 'caffeinated' ? '' : (s.caffeine ?? '')}
           onchange={(e) => choose({ caffeine: (e.currentTarget.value || undefined) as Caffeine | undefined })}>
           <option value="">Caffeinated</option>
           <option value="decaf">Decaf</option>

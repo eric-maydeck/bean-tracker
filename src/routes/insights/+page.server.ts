@@ -70,6 +70,14 @@ export const load: PageServerLoad = ({ url, locals }) => {
   const brews = whole.filter(matchesBrew(bf));
   const bags = everyBag.filter((b) => (s.caffeine !== 'decaf' || b.decaf) && matches(b));
   const scored = s.dial === 'all' ? brews : onceDialed(brews, dialIn);
+  // The Caffeine board splits caffeinated from decaf, so it keeps decaf's ratings unless Caffeinated is picked explicitly
+  // (Decaf and All already do): its own brews and bags.
+  const ownCaf = s.caffeine === undefined || s.caffeine === 'caffeinated';
+  const cafBrews = !ownCaf ? scored : (() => {
+    const own = (s.caffeine === 'caffeinated' ? everyBrew.filter((b) => !b.decaf) : everyBrew).filter(matches).filter(matchesBrew(bf));
+    return s.dial === 'all' ? own : onceDialed(own, dialIn);
+  })();
+  const cafBags = s.caffeine === 'caffeinated' ? bags.filter((b) => !b.decaf) : bags;
   const wholeScored = s.dial === 'all' ? whole : onceDialed(whole, dialIn); // records' whole-bag figures
   const labCtx = { period, ratings: s.ratings };
   const size = s.people === 'person' ? householdSize : 1;
@@ -77,6 +85,8 @@ export const load: PageServerLoad = ({ url, locals }) => {
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
   // Leaderboards only on its tab; the overview tiles are cheap and always computed.
   const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, explicit.avg, size) : null;
+  // ponytail: a second full leaderboards() pass only to take its caffeine board; narrow it to one board if it gets slow.
+  if (boards && ownCaf) boards.caffeine = leaderboards(cafBrews, cafBags, period, prev, s.rank, s.ratings, explicit.avg, size).caffeine;
   const h = boards && ratingsMenuOn(s) ? hiddenRows(boards, scored, brews, bags, period, s.rank, s.ratings) : null;
   const rated = (xs: typeof brews, r: typeof s.ratings) => ratedIn(xs, period, r).length;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
@@ -150,7 +160,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
     // Over time: the small boards switched to it (views=water-time) and Caffeine, which always is; the others cost nothing.
     boardSeries: boards
       ? Object.fromEntries(([...VIEW_BOARDS.filter((b) => s.views?.[b]), 'caffeine'] as const).map((b) => [b,
-          boardSeries(scored, bags, { period, dataStart, today }, b, boards[b].map((r) => r.key), s.rank, s.ratings, boardAvg(b, explicit.avg), size)]))
+          boardSeries(b === 'caffeine' ? cafBrews : scored, b === 'caffeine' ? cafBags : bags, { period, dataStart, today }, b, boards[b].map((r) => r.key), s.rank, s.ratings, boardAvg(b, explicit.avg), size)]))
       : null,
     boardsSmall: boards ? smallHidden(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : {},
     boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : [],

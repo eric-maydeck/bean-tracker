@@ -504,6 +504,9 @@ describe('highlights params', () => {
     expect(parse('').caffeine).toBeUndefined();
     expect(parse('caffeine=Decaf').caffeine).toBe('decaf');
     expect(parse('caffeine=ALL').caffeine).toBe('all');
+    expect(parse('caffeine=Caffeinated').caffeine).toBe('caffeinated');
+    expect(insightsParams(parse('caffeine=caffeinated')).toString()).toBe('caffeine=caffeinated');
+    expect(resetInsights(parse('caffeine=caffeinated&range=1w'))).toEqual({});
     expect(parse('caffeine=CAF').caffeine).toBeUndefined();
     expect(parse('caffeine=bogus').caffeine).toBeUndefined();
     expect(parse('tab=habits&caffeine=decaf').caffeine).toBe('decaf');
