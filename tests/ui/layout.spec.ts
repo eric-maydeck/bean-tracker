@@ -10738,12 +10738,25 @@ export const STATES: State[] = [
       await apply.click(); // back to the list, page untouched
       await expect(list).toBeVisible();
       expect(page.url()).toBe(url);
+      const origin = ed.getByRole('button', { name: 'Origin', exact: true });
+      await expect(origin).toHaveAttribute('aria-pressed', 'true'); // the list shows the draft
+      await expect(origin).toBeFocused(); // focus returns to the column's button
+      await ed.getByRole('button', { name: 'Reset' }).click();
+      await expect(origin).toHaveAttribute('aria-pressed', 'false');
+      await origin.click();
+      await ed.locator('.filter-values input').first().check();
+      await apply.click();
       await expect(page.locator('.filter-chip')).toHaveCount(0);
       await apply.click(); // the list's Apply
       await expect(ed).toHaveCount(0);
       await expect(page).toHaveURL(/origin=/);
       await expect(page.locator('.filter-chip')).toHaveCount(1);
       // A chip opens the editor straight in: it is top-level, Apply writes the page and Cancel just closes.
+      await page.locator('.filter-chip-label').click();
+      await ed.getByRole('button', { name: 'Contains' }).click(); // half-edited: Apply is off, it does not delete the filter
+      await expect(apply).toBeDisabled();
+      await ed.getByRole('button', { name: 'Cancel' }).click();
+      await expect(page.locator('.filter-chip')).toHaveCount(1);
       await page.locator('.filter-chip-label').click();
       await ed.getByRole('button', { name: 'Reset' }).click();
       await ed.getByRole('button', { name: 'Cancel' }).click();

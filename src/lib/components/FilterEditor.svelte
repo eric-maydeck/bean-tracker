@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import Icon from './Icon.svelte';
   import {
     COLUMNS,
@@ -59,7 +59,8 @@
   let search = $state('');
 
   // The window edits a draft of the filters (quick filters, Subscription, each column's Apply); only its own Apply reaches the page.
-  let dfilters = $state<Filter[]>($state.snapshot(filters) as Filter[]);
+  // The editor mounts fresh on each open, so the initial `filters` is all it wants.
+  let dfilters = $state<Filter[]>(untrack(() => $state.snapshot(filters) as Filter[]));
   // True when the column editor was opened from the list (its Apply/Cancel/Esc return to the list); false when a chip opened it straight in (it is then the top-level window).
   let fromList = $state(false);
 
@@ -134,17 +135,27 @@
     values = values.includes(v) ? values.filter((x) => x !== v) : [...values, v];
   }
 
-  // A column's Apply: an emptied (Reset) editor removes that filter. Into the list's draft when it came from the list, else the page.
+  // Fully blank (what Reset leaves): the only incomplete state whose Apply is allowed, and it removes that column's filter.
+  const isBlank = $derived(values.length === 0 && text.trim() === '' && a === '' && b === '');
+
+  // Back to the list; the focused button unmounts, so focus goes to that column's button (keyboard users keep their place).
+  function toList() {
+    const k = key;
+    key = null;
+    void tick().then(() => editorEl?.querySelector<HTMLElement>(`[data-col="${k}"]`)?.focus());
+  }
+
+  // A column's Apply: a blank (Reset) editor removes that filter. Into the list's draft when it came from the list, else the page.
   function applyColumn(k: ColumnKey) {
     const next = draft && isComplete(draft) ? upsertFilter(dfilters, normalizeFilter($state.snapshot(draft) as Filter)) : dfilters.filter((f) => f.column !== k);
     if (fromList) {
       dfilters = next;
-      key = null;
+      toList();
     } else onapply(next);
   }
 
   // Esc, click-out and Cancel: a list-opened column editor goes back to the list, anything else closes. Nothing applied.
-  const dismiss = () => (key && fromList ? (key = null) : onclose());
+  const dismiss = () => (key && fromList ? toList() : onclose());
 
   let editorEl = $state<HTMLDivElement>();
 
@@ -242,7 +253,7 @@
       <p class="eyebrow">{title}</p>
       <div class="tab-group filter-columns">
         {#each COLUMNS.filter((c) => kinds.includes(c.kind)) as c (c.key)}
-          <button type="button" aria-pressed={filters.some((f) => f.column === c.key)} onclick={() => pick(c.key, true)}>
+          <button type="button" data-col={c.key} aria-pressed={dfilters.some((f) => f.column === c.key)} onclick={() => pick(c.key, true)}>
             {editorLabel(c)}
           </button>
         {/each}
@@ -293,7 +304,7 @@
     {@const kind = column(k).kind}
     <!-- Back to the filter list; nothing is applied or cleared (the editor's state is not URL state, like the list). -->
     <div class="filter-editor-head">
-      <button class="icon-button" type="button" aria-label="Back to filters" onclick={() => (key = null)}><Icon name="arrow-left" /></button>
+      <button class="icon-button" type="button" aria-label="Back to filters" onclick={toList}><Icon name="arrow-left" /></button>
       <h3 class="filter-editor-title">{editorLabel(column(k))}</h3>
     </div>
 
@@ -356,7 +367,7 @@
     <div class="filter-editor-footer">
       <button class="button button-ghost" type="button" onclick={dismiss}>Cancel</button>
       <button class="button button-secondary" type="button" onclick={() => blank(k)}>Reset</button>
-      <button class="button" type="button" disabled={!(draft && isComplete(draft)) && !existing(k)} onclick={() => applyColumn(k)}>Apply</button>
+      <button class="button" type="button" disabled={!(draft && (isComplete(draft) || (isBlank && existing(k))))} onclick={() => applyColumn(k)}>Apply</button>
     </div>
   {/if}
 </div>
