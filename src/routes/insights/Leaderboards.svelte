@@ -671,7 +671,8 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
-  .has-foot > .board:not(:has(.board-foot))::after {
+  /* Caffeine spans its own row: nothing to level with. */
+  .has-foot > .board:not(.fixed):not(:has(.board-foot))::after {
     content: '';
     display: block;
     height: 2.75rem;
