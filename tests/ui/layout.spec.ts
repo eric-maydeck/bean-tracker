@@ -8128,7 +8128,7 @@ export const STATES: State[] = [
   { name: 'tip-hit-chart-bars', viewports: 'two', path: () => '/stats',
     act: (page) => expectChartMarkOnly(page, page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) }).locator('canvas')) },
   { name: 'tip-hit-chart-line', viewports: 'two', path: () => '/insights?tab=consumption',
-    act: (page) => expectChartMarkOnly(page, page.locator('.chart-container canvas').first()) },
+    act: (page) => expectChartMarkOnly(page, page.locator('.chart-container canvas').first(), true) },
   { name: 'tip-hit-delta-bars', viewports: 'two', path: () => '/insights?tab=brewing&range=all',
     act: (page) => expectMarkOnly(page, page.locator('[data-section="brewing-temp"] .track'), '.bar', page.locator('.cell-tip:popover-open')) },
   { name: 'insights-findings-headline-clamp', path: () => '/insights?tab=insights&range=all',
@@ -11966,7 +11966,8 @@ async function expectMarkOnly(page: Page, boxes: Locator, mark: string, tip: Loc
 
 // The same on a Chart.js canvas: an unpainted spot with no mark within 10px opens no tip and keeps
 // the arrow; a mark opens the tip, still with the arrow (the help cursor is for help text and icons).
-async function expectChartMarkOnly(page: Page, canvas: Locator) {
+// `nearestX`: a line (or bar-with-line) chart opens its tip for the nearest x anywhere in the plot, and closes off the chart.
+async function expectChartMarkOnly(page: Page, canvas: Locator, nearestX = false) {
   await canvas.scrollIntoViewIfNeeded();
   await page.waitForTimeout(450); // the 400ms draw animation
   const b = (await canvas.boundingBox())!;
@@ -11990,7 +11991,11 @@ async function expectChartMarkOnly(page: Page, canvas: Locator) {
   const tip = page.locator('.chart-container .cell-tip:popover-open');
   await page.mouse.move(b.x + empty![0], b.y + empty![1]);
   await page.waitForTimeout(150);
-  await expect(tip, 'empty chart space opens no tip').toHaveCount(0);
+  if (nearestX) {
+    await expect(tip, 'empty plot space opens the nearest x\'s tip').toHaveCount(1);
+    await page.mouse.move(b.x + b.width / 2, Math.max(1, b.y - 12)); // off the chart
+    await expect(tip, 'off the chart closes it').toHaveCount(0);
+  } else await expect(tip, 'empty chart space opens no tip').toHaveCount(0);
   expect(await canvas.evaluate((c) => getComputedStyle(c).cursor), 'the arrow over empty chart space').toBe('default');
   await expect(await hoverChart(page, canvas), 'a mark opens the tip').toBeVisible();
   expect(await canvas.evaluate((c) => getComputedStyle(c).cursor), 'the arrow over a mark too').toBe('default');

@@ -88,7 +88,8 @@ export function truncTip(node: HTMLElement, text?: string | null) {
     for (let e: HTMLElement | null = node, i = 0; e && i < 4; e = e.parentElement, i++) if (clips(e)) return true;
     return false;
   };
-  const set = () => tip.update(cut() ? (text || node.textContent)?.trim() : undefined);
+  // A findings headline (data-head) has its own tip (Insights.svelte's headline tip: full text plus points): no second one.
+  const set = () => tip.update(!node.closest('[data-head]') && cut() ? (text || node.textContent)?.trim() : undefined);
   node.addEventListener('pointerenter', set); // before labelTip's own listeners: the label is current when it opens
   node.addEventListener('focus', set);
   const tip = labelTip(node, undefined);
