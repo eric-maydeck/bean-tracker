@@ -1,6 +1,6 @@
 # Floating (collapsible sticky) toolbar
 
-Built for /coffees (2026-10-24, seven tuning rounds), then /insights, now /stats (same day). Reuse it for any later page (the old BQ dashboard was out of
+Built for /coffees (2026-10-24, seven tuning rounds), then the stats page (same day; it was /insights then). Reuse it for any later page (the old BQ dashboard was out of
 scope, to be deleted). Follow the checklist and most of those rounds are not needed.
 
 ## What it is
