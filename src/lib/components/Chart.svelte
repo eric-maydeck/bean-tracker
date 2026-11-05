@@ -333,7 +333,7 @@
     const tokAt = (k: number) => (colors?.[k] ? colors[k].slice(4, -1) : seriesToken(k % 14, palette));
     const hueTok = (x: { hue?: string }) => x.hue!.slice(4, -1);
     const hasTrend = series.some((x) => x.trend);
-    const nearX = hasTrend || series.some((x) => x.dashed) || (type === 'bar' && vertical); // upright bars, alone or with a line over them
+    const nearX = hasTrend || series.some((x) => x.dashed) || (type === 'bar' && vertical && !tipLink); // upright bars, alone or with a line over them; a sticky-link chart stays on the mark (each segment has its own link)
     // Bars are a little see-through with an opaque outline (ui-rules 42), a trend line on top.
     const soft = (c: string) => `${c}b3`;
     const lineColor = themeColor(tokAt(0)); // brown up to 3 series, else the palette's first slot

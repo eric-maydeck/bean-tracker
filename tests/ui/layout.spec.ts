@@ -5240,6 +5240,17 @@ export const STATES: State[] = [
         await page.keyboard.press('Escape');
         await expect(tip).toBeHidden();
       };
+      // Each segment keeps its own link: hovering the top segment of every stack must reach more than the Before-window series.
+      const seen = new Set<string>();
+      const ageCanvas = page.locator('section.chart-panel:has(#onhand-age) canvas');
+      for (const pt of await chartPoints(ageCanvas)) {
+        await page.mouse.move(pt[0], pt[1]);
+        if (await tip.waitFor({ timeout: 60 }).then(() => true, () => false)) {
+          const href = await tip.getByRole('link', { name: /See coffees/ }).getAttribute('href');
+          seen.add(decodeURIComponent(href ?? '').replace(/\+/g, ' ').match(/rest_state=([^&]*)/)?.[1] ?? '');
+        }
+      }
+      expect([...seen].some((v) => v && !/^before/i.test(v)), `rest_state links seen: ${[...seen]}`).toBe(true);
       await check('onhand-age');
       await page.locator('section.chart-panel:has(#onhand-age)').getByRole('group', { name: 'Unit' }).getByRole('button', { name: 'Bags', exact: true }).click();
       await check('onhand-age');
