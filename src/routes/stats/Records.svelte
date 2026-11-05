@@ -46,7 +46,7 @@
     ratingsHelp: Record<Ratings, string>; personHelp: string; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void; link: (href: string) => string;
   } = $props();
   // Holder links to the Leaderboards carry the Period and filters; the rest are unchanged.
-  const into = (href?: string) => (href?.startsWith('/insights') ? pageLink(href) : href);
+  const into = (href?: string) => (href?.startsWith('/stats') ? pageLink(href) : href);
 
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
   const anchor = recordAnchor;

@@ -318,7 +318,7 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   const rowsOut = [
     grindRow(), tempRow, doseRow, ratioRow,
     groupRow('recipe', (r) => r.recipeId, (r) => r.recipeName ?? '', (r) => recipeHref(r.recipeSlug ?? '')),
-    groupRow('water', (r) => r.water?.trim() || null, (r) => r.water!, (r) => `/insights?tab=water&water=${encodeURIComponent(r.water!)}`)
+    groupRow('water', (r) => r.water?.trim() || null, (r) => r.water!, (r) => `/stats?tab=water&water=${encodeURIComponent(r.water!)}`)
   ];
 
   const filled = rowsOut.filter((r) => r.value !== null);

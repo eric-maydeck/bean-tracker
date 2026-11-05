@@ -101,13 +101,6 @@ export function coffeesPreview(v: { count: number; grams: number; status: Status
 // ponytail: a per-host constant until multi-user; then the page owner's username / public name, per their preference.
 export const ownerName = (host: string): string => (host.split(':')[0] === 'coffee.maydeck.net' ? 'Eric' : 'fuhnoo');
 
-export function statsPreview(v: { tab: 'general' | 'bq'; owner: string; opened: number; unopened: number; onHandG: number; finished: number }): Preview {
-  const numbers = join([`${v.opened} open`, `${v.unopened} unopened`, `${formatGrams(v.onHandG)} on hand`, `${v.finished} finished`]);
-  return v.tab === 'bq'
-    ? { title: 'Stats: Bean Conqueror', description: `${v.owner}'s Bean Conqueror stats\n${numbers}` }
-    : { title: 'Stats: General', description: `${v.owner}'s collection totals\n${numbers}` };
-}
-
 // A recap link: the cover (bare URL, an unknown slide) or one slide, with its card image (server/recaps/card.ts).
 // The card URL carries, for an admin's preview year, preview=1 (the card endpoint 404s it otherwise).
 export function recapPreview(r: Recap, slideId: string | undefined): Preview {

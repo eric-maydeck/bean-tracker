@@ -568,11 +568,11 @@ export function withPageWide(href: string, s: InsightsUrlState, coffees: Filter[
     const own = fromParams(u.searchParams);
     return `/coffees?${toParams({ ...own, filters: own.filters.reduce(upsertFilter, coffees) })}${u.hash}`;
   }
-  if (u.origin !== 'http://x' || u.pathname !== '/insights') return href;
+  if (u.origin !== 'http://x' || u.pathname !== '/stats') return href;
   const p = insightsParams(s), out = new URLSearchParams();
   for (const k of PAGE_WIDE) if (p.has(k)) out.set(k, p.get(k)!);
   for (const [k, v] of u.searchParams) out.set(k, v);
-  return `/insights?${out}${u.hash}`;
+  return `/stats?${out}${u.hash}`;
 }
 
 // The Coffees filter as one phrase for empty lines and chips ("Washed · Light"), '' when none is set.

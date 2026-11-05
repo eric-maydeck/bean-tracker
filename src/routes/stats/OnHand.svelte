@@ -117,7 +117,7 @@
     <Chart type="bar" vertical stacked labels={t.age.labels} values={split.before} datasetLabel={AGE_SERIES[0][1]} legend format={ageFmt} tickFormat={ageFmt} tipOf={ageTip}
       series={AGE_SERIES.slice(1).map(([k, name]) => ({ label: name, values: split[k] }))} colors={AGE_TOKENS.map((k) => `var(${k})`)} tipLink={ageLink} label="Age profile" height={260} />
     <p class="chart-note">Waiting bags by days since roast, minus freezer days</p>
-    <p class="chart-note">On hand over time: <a href={link('/insights?tab=consumption&chart=consumption-chart-on-hand#consumption-chart-on-hand')}>Consumption</a></p>
+    <p class="chart-note">On hand over time: <a href={link('/stats?tab=consumption&chart=consumption-chart-on-hand#consumption-chart-on-hand')}>Consumption</a></p>
   </section>
 {/if}
 

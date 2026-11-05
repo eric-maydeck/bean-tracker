@@ -241,7 +241,7 @@ const ratioIn = (b: BrewFact) => (b.dose && b.waterG ? `${g(b.dose)} to ${g(b.wa
 // group's latest brew is its date.
 // A holder's link to its board row's place: Leaderboards under the rank, Lowest first for the least ones.
 const boardHref = (board: Board, rank: 'rating' | 'grams', low = false) =>
-  `/insights?tab=leaderboards&rank=${rank}${low ? `&low=${board}` : ''}&chart=leaderboard-${board}#leaderboard-${board}`;
+  `/stats?tab=leaderboards&rank=${rank}${low ? `&low=${board}` : ''}&chart=leaderboard-${board}#leaderboard-${board}`;
 const lastDate = (board: Board, c: RecCtx, key: string) =>
   boardBrews(board, c.brews).filter((b) => BREW_KEY[board](b) === key).map((b) => b.localDate).sort().pop()!;
 // `by`: the Score the groups rank by. The favorite/least variety and producer records pass `min3` (the raw mean with small

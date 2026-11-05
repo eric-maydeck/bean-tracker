@@ -26,7 +26,7 @@ export function seeMoreHref(year: number, tab: Tab, extra: Record<string, string
   q.set('range', String(year));
   q.set('caffeine', 'all');
   for (const [k, v] of Object.entries(extra)) q.set(k, v);
-  return `/insights?${q}`;
+  return `/stats?${q}`;
 }
 
 export function recapHref(year: number, s: RecapUrlState): string {

@@ -26,7 +26,7 @@ describe('recapsUrl', () => {
   });
   it('seeMoreHref: tab, the year, decaf included, extras', () => {
     const u = new URL(seeMoreHref(2026, 'leaderboards', { rank: 'grams' }), 'http://x');
-    expect(u.pathname).toBe('/insights');
+    expect(u.pathname).toBe('/stats');
     expect(Object.fromEntries(u.searchParams)).toEqual({ tab: 'leaderboards', range: '2026', caffeine: 'all', rank: 'grams' });
     expect(new URL(seeMoreHref(2026, 'overview'), 'http://x').searchParams.has('tab')).toBe(false);
   });

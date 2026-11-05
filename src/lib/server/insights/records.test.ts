@@ -278,9 +278,9 @@ describe('variety and producer records', () => {
     expect(RECORDS.find((r) => r.key === 'leastVariety')!.rating).toBe(true);
   });
   it('holder links to the board: rank set, low for the least ones', () => {
-    expect(run('leastVariety', rich, richBags)!.holder.href).toBe('/insights?tab=leaderboards&rank=rating&low=varieties&chart=leaderboard-varieties#leaderboard-varieties');
+    expect(run('leastVariety', rich, richBags)!.holder.href).toBe('/stats?tab=leaderboards&rank=rating&low=varieties&chart=leaderboard-varieties#leaderboard-varieties');
     const prod = rich.map((b) => ({ ...b, producer: b.variety }));
-    expect(run('mostProducer', prod, richBags)!.holder.href).toBe('/insights?tab=leaderboards&rank=grams&chart=leaderboard-producers#leaderboard-producers');
+    expect(run('mostProducer', prod, richBags)!.holder.href).toBe('/stats?tab=leaderboards&rank=grams&chart=leaderboard-producers#leaderboard-producers');
   });
 });
 

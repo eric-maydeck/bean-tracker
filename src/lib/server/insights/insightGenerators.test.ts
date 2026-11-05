@@ -179,7 +179,7 @@ describe('group effects', () => {
     const f = gen('groupDelta:roastLevel:Light', brews, bs)!;
     // Light 6 vs the 8 other bags' 8: 2.0 (vs all 12, itself included, it read 1.3).
     expect(f).toMatchObject({ theme: 'taste', kind: 'number', strength: 'solid', value: '-2.0', headline: 'Light roasts rate 2.0 lower', sample: '4 bags' });
-    expect(f.href).toBe('/insights?tab=leaderboards&open=roast');
+    expect(f.href).toBe('/stats?tab=leaderboards&open=roast');
   });
   it('a group under 3 bags is skipped', () => expect(gen('groupDelta:roastLevel:Light', brews.slice(0, 18), bs.slice(0, 6).map((x, i) => ({ ...x, roastLevel: i < 2 ? 'Light' : 'Medium' })))).toBeNull());
   it('a weak effect is too early and carries the multiple-comparisons caveat', () => {
@@ -395,7 +395,7 @@ describe('this period vs previous', () => {
   const cur = side(16, 8, 'Kenya', 'V60', '2026-09-10'), prev = side(10, 7, 'Ethiopia', 'Origami', '2026-08-10');
   it('brews, bags, top origin, gear share and same-bag rating', () => {
     const f = gen('periodVsPrevious', cur, [], { prevBrews: prev })!;
-    expect(f).toMatchObject({ theme: 'habits', kind: 'versus', z: null, headline: '60% more brews than the comparison period', href: '/insights?tab=overview' });
+    expect(f).toMatchObject({ theme: 'habits', kind: 'versus', z: null, headline: '60% more brews than the comparison period', href: '/stats?tab=overview' });
     expect(f.sides).toEqual([{ label: 'This period', value: '64 brews' }, { label: 'Comparison', value: '40 brews' }]);
     expect(f.body).toBe('4 bags brewed vs 4. Top origin Kenya (was Ethiopia). V60 on 100% of brews (was Origami 100%). The same bags rate +1.0 vs then.');
   });
@@ -446,7 +446,7 @@ describe('same-bag versus', () => {
   const solo = seq(99, Array(20).fill(9), '2026-07-03', { dripper: 'V60' }); // only V60: left out
   it('top 2 drippers on the bags brewed with both', () => {
     const f = gen('sameBagVersus:dripper', [...mk(6, [8.2, 8.4], [7.6, 7.8]), ...solo, ...seq(98, [8, 8, 8], '2026-07-04', { dripper: 'Kalita' })])!;
-    expect(f).toMatchObject({ theme: 'gear', kind: 'versus', strength: 'solid', value: '+0.6', headline: 'V60 beats Origami by 0.6', sample: 'Same bags · 6 bags, 120 brews', href: '/insights?tab=leaderboards&open=dripper' });
+    expect(f).toMatchObject({ theme: 'gear', kind: 'versus', strength: 'solid', value: '+0.6', headline: 'V60 beats Origami by 0.6', sample: 'Same bags · 6 bags, 120 brews', href: '/stats?tab=leaderboards&open=dripper' });
     expect(f.sides).toEqual([{ label: 'V60', value: '+0.3' }, { label: 'Origami', value: '-0.3' }]);
   });
   it('a confident dead heat is a finding', () =>
@@ -1051,7 +1051,7 @@ describe('pour findings', () => {
     const by = (k: string) => fs.find((f) => f.key === k)!;
     expect(by('pours:recipe:1').headline).toBe('R1 rates 0.6 above your other brews of the same bags');
     expect(by('pours:recipe:1').sample).toBe('12 brews, 6 bags');
-    expect(by('pours:recipe:1').href).toBe('/insights?tab=pours&chart=pours-recipes#pours-recipes');
+    expect(by('pours:recipe:1').href).toBe('/stats?tab=pours&chart=pours-recipes#pours-recipes');
     expect(fs.filter((f) => f.key.startsWith('pours:recipe:')).length).toBe(1); // the mirror pair is one card
     expect(by('pours:agitation:process:Washed').headline).toBe('High agitation beats low on Washed coffees by 1.2');
     expect(fs.every(finite)).toBe(true);

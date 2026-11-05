@@ -41,7 +41,7 @@ describe('personality', () => {
     expect(personality(year())!.context).toBe('Washed coffee, mostly the CT62, 71d of rest in Oct. Decaf after dark, 11 brewers and 91.3°C water.');
   });
   it('slide shape', () => {
-    expect(personality(year())).toMatchObject({ id: 'you', tone: 'cream', wide: true, link: { section: 'Highlights · Insights', href: '/insights?tab=insights&range=2026&caffeine=all' } });
+    expect(personality(year())).toMatchObject({ id: 'you', tone: 'cream', wide: true, link: { section: 'Highlights · Insights', href: '/stats?tab=insights&range=2026&caffeine=all' } });
   });
   it('no words = Your coffee year', () => {
     const y = year({ roast: true });

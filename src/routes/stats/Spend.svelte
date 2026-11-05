@@ -137,7 +137,7 @@
         series={bars.rest} colors={bars.colors} height={260} />
     {/if}
     <p class="chart-note" data-switched-note>{note}<br>{partial}</p>
-    <p class="chart-note">By roaster or coffee: <a href={link('/insights?tab=leaderboards&rank=spend&chart=leaderboard-roasters#leaderboard-roasters')}>Leaderboards</a></p>
+    <p class="chart-note">By roaster or coffee: <a href={link('/stats?tab=leaderboards&rank=spend&chart=leaderboard-roasters#leaderboard-roasters')}>Leaderboards</a></p>
   </section>
 
   {#if vm.points.length}

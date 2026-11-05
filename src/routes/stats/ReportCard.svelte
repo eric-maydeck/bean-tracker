@@ -93,7 +93,7 @@
   </div>
   <ShowMore count={rows.length} n={top} set={(v) => choose({ rcTop: v })} />
 </div>
-<p class="chart-note">Spend and $/g by origin, process and roast: <a href={link('/insights?tab=leaderboards&rank=ppg')}>Leaderboards</a></p>
+<p class="chart-note">Spend and $/g by origin, process and roast: <a href={link('/stats?tab=leaderboards&rank=ppg')}>Leaderboards</a></p>
 
 <style>
   .rc {

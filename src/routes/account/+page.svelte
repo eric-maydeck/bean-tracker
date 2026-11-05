@@ -152,7 +152,7 @@
         </ul>
       {/if}
       <p class="bq-links">
-        <a class="button button-secondary" href="/insights">See your stats</a>
+        <a class="button button-secondary" href="/stats">See your stats</a>
         {#if form && 'changes' in form && form.changes && form.changes.untracked.total > 0}
           <a class="button button-ghost" href="#not-tracked">Review untracked beans</a>
         {/if}

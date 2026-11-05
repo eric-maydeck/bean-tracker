@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recap } from './server/recaps/recap';
-import { DESCRIPTION_MAX, recapPreview, RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, statsPreview, subscriptionsPreview, waterPreview } from './linkPreview';
+import { DESCRIPTION_MAX, recapPreview, RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, subscriptionsPreview, waterPreview } from './linkPreview';
 
 const kenya = { roaster: 'The Picky Chemist', coffee_name: 'Kenya AA Inoi Kianderi', origin: 'Kenya', processing: 'Washed', amount_g: 250, roast_date: '2026-10-03' };
 
@@ -143,15 +143,10 @@ describe('coffeesPreview', () => {
   });
 });
 
-describe('ownerName / statsPreview', () => {
+describe('ownerName', () => {
   it('names the owner from the host', () => {
     expect(ownerName('coffee.maydeck.net')).toBe('Eric');
     for (const h of ['fuhnoo.coffee', 'localhost:4173', '192.0.2.5:5173']) expect(ownerName(h)).toBe('fuhnoo');
-  });
-  it('stats previews: summary then numbers', () => {
-    const v = { owner: 'Eric', opened: 3, unopened: 5, onHandG: 1500, finished: 40 };
-    expect(statsPreview({ ...v, tab: 'general' })).toEqual({ title: 'Stats: General', description: "Eric's collection totals\n3 open · 5 unopened · 1.5kg on hand · 40 finished" });
-    expect(statsPreview({ ...v, owner: 'fuhnoo', tab: 'bq' })).toEqual({ title: 'Stats: Bean Conqueror', description: "fuhnoo's Bean Conqueror stats\n3 open · 5 unopened · 1.5kg on hand · 40 finished" });
   });
 });
 

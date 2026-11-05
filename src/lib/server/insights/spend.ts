@@ -12,7 +12,7 @@ import { leaderboard, listHref } from './leaderboards';
 import { toParams } from '$lib/coffeeViewState';
 import type { Filter } from '$lib/coffeeFilters';
 import type { Multi } from './insightGenerators';
-import type { RcRow } from '../../../routes/insights/reportCard';
+import type { RcRow } from '../../../routes/stats/reportCard';
 
 export interface Plan { id: number; name: string; roaster: string; price: number | null; paused: boolean }
 export interface SpendCtx {

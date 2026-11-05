@@ -114,9 +114,9 @@ function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, 
   return { ...f, z, strength, ...(early ? { ...settleText(z, n, unit, solidBar(tests)), caveat: caveatEarly ?? f.caveat } : {}) };
 }
 
-const LB = '/insights?tab=leaderboards';
-const DIAL_IN = '/insights?tab=brewing#brewing-dialin'; // rescues: the Brewing tab's Dial-in chart
-const SETTLE: Record<SettleDim, string> = { roastLevel: '/insights?tab=brewing#brewing-settle-roast', processGroup: '/insights?tab=brewing#brewing-settle-process', dripper: '/insights?tab=brewing#brewing-settle-dripper', water: '/insights?tab=brewing#brewing-settle-water' }; // dialinBy: its chart
+const LB = '/stats?tab=leaderboards';
+const DIAL_IN = '/stats?tab=brewing#brewing-dialin'; // rescues: the Brewing tab's Dial-in chart
+const SETTLE: Record<SettleDim, string> = { roastLevel: '/stats?tab=brewing#brewing-settle-roast', processGroup: '/stats?tab=brewing#brewing-settle-process', dripper: '/stats?tab=brewing#brewing-settle-dripper', water: '/stats?tab=brewing#brewing-settle-water' }; // dialinBy: its chart
 
 const dialinCurve: Generator = (c) => {
   const all = demeaned(counted(c));
@@ -353,7 +353,7 @@ const backlogRunway: Generator = (c) => {
     key: 'backlogRunway', whole: true, theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${daysToClear} days`,
     value: `${daysToClear} days`,
     body: `At ${Math.round(perDay)}g/day. Bought ${formatGrams(bought)} vs brewed ${formatGrams(brewed)} in this period.`,
-    sample: `${days} days`, href: '/insights?tab=consumption', z: null, strength: null,
+    sample: `${days} days`, href: '/stats?tab=consumption', z: null, strength: null,
     ...details(
       ['Most on hand', [...held].sort((x, y) => y.g - x.g || x.b.name.localeCompare(y.b.name)).map((x) => detail(x.b.name, formatGrams(x.g), coffeeHref(x.b)))],
       // Oldest off roast still on hand, rest net of freezer time.
@@ -391,7 +391,7 @@ const rVerdict = (r: number, n: number): 'none' | 'unclear' | 'up' | 'down' => {
   const b = rBand(n, r);
   return Math.abs(r) + b < WEAK_R ? 'none' : Math.abs(r) < b ? 'unclear' : r > 0 ? 'up' : 'down';
 };
-const HABITS = '/insights?tab=habits';
+const HABITS = '/stats?tab=habits';
 const DAY_NAMES = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays'];
 
 // ---- Habits ----
@@ -485,7 +485,7 @@ const periodVsPrevious: Generator = (c) => {
     key: 'periodVsPrevious', theme: 'habits', kind: 'versus',
     headline: `${Math.round(Math.abs(change) * 100)}% ${change < 0 ? 'fewer' : 'more'} brews than the comparison period`,
     sides: [{ label: 'This period', value: plural(c.brews.length, 'brew') }, { label: 'Comparison', value: plural(prev.length, 'brew') }],
-    body: lines.join(' '), sample: `${c.brews.length + prev.length} brews`, href: '/insights?tab=overview', z: null, strength: null
+    body: lines.join(' '), sample: `${c.brews.length + prev.length} brews`, href: '/stats?tab=overview', z: null, strength: null
   };
 };
 
@@ -790,7 +790,7 @@ const backlogWaitMyth: Generator = (c) => {
     key: 'backlogWaitMyth', theme: 'money',
     headline: { none: "Waiting in the backlog doesn't hurt", unclear: 'No clear link between backlog wait and rating yet', up: 'Bags that wait rate higher', down: 'Bags that wait rate lower' }[rVerdict(r, pts.length)],
     value: rValue(r, pts.length), body: `Across ${pts.length} bags, days from roast to first brew and the bag's rating ${moves(r)}.`,
-    sample: `${pts.length} bags`, href: '/insights?tab=consumption'
+    sample: `${pts.length} bags`, href: '/stats?tab=consumption'
   });
 };
 
@@ -839,7 +839,7 @@ const calibration: Generator = (c) => {
     value: `${a.s.toFixed(2)} → ${b.s.toFixed(2)}`,
     body: `Monthly rating spread (SD) went from ${a.s.toFixed(2)} in ${monthLabel(a.m)} to ${b.s.toFixed(2)} in ${monthLabel(b.m)}.` +
       (streak >= 10 ? ` ${streak} brews in a row rated.` : ''),
-    series: months.map((x) => ({ label: monthLabel(x.m), value: x.s })), sample: plural(months.length, 'month'), href: '/insights?tab=overview'
+    series: months.map((x) => ({ label: monthLabel(x.m), value: x.s })), sample: plural(months.length, 'month'), href: '/stats?tab=overview'
   });
 };
 
@@ -980,7 +980,7 @@ const rescuedBags: Generator = (c) => {
 
 // ---- Pour findings (Pours tab): same-bag paired figures only, kept to POUR_FINDINGS_MAX in insightsTab ----
 export const POUR_FINDINGS_MAX = 3, POUR_MIN_DELTA = 0.3;
-const POURS = '/insights?tab=pours';
+const POURS = '/stats?tab=pours';
 // The per-bag test's z, or null when it points opposite to the bar's delta (the tab grades that Too early): no finding.
 const testZ = (x: { delta: number | null; z?: number | null }) => (x.z != null && x.delta !== null && Math.sign(x.z) === Math.sign(x.delta) ? x.z : null);
 const poursRecipe: Generator = (c) => {

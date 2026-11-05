@@ -78,8 +78,8 @@
 </nav>
 
 <nav class="recap-nav" class:solid={onPoster()} style:--pfg={pfg || undefined} aria-label="Recaps">
-  <a href="/insights?tab=recaps" onclick={back}>Back</a>
-  <a href="/insights?tab=recaps">All recaps</a>
+  <a href="/stats?tab=recaps" onclick={back}>Back</a>
+  <a href="/stats?tab=recaps">All recaps</a>
 </nav>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->

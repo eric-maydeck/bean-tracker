@@ -806,7 +806,7 @@ describe('withPageWide (finding links)', () => {
   });
   const s = { range: 'all', compare: 1, ratings: 'all', dial: 'all', caffeine: 'decaf', roast: 'Light', roaster: 'Sey', tab: 'insights', theme: 'taste', avg: 'raw' } as const;
   it('carries the page-wide view under the link; its own params win; tab-local state stays behind', () => {
-    const href = withPageWide('/insights?tab=leaderboards&rank=like&open=coffees&ratings=current', s);
+    const href = withPageWide('/stats?tab=leaderboards&rank=like&open=coffees&ratings=current', s);
     expect(Object.fromEntries(new URL(href, 'http://x').searchParams)).toEqual({
       range: 'all', compare: '1', ratings: 'current', dial: 'all', caffeine: 'decaf', roast: 'Light', roaster: 'Sey',
       tab: 'leaderboards', rank: 'like', open: 'coffees'
@@ -815,7 +815,7 @@ describe('withPageWide (finding links)', () => {
     expect(parseInsightsUrl(new URL(href, 'http://x').searchParams, YEARS)).toMatchObject({ range: 'all', caffeine: 'decaf', dial: 'all', tab: 'leaderboards', rank: 'like' });
   });
   it('defaults stay bare; other paths and #anchors are untouched', () => {
-    expect(withPageWide('/insights?tab=consumption', {})).toBe('/insights?tab=consumption');
+    expect(withPageWide('/stats?tab=consumption', {})).toBe('/stats?tab=consumption');
     expect(withPageWide('/coffees/x', s)).toBe('/coffees/x');
     expect(withPageWide('#insight-a', s)).toBe('#insight-a');
   });
@@ -851,7 +851,7 @@ describe('brew filters', () => {
   });
   it("dose keeps What-if's meaning", () => expect(p('dose=12&brewDose=15')).toMatchObject({ dose: 12, brewDose: '15' }));
   it('withPageWide carries brew filters to /insights links, not /coffees', () => {
-    expect(withPageWide('/insights?tab=gear', { dripper: 'V60' })).toContain('dripper=V60');
+    expect(withPageWide('/stats?tab=gear', { dripper: 'V60' })).toContain('dripper=V60');
     expect(withPageWide('/coffees?view=list', { dripper: 'V60' })).not.toContain('dripper');
   });
   it('BREW_FILTERS_ON covers every tab', () => {
