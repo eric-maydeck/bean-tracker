@@ -1,6 +1,6 @@
 # Floating (collapsible sticky) toolbar
 
-Built for /coffees (2026-10-24, seven tuning rounds), then /insights (same day). Reuse it for any later page (/stats is out of
+Built for /coffees (2026-10-24, seven tuning rounds), then /insights, now /stats (same day). Reuse it for any later page (the old BQ dashboard was out of
 scope, to be deleted). Follow the checklist and most of those rounds are not needed.
 
 ## What it is
@@ -17,7 +17,7 @@ The page's control block (filters, view switches, search, buttons) pinned to the
 ## Component: `src/lib/components/CollapsibleBar.svelte`
 
 ```svelte
-<CollapsibleBar>                                   <!-- /insights: <CollapsibleBar desktopPinned={barHeight}> -->
+<CollapsibleBar>                                   <!-- /stats: <CollapsibleBar desktopPinned={barHeight}> -->
   {#snippet children()} ... full bar markup, no caret ... {/snippet}
   {#snippet summary()} 296 coffees · Urgency ↓ {/snippet}
 </CollapsibleBar>
@@ -25,7 +25,7 @@ The page's control block (filters, view switches, search, buttons) pinned to the
 
 - `children`: the full bar, a plain snippet. The component owns the mini row's expand caret and the pull tab (CSS layout, no measuring).
 - `summary`: one line of text for the mini row. Ellipsis, never wraps.
-- `desktopPinned` (px): **inner mode** for a page that pins only part of the block on desktop (/insights: `.filter-bar`, whose height is
+- `desktopPinned` (px): **inner mode** for a page that pins only part of the block on desktop (/stats: `.filter-bar`, whose height is
   the value). The wrappers become `display: contents` on desktop and add no chrome on phones' in-flow bar; the page keeps its own
   sticky part, and the block (heading to Jump to chips) is what collapses on phones. The page makes its own sticky part
   `position: static` in phone mode.
@@ -75,8 +75,8 @@ The page's control block (filters, view switches, search, buttons) pinned to the
 - **Grid auto-placement**: a second item in the same explicit column falls to the next row; give both items `grid-row: 1`.
 - **Spacer must follow the content while expanded**: tab switch, Reset, filters or custom dates change the block's height; the spacer is as tall as the block's in-flow height, so the page under the overlay never jumps.
 - **Sticky inside a one-child wrapper** never sticks (its containing block is the wrapper): the bar is a direct child of the page, the spacer is a sibling.
-- **CSS leaked to other pages**: a phone rule on `.toolbar .tab-group button` also hit the /insights and /stats `.toolbar` (and `.cbar .toolbar`
-  later leaked into /insights: use a page-only class such as `.coffees-toolbar`). Scope every bar rule under `.cbar` or a page-only class.
+- **CSS leaked to other pages**: a phone rule on `.toolbar .tab-group button` also hit the /stats `.toolbar` (and `.cbar .toolbar`
+  later leaked into /stats: use a page-only class such as `.coffees-toolbar`). Scope every bar rule under `.cbar` or a page-only class.
 - Rotating to a width > 640 and height > 450 (e.g. 909x480) is not phone mode: the bar folds. Rotation tests use the real phone sizes.
 
 ## Tests to copy (`tests/ui/layout.spec.ts`, helpers `tests/ui/collapsibleBar.ts`)
@@ -94,8 +94,8 @@ The page's control block (filters, view switches, search, buttons) pinned to the
 
 ## Rollout
 
-- /coffees: done (plain mode). /insights: done (inner mode, `desktopPinned`); the Jump to chips are lifted into the page via each tab's
-  `jumpLinks` module export so they sit inside the block. /stats: out of scope (to be deleted).
+- /coffees: done (plain mode). /stats: done (inner mode, `desktopPinned`); the Jump to chips are lifted into the page via each tab's
+  `jumpLinks` module export so they sit inside the block.
 - New page: wrap its bar in `CollapsibleBar`, write a `summary`, delete the page's own sticky CSS and `scrollPaddingTop` / hash effect (the
   component owns them), keep expanded/collapsed out of the URL, scope all rules under `.cbar*` or a page-only class.
 - Delete or adapt `max-height: 450px` landscape rules in the page's bar and its `expectStickyBar` use (phones show the mini row).
