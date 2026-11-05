@@ -152,7 +152,7 @@
       ? { title: r.label, rows: [[setting(AVG_LABEL[boardAvg(b, avg)]), `${r.value.toFixed(1)} ± ${r.se.toFixed(1)}`]], note: '± is the standard error, how sure this average is. The true one is usually within it.' }
     : null;
   // Rating boards whose rows differ by less than their noise (withinNoise), named in one line under the boards.
-  const noisy = $derived(rank === 'rating' ? BANDS.flat().filter((b) => withinNoise(boards[b])) : []);
+  const noisy = $derived(rank === 'rating' ? BANDS.flat().filter((b) => b !== 'caffeine' && withinNoise(boards[b])) : []);
   const names = (bs: Board[]) => {
     const xs = bs.map((b) => BOARD_NOUN[b]);
     const s = xs.length < 2 ? xs[0] : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`;
@@ -278,8 +278,7 @@
   {@const pick = switchable ? viewOf(b) : undefined}
   {@const view = pick || fixed ? 'time' : 'list'}
   <!-- Caffeine is always Over time, in a fixed-height chart, and spans its row (CSS): no List, Lowest first or Expand. -->
-  {@const spans = fixed}
-  {@const wide = pick === 'wide' && !spans}
+  {@const wide = pick === 'wide'}
   <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:timeview={view === 'time'} class:fixed class:wide data-board={b} style:--rows={size}
     data-lines={view === 'time' ? (isOpen ? pool.length : Math.min(size, pool.length)) : undefined}>
     <div class="board-head">
@@ -321,9 +320,9 @@
           <div class="time-chart">
             <!-- In the chart's top-right corner, not the head: the head is the same in List and Over time and never wraps for it.
                  Only where the band has columns to span (CSS hides it on a phone). -->
-            {#if !spans}<button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
+            {#if !fixed}<button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
               onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>{/if}
-            <Chart type="line" padTop={roomy.current && !spans ? 36 : 0} labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
+            <Chart type="line" padTop={roomy.current && !fixed ? 36 : 0} labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
               series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={fixed ? 200 : 'fill'} />
           </div>
           <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === pool.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `${isLow ? 'lowest' : 'top'} ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}{#if fixed && ordered.some((r) => r.sample?.small)}{' · '}Few brews: {ordered.filter((r) => r.sample?.small).map((r) => r.label).join(', ')}{/if}</p>
@@ -359,9 +358,9 @@
       {/if}
       {#if isLow && !unranked(b) && ordered.length < rows.length}<p class="chart-note">Groups with one bag are left out.</p>{/if}
     </div>
-    {#if bandNote(b) && rows.length && !unranked(b) && (!fixed || small[b])}
+    {#if bandNote(b) && rows.length && !unranked(b) && !fixed}
       <!-- The hidden twin holds the band's longest line, so a card without the note (or with a shorter one) is as tall. -->
-      <p class="chart-note small-note">{#if !fixed}<span class="twin" aria-hidden="true">{bandNote(b)}</span>{/if}
+      <p class="chart-note small-note"><span class="twin" aria-hidden="true">{bandNote(b)}</span>
         {#if small[b]}<span class="real">{smallLine(b).lead}<button class="link-like" onclick={() => choose({ avg: showingAll(b) ? undefined : rank === 'like' ? 'raw' : SHOW_ALL_AVG })}>{smallLine(b).show}</button></span>{/if}</p>
     {/if}
     <!-- The footer exists only for a Show all button. A band with one reserves that space in its other cards (.has-foot,

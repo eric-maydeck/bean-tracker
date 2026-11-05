@@ -5,7 +5,7 @@ import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
 } from '$lib/server/insights/time';
-import { RATINGS_SETTLED_FROM, countsForRating, roastMix } from '$lib/server/insights/ratings';
+import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
 import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboards, pageFilters, smallHidden } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';

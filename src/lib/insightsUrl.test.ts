@@ -484,6 +484,8 @@ describe('highlights params', () => {
       .toEqual({ roast: 'wide', water: 'time' });
     // Caffeine is always Over time: its views entry is ignored.
     expect(parse('views=caffeine-time').views).toBeUndefined();
+    expect(parse('open=caffeine').open).toBeUndefined(); // no Show all on the Caffeine card
+    expect(parse('low=caffeine,water').low).toEqual(['water']);
     expect(parse('views=caffeine-time-wide,water-time').views).toEqual({ water: 'time' });
     expect(parse('views=roast-bars').views).toBeUndefined();
     expect(parse('views=junk').views).toBeUndefined();

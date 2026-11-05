@@ -420,8 +420,9 @@ export function parseInsightsUrl(
     // Tab-specific choices are kept on every tab so they survive a tab switch (each is only
     // used on its own tab); a by the range doesn't offer is dropped.
     rank: pickOne(p, 'rank', RANKS),
-    open: parseList(p, 'open', BOARDS),
-    low: parseList(p, 'low', BOARDS),
+    // The Caffeinated vs. decaf card has no Show all or Lowest first: a stale open/low for it is dropped (like views).
+    open: parseList(p, 'open', BOARDS.filter((b) => b !== 'caffeine')),
+    low: parseList(p, 'low', BOARDS.filter((b) => b !== 'caffeine')),
     views: parseViews(p.get('views')),
     measure: pickOne(p, 'measure', MEASURES),
     unit: pickOne(p, 'unit', UNITS),
