@@ -1854,14 +1854,14 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, RegExp | null][] = [
-        ['/stats?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^Avg rating · All time\n🥇 \d\.\d · .+\n🥈 /],
-        ['/stats?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time\n.+ · .+/],
-        ['/stats?tab=records&range=all&chart=records-top-coffees', 'Insights: Top coffees', /^Avg rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
-        ['/stats?tab=records&range=all&chart=records-top-brews', 'Insights: Top brews', /^Rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
-        ['/stats?tab=records&range=all&chart=record-nightOwl', 'Insights: Night owl', /^All time\n.+\n/],
-        ['/stats?tab=habits&range=all&chart=habits-hour', 'Insights: Habits', /^When and how fuhnoo brews\nAll time\n[\d,]+ brews/],
-        ['/stats?chart=leaderboard-origins', 'Insights: Overview', /^fuhnoo's brewing at a glance\n/],
-        ['/stats?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Insights: Leaderboards', /^fuhnoo's top roasters, coffees, origins and gear\nAll time\n[\d,]+ brews/]
+        ['/stats?tab=leaderboards&range=all&chart=leaderboard-origins', 'Stats: Origins', /^Avg rating · All time\n🥇 \d\.\d · .+\n🥈 /],
+        ['/stats?tab=records&range=all&chart=records-taste', 'Stats: Taste', /^All time\n.+ · .+/],
+        ['/stats?tab=records&range=all&chart=records-top-coffees', 'Stats: Top coffees', /^Avg rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
+        ['/stats?tab=records&range=all&chart=records-top-brews', 'Stats: Top brews', /^Rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
+        ['/stats?tab=records&range=all&chart=record-nightOwl', 'Stats: Night owl', /^All time\n.+\n/],
+        ['/stats?tab=habits&range=all&chart=habits-hour', 'Stats: Habits', /^When and how fuhnoo brews\nAll time\n[\d,]+ brews/],
+        ['/stats?chart=leaderboard-origins', 'Stats: Overview', /^fuhnoo's brewing at a glance\n/],
+        ['/stats?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Stats: Leaderboards', /^fuhnoo's top roasters, coffees, origins and gear\nAll time\n[\d,]+ brews/]
       ];
       for (const [path, title, desc] of cases) {
         const t = await previewTags(page, path);
@@ -3976,7 +3976,7 @@ export const STATES: State[] = [
     ];
   })(),
   {
-    // On /recipes the Recipes nav item is current, between Insights and Water (desktop nav, phone More panel).
+    // On /recipes the Recipes nav item is current, between Stats and Water (desktop nav, phone More panel).
     name: 'recipes-nav', viewports: 'two',
     path: () => '/recipes',
     act: async (page) => {
@@ -3987,7 +3987,7 @@ export const STATES: State[] = [
         const links = page.locator('.nav-links > a');
         await expect(links.filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
         const names = await links.allTextContents();
-        expect(names.map((n) => n.trim()).slice(names.indexOf('Insights'), names.indexOf('Insights') + 3)).toEqual(['Insights', 'Recipes', 'Water']);
+        expect(names.map((n) => n.trim()).slice(names.indexOf('Stats'), names.indexOf('Stats') + 3)).toEqual(['Stats', 'Recipes', 'Water']);
       }
     }
   },
@@ -4895,7 +4895,7 @@ export const STATES: State[] = [
     name: 'insights-spend-preview', viewports: 'two', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const t = await previewTags(page, '/stats?tab=spend&range=12m');
-      expect(t['og:title']).toBe('Insights: Spend');
+      expect(t['og:title']).toBe('Stats: Spend');
       expect(t['og:description']).toMatch(/^What fuhnoo spends on coffee, and on what\n.+\nSpent \$[\d,.]+ · [\d,.]+ bags?( · \$\d+\.\d\d\/g avg)?$/);
     }
   },
@@ -5260,7 +5260,7 @@ export const STATES: State[] = [
     name: 'insights-onhand-preview', viewports: 'two', path: () => '/stats?tab=onhand',
     act: async (page) => {
       const t = await previewTags(page, '/stats?tab=onhand');
-      expect(t['og:title']).toBe('Insights: On hand');
+      expect(t['og:title']).toBe('Stats: On hand');
       expect(t['og:description']).toMatch(/^What's on fuhnoo's shelf right now\n.+\n\d+ bags? waiting · .+ · \$[\d,.]+ tied up$/);
     }
   },
@@ -7387,7 +7387,7 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
       const label = ((await page.locator('#record-nightOwl .stat-label').textContent()) ?? '').replace(/\s*·.*$/s, '').trim();
-      expect((await previewTags(page, '/stats?tab=records&range=all&chart=record-nightOwl'))['og:title']).toBe(`Insights: ${label}`);
+      expect((await previewTags(page, '/stats?tab=records&range=all&chart=record-nightOwl'))['og:title']).toBe(`Stats: ${label}`);
     } },
   { name: 'insights-records-anchor', path: () => '/stats?tab=records#record-nightOwl',
     act: async (page) => {
