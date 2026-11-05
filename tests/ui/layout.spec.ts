@@ -5160,6 +5160,9 @@ export const STATES: State[] = [
       // A bar chart with a trend line over it (Brewed over time): same.
       await page.goto('/insights?tab=consumption&range=all');
       await check(page.locator('section.chart-panel:has(#consumption-chart-brewed) canvas'));
+      // A bar-only chart (Brews by hour): a bar's whole column opens its tip.
+      await page.goto('/insights?tab=habits&range=all');
+      await check(page.locator('section.chart-panel:has(#habits-hour) canvas'));
     }
   },
   {
