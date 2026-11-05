@@ -277,7 +277,7 @@ describe('people', () => {
   });
 });
 
-describe('shared readers (/insights and /stats)', () => {
+describe('shared readers (/stats)', () => {
   const q = (s: string) => new URLSearchParams(s);
   it('parsePeople: only above one person', () => {
     expect(parsePeople(q('people=person'), 2)).toBe('person');
@@ -850,7 +850,7 @@ describe('brew filters', () => {
     expect(insightsParams({}).toString()).toBe('');
   });
   it("dose keeps What-if's meaning", () => expect(p('dose=12&brewDose=15')).toMatchObject({ dose: 12, brewDose: '15' }));
-  it('withPageWide carries brew filters to /insights links, not /coffees', () => {
+  it('withPageWide carries brew filters to /stats links, not /coffees', () => {
     expect(withPageWide('/stats?tab=gear', { dripper: 'V60' })).toContain('dripper=V60');
     expect(withPageWide('/coffees?view=list', { dripper: 'V60' })).not.toContain('dripper');
   });

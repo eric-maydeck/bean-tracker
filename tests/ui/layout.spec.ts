@@ -861,9 +861,9 @@ export const STATES: State[] = [
       await expect.poll(() => page.url()).toContain('slide=');
       await page.evaluate(() => { history.back = () => {}; }); // a hijacked Back would call this and go nowhere
       await links.first().click();
-      await expect(page).toHaveURL(/\/insights\?tab=recaps/);
+      await expect(page).toHaveURL(/\/stats\?tab=recaps/);
       await gotoReady(page, here);
-      await expect(links.nth(1)).toHaveAttribute('href', '/insights?tab=recaps');
+      await expect(links.nth(1)).toHaveAttribute('href', '/stats?tab=recaps');
       const n = await page.locator('.recap-reel > section.slide').count();
       for (let i = 0; i <= n; i++) {
         await page.locator('.recap-progress button').nth(i).click();
@@ -1115,7 +1115,7 @@ export const STATES: State[] = [
       await expect.poll(() => page.evaluate(() => (window as unknown as { shared?: string[] }).shared?.[0] ?? '')).toMatch(new RegExp(`/recaps/${recapYear() - 1}\\?slide=poster$`));
     } },
   // Recaps tab and index: one tile per open year plus the admin's current-year preview (the thin seed has the prior year).
-  { name: 'insights-recaps', path: () => '/insights?tab=recaps',
+  { name: 'insights-recaps', path: () => '/stats?tab=recaps',
     act: async (page) => {
       await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
       await expect(page.locator('.recap-tile .badge')).toHaveText(['Preview']);
@@ -1126,22 +1126,22 @@ export const STATES: State[] = [
       else expect(await page.getByRole('combobox', { name: 'View' }).locator('option').allTextContents()).toContain('Recaps');
     } },
   // The Period picks the years: one year, and a range with none (an empty line naming it, not a blank panel).
-  { name: 'insights-recaps-period', path: () => `/insights?tab=recaps&range=${recapYear() - 1}`,
+  { name: 'insights-recaps-period', path: () => `/stats?tab=recaps&range=${recapYear() - 1}`,
     act: async (page) => {
       await expectRecapTiles(page, [String(recapYear() - 1)]);
       await expect(page.locator('.recap-tile .badge')).toHaveCount(0);
-      await page.goto('/insights?tab=recaps&range=2015-01-01..2015-02-01');
+      await page.goto('/stats?tab=recaps&range=2015-01-01..2015-02-01');
       await expect(page.locator('.recap-tile')).toHaveCount(0);
       await expect(page.locator('.recaps-empty h2')).toContainText('No recaps in Jan 1, 2015');
       await expect(page.locator('.recaps-empty')).not.toContainText('sign in'); // signed in: no sign-in line
     } },
-  { name: 'insights-recaps-tile-size', path: () => '/insights?tab=recaps',
+  { name: 'insights-recaps-tile-size', path: () => '/stats?tab=recaps',
     act: async (page) => {
       // Every tile is the same size whether the Period shows 1 or 2 of them, left-aligned, never stretched.
       const size = async () => (await page.locator('.recap-tile').evaluateAll((ts) => ts.map((t) => { const r = t.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.left)]; })));
       const two = await size();
       expect(new Set(two.map((t) => t[0])).size, 'equal widths').toBe(1);
-      await page.goto(`/insights?tab=recaps&range=${recapYear() - 1}`);
+      await page.goto(`/stats?tab=recaps&range=${recapYear() - 1}`);
       await expect(page.locator('.recap-tile')).toHaveCount(1);
       const one = await size();
       expect(one[0][0], '1 tile = the 2-tile width').toBe(two[0][0]);
@@ -1150,7 +1150,7 @@ export const STATES: State[] = [
   // /recaps is only a way to the Recaps tab: it redirects there and drops every other param.
   { name: 'recaps-index-redirect', path: () => '/recaps?range=2015&x=1',
     act: async (page) => {
-      await expect(page).toHaveURL(/\/insights\?tab=recaps$/);
+      await expect(page).toHaveURL(/\/stats\?tab=recaps$/);
       await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
       await page.locator('.recap-tile').nth(1).click();
       await expect(page).toHaveURL(new RegExp(`/recaps/${recapYear() - 1}$`));
@@ -1187,7 +1187,7 @@ export const STATES: State[] = [
     } },
   { name: 'coffees-status-remembered', viewports: 'two', path: () => '/coffees?status=backlog&status=open&view=list',
     act: async (page) => {
-      await gotoReady(page, '/insights');
+      await gotoReady(page, '/stats');
       await gotoReady(page, '/coffees');
       await expect(page).toHaveURL(/status=backlog&status=open/);
     } },
@@ -1202,7 +1202,7 @@ export const STATES: State[] = [
       };
       await tap('All');
       await expect(page).toHaveURL(/status=all(&|$)/);
-      await gotoReady(page, '/insights');
+      await gotoReady(page, '/stats');
       await gotoReady(page, '/coffees');
       await expect(page).toHaveURL(/status=all(&|$)/);
       expect(page.url()).not.toContain('prev');
@@ -1821,45 +1821,6 @@ export const STATES: State[] = [
       expect(d.length).toBeLessThanOrEqual(300);
       expect(t['og:url']).toBe(`${origin}/subscriptions`);
     } },
-  { name: 'link-preview-stats', viewports: 'two', path: () => '/stats',
-    act: async (page) => {
-      const origin = new URL(page.url()).origin;
-      const t = await previewTags(page, '/stats');
-      expect(t['og:title']).toBe('Stats: General');
-      expect(t['og:description']).toMatch(/^fuhnoo's collection totals\n\d+ open · \d+ unopened · [\d.]+k?g on hand · \d+ finished$/);
-      expect(t.description).toBe(t['og:description']);
-      expect(t.description.length).toBeLessThanOrEqual(300);
-      expect(t['og:url']).toBe(`${origin}/stats`);
-      const bq = await previewTags(page, '/stats?tab=bq');
-      expect(bq['og:title']).toBe('Stats: Bean Conqueror');
-      expect(bq['og:description']).toMatch(/^fuhnoo's Bean Conqueror stats\n\d+ open/);
-    } },
-  // Share works on every click (user, 2026-10-25): a share sheet that never settled (the browser then refuses the
-  // next share) falls back to copying, and a second copy restarts the "Link copied" label.
-  { name: 'share-again', viewports: 'two', path: () => '/stats',
-    act: async (page) => {
-      await page.evaluate(() => {
-        const w = window as unknown as { copies: string[]; pending: boolean };
-        w.copies = []; w.pending = false;
-        Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t: string) => void w.copies.push(t) }, configurable: true });
-        navigator.share = () => {
-          if (w.pending) return Promise.reject(new DOMException('An earlier share has not yet completed.', 'InvalidStateError'));
-          w.pending = true;
-          return new Promise(() => {}); // the sheet closed without settling
-        };
-      });
-      const share = page.locator('.share-button');
-      await share.click();
-      await share.click();
-      await expect(share).toHaveText('Link copied');
-      expect(await page.evaluate(() => (window as unknown as { copies: string[] }).copies)).toHaveLength(1);
-      // No share sheet: each copy restarts the label's 2s.
-      await page.evaluate(() => Object.defineProperty(navigator, 'share', { value: undefined, configurable: true }));
-      await page.waitForTimeout(1500);
-      await share.click();
-      await page.waitForTimeout(1000);
-      await expect(share).toHaveText('Link copied', { timeout: 0 });
-    } },
   { name: 'link-preview-water', viewports: 'two', path: () => '/water',
     act: async (page) => {
       const origin = new URL(page.url()).origin;
@@ -1889,18 +1850,18 @@ export const STATES: State[] = [
       expect(m.slice(1)).toEqual([shown.Ca, shown.Mg, shown.Na, shown.K]);
       expect(m.slice(1).join(',')).toBe('0,7,0,4');
     } },
-  { name: 'link-preview-insights', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'link-preview-insights', viewports: 'two', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, RegExp | null][] = [
-        ['/insights?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^Avg rating · All time\n🥇 \d\.\d · .+\n🥈 /],
-        ['/insights?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time\n.+ · .+/],
-        ['/insights?tab=records&range=all&chart=records-top-coffees', 'Insights: Top coffees', /^Avg rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
-        ['/insights?tab=records&range=all&chart=records-top-brews', 'Insights: Top brews', /^Rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
-        ['/insights?tab=records&range=all&chart=record-nightOwl', 'Insights: Night owl', /^All time\n.+\n/],
-        ['/insights?tab=habits&range=all&chart=habits-hour', 'Insights: Habits', /^When and how fuhnoo brews\nAll time\n[\d,]+ brews/],
-        ['/insights?chart=leaderboard-origins', 'Insights: Overview', /^fuhnoo's brewing at a glance\n/],
-        ['/insights?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Insights: Leaderboards', /^fuhnoo's top roasters, coffees, origins and gear\nAll time\n[\d,]+ brews/]
+        ['/stats?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^Avg rating · All time\n🥇 \d\.\d · .+\n🥈 /],
+        ['/stats?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time\n.+ · .+/],
+        ['/stats?tab=records&range=all&chart=records-top-coffees', 'Insights: Top coffees', /^Avg rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
+        ['/stats?tab=records&range=all&chart=records-top-brews', 'Insights: Top brews', /^Rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
+        ['/stats?tab=records&range=all&chart=record-nightOwl', 'Insights: Night owl', /^All time\n.+\n/],
+        ['/stats?tab=habits&range=all&chart=habits-hour', 'Insights: Habits', /^When and how fuhnoo brews\nAll time\n[\d,]+ brews/],
+        ['/stats?chart=leaderboard-origins', 'Insights: Overview', /^fuhnoo's brewing at a glance\n/],
+        ['/stats?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Insights: Leaderboards', /^fuhnoo's top roasters, coffees, origins and gear\nAll time\n[\d,]+ brews/]
       ];
       for (const [path, title, desc] of cases) {
         const t = await previewTags(page, path);
@@ -2197,8 +2158,8 @@ export const STATES: State[] = [
       await expect(page.getByRole('spinbutton', { name: 'Ca' })).toHaveValue('40');
       await page.getByRole('button', { name: 'Precision', exact: true }).click();
       await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('40');
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/insights"]')?.click());
-      await expect(page).toHaveURL(/\/insights/);
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/stats"]')?.click());
+      await expect(page).toHaveURL(/\/stats/);
       await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/water"]')?.click());
       await expect(page).toHaveURL(/tip=precision/);
       await expect(page.getByRole('button', { name: 'Precision', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -2371,8 +2332,8 @@ export const STATES: State[] = [
       await page.getByLabel('Kettle').selectOption('palatti-enso');
       await page.getByLabel('Recipe').selectOption('holy-water');
       await expect(page).toHaveURL(/recipe=holy-water/);
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/insights"]')?.click());
-      await expect(page).toHaveURL(/\/insights/);
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/stats"]')?.click());
+      await expect(page).toHaveURL(/\/stats/);
       await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/water"]')?.click());
       await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
       await expect(page.getByLabel('Kettle')).toHaveValue('palatti-enso');
@@ -3271,15 +3232,9 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Unlink', exact: true })).toBeVisible();
     }
   },
-  // A bare /stats URL is All time (DEFAULTS.range, user ruling 2026-10-17) and stays bare.
-  { name: 'stats-general', viewports: 'two', path: () => '/stats',
-    act: async (page) => {
-      await expect(page.getByLabel('Period')).toHaveValue('all');
-      expect(new URL(page.url()).search).toBe('');
-    } },
   {
     // The People label is the (help-cursor) trigger of a sticky tip: text + an admin link to Account; Esc closes; the switch doesn't move.
-    name: 'stats-people-tip', viewports: 'two', path: () => '/stats',
+    name: 'insights-people-tip', viewports: 'two', path: () => '/stats',
     act: async (page) => {
       const sw = page.getByRole('group', { name: 'People' });
       const trigger = page.getByRole('button', { name: 'People', exact: true });
@@ -3301,124 +3256,6 @@ export const STATES: State[] = [
       await trigger.click();
       await link.click();
       await expect(page).toHaveURL(/\/account#household$/);
-    }
-  },
-  {
-    // The People label is the (help-cursor) trigger of a sticky tip: text + an admin link to Account; Esc closes; the switch doesn't move.
-    name: 'insights-people-tip', viewports: 'two', path: () => '/insights',
-    act: async (page) => {
-      const sw = page.getByRole('group', { name: 'People' });
-      const trigger = page.getByRole('button', { name: 'People', exact: true });
-      const before = await sw.boundingBox();
-      expect(await trigger.evaluate((el) => getComputedStyle(el).cursor)).toBe('help');
-      await trigger.click();
-      const tip = page.locator('#tip-people');
-      await expect(tip).toBeVisible();
-      await expect(tip).toContainText('Per person');
-      const link = tip.getByRole('link', { name: 'Set it on Account' });
-      await expect(link).toBeVisible();
-      expect(await link.evaluate((el) => getComputedStyle(el).cursor)).toBe('pointer');
-      expect(await tip.evaluate((el) => getComputedStyle(el).cursor)).not.toBe('help');
-      const after = await sw.boundingBox();
-      expect(after).toEqual(before);
-      await checkLayout(page);
-      await page.keyboard.press('Escape');
-      await expect(tip).toBeHidden();
-      await trigger.click();
-      await link.click();
-      await expect(page).toHaveURL(/\/account#household$/);
-    }
-  },
-  {
-    // The /stats people switch drives both tabs: At a Glance on General, totals on Bean Conqueror.
-    name: 'stats-people-person',
-    path: () => '/stats',
-    act: async (page) => {
-      const people = page.getByRole('group', { name: 'People' });
-      await people.getByRole('button', { name: 'Per person', exact: true }).click();
-      await expect(page).toHaveURL(/people=person/);
-      await expect(page.locator('.stat-label', { hasText: 'To clear' }).first()).toHaveText('To clear per person', { useInnerText: true, ignoreCase: true });
-      // The switch options' help is the shared hover tip (ui-rules 27), not a native title.
-      await people.getByRole('button', { name: 'Household', exact: true }).hover();
-      await expectTipInView(page, page.locator('.cell-tip:popover-open'), { inBar: true });
-      await expect(page.locator('.cell-tip:popover-open .tip-title')).toHaveText('Household');
-      await page.mouse.move(0, 0);
-      // The mode word opens its help popover (ui-rules 27), in view under the sticky bar.
-      const help = page.locator('.stat-item', { hasText: 'Time to clear' }).getByRole('button', { name: 'per person' });
-      await help.click();
-      await expectTipInView(page, page.locator('.mode-tip:popover-open'));
-      await expect(page.locator('.mode-tip:popover-open .tip-title')).toHaveText('Per person');
-      await page.keyboard.press('Escape');
-      await page.getByRole('button', { name: 'Bean Conqueror', exact: true }).click();
-      await expect(page).toHaveURL(/people=person/);
-      await expect(page.locator('.stat-label', { hasText: 'Total brews' })).toHaveText('Total brews per person', { useInnerText: true, ignoreCase: true });
-      await expect(page.locator('.stat-label', { hasText: 'Average rating' })).toHaveText('Average rating');
-      await expect(page.locator('.stat-label', { hasText: 'Total beans' })).toHaveText('Total beans');
-      await expect(page.locator('h2', { hasText: /Brews per day\s+·\s+per person/i })).toBeVisible();
-      await expect(page.locator('.stat-item', { hasText: 'Total brews' }).locator('.stat-value')).toHaveText(/^\d+(\.\d)?$/);
-    }
-  },
-  {
-    // A tip value carries its unit, the other measure in parentheses (ui-rules 36): "1,750 g (14 bags)".
-    name: 'stats-breakdown-tip', viewports: 'two',
-    path: () => '/stats',
-    act: async (page) => {
-      const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) });
-      const tip = await hoverChart(page, panel.locator('canvas'));
-      await expectDataTip(tip);
-      await expect(tip.locator('dd')).toHaveText(/^[\d,]+g \(\d+ bags?\)$/);
-    }
-  },
-  {
-    // A /stats chart's tip (ui-rules 36, 39): the shared data tip, in view with the chart scrolled up under the sticky bar.
-    name: 'stats-chart-tip',
-    path: () => '/stats',
-    act: async (page) => {
-      const c = page.locator('.chart-container canvas').first();
-      await c.scrollIntoViewIfNeeded();
-      const bar = (await page.locator('.filter-bar').boundingBox())!;
-      await page.evaluate((dy) => scrollBy(0, dy), (await c.boundingBox())!.y - bar.y - bar.height - 8);
-      await expectDataTip(await hoverChart(page, c));
-      await expectTipInView(page, page.locator('.chart-container .cell-tip:popover-open'));
-    }
-  },
-  {
-    // A weight of 100 kg and up drops its decimal; the tile's value opens "Exact" (like Usd's Before rounding). The seed
-    // has no 100 kg total, so the client load's data is rewritten (a client navigation from /coffees).
-    name: 'stats-exact-tip',
-    path: () => '/coffees',
-    act: async (page) => {
-      await page.route(/\/stats\/__data\.json/, async (route) => {
-        const res = await route.fetch();
-        const body = await res.json();
-        for (const n of body.nodes ?? []) for (const o of Array.isArray(n?.data) ? n.data : []) {
-          if (o && typeof o === 'object' && !Array.isArray(o) && 'finishedGrams' in o) n.data[o.finishedGrams] = 123456;
-        }
-        await route.fulfill({ response: res, json: body });
-      });
-      await page.locator('a[href="/stats"]:visible').first().click();
-      const value = page.getByRole('button', { name: /^123kg: Exact/ });
-      await value.click();
-      const tip = page.locator('.cell-tip:popover-open');
-      await expectDataTip(tip);
-      await expectTipInView(page, tip);
-      await expect(tip.locator('.tip-title')).toHaveText('Exact');
-      await expect(tip.locator('dd')).toHaveText('123,456g');
-    }
-  },
-  {
-    // Temporary Time to Clear panel: its own Period select writes `range`; people from the URL.
-    name: 'stats-time-to-clear-range', viewports: 'two',
-    path: () => '/stats?people=person',
-    act: async (page) => {
-      const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Time to Clear' }) });
-      await panel.getByLabel('Period').selectOption('1m');
-      await expect(page).toHaveURL(/range=1m/);
-      await expect(page).toHaveURL(/people=person/);
-      await expect(panel.locator('.stat-label')).toHaveText([
-        'Time to clear per person', 'Per day per person', 'Per week per person', 'Per month per person'
-      ], { useInnerText: true, ignoreCase: true });
-      await expect(page.locator('.stat-label', { hasText: 'To clear' }).first()).toHaveText('To clear per person', { useInnerText: true, ignoreCase: true });
     }
   },
   {
@@ -4385,7 +4222,7 @@ export const STATES: State[] = [
       const res = page.locator('.bq-result');
       await expect(res).toBeVisible();
       await expect(res).toContainText('1 new water');
-      await expect(res.getByRole('link', { name: 'See your stats' })).toHaveAttribute('href', '/insights');
+      await expect(res.getByRole('link', { name: 'See your stats' })).toHaveAttribute('href', '/stats');
       await expect(res.getByRole('link', { name: 'Review untracked beans' })).toHaveAttribute('href', '#not-tracked');
       await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled(); // form reset
       await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
@@ -4451,15 +4288,6 @@ export const STATES: State[] = [
     }
   },
   {
-    // The import form moved to Account; /stats keeps a pointer.
-    name: 'stats-bq-import-link', viewports: 'two',
-    path: () => '/stats?tab=bq',
-    act: async (page) => {
-      await expect(page.getByRole('main').getByRole('link', { name: 'Account', exact: true })).toHaveAttribute('href', '/account#not-tracked');
-      await expect(page.locator('input[name="file"]')).toHaveCount(0);
-    }
-  },
-  {
     // Desktop: the nav link; phone: the More panel. Each lands on /account.
     name: 'account-nav', viewports: 'two',
     path: () => '/coffees',
@@ -4471,37 +4299,6 @@ export const STATES: State[] = [
         await page.locator('.nav-links').getByRole('link', { name: 'Account' }).click();
       }
       await expect(page).toHaveURL(/\/account$/);
-    }
-  },
-  ...(['overview', 'favorites', 'brewing', 'economics'] as const).map((tab) => ({
-    name: `stats-${tab}`, viewports: 'two' as const,
-    path: () => `/stats?tab=bq&bc=${tab}`,
-    // ui-rules 47: a top-N chart says how many it shows, only while it cuts something (never "top 4 of 4").
-    act: async (page: Page) => {
-      await expect(page.locator('main')).toBeVisible();
-      const lines = await page.getByText(/^\s*Showing top \d+ of \d+\.\s*$/).allInnerTexts();
-      for (const l of lines) { const [n, m] = l.match(/\d+/g)!.map(Number); expect(n, l).toBeLessThan(m); }
-      // The seed's By Method and By Grinder have under 10 groups each: no line.
-      if (tab === 'brewing') await expect(page.locator('.chart-panel-row').getByText(/Showing top/)).toHaveCount(0);
-    }
-  })),
-  {
-    // ui-rules 46: the cost-per-roaster chart's bar labels are usd ("$0.05/g"), never Chart's plain-number fallback.
-    name: 'stats-bc-economics-usd', viewports: 'two',
-    path: () => '/stats?tab=bq&bc=economics',
-    act: async (page) => {
-      await page.addInitScript(() => {
-        const w = window as unknown as { drawn: string[] };
-        w.drawn = [];
-        const fill = CanvasRenderingContext2D.prototype.fillText;
-        CanvasRenderingContext2D.prototype.fillText = function (t, ...rest) { w.drawn.push(String(t)); return fill.call(this, t, ...rest); };
-      });
-      await gotoReady(page, '/stats?tab=bq&bc=economics');
-      await expect(page.locator('canvas').first()).toBeVisible();
-      await expect.poll(() => page.evaluate(() => (window as unknown as { drawn: string[] }).drawn.filter((t) => /\/g$/.test(t)).length)).toBeGreaterThan(0);
-      const drawn = await page.evaluate(() => (window as unknown as { drawn: string[] }).drawn);
-      expect(drawn.filter((t) => /^\d*\.\d+$/.test(t))).toEqual([]); // no raw "0.047" labels or "0.02" ticks
-      for (const t of drawn.filter((t) => /\/g$/.test(t))) expect(t).toMatch(/^\$[\d,]+(\.\d{2})?\/g$/);
     }
   },
   {
@@ -4516,7 +4313,7 @@ export const STATES: State[] = [
       for (const width of size.width >= 1280 ? [size.width, 1920] : [size.width]) {
         await page.setViewportSize({ width, height: size.height });
         const seen = [];
-        for (const path of ['/coffees', '/insights', '/recipes']) { await gotoReady(page, path); seen.push(await edges()); }
+        for (const path of ['/coffees', '/stats', '/recipes']) { await gotoReady(page, path); seen.push(await edges()); }
         expect(seen[1], `insights at ${width}`).toEqual(seen[0]);
         expect(seen[2], `recipes at ${width}`).toEqual(seen[0]);
       }
@@ -4524,12 +4321,16 @@ export const STATES: State[] = [
       await gotoReady(page, '/coffees');
     }
   },
-  { name: 'insights-sticky', path: () => '/insights?range=1w&compare=1', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
-  { name: 'stats-sticky', path: () => '/stats', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
-  { name: 'stats-bq-sticky', path: () => '/stats?tab=bq', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
+  // The old /insights URL redirects to /stats with its query (the hash is the browser's).
+  { name: 'insights-redirect', path: () => '/insights?tab=leaderboards&rank=grams',
+    act: async (page) => {
+      const u = new URL(page.url());
+      expect(u.pathname + u.search).toBe('/stats?tab=leaderboards&rank=grams');
+    } },
+  { name: 'insights-sticky', path: () => '/stats?range=1w&compare=1', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-default', viewports: 'two',
-    path: () => '/insights',
+    path: () => '/stats',
     act: async (page) => {
       await expect(page.locator('.chart-panel h2', { hasText: 'Right now' })).toBeVisible();
       // Totals and Averages tiles, with the roasters / bag size / brew temp ones; the last-updated line sits in the period line.
@@ -4544,7 +4345,7 @@ export const STATES: State[] = [
       // Every click-for-explanation trigger ends with its circled ?.
       expect(await page.locator('.mode-tip-button').count()).toBeGreaterThan(0);
       expect(await page.locator('.mode-tip-button').evaluateAll((bs) => bs.filter((b) => !b.querySelector('svg.icon')).length)).toBe(0);
-      // Totals values are the same color as the Averages' (they were the /stats hero brown until round 2).
+      // Totals values are the same color as the Averages' (they were the old Stats hero brown until round 2).
       const color = (title: string) =>
         page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
           .locator('.stat-value').first().evaluate((e) => getComputedStyle(e).color);
@@ -4559,7 +4360,7 @@ export const STATES: State[] = [
   // Right now tiles link to the /coffees list they count, under the page-wide Coffees filter.
   {
     name: 'insights-right-now-links',
-    path: () => '/insights?process=Washed&caffeine=decaf',
+    path: () => '/stats?process=Washed&caffeine=decaf',
     act: async (page) => {
       const links = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Right now' }) }).locator('.tile-link');
       await expect(links).toHaveCount(8);
@@ -4573,7 +4374,7 @@ export const STATES: State[] = [
       await expectLinksInTiles(page, links);
     }
   },
-  { name: 'insights-right-now-links-compare', path: () => '/insights?range=1w&compare=1',
+  { name: 'insights-right-now-links-compare', path: () => '/stats?range=1w&compare=1',
     act: async (page) => {
       const links = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Right now' }) }).locator('.tile-link');
       await expect(links).toHaveCount(8);
@@ -4581,7 +4382,7 @@ export const STATES: State[] = [
     } },
   {
     name: 'insights-right-now-link-lands', viewports: 'two',
-    path: () => '/insights',
+    path: () => '/stats',
     act: async (page) => {
       const tile = page.locator('#overview-on-hand');
       const value = (await tile.locator('.stat-value').innerText()).replace(/,/g, '').trim();
@@ -4594,7 +4395,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-habits', viewports: 'two',
-    path: () => '/insights?tab=habits',
+    path: () => '/stats?tab=habits',
     act: async (page) => {
       await expect(page.locator('.insights-charts canvas')).toHaveCount(2);
       await expect(page.locator('.heatmap .heat-cell')).toHaveCount(7 * 24);
@@ -4604,7 +4405,7 @@ export const STATES: State[] = [
   },
   // Spend: seven tiles; the Spent ? tip says the date rule. Later panels extend insights-spend-empty and add their own states.
   {
-    name: 'insights-spend', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       await expect(page.locator('.stat-item .stat-label')).toHaveText(
         ['Spent', 'Bags bought', 'Avg $/g', 'Avg bag cost', 'New roasters', 'Subscription share', 'Plans per month'], { useInnerText: true, ignoreCase: true }
@@ -4619,7 +4420,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-compare', viewports: 'two', path: () => '/insights?tab=spend&range=1m&compare=1',
+    name: 'insights-spend-compare', viewports: 'two', path: () => '/stats?tab=spend&range=1m&compare=1',
     act: async (page) => {
       await expect(page.locator('#spend-spent .insights-delta')).toBeVisible();
       await expect(page.locator('#spend-plans-per-month .insights-delta')).toHaveCount(0);
@@ -4632,7 +4433,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-empty', viewports: 'two', path: () => '/insights?tab=spend&range=2000-01-01..2000-01-31',
+    name: 'insights-spend-empty', viewports: 'two', path: () => '/stats?tab=spend&range=2000-01-01..2000-01-31',
     act: async (page) => {
       await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
       await expect(page.locator('canvas')).toHaveCount(0);
@@ -4643,7 +4444,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-chart', viewports: 'two', path: () => '/insights?tab=spend&range=12m&compare=1',
+    name: 'insights-spend-chart', viewports: 'two', path: () => '/stats?tab=spend&range=12m&compare=1',
     act: async (page) => {
       const panel = page.locator('section.chart-panel:has(#spend-chart)');
       const toggle = (name: string) => panel.getByRole('group', { name: 'Show' }).getByRole('button', { name, exact: true });
@@ -4675,7 +4476,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-series', viewports: 'two', path: () => '/insights?tab=spend&range=3m&compare=1',
+    name: 'insights-spend-series', viewports: 'two', path: () => '/stats?tab=spend&range=3m&compare=1',
     act: async (page) => {
       const panel = page.locator('section.chart-panel:has(#spend-chart)');
       const pick = panel.getByRole('combobox', { name: 'Series' });
@@ -4717,7 +4518,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-value-map', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-value-map', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const svg = page.locator('.value-map svg.plot');
       await svg.scrollIntoViewIfNeeded();
@@ -4743,7 +4544,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-value-map-tip', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-value-map-tip', viewports: 'two', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const dot = page.locator('.value-map .pt .hit').first();
       await dot.scrollIntoViewIfNeeded();
@@ -4794,7 +4595,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-report-card', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-report-card', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const panel = page.locator('section[data-section="spend-report-card"]');
       await panel.scrollIntoViewIfNeeded();
@@ -4809,7 +4610,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-report-card-sort', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-report-card-sort', viewports: 'two', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const panel = page.locator('section[data-section="spend-report-card"]');
       await panel.scrollIntoViewIfNeeded();
@@ -4852,7 +4653,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-discovery', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-discovery', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const disc = page.locator('section[data-section="spend-discovery"]');
       await disc.scrollIntoViewIfNeeded();
@@ -4869,7 +4670,7 @@ export const STATES: State[] = [
   },
   {
     // Leaving for a shorter tab and coming back (or isolating a legend entry) never moves the page: the scroll stays where it was.
-    name: 'insights-spend-scroll-return', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-scroll-return', viewports: 'two', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const share = page.locator('section[data-section="spend-share"]');
       await share.scrollIntoViewIfNeeded();
@@ -4892,7 +4693,7 @@ export const STATES: State[] = [
   },
   {
     // The coffee page's Back is the browser's back: Insights returns with its URL and scroll; a direct visit falls back to /coffees.
-    name: 'coffee-back-history', viewports: 'two', path: () => '/insights?tab=spend&range=12m&spendSeries=all',
+    name: 'coffee-back-history', viewports: 'two', path: () => '/stats?tab=spend&range=12m&spendSeries=all',
     act: async (page) => {
       const best = page.locator('section[data-section="spend-best-value"]');
       await best.scrollIntoViewIfNeeded();
@@ -4916,7 +4717,7 @@ export const STATES: State[] = [
   },
   {
     // Compare with a window of another length draws one dashed average per drawn series, each in a real color, and the tip says so.
-    name: 'insights-spend-compare-average', viewports: 'two', path: () => '/insights?tab=spend&range=3m&compare=before',
+    name: 'insights-spend-compare-average', viewports: 'two', path: () => '/stats?tab=spend&range=3m&compare=before',
     act: async (page) => {
       const panel = page.locator('section.chart-panel:has(#spend-chart)');
       const c = panel.locator('canvas');
@@ -4931,7 +4732,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-discovery-tip', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-discovery-tip', viewports: 'two', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const seg = page.locator('section[data-section="spend-share"] .seg').first();
       await seg.scrollIntoViewIfNeeded();
@@ -4982,7 +4783,7 @@ export const STATES: State[] = [
   },
   {
     // A plan's bag count links to its /coffees list: every status, roast dates in the Period; the list has that many bags.
-    name: 'insights-spend-subscription-link', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-subscription-link', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const panel = page.locator('section[data-section="spend-subscriptions"]');
       const row = panel.locator('li:not(.total)', { hasText: /^Sey/ });
@@ -5000,7 +4801,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-subscriptions', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-subscriptions', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
       const panel = page.locator('section[data-section="spend-subscriptions"]');
       await panel.scrollIntoViewIfNeeded();
@@ -5040,7 +4841,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-consumption-time-to-open', path: () => '/insights?tab=consumption&range=12m',
+    name: 'insights-consumption-time-to-open', path: () => '/stats?tab=consumption&range=12m',
     act: async (page) => {
       const panel = page.locator('section[data-section="consumption-time-to-open"]');
       await panel.scrollIntoViewIfNeeded();
@@ -5056,7 +4857,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-brewing-wait', path: () => '/insights?tab=brewing&range=12m',
+    name: 'insights-brewing-wait', path: () => '/stats?tab=brewing&range=12m',
     act: async (page) => {
       const rest = page.locator('section[data-section="brewing-rest"]');
       const rate = page.locator('section[data-section="brewing-rating-by-wait"]');
@@ -5074,7 +4875,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-brewing-wait-tip', viewports: 'two', path: () => '/insights?tab=brewing&range=12m',
+    name: 'insights-brewing-wait-tip', viewports: 'two', path: () => '/stats?tab=brewing&range=12m',
     act: async (page) => {
       const c = page.locator('section[data-section="brewing-rating-by-wait"] canvas');
       await c.scrollIntoViewIfNeeded();
@@ -5091,16 +4892,16 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-preview', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-spend-preview', viewports: 'two', path: () => '/stats?tab=spend&range=12m',
     act: async (page) => {
-      const t = await previewTags(page, '/insights?tab=spend&range=12m');
+      const t = await previewTags(page, '/stats?tab=spend&range=12m');
       expect(t['og:title']).toBe('Insights: Spend');
       expect(t['og:description']).toMatch(/^What fuhnoo spends on coffee, and on what\n.+\nSpent \$[\d,.]+ · [\d,.]+ bags?( · \$\d+\.\d\d\/g avg)?$/);
     }
   },
   // On hand: eight tiles (with the oldest and newest unopened) and no Compare control (a snapshot has nothing to compare); the runway and freshness cards fill their rows.
   {
-    name: 'insights-onhand', path: () => '/insights?tab=onhand&range=3m',
+    name: 'insights-onhand', path: () => '/stats?tab=onhand&range=3m',
     act: async (page) => {
       const shelf = ['Bags waiting', 'Grams waiting', '$ tied up', 'Avg age', 'In the freezer', 'Avg bag cost', 'Oldest unopened', 'Newest unopened'];
       await expect(page.locator('.stat-item .stat-label')).toHaveText(
@@ -5121,7 +4922,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-onhand-runway-all', viewports: 'two', path: () => '/insights?tab=onhand&range=all',
+    name: 'insights-onhand-runway-all', viewports: 'two', path: () => '/stats?tab=onhand&range=all',
     act: async (page) => {
       const runway = page.locator('section.chart-panel:has(#onhand-runway-at-your-pace)');
       await expect(runway.locator('.stat-item')).toHaveCount(3);
@@ -5133,7 +4934,7 @@ export const STATES: State[] = [
   },
   {
     // Every line chart opens its tip for the nearest x anywhere in the plot, as Runway at your pace (hover; touch: tap); it closes off the chart.
-    name: 'insights-line-tips-nearest-x', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
+    name: 'insights-line-tips-nearest-x', viewports: 'two', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       const tip = page.locator('.chart-container .cell-tip:popover-open');
       const poke = async (c: Locator, fx: number, fy: number) => {
@@ -5155,18 +4956,18 @@ export const STATES: State[] = [
         await expect(tip).toHaveCount(0);
       };
       await check(page.locator('[data-board="caffeine"] .time-chart canvas'));
-      await page.goto('/insights?tab=onhand&range=all');
+      await page.goto('/stats?tab=onhand&range=all');
       await check(page.locator('section.chart-panel:has(#onhand-runway-at-your-pace) canvas'));
       // A bar chart with a trend line over it (Brewed over time): same.
-      await page.goto('/insights?tab=consumption&range=all');
+      await page.goto('/stats?tab=consumption&range=all');
       await check(page.locator('section.chart-panel:has(#consumption-chart-brewed) canvas'));
       // A bar-only chart (Brews by hour): a bar's whole column opens its tip.
-      await page.goto('/insights?tab=habits&range=all');
+      await page.goto('/stats?tab=habits&range=all');
       await check(page.locator('section.chart-panel:has(#habits-hour) canvas'));
     }
   },
   {
-    name: 'insights-onhand-freshness-links', viewports: 'two', path: () => '/insights?tab=onhand',
+    name: 'insights-onhand-freshness-links', viewports: 'two', path: () => '/stats?tab=onhand',
     act: async (page) => {
       // A group longer than 5 bags ends in "and N more": a /coffees link filtered to exactly that group (no tooltip).
       const more = page.locator('[data-section="onhand-freshness"] a.more');
@@ -5178,7 +4979,7 @@ export const STATES: State[] = [
   // A chart's tip sits at the hovered mark, not at the chart's top: beside a stacked segment (sticky tips), above a horizontal bar
   // at the pointer's x (a short move to the link), above a plain vertical bar's top.
   {
-    name: 'insights-chart-tip-position', viewports: 'two', path: () => '/insights?tab=onhand',
+    name: 'insights-chart-tip-position', viewports: 'two', path: () => '/stats?tab=onhand',
     act: async (page) => {
       for (const [panelId, beside] of [['onhand-age', true], ['onhand-waiting', false]] as const) {
         const panel = page.locator(`section.chart-panel:has(#${panelId})`);
@@ -5209,7 +5010,7 @@ export const STATES: State[] = [
   // Sticky tooltips (ui-rules 54) on the Age profile and What's waiting bars: a "See coffees" link to a filtered /coffees list;
   // the pointer can cross onto the tip; a click on the mark pins it until Escape. Both Age profile units.
   {
-    name: 'insights-onhand-sticky-tips', viewports: 'two', path: () => '/insights?tab=onhand',
+    name: 'insights-onhand-sticky-tips', viewports: 'two', path: () => '/stats?tab=onhand',
     act: async (page) => {
       const tip = page.locator('.chart-container .cell-tip:popover-open');
       const check = async (panelId: string) => {
@@ -5260,7 +5061,7 @@ export const STATES: State[] = [
   // Keyboard reach for the sticky tips (ui-rules 54): the canvas is one tab stop; arrows step the marks and the tip follows
   // (announced through a live region); Tab reaches "See coffees", Shift+Tab returns; Escape closes and keeps focus on the chart.
   {
-    name: 'insights-onhand-chart-keyboard', viewports: 'two', path: () => '/insights?tab=onhand',
+    name: 'insights-onhand-chart-keyboard', viewports: 'two', path: () => '/stats?tab=onhand',
     act: async (page) => {
       const tip = page.locator('.chart-container .cell-tip:popover-open');
       for (const [panelId, name] of [['onhand-age', 'Age profile'], ['onhand-waiting', "What's waiting"]] as const) {
@@ -5345,7 +5146,7 @@ export const STATES: State[] = [
   },
   // A bar chart with a line overlay (Consumption's trend line, Spend's compare average): the tip anchors at the bar, never NaN.
   {
-    name: 'insights-chart-tip-trend', viewports: 'two', path: () => '/insights?tab=consumption&range=3m',
+    name: 'insights-chart-tip-trend', viewports: 'two', path: () => '/stats?tab=consumption&range=3m',
     act: async (page) => {
       const canvas = page.locator('.chart-container canvas').first();
       await canvas.scrollIntoViewIfNeeded();
@@ -5360,12 +5161,12 @@ export const STATES: State[] = [
   },
   // Bags are shared in the household: In the freezer's count never says "per person"; only the grams under it do (per person mode).
   {
-    name: 'insights-onhand-people', viewports: 'two', path: () => '/insights?tab=onhand&range=3m',
+    name: 'insights-onhand-people', viewports: 'two', path: () => '/stats?tab=onhand&range=3m',
     act: async (page) => {
       const tile = page.locator('#onhand-frozen-bags');
       await expect(tile.locator('.stat-unit')).not.toContainText(/per person/i);
       const bags = await tile.locator('.stat-value').innerText();
-      await page.goto('/insights?tab=onhand&range=3m&people=person');
+      await page.goto('/stats?tab=onhand&range=3m&people=person');
       const person = page.locator('#onhand-frozen-bags');
       await expect(person.locator('.stat-value')).toHaveText(bags);
       await expect(person.locator('.stat-unit')).toContainText(/per person/i);
@@ -5376,7 +5177,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-onhand-tip', viewports: 'two', path: () => '/insights?tab=onhand',
+    name: 'insights-onhand-tip', viewports: 'two', path: () => '/stats?tab=onhand',
     act: async (page) => {
       await page.getByRole('button', { name: 'About Avg age' }).click();
       const tip = page.locator('.mode-tip:popover-open');
@@ -5385,7 +5186,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-onhand-trunc-tip', viewports: 'two', path: () => '/insights?tab=onhand&range=3m',
+    name: 'insights-onhand-trunc-tip', viewports: 'two', path: () => '/stats?tab=onhand&range=3m',
     act: async (page) => {
       // A tile's cut-off coffee name shows its full text in the tip on hover and on keyboard focus; an uncut one shows none.
       const link = page.locator('#onhand-oldest a').first();
@@ -5421,7 +5222,7 @@ export const STATES: State[] = [
   },
   {
     // Oldest / Newest unopened: the roaster under the coffee name, in the same link; one tip holds both; the tiles keep their heights.
-    name: 'insights-onhand-sub-roaster', viewports: 'two', path: () => '/insights?tab=onhand&range=3m',
+    name: 'insights-onhand-sub-roaster', viewports: 'two', path: () => '/stats?tab=onhand&range=3m',
     act: async (page) => {
       const tiles = ['oldest', 'newest'].map((k) => page.locator(`#onhand-${k}`));
       const hs: number[] = [];
@@ -5445,7 +5246,7 @@ export const STATES: State[] = [
   },
   {
     // A multi-part caption ("Coarsest grind · A4Z") shows its tip text with the separators, not the glued parts.
-    name: 'insights-caption-trunc-tip', viewports: 'two', path: () => '/insights?tab=sweetspots',
+    name: 'insights-caption-trunc-tip', viewports: 'two', path: () => '/stats?tab=sweetspots',
     act: async (page) => {
       const link = page.locator('.caption-link:has(.cap-list)').first();
       await expect(link).toBeVisible();
@@ -5456,15 +5257,15 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-onhand-preview', viewports: 'two', path: () => '/insights?tab=onhand',
+    name: 'insights-onhand-preview', viewports: 'two', path: () => '/stats?tab=onhand',
     act: async (page) => {
-      const t = await previewTags(page, '/insights?tab=onhand');
+      const t = await previewTags(page, '/stats?tab=onhand');
       expect(t['og:title']).toBe('Insights: On hand');
       expect(t['og:description']).toMatch(/^What's on fuhnoo's shelf right now\n.+\n\d+ bags? waiting · .+ · \$[\d,.]+ tied up$/);
     }
   },
   {
-    name: 'insights-onhand-age', viewports: 'two', path: () => '/insights?tab=onhand',
+    name: 'insights-onhand-age', viewports: 'two', path: () => '/stats?tab=onhand',
     act: async (page) => {
       const panel = page.locator('section.chart-panel:has(#onhand-age)');
       await panel.scrollIntoViewIfNeeded();
@@ -5486,7 +5287,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-onhand-waiting', viewports: 'two', path: () => '/insights?tab=onhand',
+    name: 'insights-onhand-waiting', viewports: 'two', path: () => '/stats?tab=onhand',
     act: async (page) => {
       const panel = page.locator('section.chart-panel:has(#onhand-waiting)');
       await panel.scrollIntoViewIfNeeded();
@@ -5507,7 +5308,7 @@ export const STATES: State[] = [
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
-  { name: 'insights-onhand-waiting-caffeine', viewports: 'two', path: () => '/insights?tab=onhand&waitBy=caffeine',
+  { name: 'insights-onhand-waiting-caffeine', viewports: 'two', path: () => '/stats?tab=onhand&waitBy=caffeine',
     act: async (page) => {
       const panel = page.locator('section.chart-panel:has(#onhand-waiting)');
       await panel.scrollIntoViewIfNeeded();
@@ -5523,7 +5324,7 @@ export const STATES: State[] = [
   },
   // Pours tab: the report card, technique, recipe x coffee and rest age; thin recipes behind a toggle (pourThin).
   {
-    name: 'insights-pours', path: () => '/insights?tab=pours',
+    name: 'insights-pours', path: () => '/stats?tab=pours',
     act: async (page) => {
       for (const id of ['pours-recipes', 'pours-technique', 'pours-recipe-coffee', 'pours-rest']) await expect(page.locator(`#${id}`)).toBeVisible();
       const rows = page.locator('.chart-panel[data-section="pours-recipes"] li');
@@ -5604,7 +5405,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-pours-thin-open', path: () => '/insights?tab=pours&pourThin=open',
+    name: 'insights-pours-thin-open', path: () => '/stats?tab=pours&pourThin=open',
     act: async (page) => {
       const rows = page.locator('.chart-panel[data-section="pours-recipes"] li');
       await expect(rows.filter({ hasText: 'Seed equal pours' })).toHaveCount(1);
@@ -5616,7 +5417,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-pours-recipe-by', viewports: 'two', path: () => '/insights?tab=pours',
+    name: 'insights-pours-recipe-by', viewports: 'two', path: () => '/stats?tab=pours',
     act: async (page) => {
       const panel = page.locator('section.chart-panel[data-section="pours-recipe-coffee"]');
       await panel.scrollIntoViewIfNeeded();
@@ -5636,7 +5437,7 @@ export const STATES: State[] = [
   {
     // Compare with: each mode rewrites the URL without a load; a recipe with brews but no same-bag contrast (Seed equal pours)
     // keeps a cell with its brews in Same roast level / Same recipe / Average.
-    name: 'insights-pours-recipe-vs', viewports: 'two', path: () => '/insights?tab=pours',
+    name: 'insights-pours-recipe-vs', viewports: 'two', path: () => '/stats?tab=pours',
     act: async (page) => {
       const panel = page.locator('section.chart-panel[data-section="pours-recipe-coffee"]');
       await panel.scrollIntoViewIfNeeded();
@@ -5658,13 +5459,13 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/recipeVs/);
     }
   },
-  { name: 'insights-pours-recipe-vs-avg', path: () => '/insights?tab=pours&recipeVs=avg&recipeBy=process',
+  { name: 'insights-pours-recipe-vs-avg', path: () => '/stats?tab=pours&recipeVs=avg&recipeBy=process',
     act: async (page) => {
       await expect(page.getByRole('group', { name: /^Recipe by process: average rating/ })).toBeVisible();
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     } },
   {
-    name: 'insights-pours-bad-params', viewports: 'two', path: () => '/insights?tab=pours&recipeBy=zzz&pourThin=x&recipeVs=zzz',
+    name: 'insights-pours-bad-params', viewports: 'two', path: () => '/stats?tab=pours&recipeBy=zzz&pourThin=x&recipeVs=zzz',
     act: async (page) => {
       const by = page.locator('[data-section="pours-recipe-coffee"]').getByRole('group', { name: 'Group by' });
       await expect(by.getByRole('button', { name: 'Roast level', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -5673,13 +5474,13 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-pours-chart-link', viewports: 'two', path: () => '/insights?tab=pours&chart=pours-technique',
+    name: 'insights-pours-chart-link', viewports: 'two', path: () => '/stats?tab=pours&chart=pours-technique',
     act: async (page) => {
       await expect(page.getByRole('heading', { name: 'Technique', exact: true })).toBeInViewport();
     }
   },
   {
-    name: 'insights-pours-empty', viewports: 'two', path: () => '/insights?tab=pours&range=2000-01-01..2000-01-31',
+    name: 'insights-pours-empty', viewports: 'two', path: () => '/stats?tab=pours&range=2000-01-01..2000-01-31',
     act: async (page) => {
       await expect(page.getByText('No rated brews with pour readings in this period.')).toBeVisible();
       await expect(page.getByRole('link', { name: 'Set up recipes' })).toHaveAttribute('href', '/recipes');
@@ -5687,23 +5488,23 @@ export const STATES: State[] = [
   },
   // A tile's title never moves when per person adds its caption part: secondary parts sit on their own line (shared tile layout).
   {
-    name: 'insights-tile-titles-people', viewports: 'two', path: () => '/insights?tab=onhand&range=3m',
+    name: 'insights-tile-titles-people', viewports: 'two', path: () => '/stats?tab=onhand&range=3m',
     act: async (page) => {
       const tops = async () => (await page.locator('.stat-item .stat-label a').evaluateAll((as) => as.map((a) => Math.round(a.getBoundingClientRect().top))));
       for (const tab of ['onhand', 'spend', 'overview', 'consumption', 'habits']) {
-        await page.goto(`/insights?tab=${tab}&range=3m`);
+        await page.goto(`/stats?tab=${tab}&range=3m`);
         await expect(page.locator('.stat-item').first()).toBeVisible();
         const before = await tops();
-        await page.goto(`/insights?tab=${tab}&range=3m&people=person`);
+        await page.goto(`/stats?tab=${tab}&range=3m&people=person`);
         await expect(page.locator('.stat-item .mode-tip-button', { hasText: 'per person' }).first()).toBeVisible();
         expect(await tops(), tab).toEqual(before);
         await expectNoEdgeDelimiters(page);
       }
     }
   },
-  // Tile captions never start or end a line with a delimiter (ui-rules 55), at every width: Insights, Records and /stats tiles.
+  // Tile captions never start or end a line with a delimiter (ui-rules 55), at every width: Stats tiles.
   {
-    name: 'insights-tile-captions', path: () => '/insights?tab=overview&range=3m&people=person&dial=all',
+    name: 'insights-tile-captions', path: () => '/stats?tab=overview&range=3m&people=person&dial=all',
     act: async (page) => {
       await expectNoEdgeDelimiters(page);
       // A list whose items or text change without its box changing is re-placed (a per-list MutationObserver): clear its mark and
@@ -5712,7 +5513,7 @@ export const STATES: State[] = [
       await list.evaluate((l) => { l.removeAttribute('data-ready'); const w = document.createTreeWalker(l, NodeFilter.SHOW_TEXT); const n = w.nextNode() as Text; n.data = n.data; });
       await expect(list).toHaveAttribute('data-ready', '');
       // A people toggle (no navigation) changes the caption items in place.
-      await page.goto('/insights?tab=onhand&range=3m');
+      await page.goto('/stats?tab=onhand&range=3m');
       const toggle = page.getByRole('button', { name: 'Per person', exact: true });
       if (await toggle.isVisible()) { // (the bar is collapsed on phones, and People is hidden in a one-person household)
         await toggle.click();
@@ -5720,17 +5521,17 @@ export const STATES: State[] = [
         await expect(page.locator('#onhand-grams-waiting .cap-list')).toHaveAttribute('data-ready', '');
         await expectNoEdgeDelimiters(page);
       }
-      for (const url of ['/insights?tab=onhand&range=3m&people=person', '/insights?tab=spend&range=3m&people=person', '/insights?tab=consumption&range=3m&people=person', '/insights?tab=habits&range=3m&people=person', '/insights?tab=records&range=3m&people=person&dial=all', '/stats?people=person']) {
+      for (const url of ['/stats?tab=onhand&range=3m&people=person', '/stats?tab=spend&range=3m&people=person', '/stats?tab=consumption&range=3m&people=person', '/stats?tab=habits&range=3m&people=person', '/stats?tab=records&range=3m&people=person&dial=all' ]) {
         await page.goto(url);
         await expect(page.locator('.stat-label').first()).toBeVisible();
         await expectNoEdgeDelimiters(page);
       }
     }
   },
-  { name: 'insights-habits-1w', path: () => '/insights?tab=habits&range=1w' },
+  { name: 'insights-habits-1w', path: () => '/stats?tab=habits&range=1w' },
   {
     name: 'insights-habits-rating-compare', viewports: 'two',
-    path: () => '/insights?tab=habits&measure=rating&compare=1',
+    path: () => '/stats?tab=habits&measure=rating&compare=1',
     act: async (page) => {
       await openSwitches(page);
       await expect(page.getByRole('group', { name: 'Ratings' }).first()).toBeVisible();
@@ -5761,7 +5562,7 @@ export const STATES: State[] = [
     // The previous week is inside the seed, so tiles get deltas; Longest streak
     // keeps its sub line too. Delta, sub and caption stack without overlapping, inside the tile.
     name: 'insights-habits-compare-sub',
-    path: () => '/insights?tab=habits&range=1w&compare=1',
+    path: () => '/stats?tab=habits&range=1w&compare=1',
     act: async (page) => {
       await expect(page.locator('.stat-item .insights-delta').first()).toBeVisible();
       const tiles = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Longest streak$/ }) });
@@ -5797,16 +5598,11 @@ export const STATES: State[] = [
       expect(m.own).toBeGreaterThanOrEqual(m.max - 1);
     }
   },
-  { name: 'labels-overview', path: () => '/insights', act: (page) => expectGroupsLabelled(page) },
-  { name: 'labels-leaderboards', path: () => '/insights?tab=leaderboards', act: (page) => expectGroupsLabelled(page) },
-  { name: 'labels-habits', path: () => '/insights?tab=habits', act: (page) => expectGroupsLabelled(page) },
-  { name: 'labels-habits-rating', path: () => '/insights?tab=habits&measure=rating', act: (page) => expectGroupsLabelled(page) },
-  { name: 'labels-consumption', path: () => '/insights?tab=consumption', act: (page) => expectGroupsLabelled(page) },
-  { name: 'labels-stats-general', path: () => '/stats', act: (page) => expectGroupsLabelled(page) },
-  { name: 'labels-stats-bq', path: () => '/stats?tab=bq', act: (page) => expectGroupsLabelled(page) },
-  { name: 'labels-stats-bq-favorites', path: () => '/stats?tab=bq&bc=favorites', act: (page) => expectGroupsLabelled(page) },
-  { name: 'labels-stats-bq-brewing', path: () => '/stats?tab=bq&bc=brewing', act: (page) => expectGroupsLabelled(page) },
-  { name: 'labels-stats-bq-economics', path: () => '/stats?tab=bq&bc=economics', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-overview', path: () => '/stats', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-leaderboards', path: () => '/stats?tab=leaderboards', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-habits', path: () => '/stats?tab=habits', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-habits-rating', path: () => '/stats?tab=habits&measure=rating', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-consumption', path: () => '/stats?tab=consumption', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-coffees', path: () => '/coffees?status=all&view=compact', act: (page) => expectGroupsLabelled(page) },
   {
     // Two views behind a labeled View select: only the chosen section renders; `next` is the only explicit value.
@@ -5842,7 +5638,7 @@ export const STATES: State[] = [
   {
     // Habits Show toggle: Total sums (URL carries agg=total), Avg per day is the default, rating hides the group.
     name: 'insights-habits-agg-total',
-    path: () => '/insights?tab=habits&agg=total&compare=1',
+    path: () => '/stats?tab=habits&agg=total&compare=1',
     act: async (page) => {
       await expect(page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Total' })).toHaveAttribute('aria-pressed', 'true');
       await expectChipsFit(page);
@@ -5856,7 +5652,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-habits-agg-avg-grams',
-    path: () => '/insights?tab=habits&measure=grams&compare=1',
+    path: () => '/stats?tab=habits&measure=grams&compare=1',
     act: async (page) => {
       await page.locator('.heatmap .heat-cell').nth(10).hover();
       await expectChipsFit(page);
@@ -5865,7 +5661,7 @@ export const STATES: State[] = [
   {
     // Active days compares as a ratio of a count: "▼ 3% from 31 days (100%)", up to two lines, clear of the caption, nothing clipped.
     name: 'insights-habits-active-from',
-    path: () => '/insights?tab=habits&range=1w&compare=1',
+    path: () => '/stats?tab=habits&range=1w&compare=1',
     act: async (page) => {
       const tile = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Active days$/ }) });
       await expect(tile.locator('.insights-delta [aria-hidden]')).toHaveText(/^[▲▼] \d+% from \d+ days \(\d+%\)$|^No change$/);
@@ -5882,23 +5678,23 @@ export const STATES: State[] = [
   {
     // Busiest-weekday sub ("5.9 brews avg") on a long range, no compare: never an ellipsis (prod-like widths).
     name: 'insights-habits-busiest',
-    path: () => '/insights?tab=habits&range=all',
+    path: () => '/stats?tab=habits&range=all',
     act: (page) => expectNoEllipsis(page)
   },
   {
     name: 'insights-habits-busiest-rating',
-    path: () => '/insights?tab=habits&range=all&measure=rating',
+    path: () => '/stats?tab=habits&range=all&measure=rating',
     act: (page) => expectNoEllipsis(page)
   },
   {
     name: 'insights-habits-busiest-grams',
-    path: () => '/insights?tab=habits&range=all&measure=grams&compare=before',
+    path: () => '/stats?tab=habits&range=all&measure=grams&compare=before',
     act: (page) => expectDeltasFit(page)
   },
   {
     // Average mode with a compare on: the narrowest strings (per-day labels, bag fractions), grams and bags.
     name: 'insights-consumption-agg-grams',
-    path: () => '/insights?tab=consumption&range=1w&compare=1',
+    path: () => '/stats?tab=consumption&range=1w&compare=1',
     act: async (page) => {
       await expect(page.getByRole('button', { name: 'Avg per day' })).toBeVisible();
       await expectChipsFit(page);
@@ -5907,12 +5703,12 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-consumption-busiest-day',
-    path: () => '/insights?tab=consumption&range=all',
+    path: () => '/stats?tab=consumption&range=all',
     act: expectBusiestDay
   },
   {
     name: 'insights-consumption-busiest-day-compare',
-    path: () => '/insights?tab=consumption&range=1w&compare=1',
+    path: () => '/stats?tab=consumption&range=1w&compare=1',
     act: async (page) => {
       await expectBusiestDay(page);
       const tile = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Busiest day$/ }) });
@@ -5971,7 +5767,7 @@ export const STATES: State[] = [
   {
     // The compare bar's tooltip names the dates it covers (screenshot shows it; the server titles are unit-tested).
     name: 'insights-consumption-compare-tooltip',
-    path: () => '/insights?tab=consumption&range=1w&compare=1&by=day',
+    path: () => '/stats?tab=consumption&range=1w&compare=1&by=day',
     act: async (page) => {
       const c = page.locator('.insights-charts canvas').first();
       await c.scrollIntoViewIfNeeded();
@@ -5995,7 +5791,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-consumption-agg-bags',
-    path: () => '/insights?tab=consumption&range=1w&compare=1&unit=bags',
+    path: () => '/stats?tab=consumption&range=1w&compare=1&unit=bags',
     act: async (page) => {
       await expect(page.locator('.stat-label', { hasText: 'Finished/day' })).toBeVisible();
       await expectDeltasFit(page);
@@ -6003,18 +5799,18 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-consumption-agg-bags-longer',
-    path: () => '/insights?tab=consumption&range=1w&compare=before&unit=bags&by=week',
+    path: () => '/stats?tab=consumption&range=1w&compare=before&unit=bags&by=week',
     act: (page) => expectDeltasFit(page)
   },
-  { name: 'insights-habits-sticky', path: () => '/insights?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
+  { name: 'insights-habits-sticky', path: () => '/stats?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-consumption-tab', viewports: 'two',
-    path: () => '/insights?tab=consumption',
+    path: () => '/stats?tab=consumption',
     act: async (page) => expect(page.locator('.insights-charts canvas')).toHaveCount(2)
   },
   {
     name: 'insights-consumption-bags-week', viewports: 'two',
-    path: () => '/insights?tab=consumption&unit=bags&by=week&compare=1&agg=total',
+    path: () => '/stats?tab=consumption&unit=bags&by=week&compare=1&agg=total',
     act: async (page) => {
       await expect(page.getByRole('button', { name: 'Week' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('.stat-label', { hasText: 'Bags finished' })).toBeVisible();
@@ -6023,7 +5819,7 @@ export const STATES: State[] = [
   {
     // The ~21-day ui seed is too short for months, even over all time (ruling P2).
     name: 'insights-consumption-all', viewports: 'two',
-    path: () => '/insights?tab=consumption&range=all',
+    path: () => '/stats?tab=consumption&range=all',
     act: async (page) => {
       // The seed's insights brews reach back 60 days: all time spans months (1w keeps Month disabled).
       await expect(page.getByRole('button', { name: 'Month' })).toBeEnabled();
@@ -6033,13 +5829,13 @@ export const STATES: State[] = [
   {
     // Notes that change with a control are sentence + suffix line (blank when none): switching the measure never moves the page.
     name: 'insights-note-steady',
-    path: () => '/insights?tab=consumption&range=all',
+    path: () => '/stats?tab=consumption&range=all',
     act: async (page) => {
       const heights = () => page.locator('[data-switched-note]').evaluateAll((ns) => ns.map((n) => Math.round(n.getBoundingClientRect().height)));
       for (const [a, b] of [['?tab=consumption&range=all', '?tab=consumption&range=all&trend=rating'], ['?tab=habits&range=all&measure=grams', '?tab=habits&range=all&measure=rating']]) {
-        await gotoReady(page, `/insights${a}`);
+        await gotoReady(page, `/stats${a}`);
         const before = await heights();
-        await gotoReady(page, `/insights${b}`);
+        await gotoReady(page, `/stats${b}`);
         const after = await heights();
         expect(before.length).toBeGreaterThan(0);
         expect(after[0]).toBe(before[0]);
@@ -6051,7 +5847,7 @@ export const STATES: State[] = [
   {
     // D3: Brewed over time's in-chart Measure toggle (the Unit | Brews | Water | Rating), URL state, and the header's alignment.
     name: 'insights-consumption-trend-toggle',
-    path: () => '/insights?tab=consumption&range=all&by=week',
+    path: () => '/stats?tab=consumption&range=all&by=week',
     act: async (page) => {
       const panel = page.locator('section.chart-panel').filter({ has: page.locator('#consumption-chart-brewed') });
       const group = panel.getByRole('group', { name: 'Measure' });
@@ -6085,7 +5881,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-consumption-trend-water-compare', viewports: 'two',
-    path: () => '/insights?tab=consumption&range=1m&compare=1&trend=water&by=day',
+    path: () => '/stats?tab=consumption&range=1m&compare=1&trend=water&by=day',
     act: async (page) => {
       const panel = page.locator('section.chart-panel').filter({ has: page.locator('#consumption-chart-brewed') });
       await expect(panel.getByRole('button', { name: 'Water' })).toHaveAttribute('aria-pressed', 'true');
@@ -6097,7 +5893,7 @@ export const STATES: State[] = [
   // shares the line when it fits (no held empty line). Every tab with the Ratings menu.
   ...(['consumption&trend=rating', 'habits&measure=rating', 'gear', 'leaderboards', 'records', 'brewing', 'water', 'sweetspots'] as const).map((q) => ({
     name: `insights-see-all-no-shift-${q.split('&')[0]}`,
-    path: () => `/insights?tab=${q}&range=all`,
+    path: () => `/stats?tab=${q}&range=all`,
     act: async (page: Page) => {
       const row = page.locator('.period-row');
       const note = row.locator('.see-all');
@@ -6134,7 +5930,7 @@ export const STATES: State[] = [
     // The note appearing (Rating on) or going (Brews) leaves the first panel where it was below the period line (where it
     // shares the line; the filter bar's Ratings menu, which can add a row to the bar, aside).
     name: 'insights-see-all-appears-in-place',
-    path: () => '/insights?tab=consumption&range=all&by=week',
+    path: () => '/stats?tab=consumption&range=all&by=week',
     act: async (page) => {
       if ((page.viewportSize()?.width ?? 0) < 768) return;
       const row = () => page.locator('.period-row').boundingBox().then((b) => b!.height);
@@ -6149,7 +5945,7 @@ export const STATES: State[] = [
   {
     // Show's third option: Per brew day, one URL value, tile labels follow.
     name: 'insights-consumption-brewday', viewports: 'two',
-    path: () => '/insights?tab=consumption&range=all&agg=brewday',
+    path: () => '/stats?tab=consumption&range=all&agg=brewday',
     act: async (page) => {
       const show = page.getByRole('group', { name: 'Show' });
       await expect(show.getByRole('button')).toHaveText(['Avg per day', 'Per brew day', 'Total']);
@@ -6163,7 +5959,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-habits-brewday', viewports: 'two',
-    path: () => '/insights?tab=habits&agg=brewday',
+    path: () => '/stats?tab=habits&agg=brewday',
     act: async (page) => {
       await expect(page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Per brew day' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('.chart-note').first()).toContainText('per brew day');
@@ -6172,7 +5968,7 @@ export const STATES: State[] = [
   {
     // D3: Gear usage over time: Dripper | Grinder and Bars | Lines in the panel header; Water's has Bars | Lines.
     name: 'insights-usage-toggles',
-    path: () => '/insights?tab=gear&gearBy=grinder&gearView=lines',
+    path: () => '/stats?tab=gear&gearBy=grinder&gearView=lines',
     act: async (page) => {
       const panel = page.locator('[data-section="gear-eras"]');
       await expect(panel.getByRole('button', { name: 'Grinder' })).toHaveAttribute('aria-pressed', 'true');
@@ -6197,7 +5993,7 @@ export const STATES: State[] = [
   {
     // Each chart keeps its own Bars | Lines: Gear's Lines never reach Water's usage chart.
     name: 'insights-usage-views-independent', viewports: 'two',
-    path: () => '/insights?tab=water&gearView=lines&gearBy=grinder',
+    path: () => '/stats?tab=water&gearView=lines&gearBy=grinder',
     act: async (page) => {
       await expect(page.locator('[data-section="water-eras"] .stacked')).toBeVisible();
       await expect(page.locator('[data-section="water-eras"]').getByRole('button', { name: 'Bars' })).toHaveAttribute('aria-pressed', 'true');
@@ -6205,7 +6001,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-water-usage-lines', viewports: 'two',
-    path: () => '/insights?tab=water&waterView=lines',
+    path: () => '/stats?tab=water&waterView=lines',
     act: async (page) => {
       const panel = page.locator('[data-section="water-eras"]');
       await expect(panel.getByRole('button', { name: 'Lines' })).toHaveAttribute('aria-pressed', 'true');
@@ -6215,21 +6011,21 @@ export const STATES: State[] = [
       await expect(panel.locator('.stacked')).toBeVisible();
     }
   },
-  { name: 'insights-consumption-1w', viewports: 'two', path: () => '/insights?tab=consumption&range=1w',
+  { name: 'insights-consumption-1w', viewports: 'two', path: () => '/stats?tab=consumption&range=1w',
     act: async (page) => expect(page.getByRole('button', { name: 'Month' })).toBeDisabled() },
   {
     // Delta lines: arrow + change + "from" + the previous value (pace-scaled: change + %); the sentence
     // is visually hidden text. Never clipped or wrapped.
     name: 'insights-1w-compare',
-    path: () => '/insights?range=1w&compare=1',
+    path: () => '/stats?range=1w&compare=1',
     act: (page) => expectDeltasFit(page)
   },
-  { name: 'insights-year', path: () => `/insights?range=${new Date().getFullYear()}&ratings=all` },
-  { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },
+  { name: 'insights-year', path: () => `/stats?range=${new Date().getFullYear()}&ratings=all` },
+  { name: 'insights-compare-2', path: () => '/stats?range=1w&compare=2' },
   {
     // Former native titles, now the shared hover tip (labelTip): a tile's delta sentence, the People switch's help.
     name: 'insights-hover-tips',
-    path: () => '/insights?range=1w&compare=2',
+    path: () => '/stats?range=1w&compare=2',
     act: async (page) => {
       const tip = page.locator('.cell-tip:popover-open');
       const delta = page.locator('.stat-item .insights-delta').first();
@@ -6242,12 +6038,12 @@ export const STATES: State[] = [
       await expect(tip.locator('.tip-lines li')).toHaveCount(1);
     }
   },
-  { name: 'insights-ratings-all', path: () => '/insights?ratings=all' },
+  { name: 'insights-ratings-all', path: () => '/stats?ratings=all' },
   {
     // Overview: Totals and Averages each carry the Ratings and Brews switches in their header (no in-tile pills);
     // one URL param each keeps them in sync.
     name: 'insights-ratings-switch-sync', viewports: 'two',
-    path: () => '/insights',
+    path: () => '/stats',
     act: async (page) => {
       await expect(page.locator('.stat-item [role="group"]')).toHaveCount(0);
       const switches = page.getByRole('group', { name: 'Ratings' });
@@ -6265,7 +6061,7 @@ export const STATES: State[] = [
     }
   },
   ...(['leaderboards', 'habits&measure=rating', 'records', 'sweetspots', 'brewing', 'water', 'gear'] as const).map((t) => ({
-    name: `insights-dial-${t.split('&')[0]}`, path: () => `/insights?tab=${t}`,
+    name: `insights-dial-${t.split('&')[0]}`, path: () => `/stats?tab=${t}`,
     act: async (page: Page) => {
       await openSwitches(page);
       const g = page.getByRole('group', { name: 'Brews' }).first();
@@ -6274,16 +6070,16 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/dial=all/);
       await expect(g.getByRole('button', { name: 'All brews', exact: true })).toHaveAttribute('aria-pressed', 'true');
     } })),
-  { name: 'insights-dial-all', path: () => '/insights?tab=leaderboards&dial=all' },
+  { name: 'insights-dial-all', path: () => '/stats?tab=leaderboards&dial=all' },
   // Captions stay inside their tiles in both dial states (checkLayout).
-  { name: 'insights-dial-all-overview', path: () => '/insights?dial=all' },
-  { name: 'insights-dial-all-records', path: () => '/insights?tab=records&dial=all' },
-  { name: 'insights-dial-all-compare', path: () => '/insights?dial=all&compare=1' },
+  { name: 'insights-dial-all-overview', path: () => '/stats?dial=all' },
+  { name: 'insights-dial-all-records', path: () => '/stats?tab=records&dial=all' },
+  { name: 'insights-dial-all-compare', path: () => '/stats?dial=all&compare=1' },
   // ui-rules 26: Ratings and Brews are one menu button in the sticky bar, only where they apply (none in tiles or panels);
   // on a tab where it applies to some modes only, it stays greyed in the others so the bar keeps its size.
   ...(['sweetspots', 'water', 'gear', 'brewing', 'records', 'leaderboards', 'habits&measure=rating',
     'leaderboards&rank=brews', 'habits', 'consumption', 'milestones', 'insights'] as const).map((t) => ({
-    name: `insights-switch-placement-${t.replace(/\W+/g, '-')}`, path: () => `/insights?tab=${t}`,
+    name: `insights-switch-placement-${t.replace(/\W+/g, '-')}`, path: () => `/stats?tab=${t}`,
     act: async (page: Page) => {
       const on = !/^(milestones|insights)$/.test(t);
       const off = /rank=|^(habits|consumption)$/.test(t);
@@ -6331,7 +6127,7 @@ export const STATES: State[] = [
   {
     // The menu's label tracks the state. Toggling keeps the scroll position (and any content shift is not ours):
     // checked after the navigation settles, ±5 px.
-    name: 'insights-dial-records-sticky', path: () => '/insights?tab=records',
+    name: 'insights-dial-records-sticky', path: () => '/stats?tab=records',
     act: async (page) => {
       await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight / 3));
       const y = await page.evaluate(() => scrollY);
@@ -6358,19 +6154,19 @@ export const STATES: State[] = [
   {
     // Reset clears every choice but a non-default tab; tab choices survive a tab switch.
     name: 'insights-reset', viewports: 'two',
-    path: () => '/insights?tab=habits&range=1w&measure=grams&ratings=all',
+    path: () => '/stats?tab=habits&range=1w&measure=grams&ratings=all',
     act: async (page) => {
       await page.getByLabel('View').selectOption('consumption');
       await expect(page).toHaveURL(/tab=consumption/);
       await expect(page).toHaveURL(/measure=grams/);
       await page.getByRole('button', { name: 'Reset' }).click();
-      await expect(page).toHaveURL(/\/insights\?tab=consumption$/);
+      await expect(page).toHaveURL(/\/stats\?tab=consumption$/);
     }
   },
   {
     // Consumption: 4 tiles in the same columns as Totals, deltas on the three rates only.
     name: 'insights-consumption', viewports: 'two',
-    path: () => '/insights?range=1w&compare=1',
+    path: () => '/stats?range=1w&compare=1',
     act: async (page) => {
       const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Consumption' }) });
       await expect(panel.locator('.stat-label')).toHaveText(['Per day', 'Per week', 'Per month', 'Time to clear']);
@@ -6382,7 +6178,7 @@ export const STATES: State[] = [
   {
     // A longer window: groups in the Compare menu, totals paced to the period.
     name: 'insights-compare-longer',
-    path: () => '/insights?range=1w&compare=before',
+    path: () => '/stats?range=1w&compare=before',
     act: async (page) => {
       const compare = page.getByLabel('Compare');
       await expect(compare).toHaveValue('before');
@@ -6423,7 +6219,7 @@ export const STATES: State[] = [
     // Custom range…: a dialog with a draft (URL untouched, no input focused) until
     // Apply; a wrong order disables Apply, Cancel applies nothing. Navigation only.
     name: 'insights-compare-custom',
-    path: () => '/insights?range=1w',
+    path: () => '/stats?range=1w',
     act: async (page) => {
       const before = page.url();
       await page.getByLabel('Compare').selectOption('custom');
@@ -6460,7 +6256,7 @@ export const STATES: State[] = [
     // The Custom range dialog open, for the screenshots: inside the viewport (landscape is 333px
     // tall), Apply and Cancel on screen.
     name: 'insights-compare-custom-open',
-    path: () => '/insights?range=1w',
+    path: () => '/stats?range=1w',
     act: async (page) => {
       await page.getByLabel('Compare').selectOption('custom');
       await expect(page.locator('dialog[open]')).toBeVisible();
@@ -6472,7 +6268,7 @@ export const STATES: State[] = [
     // A custom Period on the overview (compare 1 = the previous same-length window), applied from
     // the Period dialog; the select shows the span. Navigation only.
     name: 'insights-custom-range',
-    path: () => `/insights?range=${daysAgo(40)}..${daysAgo(10)}&compare=1`,
+    path: () => `/stats?range=${daysAgo(40)}..${daysAgo(10)}&compare=1`,
     act: async (page) => {
       const period = page.getByLabel('Period', { exact: true });
       await expect(period).toHaveValue('custom');
@@ -6494,7 +6290,7 @@ export const STATES: State[] = [
     // Period › Custom range… opens the shared dialog (no autofocus, fits the viewport); Apply keeps
     // the tab. A consumption `by` that no longer fits is dropped.
     name: 'insights-custom-range-open',
-    path: () => '/insights?tab=consumption&by=month&range=1w',
+    path: () => '/stats?tab=consumption&by=month&range=1w',
     act: async (page) => {
       await page.getByLabel('Period', { exact: true }).selectOption('custom');
       await expect(page.locator('dialog[open]')).toBeVisible();
@@ -6513,7 +6309,7 @@ export const STATES: State[] = [
     // Per person: one switch drives `people`; total tiles get the suffix, averages don't;
     // a count under 10 keeps one decimal. Navigation only.
     name: 'insights-people-person', viewports: 'two',
-    path: () => '/insights?range=1w&compare=1',
+    path: () => '/stats?range=1w&compare=1',
     act: async (page) => {
       const people = page.getByRole('group', { name: 'People' });
       await people.getByRole('button', { name: 'Per person', exact: true }).click();
@@ -6531,7 +6327,7 @@ export const STATES: State[] = [
     // Mouse hover opens a click-for-explanation tip and leaving closes it; a click then keeps it open.
     // Touch viewports (no hover) only get the tap path, covered by insights-ratings-tip.
     name: 'insights-tip-hover', viewports: 'two',
-    path: () => '/insights',
+    path: () => '/stats',
     act: async (page) => {
       const btn = page.locator('.mode-tip-button:not([popovertarget="tip-people"])').first();
       const tip = page.locator('#tip-rated');
@@ -6559,7 +6355,7 @@ export const STATES: State[] = [
     // Score's ⓘ opens a dialog: hover shows a short tip instead, a click swaps it for the dialog. And a tip
     // closed by Escape after a hover reopens on the next click (no stale hover flag).
     name: 'insights-tip-hover-dialog', viewports: 'two',
-    path: () => '/insights?tab=leaderboards',
+    path: () => '/stats?tab=leaderboards',
     act: async (page) => {
       if (!(await page.evaluate(() => matchMedia('(hover: hover)').matches))) return;
       const score = page.getByRole('button', { name: 'Score', exact: true });
@@ -6589,7 +6385,7 @@ export const STATES: State[] = [
   {
     // Tapping the caption's mode word opens its explanation (the touch path).
     name: 'insights-ratings-tip',
-    path: () => '/insights',
+    path: () => '/stats',
     act: async (page) => {
       await page.locator('.mode-tip-button:not([popovertarget="tip-people"])').first().click();
       const tip = page.locator('#tip-rated');
@@ -6606,7 +6402,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-leaderboards',
-    path: () => '/insights?tab=leaderboards',
+    path: () => '/stats?tab=leaderboards',
     act: async (page) => {
       await expect(page.locator('.board')).toHaveCount(12);
       await expectEqualBoardHeights(page);
@@ -6614,7 +6410,7 @@ export const STATES: State[] = [
       await expectSampleChips(page);
     }
   },
-  { name: 'insights-sample-note', path: () => '/insights?tab=leaderboards&avg=raw',
+  { name: 'insights-sample-note', path: () => '/stats?tab=leaderboards&avg=raw',
     act: async (page) => {
       const note = page.locator('.sample-note').first();
       await expect(note).toHaveText(/^Only \d+ (bags?|brews?)$/);
@@ -6658,7 +6454,7 @@ export const STATES: State[] = [
         return [c(el.querySelector('.name, .who a')), c(el.querySelector('.val'))].every((x) => x === muted);
       })).toBe(true); // polled: the hover color transition (150ms) settles
     } },
-  { name: 'insights-sample-marks', path: () => '/insights?tab=brewing&grinder=zp6-special',
+  { name: 'insights-sample-marks', path: () => '/stats?tab=brewing&grinder=zp6-special',
     act: async (page) => {
       const marks = page.locator('.small-sample-mark');
       expect(await marks.count()).toBeGreaterThan(0);
@@ -6678,9 +6474,9 @@ export const STATES: State[] = [
       await expect(page.locator('body')).not.toContainText(/Striped:|Few brews|few brews/i);
       await expect(page.locator('.pale, .faded, .few')).toHaveCount(0);
     } },
-  { name: 'insights-sample-habits', viewports: 'two', path: () => '/insights?tab=habits&measure=rating&range=all',
+  { name: 'insights-sample-habits', viewports: 'two', path: () => '/stats?tab=habits&measure=rating&range=all',
     act: async (page) => expect(page.locator('.heat-cell.small-sample-mark').first()).toBeVisible() },
-  { name: 'insights-settle-dripper-water', viewports: 'two', path: () => '/insights?tab=brewing&range=all',
+  { name: 'insights-settle-dripper-water', viewports: 'two', path: () => '/stats?tab=brewing&range=all',
     act: async (page) => {
       for (const k of ['dripper', 'water']) {
         const sec = page.locator(`[data-section="brewing-settle-${k}"]`);
@@ -6689,7 +6485,7 @@ export const STATES: State[] = [
         await expect(sec.locator('.chart-note')).not.toContainText('filter not applied');
       }
     } },
-  { name: 'insights-settle-own-axis', viewports: 'two', path: () => '/insights?tab=brewing&range=all&dripper=V60',
+  { name: 'insights-settle-own-axis', viewports: 'two', path: () => '/stats?tab=brewing&range=all&dripper=V60',
     act: async (page) => {
       const sec = page.locator('[data-section="brewing-settle-dripper"]');
       await expect(sec).toBeVisible();
@@ -6697,14 +6493,14 @@ export const STATES: State[] = [
       await expect(sec.locator('.chart-note')).toContainText('Dripper filter not applied');
       await expect(sec.locator('.settle-cols .col').first()).toHaveAttribute('aria-label', /Median settle brew/);
     } },
-  { name: 'insights-sample-legend', viewports: 'two', path: () => '/insights?tab=brewing',
+  { name: 'insights-sample-legend', viewports: 'two', path: () => '/stats?tab=brewing',
     act: async (page) => {
       await page.locator('[data-section="brewing-rest"] .mode-tip-button').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toContainText('Only 2 bags');
       await expect(page.locator('.mode-tip:popover-open')).toContainText('Low confidence: under 3 bags or 10 rated brews (4 for one coffee).');
       await expect(page.locator('.mode-tip:popover-open .sample-chip')).toBeVisible();
     } },
-  { name: 'insights-strength-badges', viewports: 'two', path: () => '/insights?tab=sweetspots',
+  { name: 'insights-strength-badges', viewports: 'two', path: () => '/stats?tab=sweetspots',
     act: async (page) => {
       // The strength badges read Likely / Possible, never Solid / Hint; the legend explains them and "no badge".
       for (const t of await page.locator('.hl-badge').allTextContents()) expect(t).toMatch(/^(Likely|Possible|Early)$/);
@@ -6716,7 +6512,7 @@ export const STATES: State[] = [
   {
     // Overview's Recent panel: last 10 brews (bar = rating on the 10 scale) and last 10 coffees finished.
     name: 'insights-recent',
-    path: () => '/insights',
+    path: () => '/stats',
     act: async (page) => {
       const panel = page.locator('section.recent');
       await expect(panel.getByRole('heading', { name: 'Last 10 brews' })).toBeVisible();
@@ -6744,7 +6540,7 @@ export const STATES: State[] = [
     // The seed has fewer than 50 finished coffees: every row shows, so the footer is Show less only.
     name: 'insights-recent-short-list',
     viewports: 'two',
-    path: () => '/insights?recentc=50',
+    path: () => '/stats?recentc=50',
     act: async (page) => {
       const foot = page.locator('section.recent .top-foot').nth(1);
       await expect(foot.getByRole('button', { name: 'Show less' })).toBeVisible();
@@ -6754,7 +6550,7 @@ export const STATES: State[] = [
   {
     // Recent expanded: Show less sits left of Show more; rows read row by row in two columns (one on phones).
     name: 'insights-recent-more',
-    path: () => '/insights?recent=20',
+    path: () => '/stats?recent=20',
     act: async (page) => {
       const panel = page.locator('section.recent');
       await expect(panel.getByRole('heading', { name: 'Last 20 brews' })).toBeVisible();
@@ -6777,7 +6573,7 @@ export const STATES: State[] = [
   {
     // Show more / Show less on the brews list scrolls its footer's button to the screen bottom (as Records does).
     name: 'insights-recent-show-more-scroll',
-    path: () => '/insights',
+    path: () => '/stats',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const lift = () => page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
@@ -6798,7 +6594,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-leaderboards-avg',
-    path: () => '/insights?tab=leaderboards&avg=best&range=12m&compare=1',
+    path: () => '/stats?tab=leaderboards&avg=best&range=12m&compare=1',
     act: async (page) => {
       await expect(page.getByRole('combobox', { name: 'Score' })).toHaveValue('best');
       await expect(page.getByRole('combobox', { name: 'Rank by' })).toHaveValue('rating');
@@ -6826,7 +6622,7 @@ export const STATES: State[] = [
     // How scores work: opens from the Score label, fits the viewport (scrolls inside on landscape),
     // closes on Escape; nothing in the URL.
     name: 'insights-leaderboards-how-scores',
-    path: () => '/insights?tab=leaderboards',
+    path: () => '/stats?tab=leaderboards',
     act: async (page) => {
       await page.getByRole('button', { name: 'Score', exact: true }).click();
       const dlg = page.getByRole('dialog', { name: 'How scores work' });
@@ -6856,7 +6652,7 @@ export const STATES: State[] = [
   {
     // The Overview's Cost per brew (an average, rarely whole cents) carries the same tip.
     name: 'insights-overview-usd-tip',
-    path: () => '/insights',
+    path: () => '/stats',
     act: async (page) => {
       await page.locator('#overview-cost-per-brew .stat-value .text-tip').click();
       const tip = page.locator('.float-tip');
@@ -6867,7 +6663,7 @@ export const STATES: State[] = [
   {
     // A dollar amount rounded to cents carries the value to 4 decimals in the shared tip (Usd; user, 2026-10-17).
     name: 'insights-leaderboards-usd-tip',
-    path: () => '/insights?tab=leaderboards&rank=ppg',
+    path: () => '/stats?tab=leaderboards&rank=ppg',
     act: async (page) => {
       await page.locator('[data-board="coffees"] .val .text-tip').first().click();
       const tip = page.locator('.float-tip');
@@ -6880,7 +6676,7 @@ export const STATES: State[] = [
     // Coffees default to k2 (shrunk by brews): a row's value tip shows the shrunk score beside the plain average
     // (user ruling 2026-10-17), opening from the value text over the row's stretched link.
     name: 'insights-leaderboards-coffee-tip',
-    path: () => '/insights?tab=leaderboards&range=all',
+    path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       const val = page.locator('[data-board="coffees"] .val .text-tip').first();
       await val.click();
@@ -6895,7 +6691,7 @@ export const STATES: State[] = [
     // A group board's value tip gives its score ± 1 SE; a board that differs by less than its noise is named in one
     // line under the boards (user ruling 2026-10-17).
     name: 'insights-leaderboards-se-tip',
-    path: () => '/insights?tab=leaderboards&range=all&avg=raw',
+    path: () => '/stats?tab=leaderboards&range=all&avg=raw',
     act: async (page) => {
       const val = page.locator('[data-board="roasters"] .val .text-tip').first();
       await val.evaluate((el) => el.scrollIntoView({ block: 'start' })); // phone landscape: the sticky bar (with the tab's controls) leaves little room
@@ -6920,7 +6716,7 @@ export const STATES: State[] = [
     // plain average that differs from the score. One rated coffee (The Picky Chemist, all brews): its Confidence adj.
     // score shrinks toward its own mean, so it equals the plain average; the tip would only repeat the row.
     name: 'insights-leaderboards-tip-adds', viewports: 'two',
-    path: () => '/insights?tab=leaderboards&range=all&dial=all&roaster=The%20Picky%20Chemist',
+    path: () => '/stats?tab=leaderboards&range=all&dial=all&roaster=The%20Picky%20Chemist',
     act: async (page) => {
       const val = page.locator('[data-board="coffees"] .board-row.bar .val');
       await expect(val).toHaveCount(1);
@@ -6928,7 +6724,7 @@ export const STATES: State[] = [
       // Nothing in the value is dotted (the underline lives on a .text-tip, never on .val itself).
       expect(await val.evaluate((v) => [v, ...v.querySelectorAll('*')].filter((e) => getComputedStyle(e).textDecorationLine.includes('underline')).length)).toBe(0);
       // Default (Confidence adj., Once dialed): every Coffees tip shows a differing plain average or both counts.
-      await gotoReady(page, '/insights?tab=leaderboards&range=all');
+      await gotoReady(page, '/stats?tab=leaderboards&range=all');
       const tips = page.locator('[data-board="coffees"] .val .text-tip');
       expect(await tips.count()).toBeGreaterThan(0);
       for (const t of await tips.all()) {
@@ -6941,7 +6737,7 @@ export const STATES: State[] = [
       }
     }
   },
-  { name: 'insights-board-jump', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-board-jump', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       // One jump link per board; a click lands the card's top just under the sticky bar.
       const links = page.locator('.board-jump a');
@@ -6955,7 +6751,7 @@ export const STATES: State[] = [
     } },
   // One caffeine kind with rated brews (Kurasu has no decaf): the Caffeinated vs. decaf board is left out, the band ends earlier with
   // no hole, no jump chip, and a deep link to it does not break the page. The layout check covers every viewport.
-  { name: 'insights-board-caffeine-hidden', path: () => '/insights?tab=leaderboards&range=all&dial=all&roaster=Kurasu#leaderboard-caffeine',
+  { name: 'insights-board-caffeine-hidden', path: () => '/stats?tab=leaderboards&range=all&dial=all&roaster=Kurasu#leaderboard-caffeine',
     act: async (page) => {
       const errors: string[] = [];
       page.on('pageerror', (e) => errors.push(String(e)));
@@ -6965,15 +6761,15 @@ export const STATES: State[] = [
       const bands = page.locator('.board-band');
       expect(await bands.count()).toBeGreaterThan(0);
       for (const band of await bands.all()) expect(await band.locator('> .board').count(), 'no empty band').toBeGreaterThan(0);
-      await gotoReady(page, '/insights?tab=leaderboards&range=all&dial=all&roaster=Kurasu&chart=leaderboard-caffeine');
+      await gotoReady(page, '/stats?tab=leaderboards&range=all&dial=all&roaster=Kurasu&chart=leaderboard-caffeine');
       await expect(page.locator('[data-board="roasters"]')).toBeVisible();
       expect(errors).toEqual([]);
       // Both kinds present again: the board is back.
-      await gotoReady(page, '/insights?tab=leaderboards&range=all&dial=all');
+      await gotoReady(page, '/stats?tab=leaderboards&range=all&dial=all');
       await expect(page.locator('[data-board="caffeine"]')).toHaveCount(1);
-      await gotoReady(page, '/insights?tab=leaderboards&range=all&dial=all&roaster=Kurasu');
+      await gotoReady(page, '/stats?tab=leaderboards&range=all&dial=all&roaster=Kurasu');
     } },
-  { name: 'insights-board-caffeine', path: () => '/insights?tab=leaderboards&range=all&dial=all',
+  { name: 'insights-board-caffeine', path: () => '/stats?tab=leaderboards&range=all&dial=all',
     act: async (page) => {
       const board = page.locator('[data-board="caffeine"]');
       await board.scrollIntoViewIfNeeded();
@@ -6985,12 +6781,12 @@ export const STATES: State[] = [
       await expect(board.getByRole('button', { name: /^Show (it|them)$|^Show only/ })).toHaveCount(0);
       await expect(page).not.toHaveURL(/avg=/);
       // The board ignores the Caffeine filter: both lines under Decaf and All too.
-      const note = async (q: string) => { await page.goto(`/insights?tab=leaderboards&range=all&dial=all${q}`); return board.locator('.chart-note').first(); };
+      const note = async (q: string) => { await page.goto(`/stats?tab=leaderboards&range=all&dial=all${q}`); return board.locator('.chart-note').first(); };
       for (const q of ['&caffeine=decaf', '&caffeine=all']) await expect(await note(q)).toContainText('all 2 caffeine kinds');
       // Caffeine is Over time only: no List rows, no List / Over time or Lowest first control, no Expand; the chart is there and
       // the card is its head + chart + note (no big empty area). The old views=caffeine-time[-wide] links look the same.
       for (const q of ['', '&views=caffeine-time-wide']) {
-        await page.goto(`/insights?tab=leaderboards&range=all${q}`);
+        await page.goto(`/stats?tab=leaderboards&range=all${q}`);
         const c = page.locator('[data-board="caffeine"]');
         await c.scrollIntoViewIfNeeded();
         await expect(c.locator('.time-chart canvas')).toBeVisible();
@@ -7005,7 +6801,7 @@ export const STATES: State[] = [
       await expectEqualBoardHeights(page);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     } },
-  { name: 'insights-board-varieties', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-board-varieties', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       for (const b of ['varieties', 'producers']) await expect(page.locator(`[data-board="${b}"] .board-row:not(.placeholder)`).first()).toBeVisible();
       await expect(page.locator('[data-board="varieties"] .board-row', { hasText: 'Gesha' }).first()).toBeVisible();
@@ -7015,7 +6811,7 @@ export const STATES: State[] = [
     } },
   // A board the default Score trimmed says how many groups are hidden and offers them (avg=adjusted, never the bare URL);
   // the cards of its band stay level, whether or not they carry the line.
-  { name: 'insights-board-small-note', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-board-small-note', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       const note = page.locator('.board .small-note .real').first();
       await expect(note).toHaveText(/^Ranks .+ with 3\+ bags and 10\+ rated brews; \d+ more are hidden\. Show them$/);
@@ -7038,7 +6834,7 @@ export const STATES: State[] = [
   // No board head wraps: its children share a top, in List and Over time, Lowest first on and off, for every board.
   ...[false, true].flatMap((low) => [false, true].map((time) => ({
     name: `insights-board-head-one-row-${low ? 'low' : 'high'}-${time ? 'time' : 'list'}`,
-    path: () => `/insights?tab=leaderboards&range=all${time ? '&views=process-time,roast-time,water-time,dripper-time,filter-time,grinder-time' : ''}${low ? '&low=roasters,coffees,origins,varieties,producers,process,roast,water,dripper,filter,grinder,caffeine' : ''}`,
+    path: () => `/stats?tab=leaderboards&range=all${time ? '&views=process-time,roast-time,water-time,dripper-time,filter-time,grinder-time' : ''}${low ? '&low=roasters,coffees,origins,varieties,producers,process,roast,water,dripper,filter,grinder,caffeine' : ''}`,
     act: async (page: Page) => {
       await expect(page.locator('.board-head')).toHaveCount(12);
       // One row: the title and every tool are centred on the same line (they're align-items: center, so tops differ by height).
@@ -7059,7 +6855,7 @@ export const STATES: State[] = [
       const after = await rects();
       for (const [b, rs] of Object.entries(before)) rs.forEach((r, i) => { if (r) for (let k = 0; k < 2; k++) expect(Math.abs(r[k] - after[b][i]![k]), `${b} ${i ? 'view group' : 'low switch'} ${k ? 'width' : 'x'}: ${r} vs ${after[b][i]}`).toBeLessThanOrEqual(1); });
     } }))),
-  { name: 'insights-board-producers-spend', path: () => '/insights?tab=leaderboards&range=all&rank=spend',
+  { name: 'insights-board-producers-spend', path: () => '/stats?tab=leaderboards&range=all&rank=spend',
     act: async (page) => {
       for (const b of ['varieties', 'producers']) {
         const rows = page.locator(`[data-board="${b}"] .board-row:not(.placeholder)`);
@@ -7069,7 +6865,7 @@ export const STATES: State[] = [
       await expect(page.locator('[data-board="producers"] .like-note')).toHaveText(/\d+ of \d+ bags bought have a producer\./);
       await expectEqualBoardHeights(page);
     } },
-  { name: 'insights-board-origin-thin', path: () => '/insights?tab=leaderboards&range=all&roaster=Kurasu',
+  { name: 'insights-board-origin-thin', path: () => '/stats?tab=leaderboards&range=all&roaster=Kurasu',
     act: async (page) => {
       // Kurasu's bags carry no origin details: both boards show their empty line, and the band has no empty space.
       for (const b of ['varieties', 'producers']) await expect(page.locator(`[data-board="${b}"] .board-note`)).toBeVisible();
@@ -7077,7 +6873,7 @@ export const STATES: State[] = [
       const [v, p] = await Promise.all(['varieties', 'producers'].map((b) => page.locator(`[data-board="${b}"]`).boundingBox()));
       if (Math.abs(v!.y - p!.y) <= 1) expect(Math.abs(v!.height - p!.height)).toBeLessThanOrEqual(1); // side by side: level and as tall
     } },
-  { name: 'insights-chart-link', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-chart-link', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       // A heading's link carries chart=<id> and the hash; a click puts both in the address bar without a reload.
       const gap = () => anchorGap(page, 'leaderboard-origins');
@@ -7098,11 +6894,11 @@ export const STATES: State[] = [
       expect(page.url()).toBe(url);
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
-      await gotoReady(page, '/insights?tab=leaderboards&range=all&chart=leaderboard-origins');
+      await gotoReady(page, '/stats?tab=leaderboards&range=all&chart=leaderboard-origins');
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
       // Any other view change (Rank by here) drops chart= as well.
-      await gotoReady(page, '/insights?tab=leaderboards&range=all&chart=leaderboard-roast');
+      await gotoReady(page, '/stats?tab=leaderboards&range=all&chart=leaderboard-roast');
       await page.getByRole('combobox', { name: 'Rank by' }).selectOption('brews');
       await expect(page).toHaveURL(/rank=brews/);
       expect(page.url()).not.toContain('chart=');
@@ -7115,7 +6911,7 @@ export const STATES: State[] = [
     } },
   // Jump-to chips on every tab with 3+ sections (milestones has its own ruler; sweet spots has only two sections).
   ...['overview', 'habits', 'consumption', 'records', 'insights', 'brewing', 'water', 'gear', 'milestones', 'sweetspots'].map((tab) => ({
-    name: `insights-jump-${tab}`, viewports: tab === 'milestones' || tab === 'sweetspots' ? 'two' : 'all', path: () => `/insights?tab=${tab}&range=all`,
+    name: `insights-jump-${tab}`, viewports: tab === 'milestones' || tab === 'sweetspots' ? 'two' : 'all', path: () => `/stats?tab=${tab}&range=all`,
     act: async (page: Page) => {
       const links = page.locator('.board-jump a');
       if (tab === 'milestones' || tab === 'sweetspots') return void (await expect(links).toHaveCount(0));
@@ -7139,7 +6935,7 @@ export const STATES: State[] = [
     }
   })),
   // Lowest first (spec Task 4): the switch is one box, pressed or not, in List or Over time.
-  { name: 'insights-board-low', path: () => '/insights?tab=leaderboards&range=all&rank=brews&low=roasters,varieties,water',
+  { name: 'insights-board-low', path: () => '/stats?tab=leaderboards&range=all&rank=brews&low=roasters,varieties,water',
     act: async (page) => {
       // The switch's box relative to its card (right and top edges), width and height.
       const box = (b: string) => page.locator(`[data-board="${b}"]`).evaluate((card) => {
@@ -7162,7 +6958,7 @@ export const STATES: State[] = [
       await expect(page.locator('[data-board="producers"] .chart-note', { hasText: 'one bag' })).toHaveCount(0);
       await expectEqualBoardHeights(page);
     } },
-  { name: 'insights-board-low-toggle', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-board-low-toggle', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       const fetched: string[] = [];
       page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
@@ -7178,7 +6974,7 @@ export const STATES: State[] = [
       expect(await box()).toEqual(before);
       expect(fetched).toEqual([]);
     } },
-  { name: 'insights-board-low-compare', path: () => '/insights?tab=leaderboards&range=1m&compare=1&low=roasters,coffees',
+  { name: 'insights-board-low-compare', path: () => '/stats?tab=leaderboards&range=1m&compare=1&low=roasters,coffees',
     act: async (page) => {
       const rows = page.locator('[data-board="roasters"] .board-row:not(.placeholder)');
       await expect(rows.first()).toBeVisible();
@@ -7196,14 +6992,14 @@ export const STATES: State[] = [
       expect(shared.length).toBeGreaterThan(0);
       expect(shared.some((k) => low[k] !== high[k])).toBe(true);
     } },
-  { name: 'insights-board-low-rank-prune', path: () => '/insights?tab=leaderboards&range=all&rank=brews&low=roasters,dripper',
+  { name: 'insights-board-low-rank-prune', path: () => '/stats?tab=leaderboards&range=all&rank=brews&low=roasters,dripper',
     act: async (page) => {
       await page.getByLabel('Rank by').selectOption('spend');
       // Dripper can't rank by spend: its Lowest first is dropped with it (like open), Roasters keeps its own.
       await expect(page).toHaveURL(/[?&]low=roasters(&|$)/);
       await expect(page.locator('[data-board="roasters"] .low-switch')).toHaveAttribute('aria-pressed', 'true');
     } },
-  { name: 'insights-board-low-time', path: () => '/insights?tab=leaderboards&range=all&views=water-time&low=water',
+  { name: 'insights-board-low-time', path: () => '/stats?tab=leaderboards&range=all&views=water-time&low=water',
     act: async (page) => {
       const card = page.locator('[data-board="water"]');
       await expect(card.locator('canvas')).toBeVisible();
@@ -7215,7 +7011,7 @@ export const STATES: State[] = [
       await expect(card.locator('canvas')).toHaveCount(0);
       expect(await box()).toEqual(inTime);
     } },
-  { name: 'insights-board-time', path: () => '/insights?tab=leaderboards&range=12m&views=dripper-time',
+  { name: 'insights-board-time', path: () => '/stats?tab=leaderboards&range=12m&views=dripper-time',
     act: async (page) => {
       const card = page.locator('.board[data-board=dripper]');
       await expect(card.getByRole('button', { name: 'Over time', pressed: true })).toBeVisible();
@@ -7228,7 +7024,7 @@ export const STATES: State[] = [
       expect(Math.abs(wide - (await w()))).toBeLessThanOrEqual(1);
       await expectGridRowsFull(page, '.board-band:has(.board[data-board=dripper])', true);
     } },
-  { name: 'insights-board-expand', path: () => '/insights?tab=leaderboards&range=12m&views=roast-time',
+  { name: 'insights-board-expand', path: () => '/stats?tab=leaderboards&range=12m&views=roast-time',
     act: async (page) => {
       const card = page.locator('.board[data-board=roast]');
       const widths = () => page.locator('.board-band:has(.board[data-board=roast]) > .board').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
@@ -7258,7 +7054,7 @@ export const STATES: State[] = [
       await expect.poll(widths).toEqual(before);
       await expect.poll(sharp).toBe(true); // the canvas redraws after its card shrinks; checkLayout ran mid-resize once (scrollWidth 1608)
     } },
-  { name: 'insights-board-dashed-gaps', viewports: 'two', path: () => '/insights?tab=leaderboards&range=1m&rank=brews&views=roast-time,water-time,dripper-time,filter-time,grinder-time,process-time',
+  { name: 'insights-board-dashed-gaps', viewports: 'two', path: () => '/stats?tab=leaderboards&range=1m&rank=brews&views=roast-time,water-time,dripper-time,filter-time,grinder-time,process-time',
     act: async (page) => {
       // Brews / Grams / Spend plot a no-data period as 0: no dashes, no note. Ratings bridge it with a dashed segment and say so.
       await expect(page.locator('.board canvas').first()).toBeVisible();
@@ -7267,7 +7063,7 @@ export const STATES: State[] = [
       await expect(page.locator('.board .chart-note').filter({ hasText: /Dashed: \w+s with no data/ }).first()).toBeVisible();
     } },
   // range=6m, not all: all now spans the seed's prior year, so the chart goes monthly and the new drippers' gaps vanish.
-  { name: 'insights-board-time-size', path: () => '/insights?tab=leaderboards&range=6m&avg=raw',
+  { name: 'insights-board-time-size', path: () => '/stats?tab=leaderboards&range=6m&avg=raw',
     act: async (page) => {
       // List and Over time are the same card size; Show all (Over time) only adds lines: no card changes height.
       const row = '.board-band:has(.board[data-board=dripper]) > .board';
@@ -7301,7 +7097,7 @@ export const STATES: State[] = [
       await expect.poll(lines).toBe('5');
       await expect.poll(heights).toEqual(list);
     } },
-  { name: 'insights-board-time-beside-open', path: () => '/insights?tab=leaderboards&range=all&avg=raw&views=grinder-time&open=dripper',
+  { name: 'insights-board-time-beside-open', path: () => '/stats?tab=leaderboards&range=all&avg=raw&views=grinder-time&open=dripper',
     act: async (page) => {
       // Only a List card grows (by its own Show all): an Over time card in the same row keeps its normal height.
       const h = (b: string) => page.locator(`.board[data-board=${b}]`).evaluate((e) => Math.round(e.getBoundingClientRect().height));
@@ -7317,7 +7113,7 @@ export const STATES: State[] = [
       expect(Math.abs((await h('grinder')) - time)).toBeLessThanOrEqual(1);
       expect(Math.abs((await h('filter')) - plain)).toBeLessThanOrEqual(1);
     } },
-  { name: 'insights-board-open-independent', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all&avg=raw',
+  { name: 'insights-board-open-independent', viewports: 'two', path: () => '/stats?tab=leaderboards&range=all&avg=raw',
     act: async (page) => {
       // Each board's Show all is its own: opening one never closes another, in any order, and it survives a reload.
       const btn = (b: string, name: RegExp) => page.locator(`.board[data-board=${b}]`).getByRole('button', { name });
@@ -7338,7 +7134,7 @@ export const STATES: State[] = [
       await btn('coffees', /^Show top/).click();
       await expect(page).not.toHaveURL(/open=/);
     } },
-  { name: 'insights-board-no-rerender', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all&avg=raw&views=grinder-time,process-time',
+  { name: 'insights-board-no-rerender', viewports: 'two', path: () => '/stats?tab=leaderboards&range=all&avg=raw&views=grinder-time,process-time',
     act: async (page) => {
       // Show all and the expand toggle are view-only: no data request, and the other tiles' charts are not rebuilt (a rebuilt
       // chart re-runs its animation, which rewrites data-dashed-segments; the marker below is cleared first).
@@ -7365,7 +7161,7 @@ export const STATES: State[] = [
       await dripper.getByRole('button', { name: /^Show top/ }).click();
       await expect(page).not.toHaveURL(/open=/);
     } },
-  { name: 'insights-board-views-url', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-board-views-url', viewports: 'two', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       // The view is URL state: absent = List, a pick shows in the URL and survives a reload, List drops it again.
       const card = () => page.locator('.board[data-board=roast]');
@@ -7381,10 +7177,10 @@ export const STATES: State[] = [
       await card().getByRole('button', { name: 'List' }).click();
       await expect(page).not.toHaveURL(/views=/);
     } },
-  { name: 'insights-leaderboards-sticky', path: () => '/insights?tab=leaderboards', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
+  { name: 'insights-leaderboards-sticky', path: () => '/stats?tab=leaderboards', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-leaderboards-spend-compare',
-    path: () => '/insights?tab=leaderboards&rank=spend&range=12m&compare=1',
+    path: () => '/stats?tab=leaderboards&rank=spend&range=12m&compare=1',
     act: async (page) => {
       await expectEmptyGearCards(page);
       await expect(page.locator('.board .move').first()).toBeVisible();
@@ -7394,14 +7190,14 @@ export const STATES: State[] = [
   {
     // $/g rows carry the spend and grams behind it, still one line high.
     name: 'insights-leaderboards-ppg',
-    path: () => '/insights?tab=leaderboards&rank=ppg',
+    path: () => '/stats?tab=leaderboards&rank=ppg',
     act: async (page) => {
       for (const b of ['roasters', 'coffees'])
         await expect(page.locator(`.board[data-board="${b}"] .board-row small`).first()).toHaveText(/bags? · \$[\d,.]+ · [\d.]+k?g$/);
       await expectEqualBoardHeights(page);
     }
   },
-  { name: 'insights-leaderboards-like', path: () => '/insights?tab=leaderboards&rank=like&range=all',
+  { name: 'insights-leaderboards-like', path: () => '/stats?tab=leaderboards&rank=like&range=all',
     act: async (page) => {
       await expect(page.locator('[data-board="coffees"] .board-row:not(.placeholder)').first()).toBeVisible();
       await expect(page.locator('.like-note')).toHaveText("vs like coffees ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.");
@@ -7421,7 +7217,7 @@ export const STATES: State[] = [
         expect(Math.abs(a.height - c.height)).toBeLessThanOrEqual(1);
       }
     } },
-  { name: 'insights-like-lines', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-like-lines', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       const line = page.locator('[data-board="coffees"] .like-line').first();
       await expect(line).toHaveText(/^([+−]\d\.\d|0\.0) vs .+ coffees/);
@@ -7440,7 +7236,7 @@ export const STATES: State[] = [
       await expectDeltaInk(page);
     } },
   // Gate P4: the line shows under every rank but like; spend ranks bags, so it shows there too.
-  { name: 'insights-like-lines-brews', viewports: 'two', path: () => '/insights?tab=leaderboards&rank=brews&range=all',
+  { name: 'insights-like-lines-brews', viewports: 'two', path: () => '/stats?tab=leaderboards&rank=brews&range=all',
     act: async (page) => {
       await expect(page.locator('[data-board="coffees"] .like-line').first()).toHaveText(/^([+−]\d\.\d|0\.0) vs .+ coffees/);
       await page.getByLabel('Rank by').selectOption('spend');
@@ -7448,7 +7244,7 @@ export const STATES: State[] = [
     } },
   // Gate P4: a cut like line opens its full text (the shared FloatTip) on tap, hover and keyboard focus/Enter (the line
   // is narrowed so every viewport has one cut); one tip at a time; a whole line's tap goes on to the row's link.
-  { name: 'insights-like-line-tip', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-like-line-tip', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       const lines = page.locator('[data-board="coffees"] .like-line');
       const tip = page.locator('.float-tip');
@@ -7471,7 +7267,7 @@ export const STATES: State[] = [
     } },
   // Gate P4: zero-centred bars: a positive gap grows right of the middle, a negative one left, in its delta color.
   // Signed values in a tip are inked by sign like the row's (round 2): the like board's value tip carries its gap.
-  { name: 'insights-leaderboards-like-tip', viewports: 'two', path: () => '/insights?tab=leaderboards&rank=like&range=all',
+  { name: 'insights-leaderboards-like-tip', viewports: 'two', path: () => '/stats?tab=leaderboards&rank=like&range=all',
     act: async (page) => {
       await page.locator('[data-board="roasters"] .val .text-tip').first().click();
       const tip = page.locator('.float-tip');
@@ -7482,13 +7278,13 @@ export const STATES: State[] = [
       await expect(gap.locator('.ink-better, .ink-worse')).toHaveCount(1);
     } },
   // Totals' values are the same color as the other tiles' (they were the accent brown).
-  { name: 'insights-totals-value-color', viewports: 'two', path: () => '/insights?range=all',
+  { name: 'insights-totals-value-color', viewports: 'two', path: () => '/stats?range=all',
     act: async (page) => {
       const color = (panel: string) => page.locator('section.chart-panel', { has: page.getByRole('heading', { name: panel, exact: true }) }).locator('.stat-value').first().evaluate((e) => getComputedStyle(e).color);
       expect(await color('Totals')).toBe(await color('Averages'));
     } },
   // Show all / Show fewer on a board and on a Water pair end clear of Back to top too.
-  { name: 'insights-leaderboards-show-all-clear', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-leaderboards-show-all-clear', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const btn = page.locator('.board-foot button').first();
@@ -7498,7 +7294,7 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/open=/);
       await expectClearOfBackToTop(page, page.locator('.board.open .board-foot button'));
     } },
-  { name: 'insights-water-show-all-clear', path: () => '/insights?tab=water',
+  { name: 'insights-water-show-all-clear', path: () => '/stats?tab=water',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const btn = page.locator('.pair-more').first();
@@ -7508,7 +7304,7 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/pairs=/);
       await expectClearOfBackToTop(page, page.locator('.pair-more').first());
     } },
-  { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees',
+  { name: 'insights-leaderboards-like-open', path: () => '/stats?tab=leaderboards&rank=like&range=all&open=coffees',
     act: async (page) => {
       const bars = await page.locator('[data-board="coffees"] .board-row:not(.placeholder)').evaluateAll((rows) => rows.map((r) => {
         const b = getComputedStyle(r, '::before'), w = r.getBoundingClientRect().width;
@@ -7522,7 +7318,7 @@ export const STATES: State[] = [
     } },
   {
     name: 'insights-leaderboards-open',
-    path: () => '/insights?tab=leaderboards&rank=spend&open=coffees',
+    path: () => '/stats?tab=leaderboards&rank=spend&open=coffees',
     act: async (page) => {
       const coffees = page.locator('.board[data-board="coffees"]');
       await expect(coffees).toHaveClass(/open/);
@@ -7531,7 +7327,7 @@ export const STATES: State[] = [
       await expectEqualBoardHeights(page);
     }
   },
-  { name: 'insights-records', path: () => '/insights?tab=records',
+  { name: 'insights-records', path: () => '/stats?tab=records',
     act: async (page) => {
       for (const h of ['Taste', 'Volume', 'Freshness & lifetime', 'Money', 'Brew extremes', 'Not quite your cup'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
@@ -7544,7 +7340,7 @@ export const STATES: State[] = [
       }));
       expect(off).toEqual([]);
     } },
-  { name: 'insights-records-origin', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-records-origin', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       for (const k of ['favoriteVariety', 'favoriteProducer', 'mostVariety', 'mostProducer', 'leastVariety', 'leastProducer', 'leastBrewedVariety', 'leastBrewedProducer'])
         await expect(page.locator(`#record-${k}`)).toBeVisible();
@@ -7555,13 +7351,13 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/low=varieties/);
       await expect(page.locator('#leaderboard-varieties')).toBeVisible();
     } },
-  { name: 'insights-records-decaf', path: () => '/insights?tab=records&range=all&caffeine=decaf',
+  { name: 'insights-records-decaf', path: () => '/stats?tab=records&range=all&caffeine=decaf',
     act: async (page) => {
       // Caffeine is page-wide now (the Coffees panel): an explicit Decaf shows as a chip.
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/^Decaf/]);
       await expectGridRowsFull(page, '.record-grid');
     } },
-  { name: 'insights-records-top50', viewports: 'two', path: () => '/insights?tab=records&range=all&top=50',
+  { name: 'insights-records-top50', viewports: 'two', path: () => '/stats?tab=records&range=all&top=50',
     act: async (page) => {
       const foot = page.locator('#records-top-brews ~ .top-foot');
       await expect(foot.getByRole('button', { name: 'Show less' })).toBeVisible();
@@ -7570,13 +7366,13 @@ export const STATES: State[] = [
       await foot.getByRole('button', { name: 'Show less' }).click();
       await expect(page).toHaveURL(/top=20/);
     } },
-  { name: 'insights-records-topc20', viewports: 'two', path: () => '/insights?tab=records&range=all&topc=20',
+  { name: 'insights-records-topc20', viewports: 'two', path: () => '/stats?tab=records&range=all&topc=20',
     act: async (page) => {
       // The seed has under 11 coffees with 3+ ratings: the list shows them all, with no controls.
       await expect(page.locator('#records-top-coffees')).toBeVisible();
       await expect(page.locator('#records-top-coffees + ol li').first()).toBeVisible();
     } },
-  { name: 'insights-records-tile-link', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-records-tile-link', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       // A tile's caption links with its own id as chart (case kept) and as the hash; a click lands it under the bar.
       const a = page.locator('#record-nightOwl a.caption-link');
@@ -7587,13 +7383,13 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
       // A load with only chart= (no hash) lands it too, and the tile previews under its own title.
-      await gotoReady(page, '/insights?tab=records&range=all&chart=record-nightOwl');
+      await gotoReady(page, '/stats?tab=records&range=all&chart=record-nightOwl');
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
       const label = ((await page.locator('#record-nightOwl .stat-label').textContent()) ?? '').replace(/\s*·.*$/s, '').trim();
-      expect((await previewTags(page, '/insights?tab=records&range=all&chart=record-nightOwl'))['og:title']).toBe(`Insights: ${label}`);
+      expect((await previewTags(page, '/stats?tab=records&range=all&chart=record-nightOwl'))['og:title']).toBe(`Insights: ${label}`);
     } },
-  { name: 'insights-records-anchor', path: () => '/insights?tab=records#record-nightOwl',
+  { name: 'insights-records-anchor', path: () => '/stats?tab=records#record-nightOwl',
     act: async (page) => {
       // The tile's top lands just under the sticky filter bar; a filter change keeps the hash.
       const gap = async () => (await page.evaluate(() => document.getElementById('record-nightOwl')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
@@ -7605,7 +7401,7 @@ export const STATES: State[] = [
       await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).toHaveURL(/caffeine=decaf#record-nightOwl$/);
     } },
-  { name: 'insights-overview-anchor', path: () => '/insights?tab=overview#overview-avg-brew-time',
+  { name: 'insights-overview-anchor', path: () => '/stats?tab=overview#overview-avg-brew-time',
     act: async (page) => {
       // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
       await expect(page.locator('#overview-avg-brew-time a.caption-link')).toHaveAttribute('href', '#overview-avg-brew-time');
@@ -7613,7 +7409,7 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
-  { name: 'insights-habits-anchor', path: () => '/insights?tab=habits#habits-current-streak',
+  { name: 'insights-habits-anchor', path: () => '/stats?tab=habits#habits-current-streak',
     act: async (page) => {
       // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
       await expect(page.locator('#habits-current-streak a.caption-link')).toHaveAttribute('href', '#habits-current-streak');
@@ -7621,7 +7417,7 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
-  { name: 'insights-consumption-anchor', path: () => '/insights?tab=consumption#consumption-brewed',
+  { name: 'insights-consumption-anchor', path: () => '/stats?tab=consumption#consumption-brewed',
     act: async (page) => {
       // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
       await expect(page.locator('#consumption-brewed a.caption-link')).toHaveAttribute('href', '#consumption-brewed');
@@ -7629,10 +7425,10 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
-  { name: 'insights-records-soup', viewports: 'two', path: () => '/insights?tab=records&brewer=soup',
+  { name: 'insights-records-soup', viewports: 'two', path: () => '/stats?tab=records&brewer=soup',
     act: async (page) => expect(page.getByRole('button', { name: 'Soup', pressed: true })).toBeVisible() },
-  { name: 'insights-records-compare', path: () => '/insights?tab=records&range=1w&compare=1' },
-  { name: 'insights-records-all-ratings', viewports: 'two', path: () => '/insights?tab=records&ratings=all',
+  { name: 'insights-records-compare', path: () => '/stats?tab=records&range=1w&compare=1' },
+  { name: 'insights-records-all-ratings', viewports: 'two', path: () => '/stats?tab=records&ratings=all',
     act: async (page) => {
       await page.locator('.record-ties').first().click(); // tie tip opens on tap
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
@@ -7641,7 +7437,7 @@ export const STATES: State[] = [
   // exact shares rounded up once overflowed into 5+1. A fractional main padding makes the row fractional.
   {
     name: 'insights-fit-fractional',
-    path: () => '/insights?range=all',
+    path: () => '/stats?range=all',
     act: async (page) => {
       const rows = () => page.locator('.fit').evaluateAll((fs) => fs.map((f) => {
         const tops = new Map<number, number>();
@@ -7666,7 +7462,7 @@ export const STATES: State[] = [
   {
     name: 'insights-rail',
     slow: true,
-    path: () => '/insights?range=all',
+    path: () => '/stats?range=all',
     act: async (page) => {
       const rail = page.locator('nav.insights-rail');
       const main = page.locator('.rail-main');
@@ -7694,7 +7490,7 @@ export const STATES: State[] = [
       };
       for (const w of [1100, 1280, 1436])
         for (const q of ['', '&tab=insights', '&tab=leaderboards', '&tab=habits', '&tab=consumption', '&tab=brewing']) {
-          const url = `/insights?range=all${q}`;
+          const url = `/stats?range=all${q}`;
           const bare = Math.min(w, 1416) - 176; // --container-max (1416px) caps the page, rail included
           await at(bare, 499, url);
           const today = await settled();
@@ -7702,19 +7498,19 @@ export const STATES: State[] = [
           expect(await settled(), `${w}px tab${q || '=overview'}: as without the rail at ${bare}px`).toEqual(today);
         }
       // Full width from 1416px: every tab's content column is 1240 - 2rem.
-      await at(1436, 900, '/insights?range=all');
+      await at(1436, 900, '/stats?range=all');
       for (const t of await rail.locator('a').all()) {
-        await gotoReady(page, (await t.getAttribute('href'))!.replace(/^\?/, '/insights?'));
+        await gotoReady(page, (await t.getAttribute('href'))!.replace(/^\?/, '/stats?'));
         expect(Math.round((await main.boundingBox())!.width), (await t.textContent()) ?? '').toBe(1208);
       }
       // Milestones: the ruler is left of the feed without the rail, right of it beside the rail.
       const rulerX = async () => (await page.locator('nav.ruler').boundingBox())!.x - (await page.locator('.feed').boundingBox())!.x;
-      await at(999, 800, '/insights?tab=milestones&range=all');
+      await at(999, 800, '/stats?tab=milestones&range=all');
       expect(await rulerX()).toBeLessThan(0);
-      await at(1436, 900, '/insights?tab=milestones&range=all');
+      await at(1436, 900, '/stats?tab=milestones&range=all');
       expect(await rulerX(), 'ruler right of the feed beside the rail').toBeGreaterThan(0);
       // A rail link switches the tab, keeps the other params and marks itself current.
-      await gotoReady(page, '/insights?range=all&tab=habits');
+      await gotoReady(page, '/stats?range=all&tab=habits');
       await expect(rail.locator('[aria-current="page"]')).toHaveText('Habits');
       await rail.getByRole('link', { name: 'Records', exact: true }).click();
       await expect(rail.locator('[aria-current="page"]')).toHaveText('Records');
@@ -7722,12 +7518,12 @@ export const STATES: State[] = [
       const u = new URL(page.url());
       expect([u.searchParams.get('tab'), u.searchParams.get('range')]).toEqual(['records', 'all']);
       await expect(rail.getByRole('group', { name: 'Lab' }).getByRole('link')).toHaveText(['Sweet spots', 'Brewing', 'Pours', 'Water', 'Gear']);
-      await at(1280, 800, '/insights?range=all');
+      await at(1280, 800, '/stats?range=all');
     }
   },
   // A feed shorter than the full side ruler caps it to the feed: it never sticks out below (M10). A window
   // taller than the week's feed makes it short whatever the data; checked at w1280 (the side ruler).
-  { name: 'insights-milestones-short', viewports: 'two', path: () => '/insights?tab=milestones&range=1w',
+  { name: 'insights-milestones-short', viewports: 'two', path: () => '/stats?tab=milestones&range=1w',
     act: async (page) => {
       if (page.viewportSize()!.width !== 1280) return;
       const feed = page.locator('.feed'), ruler = page.locator('nav.ruler');
@@ -7740,7 +7536,7 @@ export const STATES: State[] = [
       await page.setViewportSize({ width: 1280, height: 800 });
     }
   },
-  { name: 'insights-milestones', path: () => '/insights?tab=milestones&range=all',
+  { name: 'insights-milestones', path: () => '/stats?tab=milestones&range=all',
     act: async (page) => {
       await expect(page.locator('.milestone-feed li').first()).toBeVisible();
       await expect(page.locator('.people-switch')).toHaveCount(0);
@@ -7893,13 +7689,13 @@ export const STATES: State[] = [
         expect(await touch([[10, 2], [40, 3]], 'pointerup')).toBeGreaterThan(0); // a sideways drag scrubs
       }
     } },
-  { name: 'insights-milestones-month-link', path: () => '/insights?tab=milestones&range=all',
+  { name: 'insights-milestones-month-link', path: () => '/stats?tab=milestones&range=all',
     act: async (page) => {
       // A month header's #anchor lands it under the sticky bars, and survives a filter change (M9).
       const id = (await page.locator('.feed .month').nth(1).getAttribute('id'))!;
       // about:blank first: a real load, so the page's own on-load hash scroll runs (not a same-page jump).
       await page.goto('about:blank');
-      await page.goto(`/insights?tab=milestones&range=all#${id}`);
+      await page.goto(`/stats?tab=milestones&range=all#${id}`);
       const head = page.locator(`[id="${id}"]`);
       await expect(head).toBeInViewport();
       await expect(head.locator('a')).toHaveAttribute('href', new RegExp(`chart=${id}#${id}$`));
@@ -7916,19 +7712,19 @@ export const STATES: State[] = [
       // A month outside the period: no error, the page stays at the top.
       const errors: string[] = [];
       page.on('pageerror', (e) => errors.push(e.message));
-      await page.goto('/insights?tab=milestones&range=1w#m-2000-01');
+      await page.goto('/stats?tab=milestones&range=1w#m-2000-01');
       await expect(page.locator('nav.ruler, .hl-empty').first()).toBeVisible();
       expect(await page.evaluate(() => scrollY)).toBe(0);
       expect(errors).toEqual([]);
       // A tile's caption links its own anchor, which lands the tile under the sticky bar (M12).
-      await page.goto('/insights?tab=milestones&range=all#milestones-total-brews');
+      await page.goto('/stats?tab=milestones&range=all#milestones-total-brews');
       const tile = page.locator('#milestones-total-brews');
       await expect(tile.locator('.caption-link')).toHaveAttribute('href', '#milestones-total-brews');
       await below(tile, 40);
     } },
-  { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
-  { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },
-  { name: 'insights-sweetspots', path: () => '/insights?tab=sweetspots',
+  { name: 'insights-milestones-firsts', path: () => '/stats?tab=milestones&range=all&kinds=firsts' },
+  { name: 'insights-milestones-compare', path: () => '/stats?tab=milestones&range=1w&compare=1' },
+  { name: 'insights-sweetspots', path: () => '/stats?tab=sweetspots',
     act: async (page) => {
       await expect(page.locator('.spot-card')).not.toHaveCount(0);
       await expect(page.getByText(/^Matching: \d+ bags, \d+ brews$/)).toBeVisible();
@@ -7998,16 +7794,16 @@ export const STATES: State[] = [
       // S-grind: the Grind card spans every setting brewed, lowest to highest, no-match ones too: the same
       // bands as Brewing's Grind chart (same period, ratings and grinder, no filters).
       const spotBands = (await page.locator('#spot-grind .spot-chart').getAttribute('aria-label'))!.split('; ').map((t) => t.split(' · ')[0]);
-      await gotoReady(page, '/insights?tab=brewing');
+      await gotoReady(page, '/stats?tab=brewing');
       const titles: string[] = [];
       for (const row of await page.locator('[data-section="brewing-grind"] .bar-row').all()) {
         await row.locator('.bar-label').click();
         titles.push((await page.locator('[data-section="brewing-grind"] .cell-tip .tip-title').first().textContent())!.trim());
       }
       expect(spotBands).toEqual(titles);
-      await gotoReady(page, '/insights?tab=sweetspots');
+      await gotoReady(page, '/stats?tab=sweetspots');
     } },
-  { name: 'insights-sweetspots-bag', path: (s) => `/insights?tab=sweetspots&bag=${s.slugs.linked}&roast=Light&process=Washed`,
+  { name: 'insights-sweetspots-bag', path: (s) => `/stats?tab=sweetspots&bag=${s.slugs.linked}&roast=Light&process=Washed`,
     act: async (page) => {
       // The bag's Roast level and Process are page-wide filters now: chips under the bar.
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Light/, /Washed/]);
@@ -8020,7 +7816,7 @@ export const STATES: State[] = [
       });
       expect(cols).toBe(true);
     } },
-  { name: 'insights-sweetspots-filters', viewports: 'two', path: () => '/insights?tab=sweetspots&roast=Ultralight&process=Natural&origin=Ethiopia&roaster=Lab%20Roasters',
+  { name: 'insights-sweetspots-filters', viewports: 'two', path: () => '/stats?tab=sweetspots&roast=Ultralight&process=Natural&origin=Ethiopia&roaster=Lab%20Roasters',
     act: async (page) => {
       // The Coffees fields live only in the Coffees panel (ui-rules 6): Sweet spots keeps Bag (and Grinder).
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Ultralight/, /Natural/, /Ethiopia/, /Lab Roasters/]);
@@ -8028,7 +7824,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Reset picker' })).toHaveCount(0);
     } },
   // Gate P4: Brews until dialed in by roast level and by process, beside each other from 900px; whole group names.
-  { name: 'insights-brewing-settle', path: () => '/insights?tab=brewing&range=all#brewing-settle-roast',
+  { name: 'insights-brewing-settle', path: () => '/stats?tab=brewing&range=all#brewing-settle-roast',
     act: async (page) => {
       const cards = page.locator('[data-section^="brewing-settle-"]');
       await expect(cards.first()).toBeVisible();
@@ -8055,7 +7851,7 @@ export const STATES: State[] = [
       }
     } },
   // Gate P4: "Leaning 20+ g" reads as one phrase in one size; a tier-3 card reads "Not enough data".
-  { name: 'insights-sweetspots-words', path: () => '/insights?tab=sweetspots&range=all',
+  { name: 'insights-sweetspots-words', path: () => '/stats?tab=sweetspots&range=all',
     act: async (page) => {
       const cards = await page.locator('.spot-card').evaluateAll((cs) => cs.map((c) => ({
         value: c.querySelector('.hl-value')!.textContent!, small: !!c.querySelector('.hl-value small'), ev: c.querySelector('.evidence')?.textContent ?? ''
@@ -8093,7 +7889,7 @@ export const STATES: State[] = [
     // No card-level popover on Sweet spots (user, 2026-10-18): a click on a card's empty space opens nothing; a card
     // that tightened (a cut or hidden line) has its full text on its value, a text tip.
     name: 'insights-sweetspots-no-card-popover', viewports: 'two',
-    path: () => '/insights?tab=sweetspots',
+    path: () => '/stats?tab=sweetspots',
     act: async (page) => {
       const card = page.locator('.spot-card').first();
       const b = (await card.boundingBox())!;
@@ -8103,7 +7899,7 @@ export const STATES: State[] = [
       expect(bad, 'tightened cards without a full-text tip on the value').toEqual([]);
     }
   },
-  { name: 'cursor-rules', viewports: 'two', path: () => '/insights?tab=habits',
+  { name: 'cursor-rules', viewports: 'two', path: () => '/stats?tab=habits',
     act: async (page) => {
       // ui-rules 50: text shows the arrow yet stays selectable; a tip trigger shows help, never the hand; a link the hand.
       const css = (sel: string) => page.locator(sel).first().evaluate((e) => [getComputedStyle(e).cursor, getComputedStyle(e).userSelect]);
@@ -8119,19 +7915,17 @@ export const STATES: State[] = [
       expect(await cur(page.locator('input[name="subscription_name"]'))).toBe('text');
       expect(await cur(page.locator('td'))).toBe('default');
       expect(await cur(page.locator('main button:not(:disabled)'))).toBe('pointer');
-      await page.goto('/insights');
+      await page.goto('/stats');
       expect(await cur(page.locator('.stat-item .caption-link'))).toBe('pointer');
       expect(await cur(page.locator('.mode-tip-button'))).toBe('help');
     } },
   // Tips open only on their marks (ui-rules 50): a chart's empty space opens none and keeps the arrow; a bar or a line's
   // point opens it with the help cursor.
-  { name: 'tip-hit-chart-bars', viewports: 'two', path: () => '/stats',
-    act: (page) => expectChartMarkOnly(page, page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) }).locator('canvas')) },
-  { name: 'tip-hit-chart-line', viewports: 'two', path: () => '/insights?tab=consumption',
+  { name: 'tip-hit-chart-line', viewports: 'two', path: () => '/stats?tab=consumption',
     act: (page) => expectChartMarkOnly(page, page.locator('.chart-container canvas').first(), true) },
-  { name: 'tip-hit-delta-bars', viewports: 'two', path: () => '/insights?tab=brewing&range=all',
+  { name: 'tip-hit-delta-bars', viewports: 'two', path: () => '/stats?tab=brewing&range=all',
     act: (page) => expectMarkOnly(page, page.locator('[data-section="brewing-temp"] .track'), '.bar', page.locator('.cell-tip:popover-open')) },
-  { name: 'insights-findings-headline-clamp', path: () => '/insights?tab=insights&range=all',
+  { name: 'insights-findings-headline-clamp', path: () => '/stats?tab=insights&range=all',
     act: async (page) => {
       // A Findings headline is 2 lines at most at any width, cut with an ellipsis (user, 2026-10-18).
       const over = await page.locator('.finding-grid .hl-caption .stat-label').evaluateAll((hs) => hs.flatMap((h) => {
@@ -8180,7 +7974,7 @@ export const STATES: State[] = [
         await expect(tip).toHaveCount(0);
       }
     } },
-  { name: 'insights-findings-headline-tip', path: () => '/insights?tab=insights&range=all',
+  { name: 'insights-findings-headline-tip', path: () => '/stats?tab=insights&range=all',
     act: async (page) => {
       // One headline tip on every device (user, 2026-10-18): the full headline, then the card's clarifying lines
       // (likeStandout: the like-group compared with). Hover on desktop; a tap follows the #anchor and opens it too.
@@ -8209,7 +8003,7 @@ export const STATES: State[] = [
       await expectNoHoles(vs);
       await expectValueLine(page);
     } },
-  { name: 'insights-findings-list-head-tips', viewports: 'two', path: () => '/insights?tab=insights&range=all',
+  { name: 'insights-findings-list-head-tips', viewports: 'two', path: () => '/stats?tab=insights&range=all',
     act: async (page) => {
       // The same headline tip in Top stories, Myth busters and Too early as in the grid (user, 2026-10-18). Where no
       // seeded headline there has points, one is given a point: the mechanism is what's under test.
@@ -8230,7 +8024,7 @@ export const STATES: State[] = [
         await expectTapTip(page, h, tip, page.locator('h1'));
       }
     } },
-  { name: 'insights-findings-gear-switch', path: () => '/insights?tab=insights&range=3m',
+  { name: 'insights-findings-gear-switch', path: () => '/stats?tab=insights&range=3m',
     act: async (page) => {
       // A gear switch card is its headline, sample and a tall chart; its words are the headline's tip (user, 2026-10-18).
       const card = page.locator('[id^="insight-gearShare-"]').filter({ has: page.locator('.caption-link', { hasText: 'now mostly' }) }).first();
@@ -8244,7 +8038,7 @@ export const STATES: State[] = [
       await expect(tip.locator('.tip-points .tip-label')).toHaveText(['Before:', 'Now:']);
       await expect(tip.locator('.tip-points li').first()).toHaveText(/^Before: .+ \(\d+% as of \w+ \d+\)$/);
     } },
-  { name: 'insights-milestones-ruler-cursor', viewports: 'two', path: () => '/insights?tab=milestones&range=all',
+  { name: 'insights-milestones-ruler-cursor', viewports: 'two', path: () => '/stats?tab=milestones&range=all',
     act: async (page) => {
       // The whole ruler is grab (a press anywhere moves the view there), grabbing while dragging (user, 2026-10-18).
       const ruler = page.locator('nav.ruler');
@@ -8264,7 +8058,7 @@ export const STATES: State[] = [
       await page.mouse.up();
       expect(await cur(ruler)).toBe('grab');
     } },
-  { name: 'tip-hit-findings', viewports: 'two', path: () => '/insights?tab=insights&range=all',
+  { name: 'tip-hit-findings', viewports: 'two', path: () => '/stats?tab=insights&range=all',
     act: async (page) => {
       // A finding card's empty space opens nothing; its clamped body opens the full text (hover, then a click keeps it).
       const card = page.locator('.finding-grid .hl-card').first();
@@ -8293,25 +8087,17 @@ export const STATES: State[] = [
   // Tap tips (ui-rules 49): every tip kind a hover opens also opens on a tap, stays, and a tap elsewhere closes it.
   { name: 'tap-tip-text', viewports: 'two', path: () => '/coffees?status=all&view=list',
     act: (page) => expectTapTip(page, page.getByRole('button', { name: /^Roast level: / }).first(), page.locator('.cell-tip:popover-open'), page.locator('h1')) },
-  { name: 'tap-tip-mode', viewports: 'two', path: () => '/stats?people=person',
-    act: (page) => expectTapTip(page, page.locator('.stat-item', { hasText: 'Time to clear' }).getByRole('button', { name: 'per person' }),
-      page.locator('.mode-tip:popover-open'), page.getByRole('heading', { name: 'Time to Clear' })) },
-  { name: 'tap-tip-chart', viewports: 'two', path: () => '/stats',
-    act: async (page) => {
-      const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) });
-      await expectTapTip(page, () => tapChart(page, panel.locator('canvas')), page.locator('.chart-container .cell-tip:popover-open'), panel.locator('h2'));
-    } },
-  { name: 'tap-tip-sample', viewports: 'two', path: () => '/insights?tab=leaderboards&avg=raw',
+  { name: 'tap-tip-sample', viewports: 'two', path: () => '/stats?tab=leaderboards&avg=raw',
     act: (page) => expectTapTip(page, page.locator('.sample-note').first(), page.locator('.cell-tip:popover-open'), page.locator('.insights-period').last()) },
-  { name: 'tap-tip-label', viewports: 'two', path: () => '/insights?tab=habits&range=1w&compare=1',
+  { name: 'tap-tip-label', viewports: 'two', path: () => '/stats?tab=habits&range=1w&compare=1',
     act: (page) => expectTapTip(page, page.locator('.insights-delta').first(), page.locator('.cell-tip:popover-open'), page.locator('h1')) },
-  { name: 'tap-tip-heatmap', viewports: 'two', path: () => '/insights?tab=habits',
+  { name: 'tap-tip-heatmap', viewports: 'two', path: () => '/stats?tab=habits',
     act: async (page) => {
       const tip = page.locator('.cell-tip:popover-open'), away = page.locator('.insights-period').last();
       await expectTapTip(page, page.locator('.heatmap .heat-cell').nth(10), tip, away);
       await expectTapTip(page, page.locator('.brew-calendar .cal-cell').last(), tip, away);
     } },
-  { name: 'tap-tip-map', viewports: 'two', path: () => '/insights?tab=leaderboards&rank=brews',
+  { name: 'tap-tip-map', viewports: 'two', path: () => '/stats?tab=leaderboards&rank=brews',
     act: async (page) => {
       const tip = page.locator('.cell-tip:popover-open');
       const tapEthiopia = async () => {
@@ -8331,7 +8117,7 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await expect(tip).toBeHidden();
     } },
-  { name: 'insights-brewing', path: () => '/insights?tab=brewing',
+  { name: 'insights-brewing', path: () => '/stats?tab=brewing',
     act: async (page) => {
       for (const h of ['Rest curve', 'Dial-in', 'Brews until dialed', 'Grind drift', 'Variables vs rating'])
         await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible();
@@ -8477,7 +8263,7 @@ export const STATES: State[] = [
       expect(await slots()).toEqual(before);
     } },
   ...(['roast', 'process', 'origin', 'roaster'] as const).map((by) => ({
-    name: `insights-brewing-by-${by}`, path: () => `/insights?tab=brewing&tempBy=${by}`,
+    name: `insights-brewing-by-${by}`, path: () => `/stats?tab=brewing&tempBy=${by}`,
     act: async (page: Page) => {
       await expect(page.getByLabel('Break down by').first()).toHaveValue(by);
       const hm = page.locator('[data-section="brewing-temp"] .heatmap.diverging');
@@ -8508,7 +8294,7 @@ export const STATES: State[] = [
       if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d? \(Low confidence\)$/);
       await expect(hm.locator('.div-legend')).not.toContainText(/Striped:|few brews/i);
     } })),
-  { name: 'insights-brewing-exact', viewports: 'two', path: () => '/insights?tab=brewing&temp=exact',
+  { name: 'insights-brewing-exact', viewports: 'two', path: () => '/stats?tab=brewing&temp=exact',
     act: async (page) => {
       // Each chart's toggle is its own: temp=exact leaves Grind on bands.
       await expect(page.getByRole('group', { name: 'Temp bands' }).getByRole('button', { name: 'Exact' })).toHaveAttribute('aria-pressed', 'true');
@@ -8516,7 +8302,7 @@ export const STATES: State[] = [
       const bold = page.locator('[data-section="brewing-temp"] .bar-label.bold');
       await expect(bold).toHaveText(['88°C', '91°C', '92°C', '94°C']);
     } },
-  { name: 'insights-brewing-zp6', viewports: 'two', path: () => '/insights?tab=brewing&grinder=zp6-special',
+  { name: 'insights-brewing-zp6', viewports: 'two', path: () => '/stats?tab=brewing&grinder=zp6-special',
     act: async (page) => {
       await expect(page.getByLabel('Grinder')).toHaveValue('zp6-special');
       await expect(page.locator('[data-section="brewing-grind"] .bar-row.small').first()).toBeVisible();
@@ -8526,19 +8312,19 @@ export const STATES: State[] = [
       await grind.locator('.bar-row .bar-label').first().click();
       await expect(grind.locator('.cell-tip .tip-title').first()).toHaveText('5.0 – 5.4');
     } },
-  { name: 'insights-brewing-tip', viewports: 'two', path: () => '/insights?tab=brewing',
+  { name: 'insights-brewing-tip', viewports: 'two', path: () => '/stats?tab=brewing',
     act: async (page) => {
       await page.locator('[data-section="brewing-temp"] .bar-row .bar-label').first().click();
       await expect(page.locator('[data-section="brewing-temp"] .cell-tip')).toContainText(/brews/);
     } },
   ...(['ratio', 'dose', 'time', 'bloom', 'grind'] as const).map((v) => ({
-    name: `insights-brewing-${v}-by-roast`, path: () => `/insights?tab=brewing&${v}By=roast`,
+    name: `insights-brewing-${v}-by-roast`, path: () => `/stats?tab=brewing&${v}By=roast`,
     act: async (page: Page) => {
       await expect(page.locator(`[data-section="brewing-${v}"] .heatmap.diverging`)).toBeVisible();
       await expectInnerScroll(page, '.heatmap.diverging .scroll');
     } })),
-  { name: 'insights-brewing-all-ratings', path: () => '/insights?tab=brewing&ratings=all' },
-  { name: 'insights-sweetspots-grinder', path: () => '/insights?tab=sweetspots&grinder=zp6-special',
+  { name: 'insights-brewing-all-ratings', path: () => '/stats?tab=brewing&ratings=all' },
+  { name: 'insights-sweetspots-grinder', path: () => '/stats?tab=sweetspots&grinder=zp6-special',
     act: async (page) => {
       await expect(page.getByLabel('Grind for:')).toHaveValue('zp6-special');
       const name = await page.getByLabel('Grind for:').locator('option:checked').innerText();
@@ -8547,7 +8333,7 @@ export const STATES: State[] = [
       await expectGridRowsFull(page, '.spot-grid');
     } },
   ...(['sweetspots', 'brewing', 'water', 'gear'] as const).map((tab) => ({
-    name: `insights-lab-empty-${tab}`, path: () => `/insights?tab=${tab}&range=2000-01-01..2000-01-31`,
+    name: `insights-lab-empty-${tab}`, path: () => `/stats?tab=${tab}&range=2000-01-01..2000-01-31`,
     act: async (page: Page) => {
       await expect(page.getByText(/^No rated brews (with [a-z ]+ )?in this period\.$/)).toHaveCount(1);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
@@ -8555,12 +8341,12 @@ export const STATES: State[] = [
     } })),
   // Gate 3: a truly empty tab's panels are one short line each (no tall blank chart areas).
   ...(['consumption', 'leaderboards', 'habits'] as const).map((tab) => ({
-    name: `insights-empty-${tab}`, path: () => `/insights?tab=${tab}&range=2000-01-01..2000-01-31`,
+    name: `insights-empty-${tab}`, path: () => `/stats?tab=${tab}&range=2000-01-01..2000-01-31`,
     act: async (page: Page) => {
       await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
       await expectShortEmpty(page);
     } })),
-  { name: 'insights-lab-no-compare', viewports: 'two', path: () => '/insights?tab=gear&range=12m&compare=1&people=person&grinder=zp6-special',
+  { name: 'insights-lab-no-compare', viewports: 'two', path: () => '/stats?tab=gear&range=12m&compare=1&people=person&grinder=zp6-special',
     act: async (page) => {
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
@@ -8574,39 +8360,39 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/tab=gear.*grinder=zp6-special/);
       await expect(page.getByLabel('Compare')).toHaveCount(0);
     } },
-  { name: 'insights-lab-reset', viewports: 'two', path: () => '/insights?tab=brewing&tempBy=roast&temp=exact&grinder=zp6-special',
+  { name: 'insights-lab-reset', viewports: 'two', path: () => '/stats?tab=brewing&tempBy=roast&temp=exact&grinder=zp6-special',
     act: async (page) => {
       await page.getByRole('button', { name: 'Reset', exact: true }).click();
-      await expect(page).toHaveURL(/\/insights\?tab=brewing$/);
+      await expect(page).toHaveURL(/\/stats\?tab=brewing$/);
     } },
-  { name: 'insights-remembered', viewports: 'two', path: () => '/insights?tab=habits&range=1w',
+  { name: 'insights-remembered', viewports: 'two', path: () => '/stats?tab=habits&range=1w',
     act: async (page) => {
       await gotoReady(page, '/coffees');
-      await gotoReady(page, '/insights');
-      await expect(page).toHaveURL(/\/insights\?range=1w&tab=habits$/); // restored into the URL
+      await gotoReady(page, '/stats');
+      await expect(page).toHaveURL(/\/stats\?range=1w&tab=habits$/); // restored into the URL
       await page.getByRole('button', { name: 'Reset', exact: true }).click();
-      await expect(page).toHaveURL(/\/insights\?tab=habits$/); // filters cleared, tab kept
-      await gotoReady(page, '/insights');
-      await expect(page).toHaveURL(/\/insights\?tab=habits$/); // remembered: the tab, bare filters
-      await gotoReady(page, '/insights?tab=leaderboards'); // no filters: the tab alone is remembered
+      await expect(page).toHaveURL(/\/stats\?tab=habits$/); // filters cleared, tab kept
+      await gotoReady(page, '/stats');
+      await expect(page).toHaveURL(/\/stats\?tab=habits$/); // remembered: the tab, bare filters
+      await gotoReady(page, '/stats?tab=leaderboards'); // no filters: the tab alone is remembered
       await gotoReady(page, '/coffees');
-      await gotoReady(page, '/insights');
-      await expect(page).toHaveURL(/\/insights\?tab=leaderboards$/);
-      await gotoReady(page, '/insights?range=3m'); // a link with params wins and is remembered
-      await gotoReady(page, '/insights');
-      await expect(page).toHaveURL(/\/insights\?range=3m$/);
+      await gotoReady(page, '/stats');
+      await expect(page).toHaveURL(/\/stats\?tab=leaderboards$/);
+      await gotoReady(page, '/stats?range=3m'); // a link with params wins and is remembered
+      await gotoReady(page, '/stats');
+      await expect(page).toHaveURL(/\/stats\?range=3m$/);
     } },
   // An in-page nav back to the bare URL removes the remembered state: a later bare visit stays bare.
-  { name: 'insights-remembered-bare', viewports: 'two', path: () => '/insights?dial=all',
+  { name: 'insights-remembered-bare', viewports: 'two', path: () => '/stats?dial=all',
     act: async (page) => {
       await openSwitches(page);
       await page.getByRole('group', { name: 'Brews' }).first().getByRole('button', { name: 'Once dialed', exact: true }).click();
-      await expect(page).toHaveURL(/\/insights$/);
+      await expect(page).toHaveURL(/\/stats$/);
       await gotoReady(page, '/coffees');
-      await gotoReady(page, '/insights');
-      await expect(page).toHaveURL(/\/insights$/);
+      await gotoReady(page, '/stats');
+      await expect(page).toHaveURL(/\/stats$/);
     } },
-  { name: 'insights-coffees-panel', path: () => '/insights',
+  { name: 'insights-coffees-panel', path: () => '/stats',
     act: async (page) => {
       await expect(page.locator('.filters-field > span')).toHaveText('Show'); // its small label, like the bar's others
       await page.getByRole('button', { name: /^Filters/ }).click();
@@ -8615,7 +8401,7 @@ export const STATES: State[] = [
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT'); // no keyboard pop
       await dlg.getByLabel('Process').selectOption('Washed');
       await dlg.getByLabel('Caffeine').selectOption('decaf');
-      await expect(page).toHaveURL(/\/insights$/); // a draft: nothing applied yet
+      await expect(page).toHaveURL(/\/stats$/); // a draft: nothing applied yet
       // The whole panel fits the viewport (phone landscape is 333px tall).
       const box = (await dlg.boundingBox())!;
       expect(box.y).toBeGreaterThanOrEqual(0);
@@ -8628,7 +8414,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('2');
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Washed/, /Decaf/]);
     } },
-  { name: 'insights-coffees-caffeine-default', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-coffees-caffeine-default', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       // Default (caffeinated) shows the hint, naming that option; an explicit Decaf or All hides it; Default returns to bare. The
       // dialog doesn't change size or move its controls when the hint comes and goes.
@@ -8661,7 +8447,7 @@ export const STATES: State[] = [
       expect(sb.x + sb.width, 'select stays in its cell').toBeLessThanOrEqual(field.x + field.width + 1);
     } },
   // Apply / Reset / click-out: the dialog edits a draft; only Apply (or Reset) reaches the URL; Esc and the backdrop discard.
-  { name: 'insights-filters-apply', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all&process=Washed',
+  { name: 'insights-filters-apply', viewports: 'two', path: () => '/stats?tab=leaderboards&range=all&process=Washed',
     act: async (page) => {
       const open = async () => { await page.getByRole('button', { name: /^Filters/ }).click(); return page.getByRole('dialog', { name: 'Filters' }); };
       let dlg = await open();
@@ -8704,7 +8490,7 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/process=|caffeine=/);
     } },
   // Brew filters in the Filters dialog (Part 1): one select each on the tabs that use it; chips for any tab, muted off-tab.
-  { name: 'insights-brew-dialog', path: () => '/insights',
+  { name: 'insights-brew-dialog', path: () => '/stats',
     act: async (page) => {
       await page.getByRole('button', { name: /^Filters/ }).click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
@@ -8721,7 +8507,7 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/dripper=V60/);
       await expect(page).toHaveURL(/brewDose=15/);
     } },
-  { name: 'insights-brew-dialog-gear', viewports: 'two', path: () => '/insights?tab=gear',
+  { name: 'insights-brew-dialog-gear', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
       await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
@@ -8729,7 +8515,7 @@ export const STATES: State[] = [
       for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
     } },
   // Regression: a Dripper pick set back to "Any" in the dialog drops the param and shows every dripper again.
-  { name: 'insights-trophy-pick-any', viewports: 'two', path: () => '/insights?tab=gear',
+  { name: 'insights-trophy-pick-any', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
       const drippers = page.locator('.trophy-card[data-key^="dripper-"]');
       const all = await drippers.count();
@@ -8747,7 +8533,7 @@ export const STATES: State[] = [
       await expect(drippers).toHaveCount(all);
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(0);
     } },
-  { name: 'insights-brew-pick-any', viewports: 'two', path: () => '/insights',
+  { name: 'insights-brew-pick-any', viewports: 'two', path: () => '/stats',
     act: async (page) => {
       await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
@@ -8763,7 +8549,7 @@ export const STATES: State[] = [
       await page.waitForTimeout(500);
       await expect(page).not.toHaveURL(/dripper=/);
     } },
-  { name: 'insights-trophy-pick-any-after-toggle', viewports: 'two', path: () => '/insights?tab=gear',
+  { name: 'insights-trophy-pick-any-after-toggle', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
       const drippers = page.locator('.trophy-card[data-key^="dripper-"]');
       const all = await drippers.count();
@@ -8784,7 +8570,7 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/dripper=/);
       await expect(drippers).toHaveCount(all);
     } },
-  { name: 'insights-brew-chips-muted', path: () => '/insights?tab=habits&dripper=V60&water=Lab%20Water%20A',
+  { name: 'insights-brew-chips-muted', path: () => '/stats?tab=habits&dripper=V60&water=Lab%20Water%20A',
     act: async (page) => {
       const chips = page.locator('.coffee-chips .filter-chip');
       await expect(chips).toHaveCount(2);
@@ -8800,20 +8586,20 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/dripper=/);
       await expect(page).toHaveURL(/water=Lab(%20|\+)Water(%20|\+)A/);
     } },
-  { name: 'insights-brew-clear', viewports: 'two', path: () => '/insights?dripper=V60&process=Washed',
+  { name: 'insights-brew-clear', viewports: 'two', path: () => '/stats?dripper=V60&process=Washed',
     act: async (page) => {
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(2);
       await page.getByRole('button', { name: 'Clear all' }).click();
-      await expect(page).toHaveURL(/\/insights$/);
+      await expect(page).toHaveURL(/\/stats$/);
     } },
-  { name: 'insights-brew-remembered', viewports: 'two', path: () => '/insights?tab=gear&dripper=V60',
+  { name: 'insights-brew-remembered', viewports: 'two', path: () => '/stats?tab=gear&dripper=V60',
     act: async (page) => {
       await gotoReady(page, '/coffees');
-      await gotoReady(page, '/insights');
+      await gotoReady(page, '/stats');
       await expect(page).toHaveURL(/dripper=V60/);
     } },
   // Whole-bag notes (Part 1, Task 6): one .chart-note per panel of whole-bag figures, none on brew-level panels.
-  { name: 'insights-brew-overview', path: () => '/insights?dripper=V60',
+  { name: 'insights-brew-overview', path: () => '/stats?dripper=V60',
     act: async (page) => {
       const note = (t: RegExp) => page.locator('.chart-panel', { has: page.getByRole('heading', { name: t }) }).locator('.chart-note');
       await expect(note(/^Totals$/)).toHaveText("Spend and Bags finished count whole bags: the dripper filter doesn't apply.");
@@ -8823,12 +8609,12 @@ export const STATES: State[] = [
       await expect(note(/^Averages$/)).toHaveCount(0);
       await expect(page.locator('.chart-panel.recent .chart-note')).toHaveText("Whole bags: the dripper filter doesn't apply.");
     } },
-  { name: 'insights-brew-leaderboards-spend', path: () => '/insights?tab=leaderboards&rank=spend&dripper=V60',
+  { name: 'insights-brew-leaderboards-spend', path: () => '/stats?tab=leaderboards&rank=spend&dripper=V60',
     act: async (page) => {
       await expect(page.locator('.chart-note', { hasText: "Whole bags: the dripper filter doesn't apply." })).toHaveCount(1);
       await expectEmptyGearCards(page);
     } },
-  { name: 'insights-brew-leaderboards', viewports: 'two', path: () => '/insights?tab=leaderboards&dripper=V60',
+  { name: 'insights-brew-leaderboards', viewports: 'two', path: () => '/stats?tab=leaderboards&dripper=V60',
     act: async (page) => {
       // Every board applies every filter, its own included: the Drippers board lists only V60.
       const board = page.locator('[data-board="dripper"]');
@@ -8836,9 +8622,9 @@ export const STATES: State[] = [
       await expect(board).not.toContainText('Origami');
       await expect(page.locator('.chart-note', { hasText: 'Whole bags' })).toHaveCount(0);
     } },
-  { name: 'insights-brew-habits', viewports: 'two', path: () => '/insights?tab=habits&brewDose=15',
+  { name: 'insights-brew-habits', viewports: 'two', path: () => '/stats?tab=habits&brewDose=15',
     act: async (page) => { await expect(page.locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0); } },
-  { name: 'insights-brew-consumption', path: () => '/insights?tab=consumption&dripper=V60',
+  { name: 'insights-brew-consumption', path: () => '/stats?tab=consumption&dripper=V60',
     act: async (page) => {
       const notes = page.locator('.chart-note', { hasText: "the dripper filter doesn't apply" });
       await expect(notes.first()).toBeVisible();
@@ -8848,35 +8634,35 @@ export const STATES: State[] = [
       await expect(page.locator('.chart-panel', { has: page.getByRole('heading', { name: 'Brewed over time' }) }).locator('.chart-note')).toHaveCount(1);
       await expect(notes).toHaveCount(4);
     } },
-  { name: 'insights-brew-records', path: () => '/insights?tab=records&dripper=V60',
+  { name: 'insights-brew-records', path: () => '/stats?tab=records&dripper=V60',
     act: async (page) => {
       const notes = page.locator('.chart-note', { hasText: 'count whole bags' });
       expect(await notes.count()).toBeGreaterThan(0);
       await expect(page.locator('.chart-panel', { has: page.getByRole('heading', { name: 'Volume' }) }).locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0);
     } },
-  { name: 'insights-brew-insights', path: () => '/insights?tab=insights&dripper=V60',
+  { name: 'insights-brew-insights', path: () => '/stats?tab=insights&dripper=V60',
     act: async (page) => {
       const notes = page.locator('.chart-note', { hasText: "whole bags: the dripper filter doesn't apply." });
       expect(await notes.count()).toBeGreaterThan(0);
     } },
-  { name: 'insights-brew-brewing', viewports: 'two', path: () => '/insights?tab=brewing&water=Lab%20Water%20A',
+  { name: 'insights-brew-brewing', viewports: 'two', path: () => '/stats?tab=brewing&water=Lab%20Water%20A',
     act: async (page) => { await expect(page.locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0); } },
-  { name: 'insights-brew-water', viewports: 'two', path: () => '/insights?tab=water&dripper=V60',
+  { name: 'insights-brew-water', viewports: 'two', path: () => '/stats?tab=water&dripper=V60',
     act: async (page) => { await expect(page.locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0); } },
-  { name: 'insights-brew-gear', viewports: 'two', path: () => '/insights?tab=gear&brewTemp=93',
+  { name: 'insights-brew-gear', viewports: 'two', path: () => '/stats?tab=gear&brewTemp=93',
     act: async (page) => { await expect(page.locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0); } },
   // A tile or section link keeps the brew filter; a /coffees link doesn't.
-  { name: 'insights-brew-link-carries', viewports: 'two', path: () => '/insights?dripper=V60',
+  { name: 'insights-brew-link-carries', viewports: 'two', path: () => '/stats?dripper=V60',
     act: async (page) => {
-      // Rail tab links (?tab=…) and finding links (/insights?…) carry the filter.
-      const hrefs = await page.locator('a[href^="?"], a[href^="/insights"]').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''));
+      // Rail tab links (?tab=…) and finding links (/stats?…) carry the filter.
+      const hrefs = await page.locator('a[href^="?"], a[href^="/stats"]').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''));
       expect(hrefs.length).toBeGreaterThan(0);
       expect(hrefs.some((h) => h.includes('dripper=V60'))).toBe(true);
       const coffees = await page.locator('a[href^="/coffees?"]').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''));
       expect(coffees.length).toBeGreaterThan(0);
       expect(coffees.every((h) => !h.includes('dripper='))).toBe(true);
     } },
-  { name: 'insights-coffees-chips', viewports: 'two', path: () => '/insights?tab=brewing&process=Washed&origin=Ethiopia&caffeine=all',
+  { name: 'insights-coffees-chips', viewports: 'two', path: () => '/stats?tab=brewing&process=Washed&origin=Ethiopia&caffeine=all',
     act: async (page) => {
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(3);
       await expect(page.locator('.coffee-chips .filter-chip').last()).toHaveText(/Caf \+ decaf/);
@@ -8888,7 +8674,7 @@ export const STATES: State[] = [
       await expect(page.locator('.coffee-chips')).toHaveCount(0);
     } },
   // The bar stays one short controls row with the Filters button in it; the chips are its last row.
-  { name: 'insights-coffees-sticky', path: () => '/insights?tab=records&range=all&compare=1&process=Washed&caffeine=decaf',
+  { name: 'insights-coffees-sticky', path: () => '/stats?tab=records&range=all&compare=1&process=Washed&caffeine=decaf',
     act: async (page) => {
       // The chips are the bar's last row (gate r2 A3): still in view after scrolling.
       await expect(page.locator('.filter-bar .coffee-chips')).toBeVisible();
@@ -8899,8 +8685,8 @@ export const STATES: State[] = [
       if (await phoneBar(page)) await expect(page.locator('.cbar.overlay .coffee-chips')).toBeInViewport();
     } },
   // The mixed-roast nudge: never with a Roast filter set (one level left). The thin seed's two levels
-  // rate alike, so it never shows here; prod copy shows it on /insights?tab=brewing&range=3m (T13b report).
-  { name: 'insights-roast-nudge-roast-set', viewports: 'two', path: () => '/insights?tab=brewing&range=all&roast=Light',
+  // rate alike, so it never shows here; prod copy shows it on /stats?tab=brewing&range=3m (T13b report).
+  { name: 'insights-roast-nudge-roast-set', viewports: 'two', path: () => '/stats?tab=brewing&range=all&roast=Light',
     act: async (page) => {
       await expect(page.locator('.coffee-chips')).toBeVisible();
       await expect(page.locator('.roast-nudge')).toHaveCount(0);
@@ -8909,7 +8695,7 @@ export const STATES: State[] = [
   ...([['0', ''], ['1', '&process=Washed'],
     ['5', '&roast=Light&process=Washed&origin=Ethiopia&roaster=The%20Picky%20Chemist&caffeine=all']] as const)
     .map(([n, q]) => ({
-      name: `insights-chips-${n}`, viewports: n === '0' ? 'two' : 'all', path: () => `/insights?tab=records&range=all${q}`,
+      name: `insights-chips-${n}`, viewports: n === '0' ? 'two' : 'all', path: () => `/stats?tab=records&range=all${q}`,
       act: async (page: Page) => {
         const row = page.locator('.filter-bar .coffee-chips');
         if (n === '0') return expect(row).toHaveCount(0);
@@ -8925,17 +8711,17 @@ export const STATES: State[] = [
         await expectStickyBar(page, page.locator('.filter-bar'));
       } })),
   // F1: Clear all on the sole chip leaves the URL bare and forgets it; a later bare visit stays bare.
-  { name: 'insights-coffees-clear-bare', viewports: 'two', path: () => '/insights?process=Washed',
+  { name: 'insights-coffees-clear-bare', viewports: 'two', path: () => '/stats?process=Washed',
     act: async (page) => {
       await page.getByRole('button', { name: 'Clear all' }).click();
-      await expect(page).toHaveURL(/\/insights$/);
+      await expect(page).toHaveURL(/\/stats$/);
       await gotoReady(page, '/coffees');
-      await gotoReady(page, '/insights');
-      await expect(page).toHaveURL(/\/insights$/);
+      await gotoReady(page, '/stats');
+      await expect(page).toHaveURL(/\/stats$/);
       await expect(page.locator('.coffee-chips')).toHaveCount(0);
     } },
   ...(['brewing', 'leaderboards', 'habits'] as const).map((t) => ({
-    name: `insights-coffees-empty-${t}`, viewports: 'two' as const, path: () => `/insights?tab=${t}&roaster=Lab%20Roasters&range=1w`,
+    name: `insights-coffees-empty-${t}`, viewports: 'two' as const, path: () => `/stats?tab=${t}&roaster=Lab%20Roasters&range=1w`,
     act: async (page: Page) => {
       await expect(page.getByText(/^No (rated )?brews matching Lab Roasters in this period\.$/)).toHaveCount(1);
       // A whole empty tab is one empty panel, not a stack of empty boards or charts (rule 28).
@@ -8944,9 +8730,9 @@ export const STATES: State[] = [
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     } })),
   ...(['overview', 'records', 'insights', 'sweetspots', 'water', 'gear'] as const).map((t) => ({
-    name: `insights-coffees-${t}`, path: () => `/insights?tab=${t}&process=Natural&range=all` })),
+    name: `insights-coffees-${t}`, path: () => `/stats?tab=${t}&process=Natural&range=all` })),
   // A board the confident cutoff (min3) emptied says what its rows lacked; "No brews" stays for truly empty boards.
-  { name: 'insights-leaderboards-cut', path: () => '/insights?tab=leaderboards&process=Washed&roast=Light&range=all',
+  { name: 'insights-leaderboards-cut', path: () => '/stats?tab=leaderboards&process=Washed&roast=Light&range=all',
     act: async (page) => {
       await expect(page.locator('[data-board="roasters"] .board-note'))
         .toHaveText('No roasters with 3+ bags and 10+ rated brews matching Washed · Light in this period.');
@@ -8954,7 +8740,7 @@ export const STATES: State[] = [
       await expectShortEmpty(page);
     } },
   // Phones (≤480) read "Last 12 mo." in the closed Period select (unclipped); wider widths keep "Last 12 months".
-  { name: 'insights-period-short', path: () => '/insights?tab=records&range=12m',
+  { name: 'insights-period-short', path: () => '/stats?tab=records&range=12m',
     act: async (page) => {
       const want = page.viewportSize()!.width <= 480 ? 'Last 12 mo.' : 'Last 12 months';
       await expect(page.getByLabel('Period').locator('option:checked')).toHaveText(want);
@@ -8962,11 +8748,11 @@ export const STATES: State[] = [
     } },
   // U2: on phones the control bar's row-to-row gaps are equal, measured to what you see (a label's ink top, a
   // control's or chip's edge), on every tab; within 1px.
-  { name: 'insights-bar-gaps', path: () => '/insights?tab=overview&range=12m&roast=Light&process=Washed',
+  { name: 'insights-bar-gaps', path: () => '/stats?tab=overview&range=12m&roast=Light&process=Washed',
     act: async (page) => {
       if (page.viewportSize()!.width > 640) return;
       for (const tab of ['overview', 'leaderboards', 'records', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing', 'water', 'insights']) {
-        await page.goto(`/insights?tab=${tab}&range=12m&roast=Light&process=Washed`);
+        await page.goto(`/stats?tab=${tab}&range=12m&roast=Light&process=Washed`);
         await expect(page.locator('.insights-controls')).toBeVisible();
         const gaps: number[] = await page.evaluate(`(${BAR_GAPS})()`);
         expect(gaps.length, tab).toBeGreaterThanOrEqual(2);
@@ -8975,7 +8761,7 @@ export const STATES: State[] = [
     } },
   // M7: phones (≤480) abbreviate months/years/Previous in the Period and Compare selects (also before hydration,
   // app.html's script); the closed selects' text must fit (long custom spans / bag names fall back to the ellipsis style). Runs at 360 and 480.
-  { name: 'insights-phone-selects', path: () => '/insights?tab=overview&range=12m&compare=1',
+  { name: 'insights-phone-selects', path: () => '/stats?tab=overview&range=12m&compare=1',
     act: async (page) => {
       const phone = page.viewportSize()!.width <= 480;
       await expect(page.getByLabel('Compare').locator('option:checked')).toHaveText(phone ? 'Prev. 12 mo.' : 'Previous 12 months');
@@ -8994,7 +8780,7 @@ export const STATES: State[] = [
   // See all (gate 3): the note names what the settings hide; See all → everything (filters, Period, tab kept);
   // Back to defaults drops only avg/ratings/dial. One line at 1280+, may wrap on phones.
   ...(['note', 'see-all', 'back'] as const).map((step) => ({
-    name: `insights-see-all-${step}`, viewports: step === 'back' ? 'two' : 'all', path: () => '/insights?tab=leaderboards&process=Washed&roast=Light&range=all',
+    name: `insights-see-all-${step}`, viewports: step === 'back' ? 'two' : 'all', path: () => '/stats?tab=leaderboards&process=Washed&roast=Light&range=all',
     act: async (page: Page) => {
       const note = page.locator('.see-all');
       // One short line (gate P4): "N rows and M brews hidden by your settings. See all".
@@ -9020,20 +8806,20 @@ export const STATES: State[] = [
     } })),
   // See all shows every bag (user, 2026-10-17): Onyx, a roaster of one 1-brew decaf bag, is on the Roasters rating
   // board under See all + caffeine=all, and under k2 too (every bag counts, weighted by its brews; user ruling 2026-10-17).
-  { name: 'insights-see-all-every-bag', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all&avg=raw&ratings=all&dial=all&caffeine=all&open=roasters',
+  { name: 'insights-see-all-every-bag', viewports: 'two', path: () => '/stats?tab=leaderboards&range=all&avg=raw&ratings=all&dial=all&caffeine=all&open=roasters',
     act: async (page) => {
       await expect(page.locator('.see-all')).toContainText('Showing everything');
       await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(1);
-      await page.goto('/insights?tab=leaderboards&range=all&avg=k2&ratings=all&dial=all&caffeine=all&open=roasters');
+      await page.goto('/stats?tab=leaderboards&range=all&avg=k2&ratings=all&dial=all&caffeine=all&open=roasters');
       await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(1);
       // min3 (Average (3+ bags)) drops the 1-bag group.
-      await page.goto('/insights?tab=leaderboards&range=all&avg=min3&ratings=all&dial=all&caffeine=all&open=roasters');
+      await page.goto('/stats?tab=leaderboards&range=all&avg=min3&ratings=all&dial=all&caffeine=all&open=roasters');
       await expect(page.locator('[data-board="roasters"] .board-row').first()).toBeVisible();
       await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(0);
     } },
   // Gate P4: "hidden by your settings" opens the shared tip (FloatTip): each board's count, the brews', the reasons
   // once; hover (mouse), tap and keyboard focus.
-  { name: 'insights-see-all-tip', path: () => '/insights?tab=leaderboards&range=all',
+  { name: 'insights-see-all-tip', path: () => '/stats?tab=leaderboards&range=all',
     act: async (page) => {
       const btn = page.locator('.see-all .text-tip');
       await expect(btn).toHaveText(page.viewportSize()!.width < 768 ? 'hidden' : 'hidden by your settings', { useInnerText: true });
@@ -9063,12 +8849,12 @@ export const STATES: State[] = [
       await expect(tip).toBeVisible();
       expect(page.url()).not.toContain('tip');
     } },
-  { name: 'insights-lab-anchor', path: () => '/insights?tab=water#water-gh',
+  { name: 'insights-lab-anchor', path: () => '/stats?tab=water#water-gh',
     act: async (page) => {
       await expect(page.locator('#water-gh')).toBeInViewport();
       await expect.poll(async () => (await page.evaluate(() => document.getElementById('water-gh')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page))).toBeGreaterThanOrEqual(-1);
     } },
-  { name: 'insights-water', path: () => '/insights?tab=water',
+  { name: 'insights-water', path: () => '/stats?tab=water',
     act: async (page) => {
       for (const h of ['Ratings by recipe', 'Recipe mineral map', 'GH vs rating', 'Water × roast level', 'Water × process', 'Water usage over time', 'Same bag, different water'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
@@ -9291,12 +9077,12 @@ export const STATES: State[] = [
       await expect(eras.locator('.cell-tip')).toHaveCount(0);
       await eras.locator('.seg:focus').blur();
     } },
-  { name: 'insights-water-tip', viewports: 'two', path: () => '/insights?tab=water',
+  { name: 'insights-water-tip', viewports: 'two', path: () => '/stats?tab=water',
     act: async (page) => {
       await page.locator('[data-section="water-gh"] .bar-row .bar-label').first().click();
       await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
     } },
-  { name: 'insights-trophy', path: () => '/insights?tab=gear',
+  { name: 'insights-trophy', path: () => '/stats?tab=gear',
     act: async (page) => {
       const sec = page.locator('[data-section="gear-trophies"]');
       await expect(sec.getByRole('heading', { name: 'Gear showcase' })).toBeVisible();
@@ -9332,7 +9118,7 @@ export const STATES: State[] = [
       expect(name).toBeGreaterThan(avg);
       expect(avg).toBeGreaterThan(small);
     } },
-  { name: 'insights-trophy-open', path: () => '/insights?tab=gear&card=grinder-zp6-special',
+  { name: 'insights-trophy-open', path: () => '/stats?tab=gear&card=grinder-zp6-special',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg).toBeVisible();
@@ -9359,7 +9145,7 @@ export const STATES: State[] = [
       });
       for (const gap of rows) expect(gap).toBeLessThan(2);
     } },
-  { name: 'insights-trophy-specs', path: () => '/insights?tab=gear&card=dripper-v60',
+  { name: 'insights-trophy-specs', path: () => '/stats?tab=gear&card=dripper-v60',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg.getByRole('heading', { name: 'V60' })).toBeVisible();
@@ -9416,7 +9202,7 @@ export const STATES: State[] = [
       for (const gap of gaps) expect(gap).toBeLessThan(2);
       // The card behind it shows the photo too; a card with no stored row has no spec section, no dates and the icon.
       await expectContained(page.locator('.trophy-card[data-key="dripper-v60"] img'), 'rgb(127, 183, 164)');
-      await page.goto('/insights?tab=gear&card=grinder-comandante-c40-mk4');
+      await page.goto('/stats?tab=gear&card=grinder-comandante-c40-mk4');
       await expect(dlg.getByRole('heading', { name: 'Comandante C40 MK4' })).toBeVisible();
       await expect(dlg.locator('.specs')).toHaveCount(0);
       await expect(dlg.locator('.no-specs')).toHaveText('No details yet. Use Edit to add specs, cost and a photo.');
@@ -9427,12 +9213,12 @@ export const STATES: State[] = [
       await expect(dlg.locator('.media-meta b')).toHaveText(/^\d{4}-\d\d-\d\d \d{1,2}:\d\d:\d\d [AP]M$/);
       await expect(dlg.locator('.trophy-img img')).toHaveCount(0);
       // A few fields: ZP6 shows its two and no empty rows.
-      await page.goto('/insights?tab=gear&card=grinder-zp6-special');
+      await page.goto('/stats?tab=gear&card=grinder-zp6-special');
       await expect(dlg.locator('.specs .stat')).toHaveCount(2);
       await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('64mm');
       await expect(dlg.locator('.specs')).not.toContainText('Cone angle');
     } },
-  { name: 'insights-trophy-edit', path: () => '/insights?tab=gear&card=dripper-v60',
+  { name: 'insights-trophy-edit', path: () => '/stats?tab=gear&card=dripper-v60',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg.getByRole('heading', { name: 'V60' })).toBeVisible();
@@ -9517,7 +9303,7 @@ export const STATES: State[] = [
       await expect(dlg).toBeVisible();
       await expect(dlg.locator('.specs .stat', { hasText: 'Cone angle' }).locator('.stat-value')).toHaveText('60°');
       // A card with no stored row still gets Edit, with empty fields.
-      await page.goto('/insights?tab=gear&card=grinder-comandante-c40-mk4');
+      await page.goto('/stats?tab=gear&card=grinder-comandante-c40-mk4');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await expect(form.getByLabel('Burr size (mm)')).toHaveValue('');
       // The server's error shows inline.
@@ -9527,7 +9313,7 @@ export const STATES: State[] = [
       await expect(form).toBeVisible();
       // Regression: a typed number (a number input binds a number, not a string) is a listed change, and nothing phantom
       // appears for a stored number left alone (burr size 64).
-      await page.goto('/insights?tab=gear&card=dripper-v60');
+      await page.goto('/stats?tab=gear&card=dripper-v60');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await form.getByLabel('Cost ($)').click();
       await page.keyboard.press('ControlOrMeta+a');
@@ -9539,12 +9325,12 @@ export const STATES: State[] = [
       await form.getByLabel('Cost ($)').fill('24.00'); // the stored 24 again: not a change
       await dlg.getByRole('button', { name: 'Close' }).click();
       await expect(dlg).toBeHidden();
-      await page.goto('/insights?tab=gear&card=grinder-zp6-special');
+      await page.goto('/stats?tab=gear&card=grinder-zp6-special');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await expect(form.getByLabel('Burr size (mm)')).toHaveValue('64');
       await dlg.getByRole('button', { name: 'Close' }).click(); // no change: no panel
       await expect(dlg).toBeHidden();
-      await page.goto('/insights?tab=gear&card=grinder-zp6-special');
+      await page.goto('/stats?tab=gear&card=grinder-zp6-special');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await form.getByLabel('Burr size (mm)').fill(''); // emptied reads as empty
       await dlg.getByRole('button', { name: 'Close' }).click();
@@ -9552,7 +9338,7 @@ export const STATES: State[] = [
       await dlg.getByRole('alertdialog').getByRole('button', { name: 'Keep editing' }).click();
       // ✕ in edit mode is Cancel then close. No changes: it closes at once (no panel) and the URL drops the card.
       const panel = dlg.getByRole('alertdialog');
-      await page.goto('/insights?tab=gear&card=dripper-v60');
+      await page.goto('/stats?tab=gear&card=dripper-v60');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await expect(dlg.getByRole('button', { name: 'Close' })).toBeEnabled();
       await dlg.getByRole('button', { name: 'Close' }).click();
@@ -9560,7 +9346,7 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/card=/);
       // A change: a panel in the dialog names it, in view with 44px buttons on a phone; Keep editing (focused; Esc too) keeps the typed
       // values; Discard closes without saving.
-      await page.goto('/insights?tab=gear&card=dripper-v60');
+      await page.goto('/stats?tab=gear&card=dripper-v60');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await form.getByLabel('Brand').fill('Hario X');
       await dlg.getByLabel('Image URL').fill('https://example.com/x.png');
@@ -9589,12 +9375,12 @@ export const STATES: State[] = [
       await drop.click();
       await expect(dlg).toBeHidden();
       await expect(page).not.toHaveURL(/card=/);
-      await page.goto('/insights?tab=gear&card=dripper-v60');
+      await page.goto('/stats?tab=gear&card=dripper-v60');
       await expect(dlg.locator('.specs .stat', { hasText: 'Brand' }).locator('.stat-value')).toHaveText('Hario'); // nothing saved
     } },
   // The other kinds' edit grids (wide dialogs): Save/Cancel take the cell after the last field (a full last row pushes them to the next
   // row's second cell); Image URL lines up with the last field row, Preview/Discard with the row before it.
-  { name: 'insights-trophy-edit-kinds', path: () => '/insights?tab=gear&card=grinder-comandante-c40-mk4',
+  { name: 'insights-trophy-edit-kinds', path: () => '/stats?tab=gear&card=grinder-comandante-c40-mk4',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       const bx = async (l: Locator) => (await l.boundingBox())!;
@@ -9604,7 +9390,7 @@ export const STATES: State[] = [
         const gap = async (last: string) => { const l = await bx(input(last)); return (await bx(dlg.getByRole('button', { name: 'Save' }))).y - (l.y + l.height); };
         await dlg.getByRole('button', { name: 'Edit' }).click();
         expect(await gap('Step size (µm)')).toBeGreaterThanOrEqual(14);
-        await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
+        await page.goto('/stats?tab=gear&card=filter-cafec-abaca');
         await dlg.getByRole('button', { name: 'Edit' }).click();
         expect(await gap('Flow')).toBeGreaterThanOrEqual(14);
         return;
@@ -9648,13 +9434,13 @@ export const STATES: State[] = [
       await input('Adjustment').selectOption('');
       await check('Burr coating', 'Adjustment', false);
       // Filter: 8 fields, a full last row (Size, Flow): Save is below Flow.
-      await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
+      await page.goto('/stats?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       for (const n of ['Shape', 'Material', 'Size', 'Flow', 'Learn from similar gear?']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(5);
       await check('Size', 'Flow', true); // Save/Cancel right-aligned on a row of their own, level with Preview
     } },
-  { name: 'insights-trophy-fill', path: () => '/insights?tab=gear&card=dripper-v60',
+  { name: 'insights-trophy-fill', path: () => '/stats?tab=gear&card=dripper-v60',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       const posts: string[] = [];
@@ -9715,7 +9501,7 @@ export const STATES: State[] = [
       await expect(dlg.getByRole('alert')).toHaveText('No product found on that page');
       await expect(dlg.getByLabel('Brand', { exact: true })).toHaveValue('Filled Brand');
     } },
-  { name: 'insights-trophy-suggest', path: () => '/insights?tab=gear&card=dripper-v60',
+  { name: 'insights-trophy-suggest', path: () => '/stats?tab=gear&card=dripper-v60',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       const asked: unknown[] = [];
@@ -9755,7 +9541,7 @@ export const STATES: State[] = [
       await expect(dlg.locator('.gear-form .trophy-img img')).toHaveAttribute('src', img);
       await expect(dlg).toBeVisible();
     } },
-  { name: 'insights-trophy-toggle', viewports: 'two', path: () => '/insights?tab=gear',
+  { name: 'insights-trophy-toggle', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
       const loads: string[] = [];
       page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
@@ -9784,7 +9570,7 @@ export const STATES: State[] = [
       expect(loads).toEqual([]);
     } },
   // The kind toggle: URL, no refetch, the shelf count follows it, it combines with a pick.
-  { name: 'insights-trophy-kind', path: () => '/insights?tab=gear',
+  { name: 'insights-trophy-kind', path: () => '/stats?tab=gear',
     act: async (page) => {
       const loads: string[] = [];
       page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
@@ -9803,28 +9589,28 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/gear=/);
       expect(loads).toEqual([]);
     } },
-  { name: 'insights-trophy-kind-pick', viewports: 'two', path: () => '/insights?tab=gear&gear=grinder&dripper=V60',
+  { name: 'insights-trophy-kind-pick', viewports: 'two', path: () => '/stats?tab=gear&gear=grinder&dripper=V60',
     act: async (page) => {
       await expect(page.locator('.trophy-card')).toHaveCount(3); // the dripper pick only rules out drippers, the toggle shows grinders only (ZP6, A4Z, Comandante)
       await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
     } },
   // Cards follow the Period: gear with no brew in it has no card; All time shows every one.
-  { name: 'insights-trophy-period', viewports: 'two', path: () => '/insights?tab=gear&range=all',
+  { name: 'insights-trophy-period', viewports: 'two', path: () => '/stats?tab=gear&range=all',
     act: async (page) => {
       const all = await page.locator('.trophy-card').count();
-      await gotoReady(page, '/insights?tab=gear&range=1w');
+      await gotoReady(page, '/stats?tab=gear&range=1w');
       const week = await page.locator('.trophy-card').count();
       expect(week).toBeLessThan(all);
       expect(week).toBeGreaterThan(0);
     } },
-  { name: 'insights-trophy-retired', path: () => '/insights?tab=gear&retired=open',
+  { name: 'insights-trophy-retired', path: () => '/stats?tab=gear&retired=open',
     act: async (page) => {
       await expect(page.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'true');
       await expect(page.locator('.trophy-grid.retired .trophy-card[data-key="dripper-switch"]')).toBeVisible();
       await expectGridRowsFull(page, '.trophy-grid');
     } },
   // A pick rules out only its own kind: the other drippers go, grinders and filters stay; the shelf keeps the rest.
-  { name: 'insights-trophy-picked', path: () => '/insights?tab=gear&dripper=V60&retired=open',
+  { name: 'insights-trophy-picked', path: () => '/stats?tab=gear&dripper=V60&retired=open',
     act: async (page) => {
       await expect(page.locator('.trophy-card[data-key^="dripper-"]')).toHaveCount(1);
       await expect(page.locator('.trophy-card[data-key="dripper-v60"]')).toHaveCount(1);
@@ -9834,7 +9620,7 @@ export const STATES: State[] = [
       await expectGridRowsFull(page, '.trophy-grid');
     } },
   // Grinder is in the Filters dialog on Gear (no tab-bar select): a chip, the badge, Clear all.
-  { name: 'insights-trophy-grinder-pick', viewports: 'two', path: () => '/insights?tab=gear',
+  { name: 'insights-trophy-grinder-pick', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
       await expect(page.locator('.tab-controls')).toHaveCount(0);
       await page.locator('.filters-button').click();
@@ -9849,7 +9635,7 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/grinder=/);
       await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(3);
     } },
-  { name: 'insights-gear', path: () => '/insights?tab=gear',
+  { name: 'insights-gear', path: () => '/stats?tab=gear',
     act: async (page) => {
       for (const h of ['Ratings by dripper', 'Ratings by filter', 'Filters within each dripper', 'Dripper × roast level', 'Gear usage over time'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
@@ -9959,7 +9745,7 @@ export const STATES: State[] = [
       await expect(hm.locator('.cell-tip')).toHaveCount(0);
       await hm.locator('.heat-cell').nth(1).blur();
     } },
-  { name: 'insights-insights', path: () => '/insights?tab=insights&range=all',
+  { name: 'insights-insights', path: () => '/stats?tab=insights&range=all',
     act: async (page) => {
       await expectGridRowsFull(page, '.finding-grid');
       for (const h of ['Top stories', 'Myth busters', 'What if…']) await expect(page.getByRole('heading', { name: h })).toBeVisible();
@@ -10139,7 +9925,7 @@ export const STATES: State[] = [
       await page.locator('.finding-grid .hl-badge').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
     } },
-  { name: 'insights-insights-story-link', path: () => '/insights?tab=insights&range=all#insight-wildcardBrewer',
+  { name: 'insights-insights-story-link', path: () => '/stats?tab=insights&range=all#insight-wildcardBrewer',
     act: async (page) => {
       // A link to a deck card opens the deck on it, in view.
       await expect(page.locator('#insight-wildcardBrewer')).toBeInViewport();
@@ -10150,7 +9936,7 @@ export const STATES: State[] = [
       expect(await page.locator('.deck').evaluate((e) => e.scrollLeft)).toBe(0);
     } },
   // Part 4 findings, each under its own theme: the cards render and nothing spills (checkLayout runs after).
-  { name: 'insights-insights-theme-dialin', viewports: 'two', path: () => '/insights?tab=insights&range=all&theme=dialin',
+  { name: 'insights-insights-theme-dialin', viewports: 'two', path: () => '/stats?tab=insights&range=all&theme=dialin',
     act: async (page) => {
       for (const id of ['dialinBy-roastLevel', 'dialinBy-processGroup', 'rescuedBags']) await expect(page.locator(`#insight-${id}`)).toBeVisible();
       // The seed grades the dripper finding into the grid (on a real DB it may sit in Too early, which has no card).
@@ -10158,21 +9944,21 @@ export const STATES: State[] = [
       await expect(card).toBeVisible();
       await expect(card.locator('a[href$="#brewing-settle-dripper"]').first()).toBeVisible();
     } },
-  { name: 'insights-insights-theme-taste', viewports: 'two', path: () => '/insights?tab=insights&range=all&theme=taste',
+  { name: 'insights-insights-theme-taste', viewports: 'two', path: () => '/stats?tab=insights&range=all&theme=taste',
     act: async (page) => { await expect(page.locator('#insight-likeRoaster')).toBeVisible(); } },
-  { name: 'insights-insights-theme', path: () => '/insights?tab=insights&range=all&theme=money',
+  { name: 'insights-insights-theme', path: () => '/stats?tab=insights&range=all&theme=money',
     act: async (page) => {
       await expect(page.getByRole('button', { name: 'Money', pressed: true })).toBeVisible();
       await expectGridRowsFull(page, '.finding-grid');
     } },
   // A period with no brews: no measured brews/day or dose, so the spend card says so instead of "$0 a month".
-  { name: 'insights-insights-nobrews', viewports: 'two', path: () => '/insights?tab=insights&range=2000-01-01..2000-01-31',
+  { name: 'insights-insights-nobrews', viewports: 'two', path: () => '/stats?tab=insights&range=2000-01-01..2000-01-31',
     act: async (page) => {
       const spend = page.locator('#insights-spend');
       await expect(spend).toContainText('Not enough brews to measure your spend yet');
       await expect(spend).not.toContainText(/\$0(\.00)? a (month|year)/);
     } },
-  { name: 'insights-insights-whatif', viewports: 'two', path: () => '/insights?tab=insights&range=all&drinkers=2&gpp=60&inflow=500',
+  { name: 'insights-insights-whatif', viewports: 'two', path: () => '/stats?tab=insights&range=all&drinkers=2&gpp=60&inflow=500',
     act: async (page) => {
       await expect(page.getByLabel('People drinking')).toHaveValue('2');
       await page.getByRole('button', { name: 'Next story' }).click(); // deck moves, URL unchanged
@@ -10201,7 +9987,7 @@ export const STATES: State[] = [
   {
     // Ethiopia (every seeded coffee but a few) is tapped at a point known to be inside its outline.
     name: 'insights-leaderboards-map-tip',
-    path: () => '/insights?tab=leaderboards&rank=brews',
+    path: () => '/stats?tab=leaderboards&rank=brews',
     act: async (page) => {
       await page.locator('.world-map').scrollIntoViewIfNeeded();
       const [x, y] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
@@ -10231,7 +10017,7 @@ export const STATES: State[] = [
     // A click on the sea closes the pinned map tip.
     name: 'insights-leaderboards-map-tip-close',
     viewports: 'two',
-    path: () => '/insights?tab=leaderboards&rank=brews',
+    path: () => '/stats?tab=leaderboards&rank=brews',
     act: async (page) => {
       await page.locator('.world-map').scrollIntoViewIfNeeded();
       const [x, y] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
@@ -10254,7 +10040,7 @@ export const STATES: State[] = [
     // mouse leaves both country and tip; a click pins, a second click on the country (or the tip body) closes.
     name: 'insights-leaderboards-map-tip-hover',
     viewports: 'two',
-    path: () => '/insights?tab=leaderboards&rank=brews',
+    path: () => '/stats?tab=leaderboards&rank=brews',
     act: async (page) => {
       await page.locator('.world-map').scrollIntoViewIfNeeded();
       const [x, y] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
@@ -10309,7 +10095,7 @@ export const STATES: State[] = [
     // The page-wide filters ride along on the tip link, as on the list rows.
     name: 'insights-leaderboards-map-tip-filtered',
     viewports: 'two',
-    path: () => '/insights?tab=leaderboards&rank=brews&process=Washed',
+    path: () => '/stats?tab=leaderboards&rank=brews&process=Washed',
     act: async (page) => {
       await page.locator('.world-map').scrollIntoViewIfNeeded();
       const [x, y] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
@@ -10327,7 +10113,7 @@ export const STATES: State[] = [
   {
     // Zoom buttons (peer review D4): bottom-right inside the map, 44px, disabled at the limits; zoom is never in the URL.
     name: 'insights-map-zoom-controls',
-    path: () => '/insights?tab=leaderboards&rank=brews',
+    path: () => '/stats?tab=leaderboards&rank=brews',
     act: async (page) => {
       const url = page.url();
       const map = page.locator('.world-map');
@@ -10392,7 +10178,7 @@ export const STATES: State[] = [
     // Top regions in the country tip: Ethiopia lists up to 3, Kenya's 40+ character region ellipsizes inside the tip's
     // max width, a country with no region (Rwanda) has no group. Not `viewports: 'two'`: it runs at all 7 in the gate.
     name: 'insights-map-regions',
-    path: () => '/insights?tab=leaderboards&range=all&rank=brews', // brews: the one-bag long Kenya region isn't cut by Average's 3+ bags
+    path: () => '/stats?tab=leaderboards&range=all&rank=brews', // brews: the one-bag long Kenya region isn't cut by Average's 3+ bags
     act: async (page) => {
       const map = page.locator('.world-map');
       await map.scrollIntoViewIfNeeded();
@@ -10428,7 +10214,7 @@ export const STATES: State[] = [
     // A small country (Rwanda) is reachable at 8x: a drag pans without pinning, a tap then pins, and the pinned tip
     // follows its country and closes once the country leaves the map (Review Focus 3: a tap after a pan still pins).
     name: 'insights-map-zoom-tip',
-    path: () => '/insights?tab=leaderboards&rank=brews',
+    path: () => '/stats?tab=leaderboards&rank=brews',
     act: async (page) => {
       const map = page.locator('.world-map');
       await map.scrollIntoViewIfNeeded();
@@ -10478,7 +10264,7 @@ export const STATES: State[] = [
     // Desktop wheel: a plain wheel scrolls the page and shows the hint; Ctrl/Cmd+wheel zooms about the pointer.
     name: 'insights-map-zoom-wheel',
     viewports: 'two',
-    path: () => '/insights?tab=leaderboards&rank=brews',
+    path: () => '/stats?tab=leaderboards&rank=brews',
     act: async (page) => {
       if (touch()) return;
       const map = page.locator('.world-map');
@@ -10533,7 +10319,7 @@ export const STATES: State[] = [
     // Touch: one finger scrolls the page (hint, no pan); two fingers pinch and pan. Synthetic pointer events.
     name: 'insights-map-zoom-touch',
     viewports: 'two',
-    path: () => '/insights?tab=leaderboards&rank=brews',
+    path: () => '/stats?tab=leaderboards&rank=brews',
     act: async (page) => {
       const map = page.locator('.world-map');
       const hint = page.locator('.map-hint');
@@ -10582,7 +10368,7 @@ export const STATES: State[] = [
     // The sharper 1:50m outlines load on the first zoom-in (not before) and swap in without the view moving.
     name: 'insights-map-zoom-detail',
     viewports: 'two',
-    path: () => '/insights?tab=leaderboards&rank=brews',
+    path: () => '/stats?tab=leaderboards&rank=brews',
     act: async (page) => {
       const url = page.url();
       // The 1:50m module is the one big lazy script: its file name is `worldMap50` in dev but a bare hash in the
@@ -11300,7 +11086,7 @@ export const STATES: State[] = [
   {
     // A coffees board row, and its value tip's title (TipBody).
     name: 'skip-name-insights-leaderboards', viewports: 'two',
-    path: () => '/insights?tab=leaderboards&range=all&open=coffees',
+    path: () => '/stats?tab=leaderboards&range=all&open=coffees',
     act: async (page) => {
       const row = page.locator('[data-board="coffees"] .board-row').filter({ hasText: 'Skipper' }).first();
       await expect(row.locator('.coffee-name')).toBeVisible();
@@ -11313,11 +11099,11 @@ export const STATES: State[] = [
     }
   },
   // Holder labels, tie lists and the full-text tip (Records); server-built feed lines (Milestones).
-  { name: 'skip-name-insights-records', viewports: 'two', path: () => '/insights?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
-  { name: 'skip-name-insights-milestones', viewports: 'two', path: () => '/insights?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
+  { name: 'skip-name-insights-records', viewports: 'two', path: () => '/stats?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
+  { name: 'skip-name-insights-milestones', viewports: 'two', path: () => '/stats?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
   // ---- Peer review B (2026-10-19) ----
   // M2: the top navbar's first link lines up with the page content's left edge (the tab bar replaces it at <= 640px).
-  ...['/insights?tab=habits', '/stats'].map((path): State => ({
+  ...['/stats?tab=habits'].map((path): State => ({
     name: `nav-aligned${path.replace(/[^a-z]+/g, '-')}`, path: () => path,
     act: async (page) => {
       if (page.viewportSize()!.width <= 640) return;
@@ -11328,7 +11114,7 @@ export const STATES: State[] = [
   })),
   // M1: each tab's own controls sit in the sticky filter bar and stay pinned inside it while scrolling.
   ...([['leaderboards', 'Rank by'], ['habits', 'Measure'], ['consumption', 'Group by'], ['milestones', 'Kinds'], ['sweetspots', 'Bag']] as const).map(([tab, label]): State => ({
-    name: `insights-tab-controls-${tab}`, path: () => `/insights?tab=${tab}&range=all`,
+    name: `insights-tab-controls-${tab}`, path: () => `/stats?tab=${tab}&range=all`,
     act: async (page) => {
       const ctl = page.locator('.filter-bar .tab-controls').getByRole(tab === 'habits' || tab === 'consumption' || tab === 'milestones' ? 'group' : 'combobox', { name: label });
       await expect(ctl).toBeVisible();
@@ -11352,7 +11138,7 @@ export const STATES: State[] = [
     }
   })),
   // S2: a two-column list reads row by row (1 left, 2 right, 3 under 1); one column on phones.
-  { name: 'insights-records-top-rowwise', path: () => '/insights?tab=records&range=all&top=20',
+  { name: 'insights-records-top-rowwise', path: () => '/stats?tab=records&range=all&top=20',
     act: async (page) => {
       // Show less sits left of Show more (was insights-records-top20).
       const foot = page.locator('#records-top-brews ~ .top-foot');
@@ -11372,7 +11158,7 @@ export const STATES: State[] = [
       }
     } },
   // M3: Show more scrolls the Show less / Show more buttons' bottom to the screen's bottom; Show less does the same.
-  { name: 'insights-records-show-more-scroll', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-records-show-more-scroll', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const lift = () => page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
@@ -11393,7 +11179,7 @@ export const STATES: State[] = [
       await expect.poll(async () => Math.abs((await gap()) - l - (await bttUp()))).toBeLessThanOrEqual(2);
     } },
   // M4: Back to top appears after a screenful of scrolling, bottom right (above the phone tab bar), and returns to the top.
-  { name: 'back-to-top', path: () => '/insights?tab=milestones&range=all',
+  { name: 'back-to-top', path: () => '/stats?tab=milestones&range=all',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const btn = page.getByRole('button', { name: 'Back to top' });
@@ -11412,7 +11198,7 @@ export const STATES: State[] = [
 
   // Every tab leads to every other: switching from each tab to the next in a ring changes the page content, not just the URL
   // (a tab's bar once threw on the new tab's null data and froze the swap on Consumption).
-  { name: 'insights-tab-switch-ring', viewports: 'two', path: () => '/insights?range=all',
+  { name: 'insights-tab-switch-ring', viewports: 'two', path: () => '/stats?range=all',
     act: async (page) => {
       const tabs = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights', 'sweetspots', 'brewing', 'water', 'gear', 'consumption', 'records', 'overview'];
       const body = () => page.locator('.rail-main').evaluate((el) => [...el.children].filter((c) => !c.matches('.filter-bar, .toolbar, .chart-note, dialog, .cbar, .cbar-mini')).map((c) => (c as HTMLElement).innerText).join('|').slice(0, 4000));
@@ -11424,15 +11210,15 @@ export const STATES: State[] = [
         before = await body();
       }
     } },
-  // The collapsible bar on /insights (docs/superpowers/specs/2026-10-24-insights-collapsible-bar-design.md): desktop pins only
+  // The collapsible bar on /stats (docs/superpowers/specs/2026-10-24-insights-collapsible-bar-design.md): desktop pins only
   // the controls; a phone gets the short row once the block is scrolled past, and the expanded overlay with its pull tab.
-  ...INSIGHTS_TABS.map((tab) => ({ name: `insights-cbar-${tab}`, path: () => `/insights?tab=${tab}&range=all`, act: (page: Page) => cbarAct(page) })),
-  { name: 'insights-cbar-chips', path: () => '/insights?tab=records&range=all&roast=Light&process=Washed&origin=Ethiopia&roaster=The%20Picky%20Chemist&caffeine=all',
+  ...INSIGHTS_TABS.map((tab) => ({ name: `insights-cbar-${tab}`, path: () => `/stats?tab=${tab}&range=all`, act: (page: Page) => cbarAct(page) })),
+  { name: 'insights-cbar-chips', path: () => '/stats?tab=records&range=all&roast=Light&process=Washed&origin=Ethiopia&roaster=The%20Picky%20Chemist&caffeine=all',
     act: (page) => cbarAct(page, 5) },
-  { name: 'insights-cbar-custom', path: () => `/insights?range=${iso(-120)}..${iso(-30)}&compare=${iso(-240)}..${iso(-150)}`, act: (page) => cbarAct(page) },
+  { name: 'insights-cbar-custom', path: () => `/stats?range=${iso(-120)}..${iso(-30)}&compare=${iso(-240)}..${iso(-150)}`, act: (page) => cbarAct(page) },
   // Staying open: every change inside the expanded bar keeps it open, the spacer follows its height, a closed dialog
   // returns focus into it; the pull tab and the short row's button work from the keyboard.
-  { name: 'insights-cbar-stays-open', path: () => '/insights?tab=habits&range=all',
+  { name: 'insights-cbar-stays-open', path: () => '/stats?tab=habits&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await scrollPastBar(page);
@@ -11479,7 +11265,7 @@ export const STATES: State[] = [
       await expect(dates).toHaveCount(0);
       await check(/range=\d{4}-\d\d-\d\d\.\.\d{4}-\d\d-\d\d/, true);
       await overlay.getByRole('button', { name: 'Reset' }).click();
-      await check(/\/insights\?tab=records$/);
+      await check(/\/stats\?tab=records$/);
       await page.locator('.cbar-pull').focus();
       await page.keyboard.press('Enter');
       await expect(page.getByRole('button', { name: 'Show controls' })).toBeFocused();
@@ -11490,7 +11276,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Show controls' })).toBeFocused();
     } },
   // A Jump to chip in the expanded bar folds it and lands the section just under the short row (or the page ends first).
-  { name: 'insights-cbar-jump-folds', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-cbar-jump-folds', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await scrollPastBar(page);
@@ -11508,7 +11294,7 @@ export const STATES: State[] = [
         return top - pinned >= -1 && (atEnd || top - pinned <= 16);
       }, { message: 'section lands under the short row' }).toBe(true);
     } },
-  { name: 'insights-cbar-top-folds', viewports: 'two', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-cbar-top-folds', viewports: 'two', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await scrollPastBar(page);
@@ -11518,7 +11304,7 @@ export const STATES: State[] = [
       await expect(page.locator('.cbar-mini')).toHaveCount(0);
     } },
   // Turning the phone while expanded keeps the bar (and its pull tab) while it is still phone mode; desktop width folds it.
-  { name: 'insights-cbar-rotate', viewports: 'two', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-cbar-rotate', viewports: 'two', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       test.skip(!isPhone(page), 'the collapse is a phone feature');
       const [w, h] = [page.viewportSize()!.width, page.viewportSize()!.height];
@@ -11540,7 +11326,7 @@ export const STATES: State[] = [
       expect(Math.abs((await page.locator('.filter-bar').boundingBox())!.y), 'controls pinned at desktop width').toBeLessThanOrEqual(1);
     } },
   // An overlay taller than the screen scrolls inside; the pull tab stays at its visible bottom-right, clear of the last row.
-  { name: 'insights-cbar-overlay-scroll', path: () => '/insights?tab=brewing&range=all',
+  { name: 'insights-cbar-overlay-scroll', path: () => '/stats?tab=brewing&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await scrollPastBar(page);
@@ -11559,7 +11345,7 @@ export const STATES: State[] = [
     } },
   // Back to top stays visible and tappable while the bar is expanded (behind the overlay and pull tab where they meet);
   // a tap folds the bar and ends at the normal block at the top. The pull tab stays tappable where they overlapped (w360 consumption).
-  { name: 'insights-cbar-back-to-top', viewports: 'two', path: () => '/insights?tab=milestones&range=all',
+  { name: 'insights-cbar-back-to-top', viewports: 'two', path: () => '/stats?tab=milestones&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await scrollPastBar(page);
@@ -11577,7 +11363,7 @@ export const STATES: State[] = [
       expect(await hit('.cbar-pull'), 'the pull tab wins its own tap').toBe(true);
       if (await tapBackToTop(page)) await expectAtTopFolded(page);
     } },
-  { name: 'insights-cbar-back-to-top-tap', viewports: 'two', path: () => '/insights?tab=consumption&range=all',
+  { name: 'insights-cbar-back-to-top-tap', viewports: 'two', path: () => '/stats?tab=consumption&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await scrollPastBar(page);
@@ -11590,7 +11376,7 @@ export const STATES: State[] = [
       if (await tapBackToTop(page)) await expectAtTopFolded(page);
     } },
   // The Ratings and brews popover opens under its button and closes when the overlay scrolls under it.
-  { name: 'insights-cbar-ratings-menu', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-cbar-ratings-menu', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await scrollPastBar(page);
@@ -11605,7 +11391,7 @@ export const STATES: State[] = [
       await expect(overlay).toBeVisible();
     } },
   // A tip in the expanded bar opens in view, over the bar's own controls (inBar).
-  { name: 'insights-cbar-tip', path: () => '/insights?range=all',
+  { name: 'insights-cbar-tip', path: () => '/stats?range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await scrollPastBar(page);
@@ -11616,7 +11402,7 @@ export const STATES: State[] = [
       await expectTipInView(page, page.locator('.cell-tip:popover-open'), { inBar: true });
     } },
   // Milestones' sticky ruler sits under what is pinned: the short row on a phone (not the overlay), the controls on desktop.
-  { name: 'insights-cbar-milestones-bar-h', path: () => '/insights?tab=milestones&range=all',
+  { name: 'insights-cbar-milestones-bar-h', path: () => '/stats?tab=milestones&range=all',
     act: async (page) => {
       await scrollPastBar(page);
       const barH = () => page.locator('.timeline').evaluate((el) => parseFloat(el.style.getPropertyValue('--bar-h')));
@@ -11631,7 +11417,7 @@ export const STATES: State[] = [
       expect(Math.abs((await barH()) - mini), '--bar-h unchanged expanded').toBeLessThanOrEqual(1);
     } },
   // Review focus 1: the page shrinking under an expanded bar (a short, empty tab at the page end) folds it or keeps it, never loses it.
-  { name: 'insights-cbar-short-tab', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-cbar-short-tab', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       const errors: Error[] = [];
@@ -11657,7 +11443,7 @@ export const STATES: State[] = [
       expect(errors).toEqual([]);
     } },
   // Review focus 3: a 20px root font (larger text setting) keeps a jump landing clear of the short row.
-  { name: 'insights-cbar-font-scale', viewports: 'two', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-cbar-font-scale', viewports: 'two', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await page.addInitScript(() => {
@@ -11682,7 +11468,7 @@ export const STATES: State[] = [
       expect(Math.abs(pad - mini), 'scroll-padding-top = short row height').toBeLessThanOrEqual(1);
     } },
   // Review focus 4: a reload restores the scroll; if that is past the block, the short row is there without scrolling again.
-  { name: 'insights-cbar-restore', viewports: 'two', path: () => '/insights?tab=records&range=all',
+  { name: 'insights-cbar-restore', viewports: 'two', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await page.evaluate(() => scrollTo(0, 1500));
@@ -12033,7 +11819,7 @@ const routeTag = (st: State) => '@' + st.path(stubSeed).split(/[/?#]/)[1];
 // Insights states also carry their tab (?tab=, none = overview) so a one-tab change can run just those.
 const tabTag = (st: State) => {
   const path = st.path(stubSeed);
-  return routeTag(st) === '@insights' ? ['@insights:' + (new URL(path, 'http://x').searchParams.get('tab') ?? 'overview')] : [];
+  return routeTag(st) === '@stats' ? ['@stats:' + (new URL(path, 'http://x').searchParams.get('tab') ?? 'overview')] : [];
 };
 
 const SHOTS = process.env.UI_SHOTS === 'all';
@@ -12066,25 +11852,25 @@ test.describe('signed out', () => {
     expect(await status(`/recaps/${recapYear() + 1}`), 'a year with no brews').toBe(404);
     expect(await status(`/recaps/${recapYear() - 1}`), 'an opened year is public').toBe(200);
   });
-  test('insights-recaps-public', { tag: ['@insights', '@insights:recaps', '@two'] }, async ({ page }) => {
-    await gotoReady(page, '/insights?tab=recaps');
+  test('insights-recaps-public', { tag: ['@stats', '@stats:recaps', '@two'] }, async ({ page }) => {
+    await gotoReady(page, '/stats?tab=recaps');
     await expectRecapTiles(page, [String(recapYear() - 1)]);
     await expect(page.locator('.recap-tile .badge')).toHaveCount(0);
     await checkLayout(page);
   });
   // Signed out, nothing to show: the tab says so and offers Sign in (it never bounces to another tab).
-  test('insights-recaps-signed-out-empty', { tag: ['@insights', '@insights:recaps', '@two'] }, async ({ page }) => {
-    await gotoReady(page, '/insights?tab=recaps&range=2015-01-01..2015-02-01');
+  test('insights-recaps-signed-out-empty', { tag: ['@stats', '@stats:recaps', '@two'] }, async ({ page }) => {
+    await gotoReady(page, '/stats?tab=recaps&range=2015-01-01..2015-02-01');
     await expect(page).toHaveURL(/tab=recaps/);
     await expect(page.locator('.recap-tile')).toHaveCount(0);
     await expect(page.locator('.recaps-empty h2')).toContainText('No recaps in Jan 1, 2015');
     await expect(page.locator('.recaps-empty')).toContainText('Recaps for the current year are visible once you sign in.');
     const href = (await page.locator('.recaps-empty').getByRole('link', { name: 'Sign in' }).getAttribute('href'))!;
-    expect(decodeURIComponent(href)).toBe('/login?redirectTo=/insights?tab=recaps&range=2015-01-01..2015-02-01');
+    expect(decodeURIComponent(href)).toBe('/login?redirectTo=/stats?tab=recaps&range=2015-01-01..2015-02-01');
     await expectNoMidWord(page, '.recaps-empty h2, .recaps-empty p');
     await checkLayout(page);
     expect((await page.goto('/recaps'))!.status(), '/recaps lands on the tab').toBe(200);
-    await expect(page).toHaveURL(/\/insights\?tab=recaps$/);
+    await expect(page).toHaveURL(/\/stats\?tab=recaps$/);
   });
   test('account-signed-out', async ({ page }) => {
     await page.goto('/account');
@@ -12101,7 +11887,7 @@ test.describe('signed out', () => {
     await checkLayout(page);
   });
   test('insights-pours-signed-out', async ({ page }) => {
-    await gotoReady(page, '/insights?tab=pours&pourThin=open');
+    await gotoReady(page, '/stats?tab=pours&pourThin=open');
     await expect(page.locator('[data-section="pours-recipes"] li').filter({ hasText: 'Seed high agitation' })).toHaveCount(1);
     await expect(page.locator('main a[href^="/recipes/"]').first()).toBeVisible(); // recipe names link for everyone
     await checkLayout(page);
@@ -12155,19 +11941,19 @@ test.describe('signed out', () => {
     await checkLayout(page);
   });
   // The collapsible bar for a signed-out visitor: the same short row, overlay and pull tab.
-  test('insights-cbar-public', { tag: '@insights' }, async ({ page }) => {
+  test('insights-cbar-public', { tag: '@stats' }, async ({ page }) => {
     test.skip(!isPhone(page), 'the collapse is a phone feature');
-    await gotoReady(page, '/insights?range=all');
+    await gotoReady(page, '/stats?range=all');
     await cbarAct(page);
     await checkLayout(page);
   });
-  test('insights-gear-trophies-public', { tag: '@insights' }, async ({ page }) => {
-    await gotoReady(page, '/insights?tab=gear&card=dripper-v60');
+  test('insights-gear-trophies-public', { tag: '@stats' }, async ({ page }) => {
+    await gotoReady(page, '/stats?tab=gear&card=dripper-v60');
     await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^(Fill|Suggest)/ })).toHaveCount(0);
     await checkLayout(page);
-    await gotoReady(page, '/insights?tab=gear&card=grinder-comandante-c40-mk4');
+    await gotoReady(page, '/stats?tab=gear&card=grinder-comandante-c40-mk4');
     await expect(page.locator('dialog.trophy-dialog .no-specs')).toHaveText('No details yet.');
   });
 });
@@ -12175,8 +11961,8 @@ test.describe('signed out', () => {
 // The sticky bar is the same height before hydration (the server HTML, no JS) as after it: a tab's own controls are
 // rendered with the bar, so nothing grows it on load (peer review B, round 2).
 for (const tab of ['overview', 'records', 'water', 'leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing']) {
-  test(`insights-bar-first-paint-${tab}`, { tag: '@insights' }, async ({ browser, page }, info) => {
-    const url = `/insights?tab=${tab}&range=all`;
+  test(`insights-bar-first-paint-${tab}`, { tag: '@stats' }, async ({ browser, page }, info) => {
+    const url = `/stats?tab=${tab}&range=all`;
     await gotoReady(page, url);
     const hydrated = (await page.locator('.filter-bar').boundingBox())!.height;
     const cbarH = (await page.locator('.cbar').count()) ? (await page.locator('.cbar').first().boundingBox())!.height : null;

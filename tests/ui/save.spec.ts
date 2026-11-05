@@ -66,7 +66,7 @@ test('cards: two inline edits open, Save on A writes A and leaves B open', { tag
 // Save size 1 on Account, then both pages at every viewport size (width x height;
 // no DPR/touch emulation). The switch and every "per person" are gone, even from a shared
 // people=person link, and nothing leaves empty space.
-test('household of one hides the people switch everywhere', { tag: ['@stats', '@insights'] }, async ({ page }) => {
+test('household of one hides the people switch everywhere', { tag: '@stats' }, async ({ page }) => {
   // The size is saved on Account; a shared ?people=person link then drops back to the household view.
   const saveSize = async (n: string) => {
     await gotoReady(page, '/account');
@@ -90,12 +90,12 @@ test('household of one hides the people switch everywhere', { tag: ['@stats', '@
   await saveSize('1');
   for (const v of VIEWPORTS) {
     await page.setViewportSize(v.viewport);
-    for (const path of ['/insights?people=person', '/stats?people=person', '/stats?tab=bq&people=person', `/recaps/${Number(localToday().slice(0, 4)) - 1}?people=person`]) {
+    for (const path of ['/stats?people=person', `/recaps/${Number(localToday().slice(0, 4)) - 1}?people=person`]) {
       await gotoReady(page, path);
       await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
       await expect(page.getByText(/per person/i)).toHaveCount(0);
       await expect(page.locator('.each'), 'no recap companion line').toHaveCount(0);
-      if (path.startsWith('/insights')) await expectStatRowsFull(page);
+      if (path.startsWith('/stats')) await expectStatRowsFull(page);
       const name = path.replace(/\W+/g, '-');
       if (process.env.UI_SHOTS === 'all') {
         await page.screenshot({ path: `.ui-test/screenshots/household-of-one${name}-${v.name}.png`, fullPage: true });
@@ -210,14 +210,14 @@ test.describe('coffee added popup', { tag: '@coffees' }, () => {
   });
 });
 
-test('trophy card: Edit the grinder burr size, Save, the card shows it after reload', { tag: '@insights' }, async ({ page }) => {
+test('trophy card: Edit the grinder burr size, Save, the card shows it after reload', { tag: '@stats' }, async ({ page }) => {
   const restore = () => {
     const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
     db.prepare(`UPDATE gear_details SET fields = ?, created_at = ?, updated_at = ? WHERE kind = 'grinder' AND name = 'ZP6 Special'`).run(JSON.stringify({ brand: 'Timemore', burrSize: 64 }), '2026-09-02T12:00:00.000Z', '2026-09-02T12:00:00.000Z');
     db.close();
   };
   try {
-    await gotoReady(page, '/insights?tab=gear&card=grinder-zp6-special');
+    await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
     const dlg = page.locator('dialog.trophy-dialog');
     await dlg.getByRole('button', { name: 'Edit' }).click();
     await dlg.getByLabel('Burr size (mm)').fill('54');
@@ -229,8 +229,8 @@ test('trophy card: Edit the grinder burr size, Save, the card shows it after rel
   } finally { restore(); }
 });
 
-test('trophy card: unreadable text in a number field blocks Save and saves nothing', { tag: '@insights' }, async ({ page }) => {
-  await gotoReady(page, '/insights?tab=gear&card=grinder-zp6-special');
+test('trophy card: unreadable text in a number field blocks Save and saves nothing', { tag: '@stats' }, async ({ page }) => {
+  await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
   const dlg = page.locator('dialog.trophy-dialog');
   await dlg.getByRole('button', { name: 'Edit' }).click();
   const posts: string[] = [];
@@ -533,7 +533,7 @@ test('account upload: a good file imports on the first try after a too-big one',
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     const res = page.locator('.bq-result');
     await expect(res).toContainText(/1 new water|Nothing changed\./);
-    await expect(res.getByRole('link', { name: 'See your stats' })).toHaveAttribute('href', '/insights');
+    await expect(res.getByRole('link', { name: 'See your stats' })).toHaveAttribute('href', '/stats');
     await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled(); // form reset
   } finally { await rm(big, { force: true }); }
 });

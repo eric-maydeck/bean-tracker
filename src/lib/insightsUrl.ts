@@ -3,7 +3,7 @@ import { GEAR_KINDS, type GearKind } from '$lib/gear';
 import { upsertFilter, type Filter } from '$lib/coffeeFilters';
 import { fromParams, toParams } from '$lib/coffeeViewState';
 
-// /insights view state (spec "URL state"). Explicit choices only: a param a
+// /stats view state (spec "URL state"). Explicit choices only: a param a
 // visitor never touched stays undefined and out of the URL (HANDOFF rule).
 export const RANGES = ['1w', '1m', '3m', '6m', '12m', '3y', 'ytd', 'all'] as const;
 export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
@@ -181,7 +181,7 @@ function parseViews(v: string | null): BoardViews | undefined {
 }
 const viewsText = (v: BoardViews) => VIEW_BOARDS.filter((b) => v[b]).map((b) => `${b}-time${v[b] === 'wide' ? '-wide' : ''}`).join(',');
 
-// Shared by /insights and /stats: the People switch's help text.
+// Shared by /stats: the People switch's help text.
 export const peopleHelp = (size: number): Record<People, string> => ({
   household: "Everyone's brews together.",
   person: `Totals and rates ÷ ${size}: an even split (Bean Conqueror doesn't record who brewed).`
@@ -199,7 +199,7 @@ export function parseList<T extends string>(p: URLSearchParams, name: string, al
   return picked.length ? picked : undefined;
 }
 
-// A Period: a RANGES value or an offered calendar year (/insights, and /stats' Time to Clear).
+// A Period: a RANGES value or an offered calendar year (/stats).
 export const parseRange = (p: URLSearchParams, years: readonly number[]): string | undefined =>
   pickOne(p, 'range', [...RANGES, ...years.map(String)]);
 
@@ -208,7 +208,7 @@ export const CUSTOM_RANGE = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/;
 
 export const isDate = (d: string): boolean => !isNaN(Date.parse(d)) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
 
-// A custom Period from the URL (/insights only; /stats' parseRange ignores it): real dates,
+// A custom Period from the URL (/stats): real dates,
 // from <= to, starting no later than today (a later end clamps to today in periodBounds).
 export const parseCustomPeriod = (p: URLSearchParams, today: string): string | undefined => {
   const c = p.get('range');
@@ -559,7 +559,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
 
 // A finding's in-page link keeps the page-wide view it was computed on (Period, Compare, People, Ratings,
 // Brews, Caffeine, Coffees filter), so the board shows the same figure and the remembered view survives the click.
-// The link's own params win; links off /insights are left alone.
+// The link's own params win; links off /stats are left alone.
 const PAGE_WIDE = ['range', 'compare', 'people', 'ratings', 'dial', 'caffeine', 'roast', 'process', 'origin', 'roaster', ...BREW_FILTER_KEYS] as const;
 // A /coffees list link instead takes the page's Coffees filter (`coffees`, as /coffees filters); its own column wins.
 export function withPageWide(href: string, s: InsightsUrlState, coffees: Filter[] = []): string {

@@ -8,13 +8,13 @@ const SRC = {
   'src/lib/components/Icon.svelte': '',
   'src/lib/components/Label.svelte': '',
   'src/lib/components/Tile.svelte': `<script>\n  import {\n    x\n  } from './Label.svelte';\n</script>`,
-  'src/routes/insights/+page.svelte': `<script>import Tile from '$lib/components/Tile.svelte';import Water from './Water.svelte';import B from './Brewing.svelte';import Gear from './Gear.svelte';</script>`,
-  'src/routes/insights/Water.svelte': `<script>import W from '$lib/water.ts';</script>`,
-  'src/routes/insights/Gear.svelte': `<script>import W from '$lib/water.ts';</script>`,
+  'src/routes/stats/+page.svelte': `<script>import Tile from '$lib/components/Tile.svelte';import Water from './Water.svelte';import B from './Brewing.svelte';import Gear from './Gear.svelte';</script>`,
+  'src/routes/stats/Water.svelte': `<script>import W from '$lib/water.ts';</script>`,
+  'src/routes/stats/Gear.svelte': `<script>import W from '$lib/water.ts';</script>`,
   'src/lib/water.ts': '',
   'src/lib/gear.ts': '',
-  'src/routes/insights/Brewing.svelte': `<script>import G from '$lib/gear.ts';</script>`,
-  'src/routes/stats/+page.svelte': `<script>import Tile from '$lib/components/Tile.svelte';</script>`,
+  'src/routes/stats/Brewing.svelte': `<script>import G from '$lib/gear.ts';</script>`,
+  'src/routes/on-deck/+page.svelte': `<script>import Tile from '$lib/components/Tile.svelte';</script>`,
   'src/routes/coffees/+page.svelte': `<script>fetch('/api/coffees/save', {});</script>`,
   'src/routes/api/coffees/save/+server.ts': `import { save } from '$lib/server/coffees';`,
   'src/lib/server/coffees.ts': '',
@@ -26,17 +26,17 @@ const SRC = {
 
 describe('scopeFor', () => {
   it('maps a route file to its tag', () => {
-    expect(scopeFor(['src/routes/insights/+page.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@insights'] });
+    expect(scopeFor(['src/routes/stats/+page.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@stats'] });
   });
   it('follows importers transitively: a shared component pulls in every route using it', () => {
     // The known miss of the old path regex: a shared label failed insights-lab states at push.
-    expect(scopeFor(['src/lib/components/Label.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@insights', '@stats'] });
+    expect(scopeFor(['src/lib/components/Label.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@on-deck', '@stats'] });
   });
   it('narrows to the tabs a file is reached through, unless the page imports it directly', () => {
-    expect(scopeFor(['src/routes/insights/Water.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@insights:water'] });
-    expect(scopeFor(['src/lib/gear.ts'], SRC)).toEqual({ kind: 'tags', tags: ['@insights:brewing'] });
-    expect(scopeFor(['src/lib/water.ts'], SRC)).toEqual({ kind: 'tags', tags: ['@insights:gear', '@insights:water'] });
-    expect(scopeFor(['src/lib/components/Label.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@insights', '@stats'] });
+    expect(scopeFor(['src/routes/stats/Water.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@stats:water'] });
+    expect(scopeFor(['src/lib/gear.ts'], SRC)).toEqual({ kind: 'tags', tags: ['@stats:brewing'] });
+    expect(scopeFor(['src/lib/water.ts'], SRC)).toEqual({ kind: 'tags', tags: ['@stats:gear', '@stats:water'] });
+    expect(scopeFor(['src/lib/components/Label.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@on-deck', '@stats'] });
   });
   it('follows /api/ calls from pages to their endpoints', () => {
     expect(scopeFor(['src/lib/server/coffees.ts'], SRC)).toEqual({ kind: 'tags', tags: ['@coffees'] });
@@ -51,8 +51,8 @@ describe('scopeFor', () => {
     expect(scopeFor([], SRC)).toEqual({ kind: 'none' });
   });
   it('reads the real src/ tree', () => {
-    expect(scopeFor(['src/routes/insights/+page.svelte'])).toEqual({ kind: 'tags', tags: ['@insights'] });
+    expect(scopeFor(['src/routes/stats/+page.svelte'])).toEqual({ kind: 'tags', tags: ['@stats'] });
     expect(scopeFor(['src/routes/+layout.svelte']).kind).toBe('full');
-    expect(scopeFor(['src/routes/insights/SweetSpots.svelte'])).toEqual({ kind: 'tags', tags: ['@insights:sweetspots'] });
+    expect(scopeFor(['src/routes/stats/SweetSpots.svelte'])).toEqual({ kind: 'tags', tags: ['@stats:sweetspots'] });
   });
 });

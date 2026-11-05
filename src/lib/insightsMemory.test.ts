@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { loadInsightsState, serializeInsightsState, withoutDeepLinks } from './insightsMemory';
 import { CHOICE_TTL_MS } from './rememberedChoice';
 
-describe('remembered /insights state', () => {
+describe('remembered /stats state', () => {
   const t0 = 1_760_000_000_000;
   it('round-trips the query string', () =>
     expect(loadInsightsState(serializeInsightsState('range=1w&tab=habits', t0), t0 + 1000)).toBe('range=1w&tab=habits'));

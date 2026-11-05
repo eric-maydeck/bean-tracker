@@ -147,7 +147,7 @@
     return goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { replaceState: true, noScroll: true, keepFocus: true }).then(keep);
   }
 
-  // Remembered view state (spec Part 3): a fresh entry to a bare /insights restores the saved query into the URL
+  // Remembered view state (spec Part 3): a fresh entry to a bare /stats restores the saved query into the URL
   // (Share keeps working). Any in-page navigation saves its own state, and a bare one removes it (bare is the
   // state), so a link with params wins and becomes the remembered state.
   function remember(qs: string) {

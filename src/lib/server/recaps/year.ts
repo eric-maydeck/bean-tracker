@@ -39,7 +39,7 @@ export function loadYear(db: DatabaseSync, year: number, today: string, preview:
   };
 }
 
-// Mirrors /insights' insightsTab context (no filters): brews = scored, allBrews = every rating, wholeBrews = y.brews (in-period, every rating, before once-dialed; no brew filters here).
+// Mirrors /stats' insightsTab context (no filters): brews = scored, allBrews = every rating, wholeBrews = y.brews (in-period, every rating, before once-dialed; no brew filters here).
 // Dial-in generators want {...ctx, brews: ctx.allBrews} (as insightsTab does).
 export function toGenCtx(y: YearCtx): GenCtx {
   return {

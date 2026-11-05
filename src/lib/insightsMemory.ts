@@ -1,6 +1,6 @@
 import { CHOICE_TTL_MS } from './rememberedChoice';
 
-// /insights remembers its whole view state per browser for 12 h since last use (spec 2026-10-15 Part 3),
+// /stats remembers its whole view state per browser for 12 h since last use (spec 2026-10-15 Part 3),
 // versioned like coffeeViewState.ts: bump VERSION if the stored shape changes. Stored as the URL's query;
 // restoring navigates to it, so the server parser stays the one gate for bad values.
 export const INSIGHTS_STORAGE_KEY = 'bean-tracker-insights-view-state';
@@ -20,7 +20,7 @@ export function loadInsightsState(raw: string | null, now: number): string | nul
 export const serializeInsightsState = (params: string, now: number): string =>
   JSON.stringify({ version: VERSION, params, lastUsed: now });
 
-// An open card dialog or a chart= link target is never remembered: a bare /insights visit must not reopen or scroll to it.
+// An open card dialog or a chart= link target is never remembered: a bare /stats visit must not reopen or scroll to it.
 export const withoutDeepLinks = (qs: string): string => {
   const p = new URLSearchParams(qs);
   p.delete('card');

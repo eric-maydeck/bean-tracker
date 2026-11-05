@@ -140,7 +140,7 @@ export const panelAt = (page: Page, i?: number) => page.evaluate((i) => {
   return k < 0 ? null : { i: k, y: els[k].getBoundingClientRect().y };
 }, i);
 
-// The shared /insights act: desktop pins only the controls; a phone gets in-flow bar, short row, expanded overlay.
+// The shared /stats act: desktop pins only the controls; a phone gets in-flow bar, short row, expanded overlay.
 export async function cbarAct(page: Page, filters = 0) {
   const mini = page.locator('.cbar-mini');
   if (!isPhone(page)) {
