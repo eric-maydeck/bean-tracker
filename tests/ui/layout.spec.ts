@@ -3285,6 +3285,47 @@ export const STATES: State[] = [
     }
   },
   {
+    // Time panel on Account: three selects (Browser time first for Display; example renderings for Date format), each with
+    // its one-line hint; a change toasts with Undo (stubbed: layout states never save, the real saves are in save.spec.ts).
+    name: 'account-time', viewports: 'two',
+    path: () => '/account',
+    act: async (page) => {
+      const panel = page.locator('#time');
+      await expect(panel.getByRole('heading', { name: 'Time' })).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT');
+      const brewing = panel.getByLabel('Brewing timezone'), display = panel.getByLabel('Display timezone'), format = panel.getByLabel('Date format');
+      await expect(panel).toContainText('Where day and hour lines are drawn in your stats');
+      await expect(panel).toContainText('How update and upload times are shown');
+      await expect(panel).toContainText('How dates and times are written');
+      await expect(display.locator('option').first()).toHaveText('Browser time');
+      await expect(display).toHaveValue('browser');
+      await expect(brewing.locator('option[value="America/Denver"]')).toHaveCount(1);
+      await expect(brewing.locator('option[value="browser"]')).toHaveCount(0);
+      await expect(format.locator('option')).toHaveText(['2026-10-22 8:05:23 PM', '2026-10-22 20:05:23', '10/22/2026, 8:05:23 PM', '22/10/2026 20:05:23']);
+      // Selects stay inside the viewport and their panel, at every width (360 included).
+      const vw = page.viewportSize()!.width;
+      const panelBox = (await panel.boundingBox())!;
+      for (const sel of [brewing, display, format]) {
+        const b = (await sel.boundingBox())!;
+        expect(b.x + b.width, 'select inside viewport').toBeLessThanOrEqual(vw);
+        expect(b.x + b.width, 'select inside panel').toBeLessThanOrEqual(panelBox.x + panelBox.width + 1);
+      }
+      const before = await Promise.all([brewing, display, format].map(async (sel) => { const b = (await sel.boundingBox())!; return [b.x, b.y, b.width, b.height].map(Math.round); }));
+      await page.route('**/account?/setDisplayZone', (route) => route.fulfill({ json: { type: 'success', status: 200, data: stringify({ settingSaved: true }) } }));
+      await page.route('**/account?/setDateFormat', (route) => route.fulfill({ json: { type: 'failure', status: 400, data: stringify({ settingError: 'x', setting: 'dateFormat' }) } }));
+      await display.selectOption('Asia/Tokyo');
+      const toast = page.getByRole('status').filter({ hasText: 'Display timezone set to Asia/Tokyo.' });
+      await expect(toast).toBeVisible();
+      await toast.getByRole('button', { name: 'Undo' }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'Undone.' })).toBeVisible();
+      await format.selectOption('eu');
+      await expect(panel.getByRole('alert')).toHaveText('Could not save date format.');
+      // The error is the only thing that moved (it sits under its own select).
+      const after = await Promise.all([brewing, display].map(async (sel) => { const b = (await sel.boundingBox())!; return [b.x, b.y, b.width, b.height].map(Math.round); }));
+      expect(after, 'controls above keep size and position').toEqual(before.slice(0, 2));
+    }
+  },
+  {
     // Household panel on Account: save toasts with Undo (and restores); a bad size shows its error in the panel.
     // Stubbed (layout states never save; the real save is in save.spec.ts).
     name: 'account-household', viewports: 'two',
@@ -4040,7 +4081,7 @@ export const STATES: State[] = [
       await page.context().clearCookies({ name: 'tz' });
       await gotoReady(page, '/account');
       const foot = page.locator('.site-footer');
-      await expect(foot).toContainText(/Last updated: \d{4}-\d\d-\d\d \d\d:\d\d/);
+      await expect(foot).toContainText(/Last updated: \d{4}-\d\d-\d\d \d+:\d\d (AM|PM)/);
       await expect(page.getByText(/^Last updated: .*(AM|PM)/).first()).toBeVisible();
       const tz = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
       await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === 'tz')?.value).toBe(tz);
@@ -11895,6 +11936,33 @@ for (const state of STATES) {
     await checkLayout(page);
   });
 }
+
+// A non-UTC browser zone: "browser time" renders UTC on the first visit (server), then Tokyo after mount, and stays Tokyo
+// across a client-side navigation (no UTC flash from a Stamp created later).
+test.describe('browser in Tokyo', () => {
+  test.use({ timezoneId: 'Asia/Tokyo' });
+  const footerMinutes = (t: string) => {
+    const m = /Last updated: \d{4}-\d\d-\d\d (\d+):(\d\d) (AM|PM)/.exec(t);
+    expect(m, t).not.toBeNull();
+    return ((Number(m![1]) % 12) + (m![3] === 'PM' ? 12 : 0)) * 60 + Number(m![2]);
+  };
+  test('display-zone-tokyo', { tag: ['@account', '@two'] }, async ({ page }) => {
+    await page.context().clearCookies({ name: 'tz' });
+    const html = await (await page.context().request.get('/account')).text(); // the server's first render: UTC
+    const utc = footerMinutes(html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' '));
+    expect(html).toContain('UTC');
+    await gotoReady(page, '/water');
+    const foot = page.locator('.site-footer');
+    await expect(foot).not.toContainText('UTC');
+    const tokyo = footerMinutes(await foot.innerText());
+    expect((tokyo - utc + 1440) % 1440, 'Tokyo is UTC+9').toBe(540);
+    await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === 'tz')?.value).toBe('Asia/Tokyo');
+    await page.locator('a[href="/coffees"]:visible').first().click(); // client-side navigation
+    await expect(page).toHaveURL(/\/coffees/);
+    await expect(foot).not.toContainText('UTC');
+    expect(footerMinutes(await foot.innerText())).toBe(tokyo);
+  });
+});
 
 // Public cards (signed out) with only a roaster default show it, alt "<roaster> logo".
 test.describe('signed out', () => {

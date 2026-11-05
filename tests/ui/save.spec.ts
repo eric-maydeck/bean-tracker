@@ -30,7 +30,7 @@ test.afterAll(() => {
   const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
   db.prepare(`DELETE FROM roaster_images WHERE roaster = 'Hydrangea'`).run();
   db.prepare(`UPDATE coffees SET processing = ? WHERE coffee_name = ?`).run(aProcessing.processing, A);
-  db.prepare(`DELETE FROM app_meta WHERE key = 'household_size'`).run();
+  db.prepare(`DELETE FROM app_meta WHERE key IN ('household_size', 'display_time_zone', 'date_format', 'default_caffeine')`).run();
   db.close();
 });
 
@@ -536,4 +536,38 @@ test('account upload: a good file imports on the first try after a too-big one',
     await expect(res.getByRole('link', { name: 'See your stats' })).toHaveAttribute('href', '/stats');
     await expect(page.getByRole('button', { name: 'Import', exact: true })).toBeDisabled(); // form reset
   } finally { await rm(big, { force: true }); }
+});
+
+// Account > Time and Stats settings save for real: a fixed display zone beats the browser's (Tokyo here), the date format
+// reaches every Stamp, and the default caffeine value names itself in the Stats Filters dialog's Default option and hint.
+test.describe('settings', () => {
+  test.use({ timezoneId: 'Asia/Tokyo' });
+  const minutes = (t: string) => {
+    const m = /Last updated: \d{4}-\d\d-\d\d (\d+):(\d\d) (AM|PM)/.exec(t);
+    expect(m, t).not.toBeNull();
+    return ((Number(m![1]) % 12) + (m![3] === 'PM' ? 12 : 0)) * 60 + Number(m![2]);
+  };
+  test('display zone, date format and default caffeine', { tag: '@account' }, async ({ page }) => {
+    await gotoReady(page, '/account');
+    const foot = page.locator('.site-footer');
+    await expect(foot).not.toContainText('UTC');
+    const tokyo = minutes(await foot.innerText());
+    const pick = async (label: string, value: string, toast: string) => {
+      await page.locator('#time, #stats-settings').getByLabel(label).selectOption(value);
+      await expect(page.getByRole('status').filter({ hasText: toast })).toBeVisible();
+    };
+    await pick('Display timezone', 'America/New_York', 'Display timezone set to America/New_York.');
+    await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'display_time_zone'`)).toEqual({ value: 'America/New_York' });
+    await gotoReady(page, '/account'); // a fixed zone shows even though the tz cookie says Tokyo
+    await expect(foot).not.toContainText('UTC');
+    expect([780, 840], 'Tokyo is 13 or 14 hours ahead of New York').toContain((tokyo - minutes(await foot.innerText()) + 1440) % 1440);
+    await pick('Date format', 'eu', 'Date format set to 22/10/2026 20:05:23.');
+    await expect(foot).toContainText(/Last updated: \d\d\/\d\d\/\d{4} \d\d:\d\d(?!:)/);
+    await pick('Default caffeine filter', 'decaf', 'Default caffeine filter set to Decaf.');
+    await gotoReady(page, '/stats?tab=leaderboards&range=all');
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    const dlg = page.getByRole('dialog', { name: 'Filters' });
+    await expect(dlg.getByLabel('Caffeine').locator('option').first()).toHaveText(/^Default( \(decaf\))?$/);
+    await expect(dlg.locator('.coffees-note')).toHaveText('Caffeine, Default (decaf): only decaf brews and bags. Caffeinated vs. decaf still shows both.');
+  });
 });

@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { hasRecaps, recapTiles } from '$lib/server/recaps/recap';
-import { getDb, getHouseholdSize, lastImportedAt } from '$lib/server/db';
+import { getDb, getHouseholdSize, getDefaultCaffeine, lastImportedAt } from '$lib/server/db';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
@@ -46,6 +46,9 @@ export const load: PageServerLoad = ({ url, locals }) => {
     drippers: opts.drippers, filters: opts.filters, waters: opts.waters, doses: opts.doses, temps: opts.temps
   });
   const s = withDefaults(explicit);
+  // The Caffeine filter with no `caffeine` param is the account's default (also for signed-out visitors: the data owner's pick).
+  const defaultCaffeine = getDefaultCaffeine(db);
+  const caffeine = s.caffeine ?? defaultCaffeine;
   // The Recaps tab's rail entry shows while there is a recap; tab=recaps itself always renders (an empty state says why).
   const isAdmin = !!locals?.isAdmin;
   const recapsTab = hasRecaps(db, today, isAdmin);
@@ -61,14 +64,14 @@ export const load: PageServerLoad = ({ url, locals }) => {
   // them while counts, grams and cost keep them; All filters nothing.
   const coffees = { roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster };
   const matches = matchesCoffee(coffees);
-  const pool = s.caffeine === 'decaf' ? everyBrew.filter((b) => b.decaf)
-    : s.caffeine === 'all' ? everyBrew : everyBrew.map((b) => (b.decaf ? { ...b, rating: null } : b));
+  const pool = caffeine === 'decaf' ? everyBrew.filter((b) => b.decaf)
+    : caffeine === 'all' ? everyBrew : everyBrew.map((b) => (b.decaf ? { ...b, rating: null } : b));
   // The brew filters (spec 2026-10-21) narrow brews after the coffee filters and after `dialIn`, so a brew keeps its
   // whole-bag position. `whole` is what whole-bag figures read (on hand, time to clear, Net, What-if, settle).
   const bf = activeBrewFilters(s);
   const whole = pool.filter(matches);
   const brews = whole.filter(matchesBrew(bf));
-  const bags = everyBag.filter((b) => (s.caffeine !== 'decaf' || b.decaf) && matches(b));
+  const bags = everyBag.filter((b) => (caffeine !== 'decaf' || b.decaf) && matches(b));
   const scored = s.dial === 'all' ? brews : onceDialed(brews, dialIn);
   // The Caffeine board splits caffeinated from decaf, so it ignores the Caffeine filter: every brew, decaf's ratings kept,
   // under the other filters.
@@ -134,10 +137,11 @@ export const load: PageServerLoad = ({ url, locals }) => {
   return {
     lastImportedAt: lastImportedAt(db),
     explicit,
+    defaultCaffeine,
     // What applied on this tab, and the pickers' values (from the unfiltered data, every tab).
     brewFilters: bf,
     brewOptions: { drippers: opts.drippers, filters: opts.filters, waters: opts.waters, doses: opts.doses, temps: opts.temps },
-    coffeeFilters: pageFilters({ ...coffees, caffeine: s.caffeine }, everyBag),
+    coffeeFilters: pageFilters({ ...coffees, caffeine }, everyBag),
     householdSize,
     years,
     // Every range's menu, so a Period change can keep or drop the compare (keepCompare).
@@ -173,7 +177,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
       s.tab === 'consumption'
         ? consumptionTab(brews, bags, { ...ctx, whole, unit: s.unit, agg: s.agg, by: s.by, trend: s.trend, scored, ratings: s.ratings, sameLength: typeof s.compare === 'number' })
         : null,
-    onHand: s.tab === 'onhand' ? onHandTab(whole, bags, { period, size, dataStart, today, filters: pageFilters({ ...coffees, caffeine: s.caffeine }, everyBag) }) : null,
+    onHand: s.tab === 'onhand' ? onHandTab(whole, bags, { period, size, dataStart, today, filters: pageFilters({ ...coffees, caffeine }, everyBag) }) : null,
     spend: s.tab === 'spend'
       ? spendTab(scored, whole, bags, {
           period, prev, sameLength: typeof s.compare === 'number', pace, size, dataStart, today, by: s.by, ratings: s.ratings,

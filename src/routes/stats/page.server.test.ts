@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
 process.env.DB_PATH = ':memory:';
 
-import { getDb, setHouseholdSize } from '$lib/server/db';
+import { getDb, setHouseholdSize, setDefaultCaffeine } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
 import { localToday, periodBounds, previousPeriod, addDays, daysBetween, trackedDays, comparePeriod, type Period } from '$lib/server/insights/time';
 import { load } from './+page.server';
@@ -547,6 +547,27 @@ describe('page-wide coffees filter', () => {
     expect(boards('')).toHaveLength(2); // counts keep the decaf bag
     expect(boards('&caffeine=decaf')).toHaveLength(1);
     expect(run('?caffeine=CAF').explicit.caffeine).toBeUndefined();
+  });
+  it('the account default drives the absent case; an explicit param overrides; the Caffeinated vs. decaf board ignores it', () => {
+    seedTwo(true);
+    const t = (q: string) => run(`?range=all&ratings=all${q}`).tiles;
+    const setDefault = (c: string) => setDefaultCaffeine(getDb(), c);
+    try {
+      setDefault('decaf');
+      expect(run('').defaultCaffeine).toBe('decaf');
+      expect(t('')).toMatchObject({ brews: 3, rated: 3 }); // as ?caffeine=decaf
+      expect(t('&caffeine=caffeinated')).toMatchObject({ brews: 5, rated: 2 });
+      setDefault('all');
+      expect(t('')).toMatchObject({ brews: 5, rated: 5 });
+      expect(t('&caffeine=decaf')).toMatchObject({ brews: 3 });
+      expect(run('?range=all&tab=leaderboards&rank=brews').boards.coffees).toHaveLength(2);
+      setDefault('decaf');
+      expect(run('?range=all&tab=leaderboards&rank=brews').boards.coffees).toHaveLength(1);
+      const kinds = (q: string) => run(`?range=all&tab=leaderboards&rank=rating&ratings=all&dial=all${q}`).boards.caffeine.map((r: { label: string }) => r.label).sort();
+      expect(kinds('')).toEqual(['Caffeinated', 'Decaf']);
+    } finally {
+      setDefault('caffeinated');
+    }
   });
   it('Caffeine board ignores the Caffeine filter: both kinds under the default, Decaf and All', () => {
     seedTwo(true);

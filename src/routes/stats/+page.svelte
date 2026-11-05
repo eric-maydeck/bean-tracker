@@ -62,7 +62,7 @@
   let local = $state<Pick<InsightsUrlState, (typeof LOCAL_KEYS)[number]> | null>(null);
   const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
   let s = $derived(withDefaults(explicit));
-  provideCoffeeNote(() => coffeeNote(s));
+  provideCoffeeNote(() => coffeeNote({ ...s, caffeine: s.caffeine ?? data.defaultCaffeine }));
   provideChartLink({
     href: (id) => `?${insightsParams({ ...explicit, chart: id })}#${id}`,
     go: (id) => void choose({ chart: id }).then(() => document.getElementById(id)?.scrollIntoView())
@@ -76,7 +76,13 @@
     ['roast', 'Roast level', data.coffeeOptions.roasts], ['process', 'Process', data.coffeeOptions.processes],
     ['origin', 'Origin', data.coffeeOptions.origins], ['roaster', 'Roaster', data.coffeeOptions.roasters]
   ] as const);
-  // Caffeine's chip shows only when explicit (absent = Caffeinated, the default).
+  // Caffeine's chip shows only when explicit (absent = the account's default, Account > Time).
+  // What the account's default Caffeine value does, for the Filters dialog's hint (its Default option names the value).
+  const DEFAULT_HINT: Record<Caffeine, string> = {
+    caffeinated: 'ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.',
+    decaf: 'only decaf brews and bags. Caffeinated vs. decaf still shows both.',
+    all: 'ratings, counts and cost include decaf. Caffeinated vs. decaf shows both either way.'
+  };
   const CAFFEINE_CHIP: Record<Caffeine, string> = { caffeinated: 'Caffeinated', decaf: 'Decaf', all: 'Caf + decaf' };
   let coffeeChips = $derived([
     ...COFFEE_FIELDS.flatMap(([k]) => (s[k] ? [[k, s[k]!] as const] : [])),
@@ -766,7 +772,7 @@
         <span>Caffeine</span>
         <select class="ctl-select" aria-label="Caffeine" value={fdraft.caffeine ?? ''}
           onchange={(e) => (fdraft.caffeine = e.currentTarget.value)}>
-          <option value="" data-short="Default">{phone.current ? 'Default' : 'Default (caffeinated)'}</option>
+          <option value="" data-short="Default">{phone.current ? 'Default' : `Default (${data.defaultCaffeine})`}</option>
           <option value="caffeinated">Caffeinated</option>
           <option value="decaf">Decaf</option>
           <option value="all">All</option>
@@ -794,7 +800,7 @@
       {/if}
     </div>
     <!-- Under the fields, its space always reserved: nothing above or below moves when the Default hint comes and goes. -->
-    <p class="coffees-note" class:off={!!fdraft.caffeine}><span class="setting-name">Caffeine</span>, <span class="setting-name">Default (caffeinated)</span>: ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.</p>
+    <p class="coffees-note" class:off={!!fdraft.caffeine}><span class="setting-name">Caffeine</span>, <span class="setting-name">Default ({data.defaultCaffeine})</span>: {DEFAULT_HINT[data.defaultCaffeine]}</p>
     <footer>
       <button type="button" class="button button-ghost" onclick={() => coffeesDialog?.close()}>Cancel</button>
       <button type="button" class="button button-secondary" onclick={() => (fdraft = Object.fromEntries(filterKeys.map((k) => [k, ''])))}>Reset</button>

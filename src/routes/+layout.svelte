@@ -21,9 +21,10 @@
   $effect.pre(() => setBrewingZone(data.brewingZone));
   // Root layout mounts last, so this marks the whole page as hydrated (tests/ui/ready.ts).
   onMount(() => {
-    // Remember the browser's zone so the next server render already shows it (no flash from UTC).
+    // Remember the browser's zone so the next server render already shows it (no flash from UTC); also for a fixed
+    // display zone, so signing out later starts from the right zone.
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (data.displayZone.browser && tz !== data.displayZone.zone) document.cookie = `tz=${tz}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    if (!document.cookie.split('; ').includes(`tz=${tz}`)) document.cookie = `tz=${tz}; Path=/; Max-Age=31536000; SameSite=Lax`;
     document.documentElement.dataset.hydrated = ''; return captionItems(); });
 
   const links = [
