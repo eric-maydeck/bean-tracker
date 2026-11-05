@@ -1821,6 +1821,32 @@ export const STATES: State[] = [
       expect(d.length).toBeLessThanOrEqual(300);
       expect(t['og:url']).toBe(`${origin}/subscriptions`);
     } },
+  // Share works on every click (user, 2026-10-25): a share sheet that never settled (the browser then refuses the
+  // next share) falls back to copying, and a second copy restarts the "Link copied" label.
+  { name: 'share-again', viewports: 'two', path: () => '/stats',
+    act: async (page) => {
+      await page.evaluate(() => {
+        const w = window as unknown as { copies: string[]; pending: boolean };
+        w.copies = []; w.pending = false;
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t: string) => void w.copies.push(t) }, configurable: true });
+        navigator.share = () => {
+          if (w.pending) return Promise.reject(new DOMException('An earlier share has not yet completed.', 'InvalidStateError'));
+          w.pending = true;
+          return new Promise(() => {}); // the sheet closed without settling
+        };
+      });
+      const share = page.locator('.share-button');
+      await share.click();
+      await share.click();
+      await expect(share).toHaveText('Link copied');
+      expect(await page.evaluate(() => (window as unknown as { copies: string[] }).copies)).toHaveLength(1);
+      // No share sheet: each copy restarts the label's 2s.
+      await page.evaluate(() => Object.defineProperty(navigator, 'share', { value: undefined, configurable: true }));
+      await page.waitForTimeout(1500);
+      await share.click();
+      await page.waitForTimeout(1000);
+      await expect(share).toHaveText('Link copied', { timeout: 0 });
+    } },
   { name: 'link-preview-water', viewports: 'two', path: () => '/water',
     act: async (page) => {
       const origin = new URL(page.url()).origin;
@@ -7921,6 +7947,8 @@ export const STATES: State[] = [
     } },
   // Tips open only on their marks (ui-rules 50): a chart's empty space opens none and keeps the arrow; a bar or a line's
   // point opens it with the help cursor.
+  { name: 'tip-hit-chart-bars', viewports: 'two', path: () => '/stats?tab=onhand&range=all',
+    act: (page) => expectChartMarkOnly(page, page.locator('[data-section="onhand-bag-states"] canvas')) },
   { name: 'tip-hit-chart-line', viewports: 'two', path: () => '/stats?tab=consumption',
     act: (page) => expectChartMarkOnly(page, page.locator('.chart-container canvas').first(), true) },
   { name: 'tip-hit-delta-bars', viewports: 'two', path: () => '/stats?tab=brewing&range=all',
@@ -8087,6 +8115,14 @@ export const STATES: State[] = [
   // Tap tips (ui-rules 49): every tip kind a hover opens also opens on a tap, stays, and a tap elsewhere closes it.
   { name: 'tap-tip-text', viewports: 'two', path: () => '/coffees?status=all&view=list',
     act: (page) => expectTapTip(page, page.getByRole('button', { name: /^Roast level: / }).first(), page.locator('.cell-tip:popover-open'), page.locator('h1')) },
+  { name: 'tap-tip-mode', viewports: 'two', path: () => '/stats?people=person',
+    act: (page) => expectTapTip(page, page.locator('.mode-tip-button').first(),
+      page.locator('.mode-tip:popover-open'), page.locator('h1')) },
+  { name: 'tap-tip-chart', viewports: 'two', path: () => '/stats?tab=habits&range=all',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'By day of week' }) });
+      await expectTapTip(page, () => tapChart(page, panel.locator('canvas')), page.locator('.chart-container .cell-tip:popover-open'), panel.locator('h2'));
+    } },
   { name: 'tap-tip-sample', viewports: 'two', path: () => '/stats?tab=leaderboards&avg=raw',
     act: (page) => expectTapTip(page, page.locator('.sample-note').first(), page.locator('.cell-tip:popover-open'), page.locator('.insights-period').last()) },
   { name: 'tap-tip-label', viewports: 'two', path: () => '/stats?tab=habits&range=1w&compare=1',
