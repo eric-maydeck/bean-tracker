@@ -79,6 +79,7 @@ const byRank = (a: BoardRow, b: BoardRow) =>
 
 // The confident cutoff: rows the Low confidence chip would mark are left out under min3 (Raw average, confident)
 // and under like unless See all set avg=raw (stats audit 2026-10-17: a 1-brew bag topped the like board).
+// The Caffeine board is exempt (user, 2026-11-04: Regular and Decaf always both show; a small kind is marked, not hidden).
 const confident = (rank: Rank, avg: Avg) => (rank === 'rating' && avg === 'min3') || (rank === 'like' && avg !== 'raw');
 
 // `status`: all by default; a Leaderboards row follows its rank (statusFor): Backlog bags have no brews.
@@ -186,7 +187,7 @@ export function leaderboard(
   }
   if (likes && rank !== 'like') rows = rows.map((r) => { const l = likes.get(Number(r.key)); return l ? { ...r, like: { gap: l.gap, label: l.label } } : r; });
   const out = rows.map((r) => decorate(r, board, rank, bags, sizes));
-  return (confident(rank, avg) ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
+  return (confident(rank, avg) && board !== 'caffeine' ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
 }
 
 // Varieties and Producers notes: of the bags the board draws on (brewed in the Period; bought in it for spend and
@@ -262,7 +263,7 @@ export function leaderboards(
 export function cutBoards(
   boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg | undefined
 ): Board[] {
-  return BOARDS.filter((b) => confident(rank, boardAvg(b, avg)) && !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
+  return BOARDS.filter((b) => b !== 'caffeine' && confident(rank, boardAvg(b, avg)) && !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
 }
 
 // Per board that shows rows: how many groups its default Score hides (the confident cutoff). Under the default Score they are
@@ -274,7 +275,7 @@ export function smallHidden(
   const out: Partial<Record<Board, number>> = {};
   for (const b of BOARDS) {
     const def = boardAvg(b, undefined);
-    if (!boards[b].length || !confident(rank, def)) continue;
+    if (b === 'caffeine' || !boards[b].length || !confident(rank, def)) continue; // caffeine has no cutoff to offer back
     const all = leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length;
     const kept = boardAvg(b, avg) === def ? boards[b].length : leaderboard(brews, bags, p, b, rank, ratings, def, false).length;
     if (all - kept > 0) out[b] = all - kept;

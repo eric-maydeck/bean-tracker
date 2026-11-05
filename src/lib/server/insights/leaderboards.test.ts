@@ -53,6 +53,28 @@ describe('caffeine board', () => {
   });
 });
 
+describe('caffeine board has no ranking floor', () => {
+  // Regular: 3 bags, 12 brews (passes min3). Decaf: one bag, 2 brews (under it). Roaster Many passes, Few does not.
+  const bs = [
+    ...[1, 2, 3].flatMap((i) => Array.from({ length: 4 }, () => brew({ coffeeId: i, roaster: 'Many', rating: 7 }))),
+    ...Array.from({ length: 2 }, () => brew({ coffeeId: 4, roaster: 'Few', decaf: true, rating: 9 }))
+  ];
+  it('keeps a below-floor kind (marked small) under the default Score; another board still drops it', () => {
+    const caf = leaderboard(bs, [], SEPT, 'caffeine', 'rating', 'all', 'min3');
+    expect(caf.map((r) => r.label).sort()).toEqual(['Decaf', 'Regular']);
+    expect(caf.find((r) => r.label === 'Decaf')?.sample?.small).toBe(true);
+    expect(leaderboard(bs, [], SEPT, 'roasters', 'rating', 'all', 'min3').map((r) => r.label)).toEqual(['Many']);
+  });
+  it('has nothing hidden to offer back, and its series plots the small kind', () => {
+    const boards = leaderboards(bs, [], SEPT, null, 'rating', 'all', undefined);
+    expect(smallHidden(boards, bs, [], SEPT, 'rating', 'all', undefined).caffeine).toBeUndefined();
+    expect(smallHidden(boards, bs, [], SEPT, 'rating', 'all', undefined).roasters).toBe(1);
+    const s = boardSeries(bs, [], { period: SEPT, dataStart: '2026-08-01', today: '2026-09-30' }, 'caffeine', boards.caffeine.map((r) => r.key), 'rating', 'all', 'min3');
+    expect(s.lines.map((l) => l.label).sort()).toEqual(['Decaf', 'Regular']);
+    expect(s.lines.find((l) => l.label === 'Decaf')!.values.some((v) => v === 9)).toBe(true);
+  });
+});
+
 describe('leaderboard', () => {
   it('brews: count per key, bags distinct', () =>
     expect(leaderboard(BREWS, BAGS, SEPT, 'roasters', 'brews', 'all', 'raw')).toMatchObject([

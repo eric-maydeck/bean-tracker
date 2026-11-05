@@ -328,7 +328,7 @@
             <Chart type="line" padTop={roomy.current && !spans ? 36 : 0} labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
               series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={fixed ? 200 : 'fill'} />
           </div>
-          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === pool.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `${isLow ? 'lowest' : 'top'} ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
+          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === pool.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `${isLow ? 'lowest' : 'top'} ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}{#if fixed && ordered.some((r) => r.sample?.small)}{' · '}Few brews: {ordered.filter((r) => r.sample?.small).map((r) => r.label).join(', ')}{/if}</p>
         {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}
       {:else}
         <ol class="board-rows" class:diverge={rank === 'like'}>

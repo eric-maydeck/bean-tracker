@@ -6917,6 +6917,12 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/caffeine=all/);
       await expect(board.getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
       await expect(board.locator('.time-chart canvas')).toBeVisible();
+      // No ranking floor here: the under-floor Decaf is plotted and marked as few brews, with no hidden-groups line or Show it,
+      // and the page-wide Score is untouched.
+      await expect(board).toContainText('Few brews: Decaf');
+      await expect(board.getByRole('button', { name: /^Show (it|them)$|^Show only/ })).toHaveCount(0);
+      await expect(board).not.toContainText(/hidden/);
+      await expect(page).not.toHaveURL(/avg=/);
       // Counts keep decaf with no filter, so no note.
       await page.goto('/insights?tab=leaderboards&range=all&rank=brews');
       await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
