@@ -6912,25 +6912,18 @@ export const STATES: State[] = [
       const board = page.locator('[data-board="caffeine"]');
       await board.scrollIntoViewIfNeeded();
       await expect(board.locator('.time-chart canvas')).toBeVisible();
-      // Rated decaf brews are left out by default (note); Include decaf puts them in the chart and drops the note.
-      await board.getByRole('button', { name: 'Include decaf' }).click();
-      await expect(page).toHaveURL(/caffeine=all/);
+      // Both kinds are on by default (no note, no Include decaf); the under-floor kind is marked as few brews, never hidden.
       await expect(board.getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
-      await expect(board.locator('.time-chart canvas')).toBeVisible();
-      // No ranking floor here: the under-floor Decaf is plotted and marked as few brews, with no hidden-groups line or Show it,
-      // and the page-wide Score is untouched.
+      await expect(board).not.toContainText(/left out of ratings|hidden/);
       await expect(board).toContainText('Few brews: Decaf');
       await expect(board.getByRole('button', { name: /^Show (it|them)$|^Show only/ })).toHaveCount(0);
-      await expect(board).not.toContainText(/hidden/);
       await expect(page).not.toHaveURL(/avg=/);
-      // Counts keep decaf with no filter, so no note.
-      await page.goto('/insights?tab=leaderboards&range=all&rank=brews');
-      await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
-      // The default view hides the rated decaf brew (note); a roaster with no decaf has nothing to hide (no note).
-      await page.goto('/insights?tab=leaderboards&range=all');
-      await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(1);
-      await page.goto('/insights?tab=leaderboards&range=all&roaster=Kurasu');
-      await expect(page.locator('[data-board="caffeine"]').getByRole('button', { name: 'Include decaf' })).toHaveCount(0);
+      // One line under Decaf and under an explicit Caffeinated (the chart note counts the lines); All is both.
+      const note = async (q: string) => { await page.goto(`/insights?tab=leaderboards&range=all&dial=all${q}`); return board.locator('.chart-note').first(); };
+      await expect(await note('&caffeine=decaf')).not.toContainText('all 2');
+      await expect(await note('&caffeine=caffeinated')).not.toContainText('all 2');
+      await expect(await note('&caffeine=caffeinated')).not.toContainText('Few brews');
+      await expect(await note('&caffeine=all')).toContainText('all 2 caffeine kinds');
       // Caffeine is Over time only: no List rows, no List / Over time or Lowest first control, no Expand; the chart is there and
       // the card is its head + chart + note (no big empty area). The old views=caffeine-time[-wide] links look the same.
       for (const q of ['', '&views=caffeine-time-wide']) {

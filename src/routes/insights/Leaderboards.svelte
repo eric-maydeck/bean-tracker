@@ -41,9 +41,8 @@
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
 
   let {
-    boards, coverage, wholeKeys, cut, small, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part, decafHidden
+    boards, coverage, wholeKeys, cut, small, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part
   }: {
-    decafHidden: boolean; // rated decaf brews in the view that the rating rule leaves out (server)
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
     boards: Rows; coverage: PageData['boardCoverage'] & {}; wholeKeys: BrewFilterKey[]; cut: Board[]; small: Partial<Record<Board, number>>; rank: Rank; avg: Avg | undefined; open: Board[]; low: Board[]; comparing: boolean; perPerson: boolean;
@@ -301,7 +300,6 @@
         {/if}
       </div>
     </div>
-    {#if b === 'caffeine' && decafHidden}<p class="like-note">Decaf brews are left out of ratings. <button class="link-like" onclick={() => choose({ caffeine: 'all' })}>Include decaf</button></p>{/if}
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     {#if (b === 'varieties' || b === 'producers') && rows.length}
       {@const c = coverage[b]}
@@ -634,9 +632,6 @@
     min-height: 0;
   }
   /* Its note leads into the chart, and its head has no tools to make room for. */
-  .fixed .like-note {
-    padding: 0 0 var(--space-2);
-  }
   .fixed .board-head {
     min-height: 0;
   }

@@ -153,9 +153,6 @@ export const load: PageServerLoad = ({ url, locals }) => {
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     boards,
-    // Rating ranks leave decaf out unless Caffeine is All: are there rated decaf brews in the view that it hides? (the Caffeine board's note)
-    decafHidden: !!boards && s.rank === 'rating' && !s.caffeine
-      && (s.dial === 'all' ? everyBrew : onceDialed(everyBrew, dialIn)).filter(matches).filter(matchesBrew(bf)).some((b) => b.decaf && b.rating !== null && b.rating > 0 && countsForRating(b, s.ratings) && inPeriod(b.localDate, period)),
     boardCoverage: boards ? fieldCoverage(scored, bags, period, s.rank) : null,
     // Over time: the small boards switched to it (views=water-time) and Caffeine, which always is; the others cost nothing.
     boardSeries: boards

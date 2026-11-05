@@ -874,7 +874,6 @@
 {#if data.boards}
   <Leaderboards
     {part}
-    decafHidden={data.decafHidden}
     boards={data.boards}
     coverage={data.boardCoverage!}
     cut={data.boardsCut}
