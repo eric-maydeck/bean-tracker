@@ -76,7 +76,7 @@
     ['origin', 'Origin', data.coffeeOptions.origins], ['roaster', 'Roaster', data.coffeeOptions.roasters]
   ] as const);
   // Caffeine's chip shows only when explicit (absent = Caffeinated, the default).
-  const CAFFEINE_CHIP: Record<Caffeine, string> = { caffeinated: 'Caffeinated', decaf: 'Decaf', all: 'Caf + decaf' };
+  const CAFFEINE_CHIP: Record<Caffeine, string> = { decaf: 'Decaf', all: 'Caf + decaf' };
   let coffeeChips = $derived([
     ...COFFEE_FIELDS.flatMap(([k]) => (s[k] ? [[k, s[k]!] as const] : [])),
     ...(s.caffeine ? [['caffeine', CAFFEINE_CHIP[s.caffeine]] as const] : [])
@@ -744,7 +744,6 @@
         <select class="ctl-select" aria-label="Caffeine" value={s.caffeine ?? ''}
           onchange={(e) => choose({ caffeine: (e.currentTarget.value || undefined) as Caffeine | undefined })}>
           <option value="" data-short="Default">{phone.current ? 'Default' : 'Default (caffeinated)'}</option>
-          <option value="caffeinated">Caffeinated</option>
           <option value="decaf">Decaf</option>
           <option value="all">All</option>
         </select>
@@ -771,7 +770,7 @@
       {/if}
     </div>
     <!-- Under the fields, its space always reserved: nothing above or below moves when the Default hint comes and goes. -->
-    <p class="coffees-note" class:off={!!s.caffeine}>Ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.</p>
+    <p class="coffees-note" class:off={!!s.caffeine}><span class="setting-name">Caffeine</span>, <span class="setting-name">Default (caffeinated)</span>: ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.</p>
     <footer><button type="button" class="button" onclick={() => coffeesDialog?.close()}>Done</button></footer>
   </dialog>
 

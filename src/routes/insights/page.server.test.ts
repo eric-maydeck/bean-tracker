@@ -548,16 +548,12 @@ describe('page-wide coffees filter', () => {
     expect(boards('&caffeine=decaf')).toHaveLength(1);
     expect(run('?caffeine=CAF').explicit.caffeine).toBeUndefined();
   });
-  it('Caffeine board: both kinds by default and under All; one each under Decaf and Caffeinated', () => {
+  it('Caffeine board ignores the Caffeine filter: both kinds under the default, Decaf and All', () => {
     seedTwo(true);
     const kinds = (q: string) => run(`?range=all&tab=leaderboards&rank=rating&ratings=all&dial=all${q}`).boards.caffeine.map((r: { label: string }) => r.label).sort();
-    expect(kinds('')).toEqual(['Caffeinated', 'Decaf']);
-    expect(kinds('&caffeine=all')).toEqual(['Caffeinated', 'Decaf']);
-    expect(kinds('&caffeine=decaf')).toEqual(['Decaf']);
-    expect(kinds('&caffeine=caffeinated')).toEqual(['Caffeinated']);
-    // Everywhere else Caffeinated is the same as absent: decaf's ratings stay out of the other boards.
-    const tiles = (q: string) => run(`?range=all&ratings=all${q}`).tiles;
-    expect(tiles('&caffeine=caffeinated')).toMatchObject({ brews: 5, rated: 2 });
+    for (const q of ['', '&caffeine=decaf', '&caffeine=all', '&caffeine=caffeinated']) expect(kinds(q), q).toEqual(['Caffeinated', 'Decaf']);
+    // The other boards still follow it.
+    expect(run('?range=all&tab=leaderboards&rank=brews&caffeine=decaf').boards.coffees).toHaveLength(1);
   });
   it('See all shows every bag: a roaster of one 1-brew decaf bag (the seed\'s Onyx) is on the rating board (user, 2026-10-17)', () => {
     seedTwo(true, 0); // R1: one decaf bag, one rated brew

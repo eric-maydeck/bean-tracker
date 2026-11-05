@@ -6918,12 +6918,9 @@ export const STATES: State[] = [
       await expect(board).toContainText('Few brews: Decaf');
       await expect(board.getByRole('button', { name: /^Show (it|them)$|^Show only/ })).toHaveCount(0);
       await expect(page).not.toHaveURL(/avg=/);
-      // One line under Decaf and under an explicit Caffeinated (the chart note counts the lines); All is both.
+      // The board ignores the Caffeine filter: both lines under Decaf and All too.
       const note = async (q: string) => { await page.goto(`/insights?tab=leaderboards&range=all&dial=all${q}`); return board.locator('.chart-note').first(); };
-      await expect(await note('&caffeine=decaf')).not.toContainText('all 2');
-      await expect(await note('&caffeine=caffeinated')).not.toContainText('all 2');
-      await expect(await note('&caffeine=caffeinated')).not.toContainText('Few brews');
-      await expect(await note('&caffeine=all')).toContainText('all 2 caffeine kinds');
+      for (const q of ['&caffeine=decaf', '&caffeine=all']) await expect(await note(q)).toContainText('all 2 caffeine kinds');
       // Caffeine is Over time only: no List rows, no List / Over time or Lowest first control, no Expand; the chart is there and
       // the card is its head + chart + note (no big empty area). The old views=caffeine-time[-wide] links look the same.
       for (const q of ['', '&views=caffeine-time-wide']) {
@@ -8563,23 +8560,22 @@ export const STATES: State[] = [
     } },
   { name: 'insights-coffees-caffeine-default', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
-      // Default (caffeinated) shows the hint; an explicit Caffeinated writes caffeine=caffeinated, gets a chip and no hint;
-      // Default returns to bare. The dialog doesn't change size or move its controls when the hint comes and goes.
+      // Default (caffeinated) shows the hint, naming that option; an explicit Decaf or All hides it; Default returns to bare. The
+      // dialog doesn't change size or move its controls when the hint comes and goes.
       await page.getByRole('button', { name: /^Filters/ }).click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       const sel = dlg.getByLabel('Caffeine');
       const hint = dlg.locator('.coffees-note');
       await expect(hint).toBeVisible();
-      await expect(hint).toHaveText('Ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.');
+      await expect(hint).toHaveText('Caffeine, Default (caffeinated): ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.');
+      await expect(hint.locator('.setting-name')).toHaveText(['Caffeine', 'Default (caffeinated)']);
       const geom = async () => [await dlg.boundingBox(), await sel.boundingBox(), await dlg.getByRole('button', { name: 'Done' }).boundingBox()].map((b) => [b!.x, b!.y, b!.width, b!.height].map(Math.round));
       const before = await geom();
-      await sel.selectOption('caffeinated');
-      await expect(page).toHaveURL(/caffeine=caffeinated/);
-      await expect(hint).toBeHidden();
-      await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Caffeinated/]);
-      expect(await geom(), 'nothing moves when the hint hides').toEqual(before);
       await sel.selectOption('decaf');
       await expect(page).toHaveURL(/caffeine=decaf/);
+      await expect(hint).toBeHidden();
+      expect(await geom(), 'nothing moves when the hint hides').toEqual(before);
+      await expect(sel.locator('option')).toHaveText([/^Default/, 'Decaf', 'All']);
       await sel.selectOption('');
       await expect(page).not.toHaveURL(/caffeine=/);
       await expect(hint).toBeVisible();

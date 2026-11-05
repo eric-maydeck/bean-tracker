@@ -70,14 +70,13 @@ export const load: PageServerLoad = ({ url, locals }) => {
   const brews = whole.filter(matchesBrew(bf));
   const bags = everyBag.filter((b) => (s.caffeine !== 'decaf' || b.decaf) && matches(b));
   const scored = s.dial === 'all' ? brews : onceDialed(brews, dialIn);
-  // The Caffeine board splits caffeinated from decaf, so it keeps decaf's ratings unless Caffeinated is picked explicitly
-  // (Decaf and All already do): its own brews and bags.
-  const ownCaf = s.caffeine === undefined || s.caffeine === 'caffeinated';
-  const cafBrews = !ownCaf ? scored : (() => {
-    const own = (s.caffeine === 'caffeinated' ? everyBrew.filter((b) => !b.decaf) : everyBrew).filter(matches).filter(matchesBrew(bf));
+  // The Caffeine board splits caffeinated from decaf, so it ignores the Caffeine filter: every brew, decaf's ratings kept,
+  // under the other filters.
+  const cafBrews = (() => {
+    const own = everyBrew.filter(matches).filter(matchesBrew(bf));
     return s.dial === 'all' ? own : onceDialed(own, dialIn);
   })();
-  const cafBags = s.caffeine === 'caffeinated' ? bags.filter((b) => !b.decaf) : bags;
+  const cafBags = everyBag.filter(matches);
   const wholeScored = s.dial === 'all' ? whole : onceDialed(whole, dialIn); // records' whole-bag figures
   const labCtx = { period, ratings: s.ratings };
   const size = s.people === 'person' ? householdSize : 1;
@@ -86,7 +85,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
   // Leaderboards only on its tab; the overview tiles are cheap and always computed.
   const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, explicit.avg, size) : null;
   // ponytail: a second full leaderboards() pass only to take its caffeine board; narrow it to one board if it gets slow.
-  if (boards && ownCaf) boards.caffeine = leaderboards(cafBrews, cafBags, period, prev, s.rank, s.ratings, explicit.avg, size).caffeine;
+  if (boards) boards.caffeine = leaderboards(cafBrews, cafBags, period, prev, s.rank, s.ratings, explicit.avg, size).caffeine;
   const h = boards && ratingsMenuOn(s) ? hiddenRows(boards, scored, brews, bags, period, s.rank, s.ratings) : null;
   const rated = (xs: typeof brews, r: typeof s.ratings) => ratedIn(xs, period, r).length;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
