@@ -5410,12 +5410,13 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await expect(tip).toHaveCount(0);
       // An ancestor whose overflow is visible does not clip: text running out of it fully shown gets no tip.
-      await link.evaluate((a) => { const p = a.parentElement!; p.style.overflow = 'visible'; p.style.textOverflow = 'clip'; });
+      await link.evaluate((a) => { for (const e of [a.parentElement!, ...a.querySelectorAll<HTMLElement>('*')]) { e.style.overflow = 'visible'; e.style.textOverflow = 'clip'; } });
       await link.hover();
       await page.waitForTimeout(300);
       const clipped = await link.evaluate((a) => { for (let e: Element | null = a, i = 0; e && i < 4; e = e.parentElement, i++) { const s = getComputedStyle(e); if ((s.overflowX === 'hidden' && e.scrollWidth > e.clientWidth + 1) || (s.overflowY === 'hidden' && e.scrollHeight > e.clientHeight + 1)) return true; } return [...a.querySelectorAll('*')].some((e) => getComputedStyle(e).overflowX === 'hidden' && e.scrollWidth > e.clientWidth + 1); });
-      if (!clipped) await expect(tip).toHaveCount(0);
-      await link.evaluate((a) => { a.parentElement!.style.overflow = 'hidden'; }); // the layout check runs after the act
+      expect(clipped, 'nothing clips the text any more').toBe(false);
+      await expect(tip).toHaveCount(0);
+      await link.evaluate((a) => { a.parentElement!.style.overflow = 'hidden'; for (const e of a.querySelectorAll<HTMLElement>('*')) { e.style.overflow = ''; e.style.textOverflow = ''; } }); // the layout check runs after the act
     }
   },
   {
