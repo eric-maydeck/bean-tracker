@@ -28,7 +28,7 @@
 </script>
 
 {#if lines.length}
-  <Chart type="line" labels={days.map(label)} values={series[0].values} datasetLabel={series[0].label} series={series.slice(1)} legend nearestX yMin={0}
+  <Chart type="line" labels={days.map(label)} values={series[0].values} datasetLabel={series[0].label} series={series.slice(1)} legend yMin={0}
     format={formatGrams} tickFormat={formatGrams} tipOf={tipOf} height={240} />
   <p class="chart-note">Grams on the shelf, backlog and open bags, if you brew at that pace from today</p>
 {:else}

@@ -5132,6 +5132,34 @@ export const STATES: State[] = [
     }
   },
   {
+    // Every line chart opens its tip for the nearest x anywhere in the plot, as Runway at your pace (hover; touch: tap); it closes off the chart.
+    name: 'insights-line-tips-nearest-x', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      const tip = page.locator('.chart-container .cell-tip:popover-open');
+      const poke = async (c: Locator, fx: number, fy: number) => {
+        const b = (await c.boundingBox())!;
+        if (touch()) await page.touchscreen.tap(b.x + b.width * fx, b.y + b.height * fy); else await page.mouse.move(b.x + b.width * fx, b.y + b.height * fy);
+      };
+      const check = async (c: Locator) => {
+        await c.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(450);
+        // Mid-plot, well off any mark: a tip still opens (it used to need a point within 8px).
+        for (const fy of [0.35, 0.5, 0.2]) { await poke(c, 0.5, fy); if (await tip.waitFor({ timeout: 400 }).then(() => true, () => false)) break; }
+        await expect(tip).toBeVisible();
+        await expect(tip.locator('.tip-title')).not.toHaveText('');
+        await expectDataTip(tip);
+        await expectTipInView(page, tip);
+        // Off the chart closes it (touch: a tap elsewhere).
+        const h = (await c.locator('xpath=ancestor::section[1]//*[contains(@class,"chart-note")]').first().boundingBox())!;
+        if (touch()) await page.touchscreen.tap(h.x + 2, h.y + 2); else await page.mouse.move(h.x + 2, h.y + 2);
+        await expect(tip).toHaveCount(0);
+      };
+      await check(page.locator('[data-board="caffeine"] .time-chart canvas'));
+      await page.goto('/insights?tab=onhand&range=all');
+      await check(page.locator('section.chart-panel:has(#onhand-runway-at-your-pace) canvas'));
+    }
+  },
+  {
     name: 'insights-onhand-freshness-links', viewports: 'two', path: () => '/insights?tab=onhand',
     act: async (page) => {
       // A group longer than 5 bags ends in "and N more": a /coffees link filtered to exactly that group (no tooltip).

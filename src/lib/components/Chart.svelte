@@ -76,7 +76,6 @@
     samples,
     format,
     tickFormat,
-    nearestX = false,
     tipOf,
     tipLink,
     label = '',
@@ -120,8 +119,6 @@
     format?: (v: number) => string;
     // The value axis's tick text of a vertical bar or a line chart (money: "$1,200", ui-rules 46); `unit` applies when unset.
     tickFormat?: (v: number) => string;
-    // A line chart's tip opens for the nearest x anywhere in the plot, not only on a point (a sparse line, Roaster discovery).
-    nearestX?: boolean;
     // The tip's whole content for a hovered index, in place of the one built from the datasets' lines (a tip grouped by period).
     tipOf?: (i: number) => Tip;
     // A sticky tooltip (ui-rules 54): a link under the hovered mark's tip (series, bucket). The tip then stays open while the
@@ -458,10 +455,10 @@
           // dashGaps: how many dashed segments Chart.js really drew per line (the ui tests read it).
           ...(dashGaps && { onComplete: ({ chart: c }: { chart: ChartJS }) => { canvasEl.dataset.dashedSegments = c.data.datasets.map((_, i) => (c.getDatasetMeta(i).dataset as unknown as { segments?: { style?: { borderDash?: unknown } }[] } | undefined)?.segments?.filter((s) => s.style?.borderDash).length ?? 0).join(','); } })
         },
-        // A tip opens only on a mark (ui-rules 50): a bar, a slice, or within 8px of a line's point, never the
-        // plot's empty space. On a line chart a point shows every series' value for its date (index mode).
+        // A tip opens only on a mark (ui-rules 50): a bar or a slice, never the plot's empty space. A line chart's tip opens
+        // for the nearest x anywhere in the plot (every line chart, as Runway at your pace) and shows every series there (index mode).
         // A trend chart's bar also lights the trend line's point at its bucket (index mode), the compare bar's value in its tip.
-        interaction: { mode: type === 'line' || hasTrend ? 'index' : 'nearest', intersect: !(nearestX && type === 'line') },
+        interaction: { mode: type === 'line' || hasTrend ? 'index' : 'nearest', intersect: type !== 'line' },
         elements: { point: { hitRadius: 8 } },
         onClick: (_e, els) => {
           if (!tipLink) return;
@@ -584,7 +581,7 @@
     void format;
     void tipFormat;
     void tickFormat;
-    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked, band, nearestX, !!tipOf]);
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked, band, !!tipOf]);
     if (chart && sig === lastSig) return;
     lastSig = sig;
     render();
@@ -625,7 +622,8 @@
     </FloatTip>{/key}
   {/if}
 </div>
-<svelte:document onclick={(e) => pinned && e.target !== canvasEl && !(e.target as Element).closest('.chart-tip-body') && ((pinned = false), (tipAt = null))} onkeydown={(e) => e.key === 'Escape' && pinned && (box?.contains(document.activeElement) && canvasEl.focus(), (pinned = kbd = false), (tipAt = null))} />
+<!-- A line chart's tip (no link) closes on a press anywhere off the chart: on a phone Chart.js never sees the tap, so the tip would stay. -->
+<svelte:document onpointerdown={(e) => tipAt && !tipLink && !kbd && e.target !== canvasEl && !(e.target as Element).closest('.cell-tip') && (chart?.tooltip?.setActiveElements([], { x: 0, y: 0 }), (tipAt = null))} onclick={(e) => pinned && e.target !== canvasEl && !(e.target as Element).closest('.chart-tip-body') && ((pinned = false), (tipAt = null))} onkeydown={(e) => e.key === 'Escape' && pinned && (box?.contains(document.activeElement) && canvasEl.focus(), (pinned = kbd = false), (tipAt = null))} />
 
 <style>
   /* A sticky tip's body takes the pointer (the popover itself is click-through): the whole tip box is the bridge. */

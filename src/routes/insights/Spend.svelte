@@ -130,7 +130,7 @@
     {#if ppg && noPrice}
       <p class="hl-empty">{emptyLine('No priced bags in this period.')}</p>
     {:else if ppg}
-      <Chart type="line" labels={sr.labels} values={lines.first.values} datasetLabel={lines.first.label} legend format={perG} tickFormat={(v) => usd(v)} nearestX tipOf={lineTip}
+      <Chart type="line" labels={sr.labels} values={lines.first.values} datasetLabel={lines.first.label} legend format={perG} tickFormat={(v) => usd(v)} tipOf={lineTip}
         series={lines.rest} colors={lines.colors} height={260} />
     {:else}
       <Chart type="bar" vertical stacked labels={sr.labels} values={bars.first.values} datasetLabel={bars.first.label} legend format={money} tickFormat={money} tipOf={barTip}
@@ -187,7 +187,7 @@
         help={['Roasters you have bought from, added up over all your history.', 'The shaded stretch is this period.', 'Repeat-buy rate: the share of this period\'s roasters you have bought 2 or more bags from by its end.']}>
         {#if dc.repeatRate !== null}<span class="repeat">Repeat-buy rate <strong>{Math.round(100 * dc.repeatRate)}%</strong> · of {dc.roasters} roasters</span>{/if}
       </LabHead>
-      <Chart type="line" labels={dc.labels} values={dc.cumulative} datasetLabel="Roasters" titles={dc.titles} integer yMin={0} nearestX band={dc.band ?? undefined}
+      <Chart type="line" labels={dc.labels} values={dc.cumulative} datasetLabel="Roasters" titles={dc.titles} integer yMin={0} band={dc.band ?? undefined}
         format={(v) => `${v}`} height={220} />
     </section>
   {/if}
