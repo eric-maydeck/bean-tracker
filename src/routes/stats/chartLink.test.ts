@@ -10,12 +10,12 @@ const base = {
   tab: 'leaderboards' as const, owner: 'fuhnoo', tabLabel: 'Leaderboards', period: 'All time', brews: 412, avgRating: 7.94, filters: ['Kenya', 'Washed'],
   rank: 'rating' as const, perPerson: false, boards: none, records: null
 };
-const PAGE = { title: 'Insights: Leaderboards', description: "fuhnoo's top roasters, coffees, origins and gear\nAll time · Kenya · Washed\n412 brews · Avg rating 7.9" };
+const PAGE = { title: 'Stats: Leaderboards', description: "fuhnoo's top roasters, coffees, origins and gear\nAll time · Kenya · Washed\n412 brews · Avg rating 7.9" };
 
 describe('insightsPreview', () => {
   it('Origins board under rating', () => {
     expect(insightsPreview({ ...base, chart: 'leaderboard-origins' })).toEqual({
-      title: 'Insights: Origins',
+      title: 'Stats: Origins',
       description: 'Avg rating · All time\n🥇 8.4 · 🇪🇹 Ethiopia\n🥈 8.1 · 🇰🇪 Kenya\n🥉 7.9 · 🇨🇴 Colombia\n4. 7.5 · 🇷🇼 Rwanda\n5. 7.0 · 🇧🇮 Burundi'
     });
   });
@@ -49,7 +49,7 @@ describe('insightsPreview', () => {
       .toBe("What's on fuhnoo's shelf right now\nAll time\n4 bags waiting · 1.2kg · $52 tied up"));
   it('page level: summary per tab and owner, filters optional', () => {
     const d = insightsPreview({ ...base, owner: 'Eric', tab: 'water', tabLabel: 'Water', filters: [], brews: 1436, avgRating: 7.5 });
-    expect(d).toEqual({ title: 'Insights: Water', description: "How water affects Eric's ratings\nAll time\n1,436 brews · Avg rating 7.5" });
+    expect(d).toEqual({ title: 'Stats: Water', description: "How water affects Eric's ratings\nAll time\n1,436 brews · Avg rating 7.5" });
     expect(insightsPreview({ ...base, tab: 'overview', tabLabel: 'Overview' }).description.split('\n')[0]).toBe("fuhnoo's brewing at a glance");
   });
   const records = {
@@ -66,25 +66,25 @@ describe('insightsPreview', () => {
   const v = { ...base, tab: 'records' as const, tabLabel: 'Records', period: 'Last 3 months', boards: null, records };
   it('Records section', () => {
     expect(insightsPreview({ ...v, chart: 'records-taste' })).toEqual({
-      title: 'Insights: Taste', description: 'Last 3 months\nBest bag · 9.2\nBest day · 9.0'
+      title: 'Stats: Taste', description: 'Last 3 months\nBest bag · 9.2\nBest day · 9.0'
     });
-    expect(insightsPreview({ ...v, chart: 'records-money' }).title).toBe('Insights: Records');
+    expect(insightsPreview({ ...v, chart: 'records-money' }).title).toBe('Stats: Records');
     expect(insightsPreview({ ...v, chart: 'records-money' }).description.split('\n')[0]).toBe("fuhnoo's bests and extremes");
   });
   it('Top coffees and Top brews', () => {
     expect(insightsPreview({ ...v, chart: 'records-top-coffees' })).toEqual({
-      title: 'Insights: Top coffees', description: 'Avg rating · Last 3 months\n🥇 8.9 · Test Roaster · Lab Bag 3\n🥈 8.5 · Orphan'
+      title: 'Stats: Top coffees', description: 'Avg rating · Last 3 months\n🥇 8.9 · Test Roaster · Lab Bag 3\n🥈 8.5 · Orphan'
     });
     expect(insightsPreview({ ...v, chart: 'records-top-brews' })).toEqual({
-      title: 'Insights: Top brews', description: 'Rating · Last 3 months\n🥇 10.0 · Test Roaster · Lab Bag 3'
+      title: 'Stats: Top brews', description: 'Rating · Last 3 months\n🥇 10.0 · Test Roaster · Lab Bag 3'
     });
   });
   it('Records tile', () => {
     expect(insightsPreview({ ...v, chart: 'record-bestBag' })).toEqual({
-      title: 'Insights: Best bag', description: 'Last 3 months\n9.2\nTest Roaster · Lab Bag 3\n2026-08-01\nTied with 2 more'
+      title: 'Stats: Best bag', description: 'Last 3 months\n9.2\nTest Roaster · Lab Bag 3\n2026-08-01\nTied with 2 more'
     });
     expect(insightsPreview({ ...v, chart: 'record-bestDay' })).toEqual({
-      title: 'Insights: Best day', description: 'Last 3 months\n9.0\n2026-10-03'
+      title: 'Stats: Best day', description: 'Last 3 months\n9.0\n2026-10-03'
     });
     expect(recordAnchor('grindFine:A4Z (Femobook)')).toBe('record-grindFine-A4Z-Femobook');
   });

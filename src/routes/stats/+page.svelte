@@ -560,7 +560,7 @@
 
 
 <svelte:head>
-  <title>Bean Tracker - Insights</title>
+  <title>Bean Tracker - Stats</title>
 </svelte:head>
 <PreviewMeta
   preview={insightsPreview({
@@ -574,7 +574,7 @@
 <!-- Wide screens: a side rail of every view beside the whole page (the View dropdown stays). The links
      navigate like choose({ tab }): replace the entry, keep the scroll and focus. -->
 <div class="rail-layout">
-<nav class="insights-rail" aria-label="Insights sections">
+<nav class="insights-rail" aria-label="Stats sections">
   {#each groups as g (g.label)}
     <div class="rail-group" role="group" aria-labelledby="rail-{g.label}">
       <span class="rail-caption" id="rail-{g.label}">{g.label}</span>
@@ -594,7 +594,7 @@
 <CollapsibleBar desktopPinned={barHeight}>
 {#snippet children()}
 <div class="toolbar">
-  <h1>Insights</h1>
+  <h1>Stats</h1>
   <button class="button button-secondary reset" type="button" onclick={reset}>Reset</button>
   <ShareButton />
 </div>

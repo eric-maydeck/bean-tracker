@@ -22,7 +22,7 @@ describe('isShareablePath', () => {
       '/coffees',
       '/coffees?status=all&q=lume',
       '/coffees/2026-h-s-some-coffee',
-      '/stats?bc=brewing',
+      '/stats?tab=leaderboards&rank=grams',
       '/on-deck?show=decaf',
       '/subscriptions?view=list'
     ])

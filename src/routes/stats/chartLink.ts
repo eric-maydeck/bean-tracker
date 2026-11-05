@@ -75,7 +75,7 @@ export function recordParts(p: RecordPick, fmt: Fmt): [string, string?, string?]
 }
 export const recordValue = (p: RecordPick, fmt: Fmt): string => recordParts(p, fmt).filter(Boolean).join(' ');
 
-// ---- The /insights link preview ----
+// ---- The /stats link preview ----
 
 // What each tab is about, in the owner's name (ownerName(host)).
 const TAB_SUMMARY: Record<Tab, (n: string) => string> = {
@@ -125,23 +125,23 @@ export function insightsPreview(v: PreviewInput): Preview {
     const lowest = !!v.low?.includes(board);
     const header = `${v.rank === 'rating' ? 'Avg rating' : RANK_LABEL[v.rank]} · ${v.period}${lowest ? ' · lowest first' : ''}`;
     return {
-      title: `Insights: ${BOARD_TITLE[board]}`,
+      title: `Stats: ${BOARD_TITLE[board]}`,
       description: ranked(header, rows.map((r) => ({ value: boardValue(r.value, v.rank, v.perPerson, whole), name: board === 'origins' ? originWithFlag(r.label) : r.label })), lowest)
     };
   }
   const rec = v.records;
   if (rec && chart === 'records-top-coffees' && rec.topCoffees.length) {
-    return { title: 'Insights: Top coffees', description: ranked(`Avg rating · ${v.period}`, rec.topCoffees.map((c) => ({ value: c.mean.toFixed(1), name: holderRow(c.holder) }))) };
+    return { title: 'Stats: Top coffees', description: ranked(`Avg rating · ${v.period}`, rec.topCoffees.map((c) => ({ value: c.mean.toFixed(1), name: holderRow(c.holder) }))) };
   }
   // Roaster and coffee only: the brewer and filter would leave room for 3 rows, not 5 (user, 2026-10-25).
   if (rec && chart === 'records-top-brews' && rec.topBrews.length) {
-    return { title: 'Insights: Top brews', description: ranked(`Rating · ${v.period}`, rec.topBrews.map((b) => ({ value: b.rating.toFixed(1), name: [b.roaster, b.holder.label].filter(Boolean).join(' · ') }))) };
+    return { title: 'Stats: Top brews', description: ranked(`Rating · ${v.period}`, rec.topBrews.map((b) => ({ value: b.rating.toFixed(1), name: [b.roaster, b.holder.label].filter(Boolean).join(' · ') }))) };
   }
   const section = rec?.sections.find((s) => chart === `records-${s.key}`);
   if (section?.tiles.length) {
     const prefix = `${v.period}\n`;
     const items = section.tiles.map((t) => `${t.label} · ${recordValue(t, t.fmt)}`);
-    return { title: `Insights: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length) };
+    return { title: `Stats: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length) };
   }
   const tile = rec?.sections.flatMap((s) => s.tiles).find((t) => chart === recordAnchor(t.key));
   if (tile) {
@@ -150,10 +150,10 @@ export function insightsPreview(v: PreviewInput): Preview {
       v.period, recordValue(tile, tile.fmt), isDateHolder(tile.holder) ? tile.holder.label : holderRow(tile.holder),
       !isDateHolder(tile.holder) && tile.holder.date, tile.ties.length > 0 && `Tied with ${tile.ties.length} more`
     ].filter(Boolean) as string[];
-    return { title: `Insights: ${tile.label}`, description: fitList(lines, '\n', false) };
+    return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false) };
   }
   return {
-    title: `Insights: ${v.tabLabel}`,
+    title: `Stats: ${v.tabLabel}`,
     description: [
       TAB_SUMMARY[v.tab](v.owner),
       [v.period, ...v.filters].join(' · '),
