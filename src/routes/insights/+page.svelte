@@ -94,6 +94,26 @@
   const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => brewSelectsOn(s.tab).includes(k)).length + (gearGrinder ? 1 : 0));
   const brewOff = Object.fromEntries(BREW_FILTER_KEYS.map((k) => [k, undefined]));
 
+  // The Filters dialog edits a draft (fdraft, '' = Any/Default) seeded from the URL on open. Only Apply / Reset reach the URL;
+  // Esc, a backdrop click or any other close just drops it (the next open reseeds).
+  const grinderShown = $derived(s.tab === 'gear' && (data.lab?.grinders.length ?? 0) > 1);
+  const filterKeys = $derived<string[]>([...COFFEE_FIELDS.map(([k]) => k), 'caffeine', ...brewSelects, ...(grinderShown ? ['grinder'] : [])]);
+  let fdraft = $state<Record<string, string>>({});
+  function openFilters() {
+    fdraft = Object.fromEntries(filterKeys.map((k) => [k, ((s as Record<string, unknown>)[k] as string | undefined) ?? '']));
+    coffeesDialog?.showModal();
+  }
+  const applyFilters = () => {
+    void choose(Object.fromEntries(filterKeys.map((k) => [k, fdraft[k] || undefined])) as InsightsUrlState);
+    coffeesDialog?.close();
+  };
+  // A press and release on the dialog's own box, outside its rect (its padding is inside), is a backdrop click.
+  let pressedOutside = false;
+  const outside = (e: MouseEvent, d: HTMLDialogElement) => {
+    const r = d.getBoundingClientRect();
+    return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+  };
+
   // The Custom range dialog; its draft is `draft` below.
   let rangeDialog: HTMLDialogElement | undefined = $state();
 
@@ -636,7 +656,7 @@
   <div class="form-field group-field filters-field" style={cell('filters')}>
     <span>{FILTERS_LABEL}</span>
     <button class="button button-secondary filters-button" type="button" aria-haspopup="dialog"
-      onclick={() => coffeesDialog?.showModal()}
+      onclick={() => openFilters()}
       >Filters{#if badgeCount}<span class="badge">{badgeCount}</span>{/if}</button
     >
   </div>
@@ -669,7 +689,7 @@
     <div class="filter-chips coffee-chips">
       {#each coffeeChips as [key, value] (key)}
         <span class="filter-chip"
-          ><button type="button" class="filter-chip-label" use:labelTip={'Edit in Filters'} onclick={() => coffeesDialog?.showModal()}>{value}</button
+          ><button type="button" class="filter-chip-label" use:labelTip={'Edit in Filters'} onclick={() => openFilters()}>{value}</button
           ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
             aria-label="Remove filter: {value}" onclick={() => choose({ [key]: undefined, ...(key === 'roast' || key === 'process' ? { bag: undefined } : {}) })}>✕</button
           ></span
@@ -679,7 +699,7 @@
         {@const off = !brewSelectsOn(s.tab).includes(k)}
         {@const value = brewFilterText(k, s[k]!)}
         <span class="filter-chip" class:muted={off}
-          ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => !off && coffeesDialog?.showModal()}>{value}</button
+          ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => !off && openFilters()}>{value}</button
           ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
             aria-label="Remove filter: {value}" onclick={() => choose({ [k]: undefined })}>✕</button
           ></span
@@ -687,7 +707,7 @@
       {/each}
       {#if gearGrinder}
         <span class="filter-chip"
-          ><button type="button" class="filter-chip-label" use:labelTip={'Edit in Filters'} onclick={() => coffeesDialog?.showModal()}>{gearGrinder}</button
+          ><button type="button" class="filter-chip-label" use:labelTip={'Edit in Filters'} onclick={() => openFilters()}>{gearGrinder}</button
           ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
             aria-label="Remove filter: {gearGrinder}" onclick={() => choose({ grinder: undefined })}>✕</button
           ></span
@@ -701,7 +721,7 @@
 {#if data.roastMix}
   {@const [first, ...rest] = data.roastMix}
   <p class="chart-note roast-nudge">{first.roast} averages {first.mean.toFixed(1)}{#each rest as r (r.roast)}, {r.roast.toLowerCase()} {r.mean.toFixed(1)}{/each}:
-    <button type="button" class="filter-clear-all" onclick={() => coffeesDialog?.showModal()}>filter by roast</button></p>
+    <button type="button" class="filter-clear-all" onclick={() => openFilters()}>filter by roast</button></p>
 {/if}
   <!-- Focus lands on the dialog, never a date input (no-autofocus rule). -->
   <!-- svelte-ignore a11y_autofocus -->
@@ -725,15 +745,17 @@
     {/if}
   </dialog>
   <!-- Focus lands on the dialog, never a select (no keyboard pop). -->
-  <!-- svelte-ignore a11y_autofocus -->
-  <dialog bind:this={coffeesDialog} autofocus class="range-dialog coffees-dialog" aria-labelledby="coffees-title">
+  <!-- svelte-ignore a11y_autofocus, a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+  <dialog bind:this={coffeesDialog} autofocus class="range-dialog coffees-dialog" aria-labelledby="coffees-title"
+    onpointerdown={(e) => (pressedOutside = e.target === coffeesDialog && outside(e, coffeesDialog!))}
+    onclick={(e) => e.target === coffeesDialog && pressedOutside && outside(e, coffeesDialog!) && coffeesDialog.close()}>
     <h2 id="coffees-title">Filters</h2>
     <div class="coffees-fields">
       {#each COFFEE_FIELDS as [key, label, values] (key)}
         <label class="form-field">
           <span>{label}</span>
-          <select class="ctl-select" aria-label={label} value={s[key] ?? ''}
-            onchange={(e) => choose({ [key]: e.currentTarget.value || undefined })}>
+          <select class="ctl-select" aria-label={label} value={fdraft[key] ?? ''}
+            onchange={(e) => (fdraft[key] = e.currentTarget.value)}>
             <option value="">Any</option>
             {#each values as v (v)}<option value={v}>{v}</option>{/each}
           </select>
@@ -741,8 +763,8 @@
       {/each}
       <label class="form-field">
         <span>Caffeine</span>
-        <select class="ctl-select" aria-label="Caffeine" value={s.caffeine ?? ''}
-          onchange={(e) => choose({ caffeine: (e.currentTarget.value || undefined) as Caffeine | undefined })}>
+        <select class="ctl-select" aria-label="Caffeine" value={fdraft.caffeine ?? ''}
+          onchange={(e) => (fdraft.caffeine = e.currentTarget.value)}>
           <option value="" data-short="Default">{phone.current ? 'Default' : 'Default (caffeinated)'}</option>
           <option value="decaf">Decaf</option>
           <option value="all">All</option>
@@ -751,18 +773,18 @@
       {#each brewSelects as key (key)}
         <label class="form-field">
           <span>{BREW_FILTER_LABEL[key]}</span>
-          <select class="ctl-select" aria-label={BREW_FILTER_LABEL[key]} value={s[key] ?? ''}
-            onchange={(e) => choose({ [key]: e.currentTarget.value || undefined })}>
+          <select class="ctl-select" aria-label={BREW_FILTER_LABEL[key]} value={fdraft[key] ?? ''}
+            onchange={(e) => (fdraft[key] = e.currentTarget.value)}>
             <option value="">Any</option>
             {#each BREW_OPTIONS[key] as v (v)}<option value={v}>{brewFilterText(key, v)}</option>{/each}
           </select>
         </label>
       {/each}
-      {#if s.tab === 'gear' && (data.lab?.grinders.length ?? 0) > 1}
+      {#if grinderShown}
         <label class="form-field">
           <span>Grinder</span>
-          <select class="ctl-select" aria-label="Grinder" value={s.grinder ?? ''}
-            onchange={(e) => choose({ grinder: e.currentTarget.value || undefined })}>
+          <select class="ctl-select" aria-label="Grinder" value={fdraft.grinder ?? ''}
+            onchange={(e) => (fdraft.grinder = e.currentTarget.value)}>
             <option value="">Any</option>
             {#each data.lab!.grinders as g (g.slug)}<option value={g.slug}>{g.name}</option>{/each}
           </select>
@@ -770,8 +792,12 @@
       {/if}
     </div>
     <!-- Under the fields, its space always reserved: nothing above or below moves when the Default hint comes and goes. -->
-    <p class="coffees-note" class:off={!!s.caffeine}><span class="setting-name">Caffeine</span>, <span class="setting-name">Default (caffeinated)</span>: ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.</p>
-    <footer><button type="button" class="button" onclick={() => coffeesDialog?.close()}>Done</button></footer>
+    <p class="coffees-note" class:off={!!fdraft.caffeine}><span class="setting-name">Caffeine</span>, <span class="setting-name">Default (caffeinated)</span>: ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.</p>
+    <footer>
+      <button type="button" class="button button-ghost" onclick={() => coffeesDialog?.close()}>Cancel</button>
+      <button type="button" class="button button-secondary" onclick={() => (fdraft = Object.fromEntries(filterKeys.map((k) => [k, ''])))}>Reset</button>
+      <button type="button" class="button" onclick={() => applyFilters()}>Apply</button>
+    </footer>
   </dialog>
 
 <div class="period-row">
