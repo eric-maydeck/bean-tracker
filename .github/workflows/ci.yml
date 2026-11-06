@@ -46,6 +46,7 @@ jobs:
           cache: 'npm'
 
       - run: npm ci
+      - run: npx svelte-kit sync
       - run: npx playwright install --with-deps firefox
       - run: npm run test:ui:prod:performance
         env:
