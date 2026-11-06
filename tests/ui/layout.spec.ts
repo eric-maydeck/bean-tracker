@@ -11954,7 +11954,6 @@ for (const state of STATES) {
 // A non-UTC browser zone: "browser time" renders UTC on the first visit (server), then Tokyo after mount, and stays Tokyo
 // across a client-side navigation (no UTC flash from a Stamp created later).
 test.describe('browser in Tokyo', () => {
-  test.use({ timezoneId: 'Asia/Tokyo' });
   const minutesOf = (t: string) => {
     const m = [...t.matchAll(/Last updated: \d{4}-\d\d-\d\d (\d+):(\d\d) (AM|PM)/g)].at(-1); // /account has two; the footer's is last
     expect(m, t).not.toBeNull();
@@ -11963,7 +11962,17 @@ test.describe('browser in Tokyo', () => {
   // Each reading is checked against its own <time datetime>, so data written meanwhile by parallel tests cannot skew it.
   const updated = (foot: Locator) => foot.locator('.fi', { hasText: 'Last updated' }).locator('time');
   const utcMinutesOf = (iso: string) => { const d = new Date(iso); return d.getUTCHours() * 60 + d.getUTCMinutes(); };
-  test('display-zone-tokyo', { tag: ['@account', '@two'] }, async ({ page }) => {
+  // Its own Firefox: under parallel load the shared one sometimes left a context on the machine's zone (the page
+  // reported America/Denver despite timezoneId), so the Tokyo checks flaked.
+  test('display-zone-tokyo', { tag: ['@account', '@two'] }, async ({ playwright }, info) => {
+    const browser = await playwright.firefox.launch();
+    const ctx = await browser.newContext({ timezoneId: 'Asia/Tokyo', storageState: '.ui-test/admin.json', viewport: info.project.use.viewport ?? undefined,
+      baseURL: info.project.use.baseURL, deviceScaleFactor: info.project.use.deviceScaleFactor });
+    try {
+      await tokyoChecks(await ctx.newPage());
+    } finally { await browser.close(); }
+  });
+  const tokyoChecks = async (page: Page) => {
     await page.context().clearCookies({ name: 'tz' });
     const html = await (await page.context().request.get('/account')).text(); // the server's first render: UTC
     const footer = html.slice(html.indexOf('class="site-footer"')); // /account has another 'Last updated' (import time) above it
@@ -11983,7 +11992,7 @@ test.describe('browser in Tokyo', () => {
     await expect(foot).not.toContainText('UTC');
     const iso2 = (await updated(foot).getAttribute('datetime'))!;
     expect(minutesOf(await foot.innerText())).toBe((utcMinutesOf(iso2) + 540) % 1440);
-  });
+  };
 });
 
 // Public cards (signed out) with only a roaster default show it, alt "<roaster> logo".
