@@ -30,7 +30,7 @@ import { uploadStatus, UPLOAD_USERNAME } from '$lib/server/visualizerUpload';
 const UNMATCHED_BEAN_LIMIT = 20;
 
 // The browser's list of zones is not the server's: the page renders this one (UTC is always offered).
-const timeZones = () => ['UTC', ...Intl.supportedValuesOf('timeZone').filter((z) => z !== 'UTC')];
+const timeZones = (...extra: string[]) => [...new Set(['UTC', ...Intl.supportedValuesOf('timeZone'), ...extra].filter((z) => z !== 'browser'))];
 
 export const load: PageServerLoad = ({ locals, url }) => {
   if (!locals.isAdmin) redirect(303, '/login?redirectTo=%2Faccount');
@@ -39,7 +39,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
   return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImportedAt(db), doses: getBrewDoses(db), ratios: getBrewRatios(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME,
     householdSize: getHouseholdSize(db),
     settings: { brewingZone: getBrewingZone(db), displayZone: getDisplayZone(db), dateFormat: getDateFormat(db), defaultCaffeine: getDefaultCaffeine(db) },
-    zones: timeZones(),
+    zones: timeZones(getBrewingZone(db), getDisplayZone(db)), // a stored zone Node doesn't list still shows
     unmatchedBeans: { beans: getUnmatchedBeanConquerorBeans(db, UNMATCHED_BEAN_LIMIT), total: countUnmatchedBeanConquerorBeans(db) },
     linkableCoffees: getLinkableCoffees(db),
     roastLevels: getRoastLevels(db),

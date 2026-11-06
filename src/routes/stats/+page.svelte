@@ -76,7 +76,7 @@
     ['roast', 'Roast level', data.coffeeOptions.roasts], ['process', 'Process', data.coffeeOptions.processes],
     ['origin', 'Origin', data.coffeeOptions.origins], ['roaster', 'Roaster', data.coffeeOptions.roasters]
   ] as const);
-  // Caffeine's chip shows only when explicit (absent = the account's default, Account > Time).
+  // Caffeine's chip shows only when explicit (absent = the account's default, Account > Stats).
   // What the account's default Caffeine value does, for the Filters dialog's hint (its Default option names the value).
   const DEFAULT_HINT: Record<Caffeine, string> = {
     caffeinated: 'ratings leave decaf out. Counts, cost and Caffeinated vs. decaf include it.',

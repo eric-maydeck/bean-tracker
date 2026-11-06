@@ -47,7 +47,7 @@
     return async ({ result, update }) => {
       if (result.type === 'failure') {
         settingError = { name, text: `Could not save ${SETTING_LABEL[name].toLowerCase()}.` };
-        await update({ reset: false });
+        (document.getElementById(`set-${name}`) as HTMLSelectElement).value = before; // back to what is saved
         return;
       }
       settingError = null;

@@ -6,12 +6,15 @@ process.env.DB_PATH = ':memory:';
 import { getDb, setHouseholdSize, setDefaultCaffeine } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
 import { localToday, periodBounds, previousPeriod, addDays, daysBetween, trackedDays, comparePeriod, type Period } from '$lib/server/insights/time';
+import { setBrewingZone } from '$lib/localDate';
 import { load } from './+page.server';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const run = (q = '') => load({ url: new URL(`http://localhost/stats${q}`) } as never) as any;
 
 // Dates come from today, so the tests never age out of their periods.
+getDb(); // boots the empty :memory: DB (which pins the process to UTC) before today is read
+setBrewingZone('America/Denver');
 const today = localToday();
 
 // Each test seeds its own rows: one bag, linked bean, then [date, grams] brews.

@@ -208,6 +208,8 @@ describe('time and stats settings', () => {
     const d = load(event(true)) as unknown as Settings;
     expect(d.settings).toMatchObject({ displayZone: 'browser', dateFormat: 'iso12', defaultCaffeine: 'caffeinated' });
     expect(d.zones).toContain('UTC');
+    expect(d.zones).not.toContain('browser'); // the display select adds it first; a duplicate key breaks the page
+    expect(new Set(d.zones).size).toBe(d.zones.length);
     expect(d.zones).toContain('America/Denver');
   });
 

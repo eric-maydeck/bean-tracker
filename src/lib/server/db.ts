@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { schema } from './schema.ts';
-import { isTimeZone } from '../displayZone.ts';
+import { canonicalZone } from '../displayZone.ts';
 import { STORE_ZONE, setBrewingZone as setProcessZone, DATE_FORMATS, DEFAULT_DATE_FORMAT, type DateFormat } from '../localDate.ts';
 import { COFFEE_ORIGIN_FIELDS } from '../types.ts';
 import { applyCoffeeFixes } from './coffees.ts';
@@ -263,14 +263,14 @@ const BREWING_ZONE_KEY = 'brewing_time_zone';
 // The account's brewing zone (day and hour lines); UTC until set, and UTC if the stored value is not a zone.
 export function getBrewingZone(db: DatabaseSync): string {
   const v = (db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(BREWING_ZONE_KEY) as { value: string } | undefined)?.value;
-  return v && isZone(v) ? v : 'UTC';
+  return (v && canonicalZone(v)) || 'UTC';
 }
 
-const isZone = isTimeZone;
 
 // Saves the zone and applies it to this process.
-export function setBrewingZone(db: DatabaseSync, z: string): void {
-  if (!isZone(z)) throw new InvalidTimeZoneError(`unknown time zone: ${z}`);
+export function setBrewingZone(db: DatabaseSync, input: string): void {
+  const z = canonicalZone(input);
+  if (!z) throw new InvalidTimeZoneError(`unknown time zone: ${input}`);
   db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(BREWING_ZONE_KEY, z);
   setProcessZone(z);
 }
@@ -280,11 +280,12 @@ const DISPLAY_ZONE_KEY = 'display_time_zone';
 // Zone for clock times shown to a reader: 'browser' (the default) or an IANA zone.
 export function getDisplayZone(db: DatabaseSync): string {
   const row = db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(DISPLAY_ZONE_KEY) as { value: string } | undefined;
-  return row && isZone(row.value) ? row.value : 'browser';
+  return (row && canonicalZone(row.value)) || 'browser';
 }
 
-export function setDisplayZone(db: DatabaseSync, z: string): void {
-  if (z !== 'browser' && !isZone(z)) throw new InvalidTimeZoneError(`unknown time zone: ${z}`);
+export function setDisplayZone(db: DatabaseSync, input: string): void {
+  const z = input === 'browser' ? input : canonicalZone(input);
+  if (!z) throw new InvalidTimeZoneError(`unknown time zone: ${input}`);
   db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(DISPLAY_ZONE_KEY, z);
 }
 

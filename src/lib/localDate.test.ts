@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DATE_FORMATS, asDateFormat, formatInstant, formatStamp, localDate, localDateTime, localStamp, wallToInstant } from './localDate';
+import { DATE_FORMATS, stampText, asDateFormat, formatInstant, formatStamp, localDate, localDateTime, localStamp, wallToInstant } from './localDate';
 
 describe('localDate (a stored date as a local calendar date)', () => {
   it.each([
@@ -72,5 +72,13 @@ describe('date formats', () => {
     expect(asDateFormat('nope')).toBe('iso12');
     expect(asDateFormat(undefined)).toBe('iso12');
     expect(asDateFormat('eu')).toBe('eu');
+  });
+});
+
+describe('stampText', () => {
+  it('suffixes UTC only, with or without minute', () => {
+    expect(stampText('2026-10-23T02:05:23.000Z', 'UTC', 'iso12')).toBe('2026-10-23 2:05:23 AM UTC');
+    expect(stampText('2026-10-23T02:05:23.000Z', 'UTC', 'eu', true)).toBe('23/10/2026 02:05 UTC');
+    expect(stampText('2026-10-23T02:05:23.000Z', 'Asia/Tokyo', 'iso24', true)).toBe('2026-10-23 11:05');
   });
 });

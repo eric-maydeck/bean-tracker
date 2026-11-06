@@ -1,6 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb, getDefaultCaffeine } from '$lib/server/db';
 import { localTodayDate } from '$lib/server/localToday';
 import { getCoffeeBySlug, getDistinctFieldValues, getFillHistory, getRedirectSlug } from '$lib/server/coffees';
 import { getSubscriptionOptions, subscriptionOf } from '$lib/server/subscriptions';
@@ -32,7 +32,9 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     error(404, 'Coffee not found');
   }
   const likeView = parseLikeView(url.searchParams);
-  const r = coffeeLike(db, coffee.id, likeView);
+  // The account's default caffeine filter 'all' applies when the URL has no caffeine; a decaf default stays as before
+  // (a decaf-only like pool is a new mode; user call at preview). likeView stays URL-only, for the panel's explicit chips.
+  const r = coffeeLike(db, coffee.id, likeView.caffeine || getDefaultCaffeine(db) !== 'all' ? likeView : { ...likeView, caffeine: 'all' });
   const like = r && 'like' in r ? r.like : null;
   return {
     coffee: withComputedFields(coffee, localTodayDate()),

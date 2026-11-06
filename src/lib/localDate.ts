@@ -69,3 +69,7 @@ export function formatStamp(wall: string, format: DateFormat = DEFAULT_DATE_FORM
 
 // An instant as a stamp in a zone (default: the brewing zone, what the server renders; the page re-renders it in the browser's).
 export const formatInstant = (iso: string, zone?: string, format?: DateFormat, seconds?: boolean): string => formatStamp(localStamp(iso, zone), format, seconds);
+
+// What Stamp.svelte shows: the instant in a zone and format (`minute` drops seconds), " UTC" after a UTC time.
+export const stampText = (iso: string, zone: string, format: DateFormat, minute = false): string =>
+  formatInstant(iso, zone, format, !minute) + (zone === 'UTC' ? ' UTC' : '');

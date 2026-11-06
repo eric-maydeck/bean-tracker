@@ -9,6 +9,7 @@ import { CUSTOM_RANGE, isCustom, isDate, type By, type ByFits } from '$lib/insig
 // 1345/1345 brews against Bean Conqueror's unix timestamps; the JSON import
 // keeps the format via bcTimestamp()). Stored data never changes; reading converts it
 // to the brewing zone (as-is when they match).
+// ponytail: a zone other than STORE_ZONE converts per brew on every request; cache facts per zone if it ever shows in timings.
 export const bcLocalTime = (stored: string): string =>
   brewingZone() === STORE_ZONE ? stored.slice(0, 16) : localStamp(wallToInstant(stored), brewingZone()).slice(0, 16);
 

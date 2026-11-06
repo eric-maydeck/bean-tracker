@@ -7,7 +7,7 @@ import { isRedirect, isActionFailure } from '@sveltejs/kit';
 // (vitest isolates modules per test file, so this doesn't leak elsewhere).
 process.env.DB_PATH = ':memory:';
 
-import { getDb } from '$lib/server/db';
+import { getDb, setDefaultCaffeine } from '$lib/server/db';
 import { createCoffee, updateCoffee, getRedirectSlug, type NewCoffeeInput } from '$lib/server/coffees';
 import { load, actions } from './+page.server';
 import { load as insightsLoad } from '../../stats/+page.server';
@@ -142,6 +142,11 @@ describe('coffee page vs like coffees', () => {
     const at = (slug: string, q = '') => load({ params: { slug }, url: new URL(`http://x/?${q}`), setHeaders: () => {}, locals: { isAdmin: false } } as never) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     expect(at(dec.slug).noLike).toMatchObject({ why: 'No comparison: decaf coffees are left out by default.', fix: { caffeine: 'all' } });
     expect(at(dec.slug, 'caffeine=all')).toMatchObject({ like: { label: 'Washed Light coffees' }, noLike: null, likeView: { caffeine: 'all' } });
+    // The account's default caffeine 'all' applies when the URL says nothing; the panel's explicit view stays URL-only.
+    setDefaultCaffeine(db, 'all');
+    expect(at(dec.slug)).toMatchObject({ like: { label: 'Washed Light coffees' }, noLike: null });
+    expect(at(dec.slug).likeView.caffeine).toBeUndefined();
+    setDefaultCaffeine(db, 'caffeinated');
     const old = createCoffee(db, sampleInput({ coffee_name: 'Like Old', roaster: 'Roaster 8', origin: 'Kenya', roast_level: 'Light', processing: 'Washed' }));
     db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('lko', 'C', '2026-10-01', ?)`).run(old.id);
     for (let j = 0; j < 3; j++)

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createDb, applySchema, lastImportedAt, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError, getBrewingZone, setBrewingZone, InvalidTimeZoneError, getDisplayZone, setDisplayZone, getDateFormat, setDateFormat, getDefaultCaffeine, setDefaultCaffeine, InvalidSettingError } from './db';
+import { canonicalZone } from '../displayZone';
 import { brewingZone, setBrewingZone as setProcessZone } from '../localDate';
 import { schema } from './schema';
 import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear';
@@ -468,6 +469,17 @@ describe('brewing zone', () => {
     expect(() => setBrewingZone(db, 'Mars/Base')).toThrow(InvalidTimeZoneError);
     setBrewingZone(db, 'UTC');
     expect(getBrewingZone(db)).toBe('UTC');
+  });
+});
+
+describe('zone aliases', () => {
+  it('setters accept an alias and store its canonical name', () => {
+    const db = createDb(':memory:');
+    setBrewingZone(db, 'Asia/Kolkata');
+    setDisplayZone(db, 'Europe/Kyiv');
+    expect(getBrewingZone(db)).toBe(canonicalZone('Asia/Kolkata'));
+    expect(getDisplayZone(db)).toBe(canonicalZone('Europe/Kyiv'));
+    expect(() => setBrewingZone(db, 'Mars/Base')).toThrow(InvalidTimeZoneError);
   });
 });
 
