@@ -572,6 +572,20 @@ describe('page-wide coffees filter', () => {
       setDefault('caffeinated');
     }
   });
+  it('Overview last brews and finished bags show every coffee and its rating, whatever Caffeine says', () => {
+    seedTwo(true);
+    const r = (q: string) => run(`?tab=overview${q}`).recent;
+    const base = r('');
+    expect(base.brews).toHaveLength(5);
+    expect(base.brews.every((b: { rating: number | null }) => b.rating !== null)).toBe(true);
+    for (const q of ['&caffeine=decaf', '&caffeine=caffeinated', '&caffeine=all']) expect(r(q), q).toEqual(base);
+    try {
+      setDefaultCaffeine(getDb(), 'decaf');
+      expect(r('')).toEqual(base);
+    } finally {
+      setDefaultCaffeine(getDb(), 'caffeinated');
+    }
+  });
   it('Caffeine board ignores the Caffeine filter: both kinds under the default, Decaf and All', () => {
     seedTwo(true);
     const kinds = (q: string) => run(`?range=all&tab=leaderboards&rank=rating&ratings=all&dial=all${q}`).boards.caffeine.map((r: { label: string }) => r.label).sort();

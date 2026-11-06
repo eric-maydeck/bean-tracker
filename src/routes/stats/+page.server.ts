@@ -75,10 +75,8 @@ export const load: PageServerLoad = ({ url, locals }) => {
   const scored = s.dial === 'all' ? brews : onceDialed(brews, dialIn);
   // The Caffeine board splits caffeinated from decaf, so it ignores the Caffeine filter: every brew, decaf's ratings kept,
   // under the other filters.
-  const cafBrews = (() => {
-    const own = everyBrew.filter(matches).filter(matchesBrew(bf));
-    return s.dial === 'all' ? own : onceDialed(own, dialIn);
-  })();
+  const ownBrews = everyBrew.filter(matches).filter(matchesBrew(bf));
+  const cafBrews = s.dial === 'all' ? ownBrews : onceDialed(ownBrews, dialIn);
   const cafBags = everyBag.filter(matches);
   const wholeScored = s.dial === 'all' ? whole : onceDialed(whole, dialIn); // records' whole-bag figures
   const labCtx = { period, ratings: s.ratings };
@@ -237,7 +235,8 @@ export const load: PageServerLoad = ({ url, locals }) => {
     gear: s.tab === 'gear' ? gearTab(scored, labCtx) : null,
     recapsTab,
     recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin, period) : null,
-    recent: s.tab === 'overview' ? recent(brews, bags, 50) : null,
+    // The last-brews and finished-bags lists show every coffee and its rating, whatever the Caffeine filter says.
+    recent: s.tab === 'overview' ? recent(ownBrews, cafBags, 50) : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {
       finished: paceDelta(now.finished, nowPrev.finished, days(period), days(prev!), pace),
