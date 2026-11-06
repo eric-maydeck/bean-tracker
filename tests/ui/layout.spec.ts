@@ -11961,25 +11961,27 @@ test.describe('browser in Tokyo', () => {
     return ((Number(m![1]) % 12) + (m![3] === 'PM' ? 12 : 0)) * 60 + Number(m![2]);
   };
   // Each reading is checked against its own <time datetime>, so data written meanwhile by parallel tests cannot skew it.
+  const updated = (foot: Locator) => foot.locator('.fi', { hasText: 'Last updated' }).locator('time');
   const utcMinutesOf = (iso: string) => { const d = new Date(iso); return d.getUTCHours() * 60 + d.getUTCMinutes(); };
   test('display-zone-tokyo', { tag: ['@account', '@two'] }, async ({ page }) => {
     await page.context().clearCookies({ name: 'tz' });
     const html = await (await page.context().request.get('/account')).text(); // the server's first render: UTC
-    const flat = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
-    const ssrIso = [...html.matchAll(/<time datetime="([^"]+)">[^<]*<\/time>/g)].at(-1)![1]; // footer stamp
+    const footer = html.slice(html.indexOf('class="site-footer"')); // /account has another 'Last updated' (import time) above it
+    const flat = footer.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+    const ssrIso = /<time datetime="([^"]+)">/.exec(footer.slice(footer.indexOf('Last updated')))![1];
     expect(html).toContain('UTC');
     expect(minutesOf(flat), 'server render is UTC').toBe(utcMinutesOf(ssrIso));
     await gotoReady(page, '/water');
     const foot = page.locator('.site-footer');
     await expect(foot).not.toContainText('UTC');
-    const iso = (await foot.locator('time').first().getAttribute('datetime'))!;
+    const iso = (await updated(foot).getAttribute('datetime'))!;
     const tokyo = minutesOf(await foot.innerText());
     expect(tokyo, 'Tokyo is UTC+9').toBe((utcMinutesOf(iso) + 540) % 1440);
     await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === 'tz')?.value).toBe('Asia/Tokyo');
     await page.locator('a[href="/coffees"]:visible').first().click(); // client-side navigation
     await expect(page).toHaveURL(/\/coffees/);
     await expect(foot).not.toContainText('UTC');
-    const iso2 = (await foot.locator('time').first().getAttribute('datetime'))!;
+    const iso2 = (await updated(foot).getAttribute('datetime'))!;
     expect(minutesOf(await foot.innerText())).toBe((utcMinutesOf(iso2) + 540) % 1440);
   });
 });

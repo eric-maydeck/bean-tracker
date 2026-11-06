@@ -547,7 +547,7 @@ test.describe('settings', () => {
     const t = await foot.innerText();
     const m = /Last updated: \d{4}-\d\d-\d\d (\d+):(\d\d) (AM|PM)/.exec(t);
     expect(m, t).not.toBeNull();
-    const d = new Date((await foot.locator('time').first().getAttribute('datetime'))!);
+    const d = new Date((await foot.locator('.fi', { hasText: 'Last updated' }).locator('time').getAttribute('datetime'))!);
     return (((Number(m![1]) % 12) + (m![3] === 'PM' ? 12 : 0)) * 60 + Number(m![2]) - d.getUTCHours() * 60 - d.getUTCMinutes() + 1440) % 1440;
   };
   test('display zone, date format and default caffeine', { tag: '@account' }, async ({ page }) => {
