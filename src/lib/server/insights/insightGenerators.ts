@@ -275,10 +275,11 @@ const DIMS = [
 ] as const;
 // A group of bags against the rest, each bag against the rest of its own caffeine kind (user, 2026-11-05: decaf and
 // caffeinated are brewed too differently to share a baseline). Every bag's value minus the weighted mean of the rest
-// bags of its kind; a group bag whose kind has no rest bag drops out. One kind = the plain rest comparison.
+// bags of its kind. A kind missing from the group or from the rest drops out on both sides (a group bag with no
+// same-kind rest, and rest bags of a kind the group lacks), so neither counts toward n. One kind = the plain rest comparison.
 // Returns the centered values of the group and of the rest (the rest's own weighted mean is 0 per kind).
 function againstKind(group: readonly BagFact[], rest: readonly BagFact[], m: (b: BagFact) => number, w: (b: BagFact) => number) {
-  const base = new Map([true, false].flatMap((k) => { const r = rest.filter((b) => b.decaf === k); return r.length ? [[k, wmean(r.map(m), r.map(w))] as const] : []; }));
+  const base = new Map([true, false].flatMap((k) => { const r = rest.filter((b) => b.decaf === k); return r.length && group.some((b) => b.decaf === k) ? [[k, wmean(r.map(m), r.map(w))] as const] : []; }));
   const cen = (bs: readonly BagFact[]) => bs.filter((b) => base.has(b.decaf)).map((b) => ({ b, v: m(b) - base.get(b.decaf)!, w: w(b) }));
   return { group: cen(group), rest: cen(rest) };
 }
@@ -293,16 +294,17 @@ const groupDelta: Generator = (c) => {
       const rest = rated.filter((b) => !bs.includes(b));
       if (!rest.length) return [];
       const vs = againstKind(bs, rest, m, w);
-      if (!vs.group.length) return [];
+      const kept = vs.group.map((x) => x.b); // bags with a same-kind rest; the only ones counted
+      if (kept.length < MIN_BAGS) return [];
       const gv = vs.group.map((x) => x.v), gw = vs.group.map((x) => x.w), rv = vs.rest.map((x) => x.v), rw = vs.rest.map((x) => x.w);
       const delta = wmean(gv, gw) - wmean(rv, rw); // vs your other bags of the same kind, weighted
-      const ranked = [...bs].sort((x, y) => (delta >= 0 ? m(y) - m(x) : m(x) - m(y)) || x.name.localeCompare(y.name));
+      const ranked = [...kept].sort((x, y) => (delta >= 0 ? m(y) - m(x) : m(x) - m(y)) || x.name.localeCompare(y.name));
       const f = graded({
         key: `groupDelta:${dim}:${label}`, theme: 'taste', kind: 'number',
         headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(1)} ${delta < 0 ? 'lower' : 'higher'}`,
-        value: signed(delta, 1), sample: `${plural(bs.length, 'bag')}`, href: `${LB}&open=${board}`,
+        value: signed(delta, 1), sample: `${plural(kept.length, 'bag')}`, href: `${LB}&open=${board}`,
         ...details([delta >= 0 ? 'Highest rated' : 'Lowest rated', ranked.map((b) => detail(b.name, m(b).toFixed(1), coffeeHref(b)))])
-      }, restZ(gv, rv, gw, rw), true, 'bags', bs.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, rated.length);
+      }, restZ(gv, rv, gw, rw), true, 'bags', kept.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, rated.length);
       return f ? [f] : [];
     });
   });
@@ -772,12 +774,14 @@ const originMyth: Generator = (c) => {
   const bs = c.bags.filter((b) => pts.has(b.id));
   const m = (b: BagFact) => pts.get(b.id)!.m, w = (b: BagFact) => pts.get(b.id)!.w;
   const spread = sd(bs.map(m));
-  const gs = [...groupBy(bs, (b) => (b.origin && b.origin !== 'Other / Unknown' ? b.origin : null)).values()].filter((g) => g.length >= MIN_BAGS);
+  // Per origin: its bags with a same-kind rest (againstKind); an origin left under MIN_BAGS of them is not compared.
+  const cmp = [...groupBy(bs, (b) => (b.origin && b.origin !== 'Other / Unknown' ? b.origin : null)).values()].filter((g) => g.length >= MIN_BAGS)
+    .map((g) => ({ g, vs: againstKind(g, bs.filter((b) => !g.includes(b)), m, w) })).filter((x) => x.vs.group.length >= MIN_BAGS);
+  const gs = cmp.map((x) => x.vs.group.map((y) => y.b));
   if (gs.length < 3) return null;
-  const gaps = gs.map((g) => {
-    const vs = againstKind(g, bs.filter((b) => !g.includes(b)), m, w);
+  const gaps = cmp.map(({ vs }) => {
     const gv = vs.group.map((x) => x.v), gw = vs.group.map((x) => x.w), rv = vs.rest.map((x) => x.v), rw = vs.rest.map((x) => x.w);
-    return gv.length ? { d: Math.abs(wmean(gv, gw) - wmean(rv, rw)), se: spread * Math.sqrt(1 / effN(gw) + 1 / effN(rw)) } : { d: 0, se: 0 };
+    return { d: Math.abs(wmean(gv, gw) - wmean(rv, rw)), se: spread * Math.sqrt(1 / effN(gw) + 1 / effN(rw)) };
   });
   const max = Math.max(...gaps.map((x) => x.d)), band = Math.max(...gaps.map((x) => x.d + 2 * x.se));
   if (max > ORIGIN_EVEN) return null;

@@ -181,13 +181,30 @@ describe('group effects', () => {
     expect(f).toMatchObject({ theme: 'taste', kind: 'number', strength: 'solid', value: '-2.0', headline: 'Light roasts rate 2.0 lower', sample: '4 bags' });
     expect(f.href).toBe('/stats?tab=leaderboards&open=roast');
   });
+  const kind = (n: number, dec: (i: number) => boolean, rate: (i: number) => number, light = (i: number) => i < 4) => {
+    const kb = bags(n, (i) => ({ roastLevel: light(i) ? 'Light' : 'Medium', roaster: `Rst ${i % 4}`, origin: 'Kenya', processGroup: 'Washed', decaf: dec(i) }));
+    return { kb, kr: kb.flatMap((x, i) => seq(x.id, dup(Array(3).fill(rate(i) + (i % 2 ? 0.2 : -0.2))))) };
+  };
   it('each bag is compared with the rest of its own caffeine kind', () => {
-    // Light = 4 decaf bags at 6; the other decafs (4) also sit at 6, the caffeinated ones (4) at 9. Pooled: 6 vs 7.5 = -1.5;
-    // within kind it is 6 vs 6 = 0.
-    const kb = bags(12, (i) => ({ roastLevel: i < 4 ? 'Light' : 'Medium', roaster: `Rst ${i % 4}`, origin: 'Kenya', processGroup: 'Washed', decaf: i < 8 }));
-    const kr = kb.flatMap((x, i) => seq(x.id, dup(Array(3).fill(i < 8 ? 6 + (i % 2 ? 0.2 : -0.2) : 9 + (i % 2 ? 0.2 : -0.2)))));
+    // Light = 4 decaf bags at 5; the other decafs (4) sit at 6, the caffeinated ones (4) at 9. Pooled: 5 vs 7.5 = -2.5; within kind -1.0.
+    const { kb, kr } = kind(12, (i) => i < 8, (i) => (i < 4 ? 5 : i < 8 ? 6 : 9));
     const f = gen('groupDelta:roastLevel:Light', kr, kb);
-    expect(f === null || Math.abs(Number(f.value)) < 0.1).toBe(true);
+    expect(f).not.toBeNull();
+    expect(f!.value).toBe('-1.0');
+  });
+  it('rest bags of a kind the group lacks do not count toward n or strength', () => {
+    const base = kind(8, (i) => i < 8, (i) => (i < 4 ? 5 : 6));
+    const extra = kind(12, (i) => i < 8, (i) => (i < 4 ? 5 : i < 8 ? 6 : 6)); // 4 more caffeinated rest bags, same ratings
+    const withCaf = gen('groupDelta:roastLevel:Light', extra.kr, extra.kb)!, without = gen('groupDelta:roastLevel:Light', base.kr, base.kb)!;
+    expect(withCaf.z).toBeCloseTo(without.z!, 10);
+  });
+  it('a group bag with no same-kind rest is not counted in the sample or the 3-bag gate', () => {
+    // Light = 3 decaf + 1 caffeinated; the rest is all decaf: the caffeinated Light bag drops, 3 bags remain.
+    const { kb, kr } = kind(12, (i) => i !== 3, (i) => (i < 4 ? 5 : 6));
+    expect(gen('groupDelta:roastLevel:Light', kr, kb)!.sample).toBe('3 bags');
+    // 2 decaf + 2 caffeinated Light, rest all decaf: 2 left, under the gate.
+    const two = kind(12, (i) => i > 1 && (i < 4 || i >= 4), (i) => (i < 4 ? 5 : 6));
+    expect(gen('groupDelta:roastLevel:Light', two.kr, two.kb)).toBeNull();
   });
   it('a mixed group: each bag against its own kind', () => {
     // Light = 2 decaf + 2 caffeinated, each 0.5 above its kind (decaf 6, caffeinated 9); the rest is mostly decaf, so the
@@ -590,6 +607,15 @@ describe('origin myth', () => {
     const { bs, brews } = mk([8, 8.2, 7.8]);
     expect(gen('originMyth', brews, bs)).toMatchObject({ headline: 'No origin stands out yet', value: '±0.3',
       body: 'All 3 origins with 3+ bags rate within ±0.3 of your other bags; with so few bags each, the margin of error reaches ±0.5.' });
+  });
+  it('an origin whose bags have no same-kind rest is left out, not counted as even', () => {
+    // 4 origins x 3 bags; Peru is the only caffeinated one, so it has no caffeinated rest and drops out of the 4.
+    const origins = ['Kenya', 'Ethiopia', 'Colombia', 'Peru'];
+    const bs = bags(12, (i) => ({ origin: origins[Math.floor(i / 3)], decaf: i < 9 }));
+    const brews = bs.flatMap((b, i) => seq(b.id, Array(4).fill([8, 8.2, 7.8, 8][Math.floor(i / 3)])));
+    const f = gen('originMyth', brews, bs)!;
+    expect(f.body).toMatch(/^All 3 origins /);
+    expect(f.sample).toBe('9 bags');
   });
   it('a 0.6 gap or under 3 origins: null', () => {
     let m = mk([8, 8.6, 7.4]); expect(gen('originMyth', m.brews, m.bs)).toBeNull();
