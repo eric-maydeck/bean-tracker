@@ -129,6 +129,13 @@ describe('hour', () => {
     expect(s.context).toMatch(/^\d{3} brews: that's 1 in 6 brews at 1pm\. Your brew day spans anywhere from 7:\d\dam to 10:\d\dpm\.$/);
     expect(s.viz).toMatchObject({ kind: 'bars', hi: 6 });
   });
+  it('axis labels keep 3 bars from each end label, so "4am" never meets "6am"', () => {
+    const bs = [...days('2026-03-01', 50, '13'), brew({ at: '2026-04-01T04:10' }), brew({ at: '2026-04-02T22:10' })];
+    const viz = fact('hour').run(ctx(bs))!.viz as { labels: string[] };
+    const at = viz.labels.flatMap((l, i) => (l ? [i] : []));
+    expect(viz.labels[0]).toBe('4am');
+    for (let k = 1; k < at.length; k++) expect(at[k] - at[k - 1], viz.labels.join()).toBeGreaterThanOrEqual(3);
+  });
   it('skips backfilled brews; null under 50', () => {
     const timed = days('2026-03-01', 49, '13');
     const typed = Array.from({ length: 100 }, (_, i) => brew({ at: `2026-04-${String(1 + (i % 28)).padStart(2, '0')}T08:00`, backfilled: true }));

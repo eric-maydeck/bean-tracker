@@ -110,7 +110,7 @@ const hour: FactDef = {
     if (!early || !late) return null;
     const values = by.slice(lo, hiH + 1);
     const hrs = values.map((_, i) => lo + i);
-    const labels = hrs.map((h, i) => (i === 0 || i === hrs.length - 1 || (h % 6 === 0 && i > 1 && i < hrs.length - 2) ? h12(h) : ''));
+    const labels = hrs.map((h, i) => (i === 0 || i === hrs.length - 1 || (h % 6 === 0 && i > 2 && i < hrs.length - 3) ? h12(h) : ''));
     return {
       id: 'hour',
       lead: 'Your coffee hour is', big: h12(top),
