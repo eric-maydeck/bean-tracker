@@ -255,11 +255,6 @@
   {#if householdError}<p class="badge badge-urgent" role="alert">{householdError}</p>{/if}
 </section>
 
-<section data-row-scope class="chart-panel" id="stats-settings">
-  <h2>Stats</h2>
-  {@render setting('defaultCaffeine', 'What the Stats Caffeine filter shows when it is on Default', CAFFEINE_OPTIONS)}
-</section>
-
 </div>
 <div>
 <section data-row-scope class="chart-panel">
@@ -320,6 +315,10 @@
   {@render setting('brewingZone', 'Where day and hour lines are drawn in your stats', data.zones.map((z) => [z, z] as const))}
   {@render setting('displayZone', 'How update and upload times are shown', [['browser', 'Browser time'], ...data.zones.map((z) => [z, z] as const)])}
   {@render setting('dateFormat', 'How dates and times are written', FORMAT_OPTIONS)}
+</section>
+<section data-row-scope class="chart-panel" id="stats-settings">
+  <h2>Stats</h2>
+  {@render setting('defaultCaffeine', 'What the Stats Caffeine filter shows when it is on Default', CAFFEINE_OPTIONS)}
 </section>
 </div>
 </div>

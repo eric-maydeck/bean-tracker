@@ -4199,12 +4199,12 @@ export const STATES: State[] = [
     }
   },
   {
-    // Wide screens: Bean Conqueror + Household left, Recipes + Brew now right; one column below 1100px. Checked in dark too.
+    // Wide screens: Bean Conqueror + Household left, Recipes + Brew now + Time + Stats right; one column below 1100px. Checked in dark too.
     name: 'account-columns', path: () => '/account',
     act: async (page) => {
       const secs = await page.locator('.acct section').evaluateAll((els) => els.map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, right: b.right, y: b.y, bottom: b.bottom }; }));
-      expect(secs).toHaveLength(4); // Bean Conqueror, Household, Recipes, Brew now
-      const [a, h, b, c] = secs;
+      expect(secs).toHaveLength(6); // left: Bean Conqueror, Household; right: Recipes, Brew now, Time, Stats
+      const [a, h, b, , , st] = secs, c = st;
       if (page.viewportSize()!.width >= 1100) {
         expect(b.x).toBeGreaterThan(a.right); // right column
         expect(Math.abs(c.x - b.x)).toBeLessThan(2);
@@ -11956,7 +11956,8 @@ for (const state of STATES) {
 test.describe('browser in Tokyo', () => {
   test.use({ timezoneId: 'Asia/Tokyo' });
   const footerMinutes = (t: string) => {
-    const m = /Last updated: \d{4}-\d\d-\d\d (\d+):(\d\d) (AM|PM)/.exec(t);
+    // /account's Bean Conqueror panel has its own (import time) 'Last updated' too; the footer's is the last one.
+    const m = [...t.matchAll(/Last updated: \d{4}-\d\d-\d\d (\d+):(\d\d) (AM|PM)/g)].at(-1);
     expect(m, t).not.toBeNull();
     return ((Number(m![1]) % 12) + (m![3] === 'PM' ? 12 : 0)) * 60 + Number(m![2]);
   };
