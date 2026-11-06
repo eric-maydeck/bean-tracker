@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import type { BrewRow } from '$lib/server/brewNow/load';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
@@ -15,10 +16,10 @@
   const x = (v: number) => (gh === gl ? (L + W - R) / 2 : L + 14 + ((v - gl) / (gh - gl)) * (W - L - R - 28));
   const y = (v: number) => H - B - ((v - rl) / (rh - rl)) * (H - B - T);
   const gname = (v: number) => pts.find((p) => p.grindNum === v)?.grind;
-  const label = (p: BrewRow) => `${p.localTime.slice(0, 10)}, grind ${p.grind}, rated ${p.rating}${p.best ? ', Best brew' : ''}`;
+  const label = (p: BrewRow) => `${formatDate(p.localTime)}, grind ${p.grind}, rated ${p.rating}${p.best ? ', Best brew' : ''}`;
   const crown = (cx: number, cy: number) => `${cx - 5},${cy - 6} ${cx - 5},${cy - 12} ${cx - 2.5},${cy - 9} ${cx},${cy - 13} ${cx + 2.5},${cy - 9} ${cx + 5},${cy - 12} ${cx + 5},${cy - 6}`;
   const tipOf = (p: BrewRow) => ({
-    title: p.localTime.slice(0, 10),
+    title: formatDate(p.localTime),
     rows: [['Grind', p.grind ?? '–'], ['Rating', String(p.rating)], ...(p.tempC ? [['Temp', `${p.tempC}°C`]] : []),
       ...([p.dripper, p.filter].filter(Boolean).length ? [['Dripper', [p.dripper, p.filter].filter(Boolean).join(' · ')]] : [])] as [string, string][],
     ...(p.best ? { note: 'Best brew' } : {})

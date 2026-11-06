@@ -20,6 +20,7 @@
 </script>
 
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import { unitGap } from '$lib/unitGap';
   import WholeNote from './WholeNote.svelte';
   import { setting } from '$lib/settingName';
@@ -50,7 +51,8 @@
 
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
   const anchor = recordAnchor;
-  const date = holderDate, isDate = isDateHolder, name = holderName, parts = recordParts, plain = recordValue;
+  const date = (d: string) => (d.length === 10 ? formatDate(d) : holderDate(d)), isDate = isDateHolder,
+    name = (h: Parameters<typeof holderName>[0]) => (isDate(h) ? date(h.label) : h.label), parts = recordParts, plain = recordValue;
   // The record's inputs (what its value is made of), on their own line: a derived value shows its working.
   // Roaster money records count bags bought in the period: the line says which window.
   const BOUGHT = new Set(['roasterSpend', 'roasterBags']);

@@ -67,6 +67,13 @@ export function formatStamp(wall: string, format: DateFormat = DEFAULT_DATE_FORM
   return `${date} ${hm(true)}`;
 }
 
+// A calendar date 'YYYY-MM-DD' in a format: 2026-10-22 (iso12, iso24), 10/22/2026 (us), 22/10/2026 (eu). Never zone-shifted.
+export function formatDay(day: string, format: DateFormat = DEFAULT_DATE_FORMAT): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!m) return day;
+  return format === 'us' ? `${m[2]}/${m[3]}/${m[1]}` : format === 'eu' ? `${m[3]}/${m[2]}/${m[1]}` : day;
+}
+
 // An instant as a stamp in a zone (default: the brewing zone, what the server renders; the page re-renders it in the browser's).
 export const formatInstant = (iso: string, zone?: string, format?: DateFormat, seconds?: boolean): string => formatStamp(localStamp(iso, zone), format, seconds);
 

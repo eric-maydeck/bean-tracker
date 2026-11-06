@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import Usd from '$lib/components/Usd.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
   import { usd, wholeUsd } from '$lib/money';
@@ -450,7 +451,7 @@
           </td>
           {#if !canEdit}
             <td>{sub.total_grams ?? '—'}</td>
-            <td>{sub.paused ? '—' : (sub.next_renewal_date ?? '—')}</td>
+            <td>{sub.paused ? '—' : formatDate(sub.next_renewal_date ?? '—')}</td>
           {:else}
             <td>
               <input
@@ -716,7 +717,7 @@
             <div class="compact-row-detail">
               <div class="compact-detail-grid">
                 <div><span class="eyebrow">Total grams</span>{sub.total_grams ?? '—'}</div>
-                <div><span class="eyebrow">Next renewal</span>{sub.paused ? '—' : (sub.next_renewal_date ?? '—')}</div>
+                <div><span class="eyebrow">Next renewal</span>{sub.paused ? '—' : formatDate(sub.next_renewal_date ?? '—')}</div>
                 {#if sub.subscription_url}
                   <!-- The row above is a button, so its names can't be links; they link here. -->
                   <div class="sub-links">

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import { showToast } from '$lib/toast.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { bqImportHref, cloneHref, editHref } from '$lib/bqImportUrl';
@@ -160,7 +161,7 @@
             {/if}
             {#if coffee.roast_date}
               <p class="text-muted">
-                Roasted {coffee.roast_date}
+                Roasted {formatDate(coffee.roast_date)}
                 {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
               </p>
             {/if}
@@ -201,7 +202,7 @@
             {/if}
             {#if coffee.roast_date}
               <p class="text-muted">
-                Roasted {coffee.roast_date}
+                Roasted {formatDate(coffee.roast_date)}
                 {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
               </p>
             {/if}

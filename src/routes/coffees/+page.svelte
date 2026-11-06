@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import { labelTip } from '$lib/components/labelTip';
   import { bqImportHref } from '$lib/bqImportUrl';
   import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '$lib/coffeeToast';
@@ -872,7 +873,7 @@
               </p>
               {#if coffee.roast_date}
                 <p class="text-muted">
-                  Roasted {coffee.roast_date}
+                  Roasted {formatDate(coffee.roast_date)}
                   {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
                 </p>
               {/if}
@@ -930,7 +931,7 @@
           </p>
           {#if coffee.roast_date}
             <p class="text-muted">
-              Roasted {coffee.roast_date}
+              Roasted {formatDate(coffee.roast_date)}
               {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
             </p>
           {/if}
@@ -1014,14 +1015,14 @@
                 </div>
                 <div>
                   <span class="eyebrow">Roasted</span>
-                  {coffee.roast_date ?? '—'}{coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
+                  {formatDate(coffee.roast_date ?? '—')}{coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
                 </div>
                 <div>
                   <span class="eyebrow">Rest window</span>
                   {#if coffee.drink_after && coffee.drink_before}{coffee.drink_after} – {coffee.drink_before}{:else}—{/if}
                 </div>
-                <div><span class="eyebrow">Frozen</span>{coffee.frozen_start_date ?? '—'}</div>
-                <div><span class="eyebrow">Unfrozen</span>{coffee.frozen_end_date ?? '—'}</div>
+                <div><span class="eyebrow">Frozen</span>{formatDate(coffee.frozen_start_date ?? '—')}</div>
+                <div><span class="eyebrow">Unfrozen</span>{formatDate(coffee.frozen_end_date ?? '—')}</div>
               </div>
               {#if coffee.status === 'archive'}
                 <span class="badge badge-fresh">Archive</span>
@@ -1192,11 +1193,11 @@
             <td>{#if coffee.cost_per_gram != null}<Usd n={coffee.cost_per_gram} />{:else}—{/if}</td>
             <td class="nowrap">{coffee.amount_g != null ? formatBag(coffee.amount_g, coffee.grams_left) : '—'}</td>
             <td>
-              {coffee.roast_date ?? '—'}
+              {formatDate(coffee.roast_date ?? '—')}
               {#if coffee.days_since_roast != null}<br />({coffee.days_since_roast}d ago){/if}
             </td>
-            <td>{coffee.frozen_start_date ?? '—'}</td>
-            <td>{coffee.frozen_end_date ?? '—'}</td>
+            <td>{formatDate(coffee.frozen_start_date ?? '—')}</td>
+            <td>{formatDate(coffee.frozen_end_date ?? '—')}</td>
             <td>
               {#if coffee.drink_after && coffee.drink_before}
                 {coffee.drink_after} –<br />{coffee.drink_before}

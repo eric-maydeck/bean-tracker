@@ -516,7 +516,7 @@
           class:has-extra={data.coffee.frozen_start_date || data.coffee.frozen_end_date || data.coffee.opened_date || (data.coffee.status === 'archive' && data.coffee.moved_date)}>
           <div class="stat">
             <span class="stat-label">Roast date</span>
-            <span class="stat-value">{data.coffee.roast_date ?? '—'}</span>
+            <span class="stat-value">{formatDate(data.coffee.roast_date ?? '—')}</span>
           </div>
           <div class="stat">
             <span class="stat-label">Days since roast</span>
@@ -541,25 +541,25 @@
           {#if data.coffee.frozen_start_date}
             <div class="stat">
               <span class="stat-label">Frozen start</span>
-              <span class="stat-value">{data.coffee.frozen_start_date}</span>
+              <span class="stat-value">{formatDate(data.coffee.frozen_start_date)}</span>
             </div>
           {/if}
           {#if data.coffee.frozen_end_date}
             <div class="stat">
               <span class="stat-label">Frozen end</span>
-              <span class="stat-value">{data.coffee.frozen_end_date}</span>
+              <span class="stat-value">{formatDate(data.coffee.frozen_end_date)}</span>
             </div>
           {/if}
           {#if data.coffee.opened_date}
             <div class="stat">
               <span class="stat-label">Opened</span>
-              <span class="stat-value">{localDate(data.coffee.opened_date)}</span>
+              <span class="stat-value">{formatDate(localDate(data.coffee.opened_date))}</span>
             </div>
           {/if}
           {#if data.coffee.status === 'archive' && data.coffee.moved_date}
             <div class="stat">
               <span class="stat-label">Archived on</span>
-              <span class="stat-value">{localDate(data.coffee.moved_date)}</span>
+              <span class="stat-value">{formatDate(localDate(data.coffee.moved_date))}</span>
             </div>
           {/if}
           {#if data.favoriteGrind.length}<FavoriteGrind items={data.favoriteGrind} />{/if}

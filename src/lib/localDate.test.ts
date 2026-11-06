@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DATE_FORMATS, stampText, asDateFormat, formatInstant, formatStamp, localDate, localDateTime, localStamp, wallToInstant } from './localDate';
+import { DATE_FORMATS, stampText, asDateFormat, formatDay, formatInstant, formatStamp, localDate, localDateTime, localStamp, wallToInstant } from './localDate';
 
 describe('localDate (a stored date as a local calendar date)', () => {
   it.each([
@@ -80,5 +80,16 @@ describe('stampText', () => {
     expect(stampText('2026-10-23T02:05:23.000Z', 'UTC', 'iso12')).toBe('2026-10-23 2:05:23 AM UTC');
     expect(stampText('2026-10-23T02:05:23.000Z', 'UTC', 'eu', true)).toBe('23/10/2026 02:05 UTC');
     expect(stampText('2026-10-23T02:05:23.000Z', 'Asia/Tokyo', 'iso24', true)).toBe('2026-10-23 11:05');
+  });
+});
+
+describe('formatDay', () => {
+  it.each([
+    ['iso12', '2026-10-22'], ['iso24', '2026-10-22'], ['us', '10/22/2026'], ['eu', '22/10/2026']
+  ] as const)('%s → %s', (f, out) => expect(formatDay('2026-10-22', f)).toBe(out));
+  it('defaults to ISO and passes non-dates through', () => {
+    expect(formatDay('2026-10-22')).toBe('2026-10-22');
+    expect(formatDay('—', 'eu')).toBe('—');
+    expect(formatDay('', 'us')).toBe('');
   });
 });

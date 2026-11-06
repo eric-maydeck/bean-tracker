@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll } from '$app/navigation';
   import { UNTRACKED_CAP, accountQuery } from '$lib/accountUrl';
@@ -71,7 +72,7 @@
         {#if bean.likelyMatch}
           <p class="text-muted">
             Possibly already tracked as <a href={`/coffees/${bean.likelyMatch.slug}`}><CoffeeName name={bean.likelyMatch.coffeeName} /></a>
-            ({bean.likelyMatch.roastDate ? `Roasted ${bean.likelyMatch.roastDate}` : 'No roast date'} · {cap(bean.likelyMatch.status)})
+            ({bean.likelyMatch.roastDate ? `Roasted ${formatDate(bean.likelyMatch.roastDate)}` : 'No roast date'} · {cap(bean.likelyMatch.status)})
           </p>
         {/if}
         {#if linkingId === bean.id}

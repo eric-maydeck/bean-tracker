@@ -179,7 +179,7 @@
       <p class="muted">{c.roaster}</p>
       <h2 class="hero-name">{c.coffeeName}</h2>
       <dl class="facts">
-        {#if c.roastDate}<dt>Roasted</dt><dd>{c.roastDate}{c.restDays !== null ? ` (${c.restDays}d ago)` : ''}</dd>{/if}
+        {#if c.roastDate}<dt>Roasted</dt><dd>{formatDate(c.roastDate)}{c.restDays !== null ? ` (${c.restDays}d ago)` : ''}</dd>{/if}
         {#if c.gramsLeft !== null}<dt>Left</dt><dd>{c.gramsLeft}g</dd>{/if}
         {#if c.processing}<dt>Process</dt><dd>{c.processing}</dd>{/if}
         {#if c.origin}<dt>Origin</dt><dd>{originWithFlag(c.origin)}</dd>{/if}

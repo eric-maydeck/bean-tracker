@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import type { InsightsUrlState, RcCol, Top } from '$lib/insightsUrl';
   import { RC_COLS } from '$lib/insightsUrl';
   import { usd, wholeUsd } from '$lib/money';
@@ -60,7 +61,7 @@
             <td class="num">{#if r.ppg === null}{@render na()}{:else}{usd(r.ppg)}/g{/if}</td>
             <td class="num"><span class="cell">{@render rating(r)}</span></td>
             <td class="num"><span class="cell">{@render like(r)}</span></td>
-            <td>{r.last}</td>
+            <td>{formatDate(r.last)}</td>
           </tr>
         {/each}
       </tbody>

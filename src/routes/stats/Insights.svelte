@@ -23,6 +23,7 @@
 </script>
 
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import { unitGap } from '$lib/unitGap';
   import WholeNote from './WholeNote.svelte';
   import Usd from '$lib/components/Usd.svelte';
@@ -34,7 +35,7 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import { formatGrams } from '$lib/grams';
-  import { MON, THEMES, WHATIF_LIMITS as L, type BrewFilterKey, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
+  import { THEMES, WHATIF_LIMITS as L, type BrewFilterKey, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding } from '$lib/server/insights/insightGenerators';
   import { lines } from './multiLine';
@@ -52,7 +53,7 @@
   const WHOLE_NAME: Record<string, string> = { backlogRunway: 'On hand', pricePerMonth: '$/100g', loyalty: 'Top roasters' };
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
   const anchor = (key: string) => `insight-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
-  const date = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`;
+  const date = formatDate;
   // "115 days" → 115 + a small "days"; "r = 0.04" and "8:20 → 8:52" stay whole.
   const split = (v: string) => /^(\S*\d\S*) ([a-z].*)$/i.exec(v)?.slice(1) ?? /^(\S*\d)(g|kg|mL|L|s|°[CF]|ppm|g\/s|g\/day)$/.exec(v)?.slice(1) ?? [v];
 

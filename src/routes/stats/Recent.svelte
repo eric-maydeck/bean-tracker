@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import { RATING_MAX } from '$lib/rating';
   import WholeNote from './WholeNote.svelte';
   import { labelTip } from '$lib/components/labelTip';
@@ -11,8 +12,7 @@
     wholeKeys: BrewFilterKey[]; brews: RecentBrew[]; bags: RecentBag[]; n: Top | undefined; nc: Top | undefined; choose: (c: InsightsUrlState) => void;
   } = $props();
 
-  const day = (d: string) =>
-    new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  const day = formatDate;
   const rating = (r: number | null) => (r === null ? '—' : r.toFixed(1));
   const maxDays = $derived(Math.max(0, ...bags.map((b) => b.days)));
   // Each list shows 10, 20 or 50 (the server sends 50); Show more / Show less steps between them.

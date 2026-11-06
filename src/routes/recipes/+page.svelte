@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
@@ -107,7 +108,7 @@
       {#each data.brews as b, i (i)}
         <li class="brew-row">
           <div class="brew-head">
-            <span>{b.date}</span>
+            <span>{formatDate(b.date)}</span>
             <span class="brew-coffee">
               {#if b.slug}<a href="/coffees/{b.slug}"><CoffeeName name={b.coffeeName} /></a>{:else}<CoffeeName name={b.coffeeName} />{/if}
             </span>

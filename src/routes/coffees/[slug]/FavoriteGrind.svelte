@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatDate } from '$lib/formatDate';
   import type { FavoriteGrind, OtherBag } from '$lib/server/favoriteGrind';
   import { RATING_MAX } from '$lib/rating';
   import FloatTip from '$lib/components/FloatTip.svelte';
@@ -28,7 +29,7 @@
   };
   const tipOf = (o: OtherBag) => ({
     title: 'Another bag of the same coffee',
-    rows: [['Grind setting', o.setting ?? '—'], ['Rating', String(o.rating)], ['Roasted', o.roastDate ?? '—'], ['Dripper', o.dripper ?? '—'], ...(o.filter ? [['Filter', o.filter]] : []), ['Brewed', o.date]] as [string, string][]
+    rows: [['Grind setting', o.setting ?? '—'], ['Rating', String(o.rating)], ['Roasted', formatDate(o.roastDate ?? '—')], ['Dripper', o.dripper ?? '—'], ...(o.filter ? [['Filter', o.filter]] : []), ['Brewed', formatDate(o.date)]] as [string, string][]
   });
 </script>
 
