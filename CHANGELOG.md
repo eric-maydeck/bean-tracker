@@ -1,3 +1,90 @@
+# [1.109.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.108.0...v1.109.0) (2026-11-06)
+
+
+### Bug Fixes
+
+* **account:** file name takes the free width of the upload row
+* **account:** household under bean conqueror, no-file label, style people link
+* **account:** keep the picked file after a failed bq import
+* **account:** link the household setting from the people switch; update save and perf specs
+* **account:** name the noun in updated-only import summary lines
+* **account:** say no roast date in the not-yet-tracked meta line
+* **account:** show a failed link in the triage row; tidy stats imports
+* **account:** show only import errors under the upload
+* **account:** stats panel joins the right column; tokyo test reads the footer stamp
+* **account:** untracked note counts the rows shown
+* **account:** wrap long badges in the panel; show nothing changed as a plain line
+* **charts:** sticky-link bar charts keep tips on the mark, each segment has its own link
+* **coffees:** filter editor list keeps a minimum height on short screens
+* **coffees:** filter list shows the draft, half-edited column keeps apply off, focus returns
+* **coffee:** vs like coffees compares within the coffee's own kind
+* **insights:** caffeine board fills its row, decaf note only when it hides ratings
+* **insights:** caffeine chart sized to its two lines, 200px
+* **insights:** count 12 boards in layout states, no expand on the full-row caffeine card
+* **insights:** drop dead caffeine card branches, stale low/open, noise note and import
+* **insights:** drop the What's waiting height hold on resize
+* **insights:** findings headline keeps its own tip; chart-line hit test expects nearest x
+* **insights:** five-option chart toggle fits a 360px card
+* **insights:** no footer spacer under the Caffeine board
+* **insights:** people tip trigger carries the ? icon; tip tests skip it
+* **insights:** render the people tip only where the people switch is
+* **insights:** roasters compares raw, singular day suffix on the on hand tiles
+* **insights:** tighten the Caffeine board's head and decaf note spacing
+* **insights:** trunc tip counts only clipping ancestors and keeps caption separators
+* **insights:** trunc tip label accepts a missing sub line
+* **insights:** what's waiting group-by keeps the clicked button in place at the page bottom
+* **stats:** every vs-like baseline stays within the coffee's own caffeine kind
+* **stats:** overview recent lists ignore the caffeine filter
+* **stats:** people caption sits beside its switch in phone landscape, so the bar stays one row
+* **stats:** same-kind baselines drop unmatched bags from n, gates and samples
+* **tests:** display-zone-tokyo runs in its own firefox so the timezone override holds under load
+* **tests:** zone stamp checks read the Last updated time, not the first time in the footer
+* **tests:** zone stamps check against their own datetime, recap alert is a display-format stamp
+* **time:** persist the first-boot brewing zone, always apply it
+* **time:** rest windows and link picker labels follow the date format
+* **time:** zone aliases, like-coffees default caffeine, evening-safe stats test
+
+
+### Features
+
+* **account:** bq import reports what changed
+* **account:** brewing and display timezone settings
+* **account:** cap not-yet-tracked at 3 rows with show more (?untracked=all)
+* **account:** cleaner bq upload with a change summary
+* **account:** household size lives on account
+* **account:** not-yet-tracked bq beans move to account
+* **charts:** bar charts with a line over them open their tip for the nearest x
+* **charts:** every line chart opens its tip for the nearest x, as runway
+* **charts:** upright bar charts open their tip for the nearest x too
+* **coffees:** filter window and column menus edit a draft; cancel, reset, apply
+* **insights:** caffeinated vs. decaf board ignores the caffeine filter; hint names the filter
+* **insights:** caffeinated vs. decaf board title and one Caffeinated label
+* **insights:** caffeine board has no ranking floor; a small kind is marked, not hidden
+* **insights:** caffeine board is over time only, at a fixed chart height
+* **insights:** caffeine board shows both kinds by default; caffeine=caffeinated shows one
+* **insights:** caffeine on leaderboards and what's waiting
+* **insights:** cut-off tile names show their full text in a hover and focus tip
+* **insights:** drop the decaf-hidden note from the caffeine board
+* **insights:** explicit caffeinated option in the filters dialog, same as default for now
+* **insights:** filters dialog caffeine select gets a distinct default option and hint
+* **insights:** filters dialog edits a draft; cancel, reset and apply, click-out discards
+* **insights:** hide the caffeinated vs. decaf board when only one kind has rated brews
+* **insights:** last updated on overview
+* **insights:** oldest unopened and bag states on on hand
+* **insights:** people label opens a sticky help tip with the account link
+* **insights:** roaster under the coffee name on the oldest and newest unopened tiles
+* **insights:** roasters, bag size and brew temp on overview
+* **stats:** insights becomes /stats; old stats page removed
+* **stats:** stats name everywhere
+* **time:** brewing timezone drives day and hour lines
+* **time:** display timezone with browser time by default
+* **time:** every calendar date follows the date format
+
+
+### Reverts
+
+* **insights:** drop the what's waiting height hold
+
 # [1.108.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.107.0...v1.108.0) (2026-11-04)
 
 
