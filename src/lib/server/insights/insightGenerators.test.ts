@@ -181,6 +181,21 @@ describe('group effects', () => {
     expect(f).toMatchObject({ theme: 'taste', kind: 'number', strength: 'solid', value: '-2.0', headline: 'Light roasts rate 2.0 lower', sample: '4 bags' });
     expect(f.href).toBe('/stats?tab=leaderboards&open=roast');
   });
+  it('each bag is compared with the rest of its own caffeine kind', () => {
+    // Light = 4 decaf bags at 6; the other decafs (4) also sit at 6, the caffeinated ones (4) at 9. Pooled: 6 vs 7.5 = -1.5;
+    // within kind it is 6 vs 6 = 0.
+    const kb = bags(12, (i) => ({ roastLevel: i < 4 ? 'Light' : 'Medium', roaster: `Rst ${i % 4}`, origin: 'Kenya', processGroup: 'Washed', decaf: i < 8 }));
+    const kr = kb.flatMap((x, i) => seq(x.id, dup(Array(3).fill(i < 8 ? 6 + (i % 2 ? 0.2 : -0.2) : 9 + (i % 2 ? 0.2 : -0.2)))));
+    const f = gen('groupDelta:roastLevel:Light', kr, kb);
+    expect(f === null || Math.abs(Number(f.value)) < 0.1).toBe(true);
+  });
+  it('a mixed group: each bag against its own kind', () => {
+    // Light = 2 decaf + 2 caffeinated, each 0.5 above its kind (decaf 6, caffeinated 9); the rest is mostly decaf, so the
+    // pooled rest (6.75) would read +1.25; against its own kind it is +0.5.
+    const kb = bags(12, (i) => ({ roastLevel: i < 4 ? 'Light' : 'Medium', roaster: `Rst ${i % 4}`, origin: 'Kenya', processGroup: 'Washed', decaf: i < 2 || i >= 6 }));
+    const kr = kb.flatMap((x, i) => seq(x.id, dup(Array(3).fill((i < 2 || i >= 6 ? 6 : 9) + (i < 4 ? 0.5 : 0)))));
+    expect(gen('groupDelta:roastLevel:Light', kr, kb)!.value).toBe('+0.5');
+  });
   it('a group under 3 bags is skipped', () => expect(gen('groupDelta:roastLevel:Light', brews.slice(0, 18), bs.slice(0, 6).map((x, i) => ({ ...x, roastLevel: i < 2 ? 'Light' : 'Medium' })))).toBeNull());
   it('a weak effect is too early and carries the multiple-comparisons caveat', () => {
     const b2 = bags(12, (i) => ({ roaster: `Rst ${i % 3}` }));

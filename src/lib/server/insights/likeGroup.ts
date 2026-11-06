@@ -9,7 +9,7 @@ import { groupBy } from './records';
 import { bagWeight, mean, wmean } from './stats';
 
 export interface Like {
-  label: string; // the group, as Sweet spots names it ("Washed Light coffees from Kenya")
+  label: string; // the group, as Sweet spots names it, led by "decaf" for a decaf bag ("Washed Light coffees from Kenya")
   score: number; // the bag's mean rating over `rows`
   groupMean: number; // the group's other bags, each bag's mean weighted bagWeight (n/(n+2))
   gap: number; // score − groupMean
@@ -34,6 +34,8 @@ const filtersOf = (b: BrewFact): LabFilters | null =>
 // ponytail: O(bags × same-roast brews) per call; every step has the bag's roast level, so rows are pre-split by it.
 // `outside`: for roaster-level comparisons. The group leaves out every bag of the bag's own roaster and the
 // ladder skips its roaster step, so a roaster is never compared against itself.
+// A bag's group holds only its own kind (decaf with decaf, caffeinated with caffeinated; user 2026-11-05), so every
+// caller (Leaderboards, Lab, Records, findings, coffee page) gets the rule here; a mixed roaster compares bag by bag.
 // `twins` (twinKeys): a repurchase of the same coffee is left out of its twin's group, so a coffee is never compared
 // with itself (stats audit 2026-10-17: 9 twin pairs sat in each other's groups).
 export function likeGaps(
@@ -50,7 +52,7 @@ export function likeGaps(
     const r = bs[0].roaster;
     if (outside) delete f.roaster;
     const twin = twins?.get(id!);
-    const g = groupsFor((byRoast.get(f.roast!) ?? []).filter((b) => b.coffeeId !== id && !(twin && twins!.get(b.coffeeId!) === twin) && !(outside && r && b.roaster === r)), f)
+    const g = groupsFor((byRoast.get(f.roast!) ?? []).filter((b) => b.decaf === bs[0].decaf && b.coffeeId !== id && !(twin && twins!.get(b.coffeeId!) === twin) && !(outside && r && b.roaster === r)), f)
       // pooled() calls an empty group "no data", not small, so an empty step must be rejected here.
       .find((x) => {
         const ids = new Set(x.brews.map((b) => b.coffeeId!));
@@ -60,7 +62,7 @@ export function likeGaps(
     const ids = [...new Set(g.brews.map((b) => b.coffeeId!))];
     const mine = score.get(id)!, groupMean = wmean(ids.map((x) => score.get(x)!), ids.map((x) => weight.get(x)!));
     out.set(id, {
-      label: g.name, score: mine, groupMean, gap: mine - groupMean,
+      label: (bs[0].decaf ? 'decaf ' : '') + g.name, score: mine, groupMean, gap: mine - groupMean,
       rank: 1 + ids.filter((x) => score.get(x)! > mine).length, of: ids.length + 1, sample: single(sizes?.get(id!) ?? bs.length, bs.length)
     });
   }

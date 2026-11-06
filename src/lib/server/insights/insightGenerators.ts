@@ -273,6 +273,15 @@ const DIMS = [
   ['roaster', 'roasters', 'bags', 'roaster'], ['origin', 'origins', 'coffees', 'origin'],
   ['processGroup', 'process', 'coffees', 'process'], ['roastLevel', 'roast', 'roasts', 'roast level']
 ] as const;
+// A group of bags against the rest, each bag against the rest of its own caffeine kind (user, 2026-11-05: decaf and
+// caffeinated are brewed too differently to share a baseline). Every bag's value minus the weighted mean of the rest
+// bags of its kind; a group bag whose kind has no rest bag drops out. One kind = the plain rest comparison.
+// Returns the centered values of the group and of the rest (the rest's own weighted mean is 0 per kind).
+function againstKind(group: readonly BagFact[], rest: readonly BagFact[], m: (b: BagFact) => number, w: (b: BagFact) => number) {
+  const base = new Map([true, false].flatMap((k) => { const r = rest.filter((b) => b.decaf === k); return r.length ? [[k, wmean(r.map(m), r.map(w))] as const] : []; }));
+  const cen = (bs: readonly BagFact[]) => bs.filter((b) => base.has(b.decaf)).map((b) => ({ b, v: m(b) - base.get(b.decaf)!, w: w(b) }));
+  return { group: cen(group), rest: cen(rest) };
+}
 const groupDelta: Generator = (c) => {
   const pts = bagPoints(c);
   const rated = c.bags.filter((b) => pts.has(b.id));
@@ -283,14 +292,17 @@ const groupDelta: Generator = (c) => {
     return big.flatMap(([label, bs]) => {
       const rest = rated.filter((b) => !bs.includes(b));
       if (!rest.length) return [];
-      const delta = wmean(bs.map(m), bs.map(w)) - wmean(rest.map(m), rest.map(w)); // vs your other bags, weighted
+      const vs = againstKind(bs, rest, m, w);
+      if (!vs.group.length) return [];
+      const gv = vs.group.map((x) => x.v), gw = vs.group.map((x) => x.w), rv = vs.rest.map((x) => x.v), rw = vs.rest.map((x) => x.w);
+      const delta = wmean(gv, gw) - wmean(rv, rw); // vs your other bags of the same kind, weighted
       const ranked = [...bs].sort((x, y) => (delta >= 0 ? m(y) - m(x) : m(x) - m(y)) || x.name.localeCompare(y.name));
       const f = graded({
         key: `groupDelta:${dim}:${label}`, theme: 'taste', kind: 'number',
         headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(1)} ${delta < 0 ? 'lower' : 'higher'}`,
         value: signed(delta, 1), sample: `${plural(bs.length, 'bag')}`, href: `${LB}&open=${board}`,
         ...details([delta >= 0 ? 'Highest rated' : 'Lowest rated', ranked.map((b) => detail(b.name, m(b).toFixed(1), coffeeHref(b)))])
-      }, restZ(bs.map(m), rest.map(m), bs.map(w), rest.map(w)), true, 'bags', bs.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, rated.length);
+      }, restZ(gv, rv, gw, rw), true, 'bags', bs.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, rated.length);
       return f ? [f] : [];
     });
   });
@@ -763,8 +775,9 @@ const originMyth: Generator = (c) => {
   const gs = [...groupBy(bs, (b) => (b.origin && b.origin !== 'Other / Unknown' ? b.origin : null)).values()].filter((g) => g.length >= MIN_BAGS);
   if (gs.length < 3) return null;
   const gaps = gs.map((g) => {
-    const rest = bs.filter((b) => !g.includes(b));
-    return { d: Math.abs(wmean(g.map(m), g.map(w)) - wmean(rest.map(m), rest.map(w))), se: spread * Math.sqrt(1 / effN(g.map(w)) + 1 / effN(rest.map(w))) };
+    const vs = againstKind(g, bs.filter((b) => !g.includes(b)), m, w);
+    const gv = vs.group.map((x) => x.v), gw = vs.group.map((x) => x.w), rv = vs.rest.map((x) => x.v), rw = vs.rest.map((x) => x.w);
+    return gv.length ? { d: Math.abs(wmean(gv, gw) - wmean(rv, rw)), se: spread * Math.sqrt(1 / effN(gw) + 1 / effN(rw)) } : { d: 0, se: 0 };
   });
   const max = Math.max(...gaps.map((x) => x.d)), band = Math.max(...gaps.map((x) => x.d + 2 * x.se));
   if (max > ORIGIN_EVEN) return null;

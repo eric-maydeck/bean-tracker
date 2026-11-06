@@ -66,3 +66,25 @@ describe('likeGaps', () => {
     expect(out.groupMean).toBe(8); // Sey's bag 2 (7) is left out
   });
 });
+
+describe('likeGaps caffeine kinds', () => {
+  const D = { ...LWKS, decaf: true };
+  it('a decaf bag compares with decafs only, a caffeinated one with caffeinated only', () => {
+    // 4 decafs (rated 9, 8, 8, 8) among 4 caffeinated bags rated 2: pooled, the decaf baseline would be far lower.
+    const rows = [...bag(1, 9, D), ...[2, 3, 4].flatMap((id) => bag(id, 8, D)), ...[5, 6, 7, 8].flatMap((id) => bag(id, 2, LWKS))];
+    const l = likeGaps(rows);
+    expect(l.get(1)).toMatchObject({ label: 'decaf Washed Light coffees from Kenya by Sey', groupMean: 8, of: 4 });
+    expect(l.get(5)).toMatchObject({ label: 'Washed Light coffees from Kenya by Sey', groupMean: 2, of: 4 }); // never sees the decafs
+  });
+  it('a kind with too few like coffees has no entry, even when the other kind is plentiful', () => {
+    const rows = [...bag(1, 9, D), ...bag(2, 8, D), ...[3, 4, 5, 6].flatMap((id) => bag(id, 8, LWKS))];
+    expect(likeGaps(rows).has(1)).toBe(false);
+  });
+  it('a mixed roaster compares bag by bag against its own kind (outside)', () => {
+    const rows = [...bag(1, 9, { ...D, roaster: 'A' }), ...bag(2, 5, { ...LWKS, roaster: 'A' }),
+      ...[3, 4, 5].flatMap((id) => bag(id, 8, { ...D, roaster: 'B' })), ...[6, 7, 8].flatMap((id) => bag(id, 4, { ...LWKS, roaster: 'B' }))];
+    const l = likeGaps(rows, true);
+    expect(l.get(1)!.groupMean).toBe(8);
+    expect(l.get(2)!.groupMean).toBe(4);
+  });
+});
