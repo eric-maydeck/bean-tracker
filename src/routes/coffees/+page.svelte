@@ -878,7 +878,7 @@
                 </p>
               {/if}
               {#if coffee.drink_after && coffee.drink_before}
-                <p class="text-muted">Rest window: {coffee.drink_after} – {coffee.drink_before}</p>
+                <p class="text-muted">Rest window: {formatDate(coffee.drink_after)} – {formatDate(coffee.drink_before)}</p>
               {/if}
               {#if coffee.status === 'archive'}
                 <span class="badge badge-fresh">Archive</span>
@@ -936,7 +936,7 @@
             </p>
           {/if}
           {#if coffee.drink_after && coffee.drink_before}
-            <p class="text-muted">Rest window: {coffee.drink_after} – {coffee.drink_before}</p>
+            <p class="text-muted">Rest window: {formatDate(coffee.drink_after)} – {formatDate(coffee.drink_before)}</p>
           {/if}
           {#if coffee.status === 'archive'}
             <span class="badge badge-fresh">Archive</span>
@@ -1019,7 +1019,7 @@
                 </div>
                 <div>
                   <span class="eyebrow">Rest window</span>
-                  {#if coffee.drink_after && coffee.drink_before}{coffee.drink_after} – {coffee.drink_before}{:else}—{/if}
+                  {#if coffee.drink_after && coffee.drink_before}{formatDate(coffee.drink_after)} – {formatDate(coffee.drink_before)}{:else}—{/if}
                 </div>
                 <div><span class="eyebrow">Frozen</span>{formatDate(coffee.frozen_start_date ?? '—')}</div>
                 <div><span class="eyebrow">Unfrozen</span>{formatDate(coffee.frozen_end_date ?? '—')}</div>
@@ -1200,7 +1200,7 @@
             <td>{formatDate(coffee.frozen_end_date ?? '—')}</td>
             <td>
               {#if coffee.drink_after && coffee.drink_before}
-                {coffee.drink_after} –<br />{coffee.drink_before}
+                {formatDate(coffee.drink_after)} –<br />{formatDate(coffee.drink_before)}
               {:else}
                 —
               {/if}

@@ -166,7 +166,7 @@
               </p>
             {/if}
             {#if coffee.drink_before}
-              <p class="text-muted">Drink before {coffee.drink_before}</p>
+              <p class="text-muted">Drink before {formatDate(coffee.drink_before)}</p>
             {/if}
           </a>
           {@render tileActions(coffee)}

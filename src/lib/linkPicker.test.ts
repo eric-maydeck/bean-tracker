@@ -95,6 +95,16 @@ describe('linkPickerGroups', () => {
   });
 });
 
+describe('linkPickerGroups date format', () => {
+  it('writes roast and added dates in the format', () => {
+    const a = c({ created_at: '2026-10-22T10:00:00Z' });
+    const opt = (f?: 'eu' | 'us') => linkPickerGroups({ roaster: null, likelyMatchId: null }, [a], f).flatMap((g) => g.options)[0];
+    expect(opt().meta).toContain('Roasted 2026-09-01');
+    expect(opt('eu').meta).toContain('Roasted 01/09/2026');
+    expect(opt('us').label).toContain('09/01/2026');
+  });
+});
+
 describe('filterLinkGroups', () => {
   const likely = c({ roaster: 'Big Sur', coffee_name: 'Pink Bourbon' });
   const same = c({ roaster: 'Big Sur', coffee_name: 'Kamoko', status: 'archive' });

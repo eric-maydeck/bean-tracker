@@ -526,7 +526,7 @@
           </div>
           <div class="stat">
             <span class="stat-label">Drink after</span>
-            <span class="stat-value">{data.coffee.drink_after ?? '—'}</span>
+            <span class="stat-value">{formatDate(data.coffee.drink_after ?? '—')}</span>
           </div>
           <div class="stat">
             <span class="stat-label">Recommended rest</span>
@@ -536,7 +536,7 @@
           </div>
           <div class="stat">
             <span class="stat-label">Drink before</span>
-            <span class="stat-value">{data.coffee.drink_before ?? '—'}</span>
+            <span class="stat-value">{formatDate(data.coffee.drink_before ?? '—')}</span>
           </div>
           {#if data.coffee.frozen_start_date}
             <div class="stat">

@@ -1,3 +1,4 @@
+import { DEFAULT_DATE_FORMAT, formatDay, type DateFormat } from './localDate';
 // Client-safe: the Stats "Link" picker's option groups. The server supplies
 // LinkableCoffee rows (coffees with no Bean Conqueror bean yet).
 export interface LinkableCoffee {
@@ -26,24 +27,26 @@ export interface LinkPickerGroup {
   options: LinkOption[];
 }
 
-const baseLabel = (c: LinkableCoffee) =>
-  [c.roaster?.trim(), c.coffee_name, c.roast_date ?? 'no date', c.status].filter(Boolean).join(' · ');
+const baseLabel = (c: LinkableCoffee, fmt: DateFormat) =>
+  [c.roaster?.trim(), c.coffee_name, c.roast_date ? formatDay(c.roast_date, fmt) : 'no date', c.status].filter(Boolean).join(' · ');
 export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const norm = (s: string) => s.trim().toLowerCase();
 
 export function linkPickerGroups(
   bean: { roaster: string | null; likelyMatchId: number | null },
-  coffees: LinkableCoffee[]
+  coffees: LinkableCoffee[],
+  fmt: DateFormat = DEFAULT_DATE_FORMAT
 ): LinkPickerGroup[] {
   // Twin bags share name, roast date and status: add the added date, then
   // "Bag N" (ascending id) if still identical. Computed across ALL coffees.
-  const withDate = (c: LinkableCoffee) => `${baseLabel(c)} · added ${c.created_at.slice(0, 10)}`;
+  const day = (iso: string) => formatDay(iso.slice(0, 10), fmt);
+  const withDate = (c: LinkableCoffee) => `${baseLabel(c, fmt)} · added ${day(c.created_at)}`;
   const count = (f: (c: LinkableCoffee) => string) => {
     const m = new Map<string, number>();
     for (const c of coffees) m.set(f(c), (m.get(f(c)) ?? 0) + 1);
     return m;
   };
-  const base = count(baseLabel);
+  const base = count((c) => baseLabel(c, fmt));
   const dated = count(withDate);
   const bagNo = new Map<number, number>();
   const perLabel = new Map<string, number>();
@@ -53,16 +56,16 @@ export function linkPickerGroups(
     bagNo.set(c.id, n);
   }
   const option = (c: LinkableCoffee): LinkOption => {
-    const added = base.get(baseLabel(c))! === 1 ? '' : ` · added ${c.created_at.slice(0, 10)}`;
+    const added = base.get(baseLabel(c, fmt))! === 1 ? '' : ` · added ${day(c.created_at)}`;
     const bag = added && dated.get(withDate(c))! > 1 ? `Bag ${bagNo.get(c.id)}` : undefined;
-    const label = baseLabel(c) + added + (bag ? ` · ${bag}` : '');
+    const label = baseLabel(c, fmt) + added + (bag ? ` · ${bag}` : '');
     return {
       id: c.id,
       label,
       roaster: c.roaster?.trim() ?? '',
       name: c.coffee_name,
-      meta: `${c.roast_date ? `Roasted ${c.roast_date}` : 'No roast date'} · ${cap(c.status)}`,
-      ...(added && { twin: `Added ${c.created_at.slice(0, 10)}${bag ? ` · ${bag}` : ''}` }),
+      meta: `${c.roast_date ? `Roasted ${formatDay(c.roast_date, fmt)}` : 'No roast date'} · ${cap(c.status)}`,
+      ...(added && { twin: `Added ${day(c.created_at)}${bag ? ` · ${bag}` : ''}` }),
       search: label.toLowerCase()
     };
   };

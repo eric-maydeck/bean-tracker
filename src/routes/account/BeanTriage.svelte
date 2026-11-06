@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { page } from '$app/state';
+  import { asDateFormat } from '$lib/localDate';
   import { formatDate } from '$lib/formatDate';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll } from '$app/navigation';
@@ -76,7 +78,7 @@
           </p>
         {/if}
         {#if linkingId === bean.id}
-          {@const groups = linkPickerGroups({ roaster: bean.roaster, likelyMatchId: bean.likelyMatch?.id ?? null }, linkable)}
+          {@const groups = linkPickerGroups({ roaster: bean.roaster, likelyMatchId: bean.likelyMatch?.id ?? null }, linkable, asDateFormat(page.data.dateFormat))}
           <form
             class="link-picker"
             method="POST"
