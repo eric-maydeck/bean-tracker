@@ -11955,27 +11955,32 @@ for (const state of STATES) {
 // across a client-side navigation (no UTC flash from a Stamp created later).
 test.describe('browser in Tokyo', () => {
   test.use({ timezoneId: 'Asia/Tokyo' });
-  const footerMinutes = (t: string) => {
-    // /account's Bean Conqueror panel has its own (import time) 'Last updated' too; the footer's is the last one.
-    const m = [...t.matchAll(/Last updated: \d{4}-\d\d-\d\d (\d+):(\d\d) (AM|PM)/g)].at(-1);
+  const minutesOf = (t: string) => {
+    const m = [...t.matchAll(/Last updated: \d{4}-\d\d-\d\d (\d+):(\d\d) (AM|PM)/g)].at(-1); // /account has two; the footer's is last
     expect(m, t).not.toBeNull();
     return ((Number(m![1]) % 12) + (m![3] === 'PM' ? 12 : 0)) * 60 + Number(m![2]);
   };
+  // Each reading is checked against its own <time datetime>, so data written meanwhile by parallel tests cannot skew it.
+  const utcMinutesOf = (iso: string) => { const d = new Date(iso); return d.getUTCHours() * 60 + d.getUTCMinutes(); };
   test('display-zone-tokyo', { tag: ['@account', '@two'] }, async ({ page }) => {
     await page.context().clearCookies({ name: 'tz' });
     const html = await (await page.context().request.get('/account')).text(); // the server's first render: UTC
-    const utc = footerMinutes(html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' '));
+    const flat = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+    const ssrIso = [...html.matchAll(/<time datetime="([^"]+)">[^<]*<\/time>/g)].at(-1)![1]; // footer stamp
     expect(html).toContain('UTC');
+    expect(minutesOf(flat), 'server render is UTC').toBe(utcMinutesOf(ssrIso));
     await gotoReady(page, '/water');
     const foot = page.locator('.site-footer');
     await expect(foot).not.toContainText('UTC');
-    const tokyo = footerMinutes(await foot.innerText());
-    expect((tokyo - utc + 1440) % 1440, 'Tokyo is UTC+9').toBe(540);
+    const iso = (await foot.locator('time').first().getAttribute('datetime'))!;
+    const tokyo = minutesOf(await foot.innerText());
+    expect(tokyo, 'Tokyo is UTC+9').toBe((utcMinutesOf(iso) + 540) % 1440);
     await expect.poll(async () => (await page.context().cookies()).find((c) => c.name === 'tz')?.value).toBe('Asia/Tokyo');
     await page.locator('a[href="/coffees"]:visible').first().click(); // client-side navigation
     await expect(page).toHaveURL(/\/coffees/);
     await expect(foot).not.toContainText('UTC');
-    expect(footerMinutes(await foot.innerText())).toBe(tokyo);
+    const iso2 = (await foot.locator('time').first().getAttribute('datetime'))!;
+    expect(minutesOf(await foot.innerText())).toBe((utcMinutesOf(iso2) + 540) % 1440);
   });
 });
 

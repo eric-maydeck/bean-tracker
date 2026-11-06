@@ -17,4 +17,4 @@
   const text = $derived(!iso ? empty : stampText(iso, zone, format, minute));
 </script>
 
-{text}
+{#if iso}<time datetime={iso}>{text}</time>{:else}{text}{/if}

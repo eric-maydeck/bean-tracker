@@ -467,7 +467,7 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     const link = item.getByRole('link', { name: `Your ${Y} recap is ready` });
     await expect(link).toHaveAttribute('href', `/recaps/${Y}`);
     await expect(item.locator('.alert-meta'), 'no redundant source prefix').not.toContainText('recap ·');
-    await expect(item.locator('.alert-meta')).toContainText('UTC');
+    await expect(item.locator('.alert-meta'), 'a Stamp in the display format').toHaveText(/^\d{4}-\d\d-\d\d \d+:\d\d (AM|PM)( UTC)?$/);
     await link.click();
     await expect(page).toHaveURL(new RegExp(`/recaps/${Y}$`));
     await expect(page.locator('.alert-list'), 'following the link closes the inbox').toHaveCount(0);
@@ -542,16 +542,19 @@ test('account upload: a good file imports on the first try after a too-big one',
 // reaches every Stamp, and the default caffeine value names itself in the Stats Filters dialog's Default option and hint.
 test.describe('settings', () => {
   test.use({ timezoneId: 'Asia/Tokyo' });
-  const minutes = (t: string) => {
+  // The footer's UTC offset in minutes: shown time minus its own <time datetime>, immune to data changing between reads.
+  const offset = async (foot: Locator) => {
+    const t = await foot.innerText();
     const m = /Last updated: \d{4}-\d\d-\d\d (\d+):(\d\d) (AM|PM)/.exec(t);
     expect(m, t).not.toBeNull();
-    return ((Number(m![1]) % 12) + (m![3] === 'PM' ? 12 : 0)) * 60 + Number(m![2]);
+    const d = new Date((await foot.locator('time').first().getAttribute('datetime'))!);
+    return (((Number(m![1]) % 12) + (m![3] === 'PM' ? 12 : 0)) * 60 + Number(m![2]) - d.getUTCHours() * 60 - d.getUTCMinutes() + 1440) % 1440;
   };
   test('display zone, date format and default caffeine', { tag: '@account' }, async ({ page }) => {
     await gotoReady(page, '/account');
     const foot = page.locator('.site-footer');
     await expect(foot).not.toContainText('UTC');
-    const tokyo = minutes(await foot.innerText());
+    const tokyo = await offset(foot);
     const pick = async (label: string, value: string, toast: string) => {
       await page.locator('#time, #stats-settings').getByLabel(label).selectOption(value);
       await expect(page.getByRole('status').filter({ hasText: toast })).toBeVisible();
@@ -560,7 +563,7 @@ test.describe('settings', () => {
     await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'display_time_zone'`)).toEqual({ value: 'America/New_York' });
     await gotoReady(page, '/account'); // a fixed zone shows even though the tz cookie says Tokyo
     await expect(foot).not.toContainText('UTC');
-    expect([780, 840], 'Tokyo is 13 or 14 hours ahead of New York').toContain((tokyo - minutes(await foot.innerText()) + 1440) % 1440);
+    expect([780, 840], 'Tokyo is 13 or 14 hours ahead of New York').toContain((tokyo - (await offset(foot)) + 1440) % 1440);
     await pick('Date format', 'eu', 'Date format set to 22/10/2026 20:05:23.');
     await expect(foot).toContainText(/Last updated: \d\d\/\d\d\/\d{4} \d\d:\d\d(?!:)/);
     // Every calendar date follows it: the gear card's First/Last used, the Overview tables, the /coffees roast dates.
