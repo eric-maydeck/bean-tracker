@@ -563,6 +563,15 @@ test.describe('settings', () => {
     expect([780, 840], 'Tokyo is 13 or 14 hours ahead of New York').toContain((tokyo - minutes(await foot.innerText()) + 1440) % 1440);
     await pick('Date format', 'eu', 'Date format set to 22/10/2026 20:05:23.');
     await expect(foot).toContainText(/Last updated: \d\d\/\d\d\/\d{4} \d\d:\d\d(?!:)/);
+    // Every calendar date follows it: the gear card's First/Last used, the Overview tables, the /coffees roast dates.
+    await gotoReady(page, '/stats?tab=gear&card=dripper-v60');
+    const dateRe = /^\d\d\/\d\d\/\d{4}$/;
+    await expect(page.locator('dialog.trophy-dialog .stat:has(.stat-label:text-is("First used")) .stat-value')).toHaveText(dateRe);
+    await expect(page.locator('dialog.trophy-dialog .stat:has(.stat-label:text-is("Last used")) .stat-value')).toHaveText(dateRe);
+    await gotoReady(page, '/coffees');
+    await expect(page.locator('main').getByText(/\b\d{4}-\d\d-\d\d\b/)).toHaveCount(0);
+    await expect(page.locator('main').getByText(/\b\d\d\/\d\d\/\d{4}\b/).first()).toBeAttached();
+    await gotoReady(page, '/account');
     await pick('Default caffeine filter', 'decaf', 'Default caffeine filter set to Decaf.');
     await gotoReady(page, '/stats?tab=leaderboards&range=all');
     await page.getByRole('button', { name: /^Filters/ }).click();
