@@ -35,6 +35,10 @@ jobs:
     if: github.ref == 'refs/heads/release' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport: [w360, w390, w480, w768, w1280, phone-portrait, phone-landscape]
     permissions:
       contents: read
     steps:
@@ -48,14 +52,17 @@ jobs:
       - run: npm ci
       - run: npx svelte-kit sync
       - run: npx playwright install --with-deps firefox
-      - run: npm run test:ui:prod:performance
+      # balanced = 4 workers, matching the 4-vCPU runner (performance's 9 overloads it).
+      - run: npm run test:ui:prod
         env:
           UI_SHOTS: off
+          UI_PROFILE: balanced
+          UI_VIEWPORTS: ${{ matrix.viewport }}
 
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.viewport }}
           path: |
             playwright-report/
             .ui-test/results/
