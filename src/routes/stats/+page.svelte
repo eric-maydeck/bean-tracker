@@ -1129,6 +1129,12 @@
     .people-switch button {
       padding-inline: 0.5rem;
     }
+    /* The People caption is its help button, so it stays visible: beside the switch, not above it. */
+    .people-field {
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-2);
+    }
   }
   /* Custom range form, inside the dialog. */
   .custom-range {
