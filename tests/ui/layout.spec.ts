@@ -1905,7 +1905,7 @@ export const STATES: State[] = [
   { name: 'coffee-detail-like-why', path: (s) => `/coffees/${s.slugs.decaf}`,
     act: async (page) => {
       const line = page.locator('[data-section="like"] .like-none');
-      await expect(line).toContainText('No comparison: decaf coffees are left out by default.');
+      await expect(line).toContainText('No comparison yet: too few similar decaf coffees to compare with.');
       const tt = line.locator('.text-tip'), tip = page.locator('.float-tip');
       if (page.viewportSize()!.width >= 1280) { // desktop: hover opens, leaving closes
         await tt.hover();
@@ -6629,6 +6629,20 @@ export const STATES: State[] = [
       const foot = page.locator('section.recent .top-foot').nth(1);
       await expect(foot.getByRole('button', { name: 'Show less' })).toBeVisible();
       await expect(foot.getByRole('button', { name: 'Show more' })).toHaveCount(0);
+    }
+  },
+  {
+    // Both Recent lists ignore the Caffeine filter: every coffee and its rating, decaf included.
+    name: 'insights-recent-ignores-caffeine',
+    viewports: 'two',
+    path: () => '/stats',
+    act: async (page) => {
+      const text = () => page.locator('section.recent .board-rows').allInnerTexts();
+      const base = await text();
+      for (const c of ['decaf', 'caffeinated', 'all']) {
+        await gotoReady(page, `/stats?caffeine=${c}`);
+        expect(await text(), c).toEqual(base);
+      }
     }
   },
   {

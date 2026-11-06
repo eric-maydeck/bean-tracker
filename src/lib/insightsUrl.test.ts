@@ -824,10 +824,10 @@ describe('withPageWide (finding links)', () => {
 describe('parseLikeView (coffee page Vs like coffees)', () => {
   const v = (q: string) => parseLikeView(new URLSearchParams(q));
   it('bare by default', () => expect(v('')).toEqual({}));
-  it('reads ratings, dial=all and caffeine=all, case-insensitive', () =>
-    expect(v('ratings=ALL&dial=All&caffeine=all')).toEqual({ ratings: 'all', dial: 'all', caffeine: 'all' }));
+  it('reads ratings and dial=all, case-insensitive', () =>
+    expect(v('ratings=ALL&dial=All')).toEqual({ ratings: 'all', dial: 'all' }));
   it('keeps an explicit default', () => expect(v('ratings=current')).toEqual({ ratings: 'current' }));
-  it('drops bad values, caffeine=decaf and other params', () => expect(v('ratings=x&dial=dialed&caffeine=decaf&tab=records')).toEqual({}));
+  it('drops bad values, caffeine and other params', () => expect(v('ratings=x&dial=dialed&caffeine=all&tab=records')).toEqual({}));
   it('round-trips through insightsParams', () => expect(insightsParams(v('dial=all&ratings=all')).toString()).toBe('ratings=all&dial=all'));
 });
 

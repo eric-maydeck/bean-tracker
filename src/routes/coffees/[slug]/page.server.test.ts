@@ -138,15 +138,31 @@ describe('coffee page vs like coffees', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((load(ev(bare.slug)) as any).noLike).toBeNull();
 
-    // Gate P4: why there's no panel, its counts, and the nearest view that has one (?caffeine=all / ?ratings=all).
+    // Gate P4: why there's no panel, its counts, and the nearest view that has one (?ratings=all).
     const at = (slug: string, q = '') => load({ params: { slug }, url: new URL(`http://x/?${q}`), setHeaders: () => {}, locals: { isAdmin: false } } as never) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-    expect(at(dec.slug).noLike).toMatchObject({ why: 'No comparison: decaf coffees are left out by default.', fix: { caffeine: 'all' } });
-    expect(at(dec.slug, 'caffeine=all')).toMatchObject({ like: { label: 'Washed Light coffees' }, noLike: null, likeView: { caffeine: 'all' } });
-    // The account's default caffeine 'all' applies when the URL says nothing; the panel's explicit view stays URL-only.
+    // A decaf coffee compares only with decafs, a caffeinated one only with caffeinated, whatever caffeine= or the default says.
+    expect(at(dec.slug).noLike).toMatchObject({ why: 'No comparison yet: too few similar decaf coffees to compare with.' });
+    expect(at(dec.slug, 'caffeine=all').like).toBeNull();
     setDefaultCaffeine(db, 'all');
-    expect(at(dec.slug)).toMatchObject({ like: { label: 'Washed Light coffees' }, noLike: null });
-    expect(at(dec.slug).likeView.caffeine).toBeUndefined();
+    expect(at(dec.slug).like).toBeNull();
+    expect(at(made[1].slug)).toMatchObject({ like: { label: 'Washed Light coffees', of: 4 } }); // the decaf bag is not in its group
+    expect(at(made[1].slug, 'caffeine=decaf').like).toMatchObject({ of: 4 });
+    expect(at(dec.slug, 'caffeine=all').likeView).toEqual({});
+    setDefaultCaffeine(db, 'decaf');
+    expect(at(made[1].slug).like).toMatchObject({ of: 4 });
     setDefaultCaffeine(db, 'caffeinated');
+    // Enough decafs: the decaf coffee ranks among them alone.
+    const decs = [2, 5, 8].map((r, k) => {
+      const c = createCoffee(db, sampleInput({ coffee_name: `Dc ${k}`, roaster: `Dr ${k}`, origin: 'Peru', roast_level: 'Light', processing: 'Washed', decaf: true }));
+      db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES (?, 'C', '2026-10-01', ?)`).run(`dc${k}`, c.id);
+      for (let j = 0; j < 6; j++)
+        db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, ?, 15, ?, '2026-10-01')`).run(`2026-09-0${j + 1}T08:00:00`, `dc${k}`, r);
+      return c;
+    });
+    expect(at(dec.slug).like).toMatchObject({ rank: 4, of: 4 }); // rated 1 against the decafs 2, 5, 8, never the 9s
+    expect(at(made[1].slug).like).toMatchObject({ of: 4 });
+    db.prepare(`DELETE FROM beanconqueror_brews WHERE bean_id LIKE 'dc%'`).run();
+    for (const c of decs) db.prepare('DELETE FROM coffees WHERE id = ?').run(c.id);
     const old = createCoffee(db, sampleInput({ coffee_name: 'Like Old', roaster: 'Roaster 8', origin: 'Kenya', roast_level: 'Light', processing: 'Washed' }));
     db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('lko', 'C', '2026-10-01', ?)`).run(old.id);
     for (let j = 0; j < 3; j++)

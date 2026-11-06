@@ -501,12 +501,12 @@ function parseCard(v: string | null): string | undefined {
   return CARD.test(x) ? x : undefined;
 }
 
-// The coffee page's Vs like coffees panel (gate P4) honors the insights Ratings and Brews params, and caffeine=all
-// (a decaf coffee is otherwise left out). Its links build with insightsParams; nothing else is read.
-export type LikeView = Pick<InsightsUrlState, 'ratings' | 'dial' | 'caffeine'>;
+// The coffee page's Vs like coffees panel (gate P4) honors the insights Ratings and Brews params. It always compares
+// within the coffee's own kind (decaf or caffeinated), so no caffeine param. Its links build with insightsParams.
+export type LikeView = Pick<InsightsUrlState, 'ratings' | 'dial'>;
 export function parseLikeView(p: URLSearchParams): LikeView {
-  const { ratings, dial, caffeine } = parseInsightsUrl(p, []);
-  return { ...(ratings && { ratings }), ...(dial && { dial }), ...(caffeine === 'all' && { caffeine }) };
+  const { ratings, dial } = parseInsightsUrl(p, []);
+  return { ...(ratings && { ratings }), ...(dial && { dial }) };
 }
 
 export function insightsParams(s: InsightsUrlState): URLSearchParams {

@@ -89,13 +89,14 @@ export function roasterLikes(rows: readonly BrewFact[], twins?: ReadonlyMap<numb
 }
 
 // The /coffees/[slug] panel's rows (spec Part 4, gate P4): all time, rated linked brews under the view's Ratings,
-// Brews and Caffeine (default: Calibrated, Once dialed, decaf brews' ratings left out, as on Leaderboards).
-function viewPool(brews: readonly BrewFact[], dialIn: ReadonlySet<number>, v: LikeView): readonly BrewFact[] {
-  const pool = v.caffeine === 'all' ? brews : brews.map((b) => (b.decaf ? { ...b, rating: null } : b));
+// and Brews (default: Calibrated, Once dialed). Always only the coffee's own kind: a decaf compares with decafs,
+// a caffeinated one with caffeinated (user, 2026-11-05: a massive difference in how it is brewed), whatever the Caffeine filter.
+function viewPool(brews: readonly BrewFact[], dialIn: ReadonlySet<number>, v: LikeView, decaf: boolean): readonly BrewFact[] {
+  const pool = brews.filter((b) => b.decaf === decaf);
   return v.dial === 'all' ? pool : onceDialed(pool, dialIn);
 }
-const viewRows = (brews: readonly BrewFact[], dialIn: ReadonlySet<number>, v: LikeView): BrewFact[] =>
-  viewPool(brews, dialIn, v).filter((b) => b.coffeeId !== null && countsForRating(b, v.ratings ?? DEFAULTS.ratings) && b.rating! > 0);
+const viewRows = (brews: readonly BrewFact[], dialIn: ReadonlySet<number>, v: LikeView, decaf: boolean): BrewFact[] =>
+  viewPool(brews, dialIn, v, decaf).filter((b) => b.coffeeId !== null && countsForRating(b, v.ratings ?? DEFAULTS.ratings) && b.rating! > 0);
 
 // No panel, and why (gate P4): one line, its counts for the tip, and the nearest view that has a comparison (null: none).
 export interface NoLike { why: string; rows: [string, string][]; fix: LikeView | null }
@@ -105,7 +106,8 @@ export interface NoLike { why: string; rows: [string, string][]; fix: LikeView |
 export function coffeeLike(db: DatabaseSync, id: number, v: LikeView = {}): { like: Like } | NoLike | null {
   const { brews, bags } = loadFacts(db);
   const dialIn = dialInIds(brews), twins = twinKeys(bags);
-  const like = likeGaps(viewRows(brews, dialIn, v), false, twins, bagSizes(viewPool(brews, dialIn, v), v.ratings ?? DEFAULTS.ratings)).get(id);
+  const decaf = bags.find((b) => b.id === id)?.decaf ?? false;
+  const like = likeGaps(viewRows(brews, dialIn, v, decaf), false, twins, bagSizes(viewPool(brews, dialIn, v, decaf), v.ratings ?? DEFAULTS.ratings)).get(id);
   if (like) return { like };
   const mine = brews.filter((b) => b.coffeeId === id && b.rating !== null && b.rating > 0);
   if (!mine.length) return null;
@@ -114,26 +116,23 @@ export function coffeeLike(db: DatabaseSync, id: number, v: LikeView = {}): { li
   // Dial-in brews among the calibrated ones only, so the tip's rows don't overlap: early + dialing + left = n.
   const dialing = v.dial === 'all' ? 0 : mine.filter((b) => countsForRating(b, ratings) && dialIn.has(b.id)).length;
   const left = mine.filter((b) => countsForRating(b, ratings) && (v.dial === 'all' || !dialIn.has(b.id))).length;
-  const decaf = mine[0].decaf && v.caffeine !== 'all';
   const all = n === 1 ? 'its only rated brew is' : `all ${n} rated brews are`;
-  const why = decaf ? 'No comparison: decaf coffees are left out by default.'
-    : !mine[0].roastLevel ? 'No comparison: this coffee has no roast level.'
+  const why = !mine[0].roastLevel ? 'No comparison: this coffee has no roast level.'
     : !left ? `No comparison yet: ${all} ${early === n ? 'from before calibration' : !early ? 'dial-in brews' : 'from before calibration or dial-in'}.`
-    : 'No comparison yet: too few similar coffees to compare with.';
+    : `No comparison yet: too few similar ${decaf ? 'decaf' : 'caffeinated'} coffees to compare with.`;
   // The widest like group (same roast level), as likeGaps sees it under this view.
-  const similar = viewRows(brews, dialIn, v).filter((b) => b.coffeeId !== id && b.roastLevel === mine[0].roastLevel);
+  const similar = viewRows(brews, dialIn, v, decaf).filter((b) => b.coffeeId !== id && b.roastLevel === mine[0].roastLevel);
   const rows: [string, string][] = [
     ['Rated brews', `${n}`],
     ...(ratings === 'current' ? [['Before calibration', `${early}`] as [string, string]] : []),
     ...(v.dial !== 'all' ? [['Dial-in brews', `${dialing}`] as [string, string]] : []),
-    ...(!decaf && left && mine[0].roastLevel ? [
-      [`Other ${mine[0].roastLevel} coffees`, `${new Set(similar.map((b) => b.coffeeId)).size} bags, ${similar.length} brews`],
+    ...(left && mine[0].roastLevel ? [
+      [`Other ${decaf ? 'decaf ' : ''}${mine[0].roastLevel} coffees`, `${new Set(similar.map((b) => b.coffeeId)).size} bags, ${similar.length} brews`],
       ['Needed', `${POOLED_MIN_BAGS}+ bags, ${POOLED_MIN_BREWS}+ brews`]
     ] as [string, string][] : [])
   ];
-  // The nearest view with a comparison: Caffeine first for a decaf coffee, then Ratings, Brews, both.
-  const base: LikeView = decaf ? { ...v, caffeine: 'all' } : v;
-  const fix = ([base, { ...base, ratings: 'all' }, { ...base, dial: 'all' }, { ...base, ratings: 'all', dial: 'all' }] as LikeView[])
-    .find((x) => JSON.stringify(x) !== JSON.stringify(v) && likeGaps(viewRows(brews, dialIn, x), false, twins, bagSizes(viewPool(brews, dialIn, x), x.ratings ?? DEFAULTS.ratings)).has(id));
+  // The nearest view with a comparison: Ratings, Brews, both.
+  const fix = ([{ ...v, ratings: 'all' }, { ...v, dial: 'all' }, { ...v, ratings: 'all', dial: 'all' }] as LikeView[])
+    .find((x) => JSON.stringify(x) !== JSON.stringify(v) && likeGaps(viewRows(brews, dialIn, x, decaf), false, twins, bagSizes(viewPool(brews, dialIn, x, decaf), x.ratings ?? DEFAULTS.ratings)).has(id));
   return { why, rows, fix: fix ?? null };
 }

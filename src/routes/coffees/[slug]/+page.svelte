@@ -42,13 +42,13 @@
 
   let { data, form } = $props();
 
-  // Vs like coffees under ?ratings / ?dial / ?caffeine (gate P4): the panel names the view; any explicit one offers
+  // Vs like coffees under ?ratings / ?dial (gate P4): the panel names the view; any explicit one offers
   // Back to defaults. The coffee page never writes the insights remembered view.
   let v = $derived(data.likeView);
   let explicit = $derived(Object.keys(v).length > 0);
   const lower = (s: string) => s[0].toLowerCase() + s.slice(1);
   const fixText = (f: LikeView) =>
-    [f.ratings === 'all' && 'all ratings', f.dial === 'all' && 'all brews', f.caffeine === 'all' && 'decaf included'].filter(Boolean).join(' and ');
+    [f.ratings === 'all' && 'all ratings', f.dial === 'all' && 'all brews'].filter(Boolean).join(' and ');
 
   let clonePrefillData = $state<Partial<CoffeeRow> | null>(null);
   // The same modal with an empty form is "+ Add Coffee": stays on this page.
@@ -569,7 +569,7 @@
         {@const l = data.like}
         <section class="detail-section" data-section="like">
           <h2>Vs like coffees</h2>
-          <p class="text-muted">Compared with {l.label}: all time, <span class="setting-name">{lower(DIAL_LABEL[v.dial ?? 'dialed'])}</span>, <span class="setting-name">{lower(RATINGS_LABEL[v.ratings ?? 'current'])}</span>{v.caffeine ? ', decaf included' : ''}.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}</p>
+          <p class="text-muted">Compared with {data.coffee.decaf ? 'decaf ' : 'caffeinated '}{l.label}: all time, <span class="setting-name">{lower(DIAL_LABEL[v.dial ?? 'dialed'])}</span>, <span class="setting-name">{lower(RATINGS_LABEL[v.ratings ?? 'current'])}</span>.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}</p>
           <div class="stat-grid">
             <div class="stat">
               <span class="stat-label">Score</span>
