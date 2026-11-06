@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
+    branches: [main, release]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -28,3 +30,31 @@ jobs:
       - run: npm run build
       - run: npx tsc --noEmit
       - run: npx svelte-check --threshold error
+
+  ui-full:
+    if: github.ref == 'refs/heads/release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npx playwright install --with-deps firefox
+      - run: npm run test:ui:prod:performance
+        env:
+          UI_SHOTS: off
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            .ui-test/results/
