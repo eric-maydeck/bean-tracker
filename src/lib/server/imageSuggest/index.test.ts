@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { stubConfig, unstubConfig } from '../testConfig';
 import { providers, suggest, UNCONFIGURED_NOTE } from './index';
 import type { CandidatePage, FetchPage, Provider, SuggestQuery } from './types';
 
@@ -21,7 +22,7 @@ const pages = (n = 1): FetchPage =>
     finalUrl: url
   }));
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(unstubConfig);
 
 describe('providers', () => {
   const all = [fake('shopify', []), fake('tavily', [])];
@@ -30,7 +31,7 @@ describe('providers', () => {
     expect(providers(' Bing , SHOPIFY,shopify', all).map((p) => p.name)).toEqual(['shopify']);
   });
   it('defaults to shopify,tavily', () => {
-    vi.stubEnv('IMAGE_SUGGEST_PROVIDERS', '');
+    stubConfig('');
     expect(providers(undefined, all).map((p) => p.name)).toEqual(['shopify', 'tavily']);
   });
 });

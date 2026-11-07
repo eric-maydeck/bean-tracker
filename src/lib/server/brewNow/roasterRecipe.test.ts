@@ -1,14 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from '../db';
+import { stubConfig, unstubConfig } from '../testConfig';
 import { findRoasterRecipe, getRoasterRecipe, SEARCH_UNAVAILABLE } from './roasterRecipe';
 import { searchTavilyText, tavilyCallsInWindow } from '../imageSuggest/providers/tavily';
 
 const NOW = new Date('2026-10-28T12:00:00Z');
 const R = (url: string, title: string, content: string) => ({ url, title, content });
 let db: DatabaseSync;
-beforeEach(() => { db = createDb(':memory:'); vi.stubEnv('TAVILY_API_KEY', 'k'); vi.stubEnv('TAVILY_MONTHLY_LIMIT', ''); });
-afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+beforeEach(() => { db = createDb(':memory:'); vi.stubEnv('TAVILY_API_KEY', 'k'); stubConfig(''); });
+afterEach(() => { unstubConfig(); vi.unstubAllGlobals(); });
 
 describe('findRoasterRecipe', () => {
   it('stores the first recipe-looking result with a 280-char snippet', async () => {
@@ -27,7 +28,7 @@ describe('findRoasterRecipe', () => {
     const search = vi.fn(async () => []);
     vi.stubEnv('TAVILY_API_KEY', '');
     expect(await findRoasterRecipe(db, 'Acme', NOW, search)).toEqual({ error: SEARCH_UNAVAILABLE });
-    vi.stubEnv('TAVILY_API_KEY', 'k'); vi.stubEnv('TAVILY_MONTHLY_LIMIT', '1');
+    vi.stubEnv('TAVILY_API_KEY', 'k'); stubConfig('tavily:\n  monthlyLimit: 1\n');
     db.prepare(`INSERT INTO search_usage (provider, at) VALUES ('tavily', ?)`).run(NOW.toISOString());
     expect(await findRoasterRecipe(db, 'Acme', NOW, search)).toEqual({ error: SEARCH_UNAVAILABLE });
     expect(search).not.toHaveBeenCalled();

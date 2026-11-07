@@ -1,6 +1,7 @@
 // Tavily web search (spec "Server" and "Tavily budget"). Free plan: 1,500
 // credits a month; basic depth costs 1. Calls are counted in search_usage.
 import type { DatabaseSync } from 'node:sqlite';
+import { loadSiteConfig } from '../../siteConfig';
 import { getDb } from '../../db';
 import type { CandidatePage, Provider, SuggestQuery } from '../types';
 
@@ -9,7 +10,7 @@ const WINDOW_MS = 31 * 86_400_000; // rolling, so it holds whatever day the bill
 export const BUDGET_NOTE = 'tavily monthly budget used';
 const REASONS: Record<number, string> = { 401: 'bad API key', 429: 'rate limited', 432: 'monthly limit reached' };
 
-const limit = () => Number(process.env.TAVILY_MONTHLY_LIMIT) || 1400;
+const limit = () => loadSiteConfig().tavily.monthlyLimit ?? 1400;
 const windowStart = (now: Date) => new Date(now.getTime() - WINDOW_MS).toISOString();
 
 export function tavilyCallsInWindow(db: DatabaseSync, now = new Date()): number {

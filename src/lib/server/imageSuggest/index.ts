@@ -2,6 +2,7 @@
 // (spec 2026-10-06-image-suggest-design.md "Server").
 import { safeFetch, shopifyJsonUrl } from '../productFetch';
 import { shopifyImages, htmlImages, shopifyDetails, htmlDetails, type PageDetails, type PageImage } from './pageImages';
+import { loadSiteConfig } from '../siteConfig';
 import { rankImages } from './rankImages';
 import { shopify } from './providers/shopify';
 import { tavily } from './providers/tavily';
@@ -15,7 +16,7 @@ const MAX_CANDIDATES = 6;
 const PAGE_MS = 10_000;
 const TOTAL_MS = 20_000;
 
-export function providers(list = process.env.IMAGE_SUGGEST_PROVIDERS || DEFAULT_PROVIDERS, all = ALL): Provider[] {
+export function providers(list = loadSiteConfig().imageSuggest.providers || DEFAULT_PROVIDERS, all = ALL): Provider[] {
   const names = [...new Set(list.split(',').map((n) => n.trim().toLowerCase()))];
   return names.flatMap((n) => all.filter((p) => p.name === n));
 }

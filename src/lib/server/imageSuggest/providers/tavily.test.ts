@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from '../../db';
+import { stubConfig, unstubConfig } from '../../testConfig';
 import { searchTavily, tavilyAvailable, tavilyCallsInWindow, recordTavilyCall, BUDGET_NOTE } from './tavily';
 import type { SuggestQuery } from '../types';
 
@@ -20,10 +21,10 @@ let db: DatabaseSync;
 beforeEach(() => {
   db = createDb(':memory:');
   vi.stubEnv('TAVILY_API_KEY', 'tvly-test');
-  vi.stubEnv('TAVILY_MONTHLY_LIMIT', '');
+  stubConfig('');
 });
 afterEach(() => {
-  vi.unstubAllEnvs();
+  unstubConfig();
   vi.unstubAllGlobals();
 });
 
@@ -85,7 +86,7 @@ describe('Tavily budget', () => {
   });
 
   it('at the limit: unavailable with the note; rows older than 31 days don’t count', () => {
-    vi.stubEnv('TAVILY_MONTHLY_LIMIT', '3');
+    stubConfig('tavily:\n  monthlyLimit: 3\n');
     const insert = db.prepare(`INSERT INTO search_usage (provider, at) VALUES ('tavily', ?)`);
     for (const d of [1, 10, 40]) insert.run(daysAgo(d));
     expect(tavilyCallsInWindow(db, NOW)).toBe(2);
@@ -115,7 +116,7 @@ describe('Tavily budget', () => {
   });
 
   it('no second call when the first used the last credit', async () => {
-    vi.stubEnv('TAVILY_MONTHLY_LIMIT', '1');
+    stubConfig('tavily:\n  monthlyLimit: 1\n');
     const f = ok(EMPTY);
     vi.stubGlobal('fetch', f);
     await searchTavily(Q, signal, db, NOW);
