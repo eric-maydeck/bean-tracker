@@ -1,4 +1,4 @@
-// Roaster → website origin (spec 2026-10-06-image-suggest-design.md "Data").
+// Roaster → website origin.
 // Not imported by db.ts's chain; keep it that way or value imports need .ts.
 import type { DatabaseSync } from 'node:sqlite';
 

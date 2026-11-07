@@ -304,7 +304,7 @@ export function labOptions(brews: readonly BrewFact[], bags: readonly BagFact[])
   };
 }
 
-// The brew filters (spec 2026-10-21): each set key must match; a missing value or the mixed filter never does.
+// The brew filters: each set key must match; a missing value or the mixed filter never does.
 export const matchesBrew = (f: BrewFilters) => (b: BrewFact): boolean =>
   (!f.dripper || b.dripper === f.dripper) && (!f.filter || (b.filter !== MIXED_FILTER && b.filter === f.filter)) &&
   (!f.water || b.water === f.water) && (!f.brewDose || doseBand(b.dose) === f.brewDose) &&
@@ -319,7 +319,7 @@ export const exceptOwn = (f: BrewFilters, k: BrewFilterKey | string): BrewFilter
 const SETTLE_DIM = { roast: 'roastLevel', process: 'processGroup', dripper: 'dripper', water: 'water' } as const;
 export interface LabFilters { roast?: string; process?: string; origin?: string; roaster?: string }
 type CoffeeFields = Pick<BrewFact, 'roastLevel' | 'processGroup' | 'origin' | 'roaster'>;
-// The Coffees filter (spec 2026-10-15 Part 3), page-wide: a brew or a bag (same field names) matches every set field.
+// The Coffees filter, page-wide: a brew or a bag (same field names) matches every set field.
 export const matchesCoffee = (f: LabFilters) => (b: CoffeeFields) =>
   (!f.roast || b.roastLevel === f.roast) && (!f.process || b.processGroup === f.process) && (!f.origin || b.origin === f.origin) && (!f.roaster || b.roaster === f.roaster);
 // Tier 2 groups, narrowest first: roast + process + roaster + origin → roast + process + roaster → roast +

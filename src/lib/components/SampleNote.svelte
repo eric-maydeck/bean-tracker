@@ -5,7 +5,7 @@
   import { chipLabel, type Sample } from '$lib/sample';
   import type { Badge } from '$lib/strength';
 
-  // The one small-sample marker (spec 2026-10-15 Part 1): an amber "Low confidence" chip; the reason and exact
+  // The one small-sample marker: an amber "Low confidence" chip; the reason and exact
   // counts on hover, tap and keyboard focus, in the shared top-layer tip (ui-rules 36, 39). `paired`: the counts
   // are of same-bag paired brews (a lab row's delta), so the rows say so beside plain columns.
   // `tip`: a fuller tip to open instead (the mineral map row's own, so the name and its chip show one tip);

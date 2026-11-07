@@ -1,6 +1,6 @@
 import { CHOICE_TTL_MS } from './rememberedChoice';
 
-// /stats remembers its whole view state per browser for 12 h since last use (spec 2026-10-15 Part 3),
+// /stats remembers its whole view state per browser for 12 h since last use,
 // versioned like coffeeViewState.ts: bump VERSION if the stored shape changes. Stored as the URL's query;
 // restoring navigates to it, so the server parser stays the one gate for bad values.
 export const INSIGHTS_STORAGE_KEY = 'bean-tracker-insights-view-state';

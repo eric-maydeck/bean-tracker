@@ -1,4 +1,4 @@
-// Our own copies of displayed images (spec 2026-10-06-local-image-copies-design.md).
+// Our own copies of displayed images.
 // Content-addressed files under images/<kind>/ next to the DB, plus the
 // image_copies table. Written only by the background run in imageFills.ts.
 // Server-only (sharp, fs). Not imported by db.ts, so no .ts extensions.

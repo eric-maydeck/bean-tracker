@@ -1,6 +1,5 @@
-// Backdrop fill behind contained coffee images (spec 2026-10-05 "Image fill
-// and fit"). The background run also stores local copies of the same images
-// (spec 2026-10-06), from the same single download; Preview's fetchImageFill
+// Backdrop fill behind contained coffee images.
+// The background run also stores local copies of the same images, from the same single download; Preview's fetchImageFill
 // never does. Server-only (sharp). Not imported by db.ts, so no .ts extensions.
 import type { DatabaseSync } from 'node:sqlite';
 import sharp from 'sharp';

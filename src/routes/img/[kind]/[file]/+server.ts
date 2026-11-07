@@ -1,4 +1,4 @@
-// Our local image copies (spec 2026-10-06-local-image-copies-design.md).
+// Our local image copies.
 // Public like /s: every viewer needs the images. Does no work beyond one file
 // read (no DB, no fetch, no sharp); names are content hashes, so responses are
 // immutable and CDNs/browsers cache them for a year.

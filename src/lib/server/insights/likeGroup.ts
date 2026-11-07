@@ -24,7 +24,7 @@ const filtersOf = (b: BrewFact): LabFilters | null =>
     origin: b.origin ?? undefined, roaster: b.roaster ?? undefined
   } : null;
 
-// Each bag's like-group (spec 2026-10-15 Part 4): the narrowest groupsFor step (roast + process + origin +
+// Each bag's like-group: the narrowest groupsFor step (roast + process + origin +
 // roaster → roast + process + roaster → roast + process → roast) whose bags, without the bag itself, pass the
 // pooled small-sample rule. Every bag of the group counts, weighted by its brews (bagWeight: a 1-brew bag a third, user
 // ruling 2026-10-17); the bag itself may be small (its own sample says so). `rows`: rated, linked brews already cut to the

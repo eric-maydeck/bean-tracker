@@ -114,6 +114,6 @@ export function mineralOf(m: Mineral, b: BrewFact): number | null {
   return w[m] === null ? null : round(w[m]!, 1);
 }
 
-// The brew Dose filter's band slug (spec 2026-10-21): 11 / 13.5 / 16.5 / 19 / 21 g edges; no dose → null.
+// The brew Dose filter's band slug: 11 / 13.5 / 16.5 / 19 / 21 g edges; no dose → null.
 export const doseBand = (dose: number | null): string | null =>
   cut(dose && dose > 0 ? dose : null, [11, 13.5, 16.5, 19, 21], DOSE_BANDS.map((d) => d.slug))?.label ?? null;

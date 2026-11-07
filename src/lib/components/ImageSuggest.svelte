@@ -4,7 +4,7 @@
   import { backdrop } from '$lib/imageBackdrop';
   import { formatDate } from '$lib/formatDate';
 
-  // Image Suggest (spec 2026-10-06-image-suggest-design.md), shared by the coffee and gear forms: the Suggest
+  // Image Suggest, shared by the coffee and gear forms: the Suggest
   // button and its results dialog. Inline state, never in the URL. The parent owns the fields: body() reads
   // them when a search starts, matching() describes the item as typed, onpick stages the pick (the dialog then
   // closes), onsite stages a site typed via "change" once a search on it worked.

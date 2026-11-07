@@ -75,7 +75,7 @@ export const COFFEE_CORRECTIONS: CoffeeFixBatch[] = [
     tavilyCalls: []
   },
   {
-    // Bean origin insights (spec 2026-11-02, reviewed table): consolidate producer, farm and variety
+    // Bean origin insights: consolidate producer, farm and variety
     // spellings so the leaderboards group them. Every `from` and roaster copied from prod.
     marker: 'coffee_corrections_2026_11_a',
     fixes: [
@@ -116,10 +116,10 @@ export const COFFEE_CORRECTIONS: CoffeeFixBatch[] = [
     tavilyCalls: []
   },
   {
-    // Bean origin insights (spec 2026-11-02): regions in one shape for the map tip. Top level per
+    // Bean origin insights: regions in one shape for the map tip. Top level per
     // country = the level coffee origins use (Colombia department, Ethiopia zone, Kenya county, others
-    // their first-level division); a part below it gets its parent appended. Reviewed at preview; the
-    // table is the list below. Every from and roaster is copied from prod.
+    // their first-level division); a part below it gets its parent appended. Reviewed at preview.
+    // Every from and roaster is copied from prod.
     marker: 'coffee_corrections_2026_11_b',
     fixes: [
       { coffee_id: 76, roaster: "Bean's Beans", field: 'region', from: 'Caranavi Province, La Paz Department', to: 'Caranavi Province, La Paz' }, // level suffix dropped

@@ -1,8 +1,8 @@
 import { backdrop } from './imageBackdrop';
 
 // Client-safe. A coffee's image: its own, else its roaster's default (a live
-// fallback, spec 2026-10-05-roaster-default-image-design.md), as our local copy
-// when there is one (spec 2026-10-06), else the original URL, with the
+// fallback), as our local copy
+// when there is one, else the original URL, with the
 // backdrop shown behind it (object-fit: contain). image_fill is already the
 // displayed image's fill (LIST_SELECT's join).
 export function coffeeImage(

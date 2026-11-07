@@ -1,5 +1,4 @@
-// Client-safe. Backdrops behind contained coffee images (spec 2026-10-05
-// "Image fill and fit"), shared by the server's fill algorithm
+// Client-safe. Backdrops behind contained coffee images, shared by the server's fill algorithm
 // (server/imageFills.ts) and the render sites' fallback (coffeeImage.ts,
 // CoffeeForm). Taken from the warm palette in src/app.css but fixed: the same
 // in light and dark mode, because a backdrop belongs to its image, not the theme.

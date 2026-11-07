@@ -1,5 +1,4 @@
 // Image Suggest: providers → candidate pages → images → ranked pick list
-// (spec 2026-10-06-image-suggest-design.md "Server").
 import { safeFetch, shopifyJsonUrl } from '../productFetch';
 import { shopifyImages, htmlImages, shopifyDetails, htmlDetails, type PageDetails, type PageImage } from './pageImages';
 import { loadSiteConfig } from '../siteConfig';

@@ -88,7 +88,7 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
   ensureColumn(db, 'subscriptions', 'subscription_url', 'TEXT');
   ensureColumn(db, 'subscriptions', 'paused', 'INTEGER NOT NULL DEFAULT 0');
-  // Bean Conqueror JSON import (spec 2026-10-09): brews get their UUID and new fields.
+  // Bean Conqueror JSON import: brews get their UUID and new fields.
   ensureColumn(db, 'beanconqueror_brews', 'water_id', 'TEXT REFERENCES beanconqueror_waters(id)');
   ensureColumn(db, 'beanconqueror_brews', 'best_brew', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(db, 'beanconqueror_brews', 'favourite', 'INTEGER NOT NULL DEFAULT 0');

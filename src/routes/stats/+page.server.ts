@@ -66,7 +66,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
   const matches = matchesCoffee(coffees);
   const pool = caffeine === 'decaf' ? everyBrew.filter((b) => b.decaf)
     : caffeine === 'all' ? everyBrew : everyBrew.map((b) => (b.decaf ? { ...b, rating: null } : b));
-  // The brew filters (spec 2026-10-21) narrow brews after the coffee filters and after `dialIn`, so a brew keeps its
+  // The brew filters narrow brews after the coffee filters and after `dialIn`, so a brew keeps its
   // whole-bag position. `whole` is what whole-bag figures read (on hand, time to clear, Net, What-if, settle).
   const bf = activeBrewFilters(s);
   const whole = pool.filter(matches);

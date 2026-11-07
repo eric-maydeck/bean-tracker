@@ -1,4 +1,4 @@
-// Roaster → default image (spec 2026-10-05-roaster-default-image-design.md).
+// Roaster → default image.
 // coffees.ts imports this and db.ts imports coffees.ts (via beanConquerorLinks.ts),
 // so any value import added here needs an explicit .ts extension.
 import type { DatabaseSync } from 'node:sqlite';

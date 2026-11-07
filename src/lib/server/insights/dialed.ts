@@ -3,7 +3,7 @@ import { groupBy } from './records';
 import { mean } from './stats';
 
 // Rated brews to reach a bag's settled rating (1-based): the first at or above (mean of its best half) − 0.5.
-// Moved from insightGenerators.ts (spec 2026-10-15 Part 2); the dial-in findings use it too.
+// Moved from insightGenerators.ts; the dial-in findings use it too.
 export const settleAt = (rs: readonly number[]): number => {
   const top = [...rs].sort((a, b) => b - a).slice(0, Math.ceil(rs.length / 2));
   return rs.findIndex((r) => r >= mean(top) - 0.5) + 1;

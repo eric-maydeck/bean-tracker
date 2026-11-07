@@ -51,7 +51,7 @@ export type Caffeine = (typeof CAFFEINES)[number];
 export const TOPS = [20, 50] as const;
 export type Top = (typeof TOPS)[number];
 
-// Insights brew filters (spec 2026-10-21): one value each, in the URL as these param names.
+// Insights brew filters: one value each, in the URL as these param names.
 export const BREW_FILTER_KEYS = ['dripper', 'filter', 'water', 'brewDose', 'brewTemp'] as const;
 export type BrewFilterKey = (typeof BREW_FILTER_KEYS)[number];
 export type BrewFilters = Partial<Record<BrewFilterKey, string>>;
@@ -63,7 +63,7 @@ export const BREW_FILTER_LABEL: Record<BrewFilterKey, string> = { dripper: 'Drip
 export const brewFilterText = (k: BrewFilterKey, v: string): string =>
   k === 'brewDose' ? (DOSE_BANDS.find((d) => d.slug === v)?.label ?? v) : k === 'brewTemp' ? `${v}°C` : v;
 
-// Brewing lab tabs (spec 2026-10-12): Compare is hidden on them.
+// Brewing lab tabs: Compare is hidden on them.
 export const LAB_TABS = ['sweetspots', 'brewing', 'pours', 'water', 'gear'] as const;
 // Brewing breakdowns (tempBy=roast…; absent = None) and the slice functions' names in lab.ts.
 export const SLICES = ['roast', 'process', 'origin', 'roaster'] as const;
@@ -118,7 +118,7 @@ export const ERA_BYS = ['dripper', 'grinder'] as const;
 export type EraBy = (typeof ERA_BYS)[number];
 export const ERA_VIEWS = ['bars', 'lines'] as const;
 export type EraView = (typeof ERA_VIEWS)[number];
-// Once dialed (spec 2026-10-15 Part 2): rating views skip each bag's dial-in brews (dialed.ts). Only `all`
+// Once dialed: rating views skip each bag's dial-in brews (dialed.ts). Only `all`
 // is ever in the URL (dial=all); absent = Once dialed.
 export const DIALS = ['dialed', 'all'] as const;
 export type Dial = (typeof DIALS)[number];

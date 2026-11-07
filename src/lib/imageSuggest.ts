@@ -1,4 +1,4 @@
-// Client-safe. Image Suggest's reply shapes (spec 2026-10-06-image-suggest-design.md).
+// Client-safe. Image Suggest's reply shapes.
 export interface Candidate {
   image: string;
   pageUrl: string;

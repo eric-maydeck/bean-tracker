@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS image_fills (
   fill TEXT NOT NULL
 );
 
--- Our own copy of each displayed image (spec 2026-10-06-local-image-copies-design.md):
+-- Our own copy of each displayed image:
 -- original URL + kind → content-addressed file under images/<kind>/. Written by
 -- server/imageCopies.ts; joined in coffees.ts LIST_SELECT as image_copy.
 CREATE TABLE IF NOT EXISTS image_copies (

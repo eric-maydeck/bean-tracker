@@ -1,5 +1,5 @@
 import { setting } from './settingName';
-// One small-sample rule for every insights view (spec 2026-10-15 Part 1). Client-safe: the markers and
+// One small-sample rule for every insights view. Client-safe: the markers and
 // legends import it too. A small result still shows, with SampleNote's "Low confidence" chip and tip.
 export const POOLED_MIN_BAGS = 3;
 export const POOLED_MIN_BREWS = 10;

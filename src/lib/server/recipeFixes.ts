@@ -1,4 +1,4 @@
-// One-time boot fix (spec 2026-10-29-recipe-steps-triggers): prod recipes get shares, triggers, ratio lists,
+// One-time boot fix: prod recipes get shares, triggers, ratio lists,
 // the Shoebox washed/natural split and two generic tags removed. Keyed by recipe name; the stored JSON is
 // edited as plain data, so no value imports from $lib (db.ts runs under node without a bundler).
 import type { DatabaseSync } from 'node:sqlite';

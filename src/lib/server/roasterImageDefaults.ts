@@ -44,6 +44,7 @@ export const ROASTER_IMAGE_DEFAULTS: readonly RoasterImageDefault[] = [
   { roaster: 'Yelei Lab', image_url: 'https://assets.super.so/96640f2c-1f98-4b3a-8885-aded48c86a26/uploads/logo/a155f64b-0134-4476-aa41-cf50b60a1dcd.png' }
 ];
 
-// Second batch of roaster logos; empty (its source links were signed and expired).
+// Second batch of roaster logos; empty (its source links were signed and expired). The marker
+// must stay so databases that already applied it do not re-run it.
 export const ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER = 'roaster_image_defaults_2026_10b_applied';
 export const ROASTER_IMAGE_DEFAULTS_2026_10B: readonly RoasterImageDefault[] = [];
