@@ -1,3 +1,16 @@
+# [1.110.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.109.0...v1.110.0) (2026-11-07)
+
+
+### Bug Fixes
+
+* **recaps:** hour chart axis labels keep 3 bars from the end labels
+
+
+### Features
+
+* **config:** contact email and owner name come from config hosts
+* **config:** optional config.yaml with per-host site identity
+
 # [1.109.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.108.0...v1.109.0) (2026-11-06)
 
 
