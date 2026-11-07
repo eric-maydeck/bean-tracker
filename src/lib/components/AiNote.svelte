@@ -51,7 +51,7 @@
 
 <div>
   <span>Built with help from Claude Code, an AI coding assistant<span class="d" aria-hidden="true">&nbsp;·</span></span>
-<span class="fi lk"><a {href} bind:this={link} onclick={open} onpointerenter={syncHref} onfocus={syncHref}>How AI was used</a><span class="d keep" aria-hidden="true">&nbsp;·</span></span>
+<span class="fi lk"><a {href} bind:this={link} onclick={open} onpointerenter={syncHref} onfocus={syncHref}>How AI was used</a>{#if email}<span class="d keep" aria-hidden="true">&nbsp;·</span>{/if}</span>
 {#if email}<span class="fi lk"><a href="mailto:{email}">Contact</a></span>{/if}
 </div>
 

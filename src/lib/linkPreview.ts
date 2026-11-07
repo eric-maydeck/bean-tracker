@@ -98,7 +98,6 @@ export function coffeesPreview(v: { count: number; grams: number; status: Status
   return { title: 'Coffee Collection', description: fitList(lines.filter(Boolean), '\n', false) };
 }
 
-
 // A recap link: the cover (bare URL, an unknown slide) or one slide, with its card image (server/recaps/card.ts).
 // The card URL carries, for an admin's preview year, preview=1 (the card endpoint 404s it otherwise).
 export function recapPreview(r: Recap, slideId: string | undefined): Preview {
