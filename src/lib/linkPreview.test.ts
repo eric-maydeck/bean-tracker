@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Recap } from './server/recaps/recap';
-import { DESCRIPTION_MAX, recapPreview, RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, subscriptionsPreview, waterPreview } from './linkPreview';
+import { DESCRIPTION_MAX, recapPreview, RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, plural, subscriptionsPreview, waterPreview } from './linkPreview';
 
 const kenya = { roaster: 'The Picky Chemist', coffee_name: 'Kenya AA Inoi Kianderi', origin: 'Kenya', processing: 'Washed', amount_g: 250, roast_date: '2026-10-03' };
 
 describe('absoluteImage', () => {
   it('prefixes paths, keeps http(s), drops the rest', () => {
-    expect(absoluteImage('/img/coffees/ab.webp', 'https://fuhnoo.coffee')).toBe('https://fuhnoo.coffee/img/coffees/ab.webp');
+    expect(absoluteImage('/img/coffees/ab.webp', 'https://example.test')).toBe('https://example.test/img/coffees/ab.webp');
     expect(absoluteImage('https://x.example/a.jpg', 'https://o')).toBe('https://x.example/a.jpg');
     expect(absoluteImage('http://x.example/a.jpg', 'https://o')).toBe('http://x.example/a.jpg');
     expect(absoluteImage('data:image/svg+xml,%3Csvg', 'https://o')).toBeNull();
@@ -140,13 +140,6 @@ describe('coffeesPreview', () => {
   it('skips the filters line when there are none; keeps the search', () => {
     expect(coffeesPreview({ count: 1, grams: 250, status: ['backlog'], query: '', chips: [] }).description).toBe('Backlog\n1 coffee · 250g');
     expect(coffeesPreview({ count: 2, grams: 500, status: ['all'], query: ' gesha ', chips: ['Origin: Kenya'] }).description).toBe('All\nOrigin: Kenya · “gesha”\n2 coffees · 500g');
-  });
-});
-
-describe('ownerName', () => {
-  it('names the owner from the host', () => {
-    expect(ownerName('coffee.maydeck.net')).toBe('Eric');
-    for (const h of ['fuhnoo.coffee', 'localhost:4173', '192.0.2.5:5173']) expect(ownerName(h)).toBe('fuhnoo');
   });
 });
 

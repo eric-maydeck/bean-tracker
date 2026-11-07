@@ -1885,9 +1885,9 @@ export const STATES: State[] = [
         ['/stats?tab=records&range=all&chart=records-top-coffees', 'Stats: Top coffees', /^Avg rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
         ['/stats?tab=records&range=all&chart=records-top-brews', 'Stats: Top brews', /^Rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
         ['/stats?tab=records&range=all&chart=record-nightOwl', 'Stats: Night owl', /^All time\n.+\n/],
-        ['/stats?tab=habits&range=all&chart=habits-hour', 'Stats: Habits', /^When and how fuhnoo brews\nAll time\n[\d,]+ brews/],
-        ['/stats?chart=leaderboard-origins', 'Stats: Overview', /^fuhnoo's brewing at a glance\n/],
-        ['/stats?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Stats: Leaderboards', /^fuhnoo's top roasters, coffees, origins and gear\nAll time\n[\d,]+ brews/]
+        ['/stats?tab=habits&range=all&chart=habits-hour', 'Stats: Habits', /^When and how Tester brews\nAll time\n[\d,]+ brews/],
+        ['/stats?chart=leaderboard-origins', 'Stats: Overview', /^Tester's brewing at a glance\n/],
+        ['/stats?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Stats: Leaderboards', /^Tester's top roasters, coffees, origins and gear\nAll time\n[\d,]+ brews/]
       ];
       for (const [path, title, desc] of cases) {
         const t = await previewTags(page, path);
@@ -4095,7 +4095,7 @@ export const STATES: State[] = [
     act: async (page) => {
       const foot = page.locator('.site-footer');
       await expect(foot).toContainText('Built with help from Claude Code, an AI coding assistant');
-      await expect(foot.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', /^mailto:(eric@maydeck\.net|contact@fuhnoo\.coffee)$/);
+      await expect(foot.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', 'mailto:hello@example.test');
       // One run of items: left-aligned, fixed order, joined by " · ".
       expect(await foot.evaluate((el) => getComputedStyle(el).textAlign)).not.toBe('center');
       const lines = (await foot.locator(':scope > div').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
@@ -4980,7 +4980,7 @@ export const STATES: State[] = [
     act: async (page) => {
       const t = await previewTags(page, '/stats?tab=spend&range=12m');
       expect(t['og:title']).toBe('Stats: Spend');
-      expect(t['og:description']).toMatch(/^What fuhnoo spends on coffee, and on what\n.+\nSpent \$[\d,.]+ · [\d,.]+ bags?( · \$\d+\.\d\d\/g avg)?$/);
+      expect(t['og:description']).toMatch(/^What Tester spends on coffee, and on what\n.+\nSpent \$[\d,.]+ · [\d,.]+ bags?( · \$\d+\.\d\d\/g avg)?$/);
     }
   },
   // On hand: eight tiles (with the oldest and newest unopened) and no Compare control (a snapshot has nothing to compare); the runway and freshness cards fill their rows.
@@ -5345,7 +5345,7 @@ export const STATES: State[] = [
     act: async (page) => {
       const t = await previewTags(page, '/stats?tab=onhand');
       expect(t['og:title']).toBe('Stats: On hand');
-      expect(t['og:description']).toMatch(/^What's on fuhnoo's shelf right now\n.+\n\d+ bags? waiting · .+ · \$[\d,.]+ tied up$/);
+      expect(t['og:description']).toMatch(/^What's on Tester's shelf right now\n.+\n\d+ bags? waiting · .+ · \$[\d,.]+ tied up$/);
     }
   },
   {

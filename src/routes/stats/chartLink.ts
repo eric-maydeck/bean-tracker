@@ -77,7 +77,7 @@ export const recordValue = (p: RecordPick, fmt: Fmt): string => recordParts(p, f
 
 // ---- The /stats link preview ----
 
-// What each tab is about, in the owner's name (ownerName(host)).
+// What each tab is about, in the owner's name (site.contactName from config).
 const TAB_SUMMARY: Record<Tab, (n: string) => string> = {
   overview: (n) => `${n}'s brewing at a glance`,
   leaderboards: (n) => `${n}'s top roasters, coffees, origins and gear`,

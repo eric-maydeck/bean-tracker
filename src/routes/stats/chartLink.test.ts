@@ -7,10 +7,10 @@ const rows = (vals: [string, number][]) => vals.map(([label, value]) => ({ key: 
 const ORIGINS = rows([['Ethiopia', 8.42], ['Kenya', 8.1], ['Colombia', 7.94], ['Rwanda', 7.5], ['Burundi', 7.0], ['Peru', 6.9]]);
 const none = { roasters: [], coffees: [], origins: ORIGINS, varieties: [], producers: [], process: [], roast: [], water: rows([['Lab Water B', 12]]), dripper: [], filter: [], grinder: [], caffeine: [] };
 const base = {
-  tab: 'leaderboards' as const, owner: 'fuhnoo', tabLabel: 'Leaderboards', period: 'All time', brews: 412, avgRating: 7.94, filters: ['Kenya', 'Washed'],
+  tab: 'leaderboards' as const, owner: 'Tester', tabLabel: 'Leaderboards', period: 'All time', brews: 412, avgRating: 7.94, filters: ['Kenya', 'Washed'],
   rank: 'rating' as const, perPerson: false, boards: none, records: null
 };
-const PAGE = { title: 'Stats: Leaderboards', description: "fuhnoo's top roasters, coffees, origins and gear\nAll time · Kenya · Washed\n412 brews · Avg rating 7.9" };
+const PAGE = { title: 'Stats: Leaderboards', description: "Tester's top roasters, coffees, origins and gear\nAll time · Kenya · Washed\n412 brews · Avg rating 7.9" };
 
 describe('insightsPreview', () => {
   it('Origins board under rating', () => {
@@ -46,11 +46,11 @@ describe('insightsPreview', () => {
       .toBe('Spent $82.50 · 6 bags · $0.11/g avg'));
   it('page level: On hand names the shelf', () =>
     expect(insightsPreview({ ...base, tab: 'onhand', tabLabel: 'On hand', filters: [], line: '4 bags waiting · 1.2kg · $52 tied up' }).description)
-      .toBe("What's on fuhnoo's shelf right now\nAll time\n4 bags waiting · 1.2kg · $52 tied up"));
+      .toBe("What's on Tester's shelf right now\nAll time\n4 bags waiting · 1.2kg · $52 tied up"));
   it('page level: summary per tab and owner, filters optional', () => {
-    const d = insightsPreview({ ...base, owner: 'Eric', tab: 'water', tabLabel: 'Water', filters: [], brews: 1436, avgRating: 7.5 });
-    expect(d).toEqual({ title: 'Stats: Water', description: "How water affects Eric's ratings\nAll time\n1,436 brews · Avg rating 7.5" });
-    expect(insightsPreview({ ...base, tab: 'overview', tabLabel: 'Overview' }).description.split('\n')[0]).toBe("fuhnoo's brewing at a glance");
+    const d = insightsPreview({ ...base, owner: 'Other', tab: 'water', tabLabel: 'Water', filters: [], brews: 1436, avgRating: 7.5 });
+    expect(d).toEqual({ title: 'Stats: Water', description: "How water affects Other's ratings\nAll time\n1,436 brews · Avg rating 7.5" });
+    expect(insightsPreview({ ...base, tab: 'overview', tabLabel: 'Overview' }).description.split('\n')[0]).toBe("Tester's brewing at a glance");
   });
   const records = {
     sections: [{ key: 'taste', tiles: [
@@ -69,7 +69,7 @@ describe('insightsPreview', () => {
       title: 'Stats: Taste', description: 'Last 3 months\nBest bag · 9.2\nBest day · 9.0'
     });
     expect(insightsPreview({ ...v, chart: 'records-money' }).title).toBe('Stats: Records');
-    expect(insightsPreview({ ...v, chart: 'records-money' }).description.split('\n')[0]).toBe("fuhnoo's bests and extremes");
+    expect(insightsPreview({ ...v, chart: 'records-money' }).description.split('\n')[0]).toBe("Tester's bests and extremes");
   });
   it('Top coffees and Top brews', () => {
     expect(insightsPreview({ ...v, chart: 'records-top-coffees' })).toEqual({

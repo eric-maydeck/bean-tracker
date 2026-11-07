@@ -226,7 +226,7 @@
   <Toast />
   {#if !recapPage}
   <footer class="site-footer">
-    <AiNote email={data.contactEmail} />
+    <AiNote email={data.site.contactEmail} />
     <div>
       <span class="fi">v{data.version}<span class="d" aria-hidden="true">&nbsp;·</span></span>
       <span class="fi">Last updated: <Stamp iso={data.lastUpdated} empty="no data yet" minute /><span class="d" aria-hidden="true">&nbsp;·</span></span>

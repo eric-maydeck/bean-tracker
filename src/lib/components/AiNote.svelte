@@ -5,7 +5,7 @@
   import { aboutAiOpen } from '$lib/aboutAi';
 
   // Footer line + "How this site was built" dialog. `?about=ai` opens it; closing drops the param (replaceState).
-  let { email }: { email: string } = $props();
+  let { email }: { email: string | null } = $props();
 
   let dlg: HTMLDialogElement;
   let link: HTMLAnchorElement;
@@ -52,7 +52,7 @@
 <div>
   <span>Built with help from Claude Code, an AI coding assistant<span class="d" aria-hidden="true">&nbsp;·</span></span>
 <span class="fi lk"><a {href} bind:this={link} onclick={open} onpointerenter={syncHref} onfocus={syncHref}>How AI was used</a><span class="d keep" aria-hidden="true">&nbsp;·</span></span>
-<span class="fi lk"><a href="mailto:{email}">Contact</a></span>
+{#if email}<span class="fi lk"><a href="mailto:{email}">Contact</a></span>{/if}
 </div>
 
 <dialog class="ai-dialog" aria-labelledby="ai-title" bind:this={dlg} onclose={closed} onpointerdown={(e) => (pressedBackdrop = e.target === dlg)} onclick={(e) => e.target === dlg && pressedBackdrop && dlg.close()}>

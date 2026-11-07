@@ -1,0 +1,4 @@
+hosts:
+  - domain: example.test
+    contactName: Tester
+    contactEmail: hello@example.test

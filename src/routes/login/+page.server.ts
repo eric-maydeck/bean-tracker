@@ -29,7 +29,7 @@ export const actions: Actions = {
       httpOnly: true,
       sameSite: 'lax',
       // The app is single-origin and HTTPS-only (reverse proxy at
-      // coffee.maydeck.net) as of the reverse proxy project — there is
+      // the public domain) as of the reverse proxy project — there is
       // no plain-HTTP path left for a Secure cookie to be silently dropped
       // on. See docs/superpowers/specs/2026-09-19-public-
       // access-design.md, Decision 9. Exception: the local dev server, which

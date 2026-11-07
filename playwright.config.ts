@@ -41,7 +41,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}/login`,
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { DB_PATH: '.ui-test/ui.db', ADMIN_PASSWORD_HASH, SESSION_SECRET: 'ui-test-only-session-secret' }
+    env: { CONFIG_PATH: 'tests/ui/fixtures/config.yaml', DB_PATH: '.ui-test/ui.db', ADMIN_PASSWORD_HASH, SESSION_SECRET: 'ui-test-only-session-secret' }
   },
   projects: [
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
