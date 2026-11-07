@@ -1007,7 +1007,7 @@
 </div>
 
 <style>
-  /* Desktop side rail (docs/backlog/insights-side-bar.md), from 1000px wide and 500px tall (never a
+  /* Desktop side rail, from 1000px wide and 500px tall (never a
      phone: landscape is 333px tall). --container-max (1416px = 1240px + the 176px rail + gap) is
      site-wide, so the content column at viewport W is W - 176px, and from 1416px the full 1208px.
      The content's width breakpoints are container queries on `insights` (viewport width - 2rem main padding), so it lays out exactly as the page did at W - 176. */

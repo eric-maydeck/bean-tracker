@@ -1,4 +1,4 @@
-// Grep-based repo rules that used to be prose in docs/gotchas. One failure line per violation.
+// Grep-based repo rules. One failure line per violation.
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';

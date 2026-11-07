@@ -160,8 +160,7 @@ interface BagRow {
 }
 
 // Every brew joined to its bean's coffee, method and water, plus every bag,
-// loaded per request. Fine at today's size. If insights ever feel slow, see the
-// performance note in docs/HANDOFF.md.
+// loaded per request. Fine at today's size. If insights ever feel slow, cache this.
 export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[] } {
   const rows = db
     .prepare(

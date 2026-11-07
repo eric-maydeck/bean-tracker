@@ -1,6 +1,6 @@
 // Pure decisions behind CoffeeForm's fill UI. Client-safe (no $lib/server
 // imports) so the component can use it; unit-tested because there's no
-// component-test layer (HANDOFF).
+// component-test layer.
 
 import type { CoffeeRow } from './types';
 

@@ -1,4 +1,4 @@
-// Who to credit for a coffee's image (docs/backlog/image-attribution.md "Design").
+// Who to credit for a coffee's image.
 // Client-safe and pure; the go route re-runs it so a link never targets anything not stored on the coffee.
 export interface Credit {
   href: string;

@@ -1,5 +1,5 @@
 // One-time backfill rules: which existing bags were likely subscription deliveries
-// (spec: docs/superpowers/specs/2026-10-25-insights-buying-backlog-design.md "Subscription link").
+//.
 // No $lib imports so plain `node` can load it.
 export const normRoaster = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 

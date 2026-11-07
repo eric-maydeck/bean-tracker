@@ -10,7 +10,7 @@ data/*.db
 
 # Local image copies (server/imageCopies.ts)
 data/images/
-# Product page backfill review: marks, shipped list, DB copies (scripts/backfill-review.py)
+# Product page backfill review: marks, shipped list, DB copies
 data/backfill-review/
 .preview-data/
 

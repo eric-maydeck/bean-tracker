@@ -3,7 +3,7 @@ import { gotoReady } from './ready';
 import { DatabaseSync } from 'node:sqlite';
 import { createCoffee } from '../../src/lib/server/coffees';
 
-// Link picker speed with ~300 linkable coffees (docs/backlog/custom-link-picker.md).
+// Link picker speed with ~300 linkable coffees.
 // Runs after every layout check (playwright.config.ts dependencies), so the
 // extra coffees it adds to the shared DB never show up in their screenshots.
 const RUNS = 7;

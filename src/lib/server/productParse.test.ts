@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { decodeEntities, htmlToText, parseShopifyProduct, parseHtmlProduct, resolveImageUrl } from './productParse';
 
-// Captured 2026-09-25 by Task 3 Step 1 of docs/superpowers/plans/2026-09-25-product-page-fill.md.
+// Captured 2026-09-25.
 // All eight listed URLs returned 200; no substitutions were needed.
 // picky-chemist.html was captured at ~1.08 MB (over the 1 MB cap), so it was
 // trimmed to just its <head>...</head> (the single application/ld+json block

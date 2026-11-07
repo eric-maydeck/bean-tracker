@@ -1426,7 +1426,7 @@ nav.site-nav a[aria-current='page'] {
      display:flex elsewhere) so Save changes/Discard changes come out the
      exact same width/height as Back/Import/Clone/Edit above, rather than
      sizing to their own shorter labels. CSS cascade ties break on source
-     order, not specificity — docs/HANDOFF.md. */
+     order, not specificity —. */
   .detail-edit-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

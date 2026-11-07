@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { pinnedBottom } from '../../src/lib/components/floatTip';
 
-// Helpers for the collapsible bar states (docs/superpowers/specs/2026-10-24-insights-collapsible-bar-design.md).
+// Helpers for the collapsible bar states.
 // Selectors are the component's contract: .cbar(.inner|.overlay), .cbar-scroll, .cbar-body, .cbar-mini,
 // .cbar-summary, .cbar-toggle, .cbar-pull(-tab); the spacer is .cbar's previous sibling while expanded.
 export const INSIGHTS_TABS = ['overview', 'insights', 'records', 'leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing', 'water', 'gear'] as const;

@@ -1,8 +1,6 @@
 # Coffee Image Search — Criteria & Lessons Learned
 
-Reference doc for a future "Suggest" button feature (see
-`docs/feedback-backlog.md`'s "From the original design docs" section,
-alongside the related "Phase 3 — webpage auto-fill" item). Captures the
+Reference doc for the "Suggest" button feature. Captures the
 rules used for a manual one-time image-population pass (2026-09-20) so the
 same logic can be turned into an automated feature later, rather than
 re-deriving it from scratch.

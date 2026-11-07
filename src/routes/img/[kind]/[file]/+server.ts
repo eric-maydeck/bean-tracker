@@ -1,7 +1,7 @@
 // Our local image copies (spec 2026-10-06-local-image-copies-design.md).
 // Public like /s: every viewer needs the images. Does no work beyond one file
 // read (no DB, no fetch, no sharp); names are content hashes, so responses are
-// immutable and proxy/browsers cache them for a year.
+// immutable and CDNs/browsers cache them for a year.
 import { error } from '@sveltejs/kit';
 import { readFile } from 'node:fs/promises';
 import { COPY_KINDS, COPY_FILE_RE, copyPath, imagesRoot } from '$lib/server/imageCopies';

@@ -119,7 +119,7 @@
   });
 
   // Sign in comes back to this page. Read from location at click time, since
-  // page.url goes stale after replaceState (HANDOFF gotcha).
+  // page.url goes stale after replaceState.
   function signInHere(event: MouseEvent & { currentTarget: HTMLAnchorElement }) {
     if (location.pathname === '/login') return;
     event.currentTarget.href = `/login?redirectTo=${encodeURIComponent(location.pathname + location.search)}`;

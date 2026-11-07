@@ -67,7 +67,7 @@ export function onDeckPreview(view: 'open' | 'next', show: 'all' | 'caffeinated'
   return { title, description: lines.length ? fitList(lines, '\n', true) : view === 'open' ? 'Nothing open right now.' : 'Backlog is empty.' };
 }
 
-// The budget is the project's documented one (docs/gotchas/url-state.md "Link previews"); adjust if Discord truncates.
+// The budget is the project's documented one; adjust if Discord truncates.
 export const RECIPE_PREVIEW_MAX = DESCRIPTION_MAX;
 
 // One recipe's link preview: its one-liner, steps, temperature and notes, then how many brews matched and their average

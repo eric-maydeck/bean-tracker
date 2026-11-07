@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 
 // Replaces networkidle (~500ms quiet window per load). Page data is server-rendered and client
 // fetches only happen on user action, so ready = hydrated + fonts + eager images
-// (docs/superpowers/specs/2026-10-13-test-suite-speed-design.md).
+//.
 export async function waitReady(page: Page) {
   await page.waitForFunction(() =>
     document.documentElement.hasAttribute('data-hydrated') &&

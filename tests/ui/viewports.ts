@@ -1,6 +1,5 @@
 // Every layout check runs at each of these: the widths the user's phones and
-// desktop hit (480 is where a real grid-collapse bug once hid, HANDOFF
-// gotcha), plus the user's own phone in both orientations, a standing
+// desktop hit (480 is where a real grid-collapse bug once hid), plus the user's own phone in both orientations, a standing
 // requirement for all UI testing (test phone in Firefox, measured
 // 2026-10-05: 480×909 portrait, 1003×333 landscape, CSS px at DPR 3).
 export const ALL_VIEWPORTS = [

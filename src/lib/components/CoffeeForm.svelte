@@ -734,7 +734,7 @@
   /* The form follows the coffee page's order: a top group (like the page header), then the
      Origin, Bag and Timing groups, then the URL slug. Each group is its own grid, so a tall
      cell (a Fill's rest-days note, an image preview, a save-anyway prompt) only grows its
-     own row. Base rule first, breakpoint overrides after (source-order cascade, docs/HANDOFF.md). */
+     own row. Base rule first, breakpoint overrides after (source-order cascade). */
   .form-grid {
     display: flex;
     flex-direction: column;

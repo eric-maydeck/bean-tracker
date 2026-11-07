@@ -1,4 +1,4 @@
-// Compact per-brew weight series from a Bean Conqueror flow profile (see docs/gotchas/bean-conqueror.md).
+// Compact per-brew weight series from a Bean Conqueror flow profile.
 export const FLOW_FORMAT = 1;
 export const FLOW_STEP_MS = 50;
 // A bucket takes its sample farthest from the interpolated grid value only when that sample is more

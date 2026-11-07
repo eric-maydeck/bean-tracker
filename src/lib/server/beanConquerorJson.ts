@@ -1,6 +1,5 @@
 // src/lib/server/beanConquerorJson.ts
 // Bean Conqueror's regular export (Beanconqueror.zip, JSON) → ParsedBeanConquerorData.
-// Spec: docs/superpowers/specs/2026-10-09-beanconqueror-json-import-design.md.
 import JSZip from 'jszip';
 import { STORE_ZONE } from '../localDate.ts';
 import type {
@@ -168,7 +167,7 @@ export function parseBeanConquerorJson(files: BeanConquerorJsonFiles): ParsedBea
   return { beans, beanOrigins, methods, grinders, brews, waters };
 }
 
-// = the server's BODY_SIZE_LIMIT (deploy/docker-compose.yml); the regular export is ~140 KB.
+// = the deployment's BODY_SIZE_LIMIT; the regular export is ~140 KB.
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 // The 2026-10-09 export holds 2.5 MB of JSON.
 export const MAX_JSON_BYTES = 50 * 1024 * 1024;

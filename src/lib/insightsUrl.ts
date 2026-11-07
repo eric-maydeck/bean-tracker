@@ -4,7 +4,7 @@ import { upsertFilter, type Filter } from '$lib/coffeeFilters';
 import { fromParams, toParams } from '$lib/coffeeViewState';
 
 // /stats view state (spec "URL state"). Explicit choices only: a param a
-// visitor never touched stays undefined and out of the URL (HANDOFF rule).
+// visitor never touched stays undefined and out of the URL.
 export const RANGES = ['1w', '1m', '3m', '6m', '12m', '3y', 'ytd', 'all'] as const;
 export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
   '1w': 'Last week',

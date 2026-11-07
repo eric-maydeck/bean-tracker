@@ -32,7 +32,7 @@ jobs:
       - run: npx svelte-check --threshold error
 
   ui-full:
-    # release gating off until Linux runs are green; see docs/sessions.md
+    # release gating off until Linux runs are green
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 60

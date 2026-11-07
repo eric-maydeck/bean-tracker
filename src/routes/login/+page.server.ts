@@ -28,11 +28,8 @@ export const actions: Actions = {
       path: '/',
       httpOnly: true,
       sameSite: 'lax',
-      // The app is single-origin and HTTPS-only (reverse proxy at
-      // the public domain) as of the reverse proxy project — there is
-      // no plain-HTTP path left for a Secure cookie to be silently dropped
-      // on. See docs/superpowers/specs/2026-09-19-public-
-      // access-design.md, Decision 9. Exception: the local dev server, which
+      // The app is single-origin and HTTPS-only, so there is no plain-HTTP path
+      // left for a Secure cookie to be silently dropped on. Exception: the local dev server, which
       // is plain HTTP — browsers only accept a Secure cookie over HTTP on
       // localhost, so logging in from a phone via the LAN IP silently failed.
       secure: !dev,

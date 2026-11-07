@@ -1,5 +1,4 @@
-// Input for the bean data backfill (spec docs/superpowers/specs/2026-11-01-bean-data-and-bq-patch-design.md,
-// part 4). Reads a DB COPY and a BQ export, writes <out>/coffees.json, batches/batch-NN.json (10 coffees
+// Input for the bean data backfill. Reads a DB COPY and a BQ export, writes <out>/coffees.json, batches/batch-NN.json (10 coffees
 // each) and keep.json. Real data: <out> must stay outside git (data/backfill-review/<pass>/ is ignored).
 //   npx vite-node --config scripts/vite-node.config.mjs scripts/bean-data-input.ts \
 //     --db <copy.db> --export <dir with Beanconqueror.zip> --out <pass dir>

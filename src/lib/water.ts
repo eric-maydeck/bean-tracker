@@ -1,5 +1,4 @@
 // Water hardness derived from minerals (mg/L), as ppm CaCO3. Spec:
-// docs/superpowers/specs/2026-10-09-beanconqueror-json-import-design.md.
 // Derived values win over Bean Conqueror's stored GH/KH, which are a cross-check.
 export interface WaterMinerals {
   calcium: number | null;

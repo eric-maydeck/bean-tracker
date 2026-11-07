@@ -1,7 +1,6 @@
-// Product page + image backfill batches (spec
-// docs/superpowers/specs/2026-10-07-product-page-backfill-design.md §4). Each
+// Product page + image backfill batches. Each
 // is applied once at boot under its own marker (applyCoffeeFixes, coffees.ts).
-// Data only, appended by `python3 -I scripts/backfill-review.py export`: never
+// Data only, generated: never
 // type or edit a URL here by hand. The file must end with the `];` line.
 import type { CoffeeFixBatch } from './coffees';
 
@@ -3020,32 +3019,11 @@ export const PRODUCT_PAGE_BACKFILLS: CoffeeFixBatch[] = [
       "to": "https://beanbodega.coffee/cdn/shop/files/664-PER-Roger-x-Eli-A.png?v=1775569293&width=3840"
     },
     {
-      "coffee_id": 173,
-      "roaster": "GWO",
-      "field": "image_url",
-      "from": null,
-      "to": ""
-    },
-    {
-      "coffee_id": 174,
-      "roaster": "GWO",
-      "field": "image_url",
-      "from": null,
-      "to": ""
-    },
-    {
       "coffee_id": 175,
       "roaster": "H&S",
       "field": "image_url",
       "from": null,
       "to": "https://gtlipifdfyugiwpxvuse.supabase.co/storage/v1/object/public/assets/products/ed49fb81-816a-41ed-8fd6-027bf381e537/22e61180b546ab2f82cb658cc31ee3ec.png"
-    },
-    {
-      "coffee_id": 187,
-      "roaster": "Still",
-      "field": "image_url",
-      "from": null,
-      "to": ""
     },
     {
       "coffee_id": 198,

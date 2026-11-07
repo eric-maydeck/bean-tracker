@@ -1,7 +1,6 @@
 # Insights stat catalog
 
-Date: 2026-10-09. Roadmap: `docs/superpowers/specs/2026-10-09-insights-foundation-design.md`
-(sub-projects 0–7). Import: `docs/superpowers/specs/2026-10-09-beanconqueror-json-import-design.md`.
+Date: 2026-10-09.
 
 The pool of stat ideas for `/insights`. When brainstorming a sub-project (2
 breakdowns, 3 highlights, 4 brewing lab + buying + subscriptions, 5 year in
@@ -333,7 +332,7 @@ Graycano lifts +0.28). Hypotheses, not findings: the bean dominates rating.
 ### Upload and storage recommendation
 
 - **Summarize client-side in the browser.** The server rejects bodies > 20 MB
-  (`BODY_SIZE_LIMIT`), the reverse proxy caps at 100 MB, and the zip is
+  (`BODY_SIZE_LIMIT`), a typical reverse proxy caps near 100 MB, and the zip is
   133 MB. `jszip` (already in the lockfile) opens the zip; inflate, parse,
   summarize and discard one profile at a time. Port the summarizer to JS
   (~150 lines, no new dependency). Under a minute for 1218 profiles; show a

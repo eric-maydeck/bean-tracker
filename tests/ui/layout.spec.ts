@@ -7553,7 +7553,7 @@ export const STATES: State[] = [
       await page.evaluate(() => document.getElementById('frac')!.remove());
     }
   },
-  // Side rail (docs/backlog/insights-side-bar.md): from 1000px wide and 500px tall. It adds width (rail + gap
+  // Side rail: from 1000px wide and 500px tall. It adds width (rail + gap
   // = 176px), so with it at viewport W the content lays out exactly as the page without it at W - 176 (a
   // (W - 176) x 499 viewport: too short for the rail), and from 1416px the content column is the full 1208px.
   // At w1280 this state also runs the comparisons at other sizes, then ends back at 1280 x 800.
@@ -11318,7 +11318,7 @@ export const STATES: State[] = [
         before = await body();
       }
     } },
-  // The collapsible bar on /stats (docs/superpowers/specs/2026-10-24-insights-collapsible-bar-design.md): desktop pins only
+  // The collapsible bar on /stats: desktop pins only
   // the controls; a phone gets the short row once the block is scrolled past, and the expanded overlay with its pull tab.
   ...INSIGHTS_TABS.map((tab) => ({ name: `insights-cbar-${tab}`, path: () => `/stats?tab=${tab}&range=all`, act: (page: Page) => cbarAct(page) })),
   { name: 'insights-cbar-chips', path: () => '/stats?tab=records&range=all&roast=Light&process=Washed&origin=Ethiopia&roaster=The%20Picky%20Chemist&caffeine=all',

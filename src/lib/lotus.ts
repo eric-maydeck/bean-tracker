@@ -4,7 +4,6 @@ import { pickOne } from '$lib/pageUrlState';
 // drops = round(ppm x L/4.5 x tip factor), doubled for Na and K. The factor is Lotus's calculator inline JS
 // (dropperStyleConversion: round 0.56, straight 1); its "Straight" style is the Precision Dropper, whose tip
 // averages 0.04g per drop vs 0.072g for the round tip (lotuscoffeeproducts.com/products/precision-dropper-straight-tipped).
-//
 export type Drops = { mg: number; ca: number; na: number; k: number };
 // Target ppm per mineral: Ca and Mg count as GH, Na and K as KH.
 export interface Recipe { name: string; slug: string; ppm: Drops }

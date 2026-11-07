@@ -1,5 +1,5 @@
-// test:ui run profiles (docs/superpowers/specs/2026-10-13-test-suite-speed-design.md).
-// Worker counts are from the measured sweep; data in docs/feedback-backlog-done.md (test suite speed entry).
+// test:ui run profiles.
+// Worker counts are from the measured sweep.
 export const PROFILES = {
   // Max speed: user away, or tests are the only thing the laptop is doing.
   performance: { workers: 9, nice: 0, background: false },
