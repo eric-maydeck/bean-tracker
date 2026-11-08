@@ -1,0 +1,2214 @@
+[
+  {
+    "grind_size": "1.6.0",
+    "grind_weight": 16,
+    "method_of_preparation": "15fa2627-21f1-4c3f-ab75-9b26deef65d4",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "41443c78-01fa-4389-a527-a84310f7c4f4",
+    "brew_temperature_time": 0,
+    "brew_temperature": 89,
+    "brew_time": 150,
+    "brew_quantity": 256,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 7,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 40,
+    "attachments": [],
+    "config": {
+      "uuid": "75b9f2a7-4291-44c1-a9ea-d246f999ca81",
+      "unix_timestamp": 1725157955
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "",
+    "grind_weight": 20.1,
+    "method_of_preparation": "c3a62359-cb56-46b5-afb1-11a2dad6c6e9",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "03f16a50-741b-442b-acb4-c00e2ab3b622",
+    "brew_temperature_time": 0,
+    "brew_temperature": 94,
+    "brew_time": 180,
+    "brew_quantity": 335.7,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "dde86157-710e-46dc-a99c-388d33af4611",
+      "unix_timestamp": 1725739852
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "fca34fc8-3e6c-4abc-8ff5-1c699ba759fc",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/dde86157-710e-46dc-a99c-388d33af4611_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.6.5",
+    "grind_weight": 17,
+    "method_of_preparation": "07d8f0f4-19a9-4a83-a9d6-3f8f2cf8e90b",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "41443c78-01fa-4389-a527-a84310f7c4f4",
+    "brew_temperature_time": 0,
+    "brew_temperature": 91,
+    "brew_time": 145,
+    "brew_quantity": 272,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 7.5,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 35,
+    "attachments": [],
+    "config": {
+      "uuid": "47e8eb0e-c9bd-443b-a499-2107c438d62c",
+      "unix_timestamp": 1725158111
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.8.0",
+    "grind_weight": 18,
+    "method_of_preparation": "36f6e3b6-7b1f-4f4c-a96b-a14d6e71f969",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "cb542344-f847-4a6f-a849-282cd58ee362",
+    "brew_temperature_time": 0,
+    "brew_temperature": 92,
+    "brew_time": 150,
+    "brew_quantity": 271.9,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 7.5,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 44,
+    "attachments": [],
+    "config": {
+      "uuid": "c6895c0c-6596-4445-ac6c-353c67b585aa",
+      "unix_timestamp": 1725927609
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "fca34fc8-3e6c-4abc-8ff5-1c699ba759fc",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/c6895c0c-6596-4445-ac6c-353c67b585aa_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.0.0",
+    "grind_weight": 20.1,
+    "method_of_preparation": "c6798fc7-d76b-4928-a2aa-c70d33e78511",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "7c1436b1-1bd2-4b63-a882-17c8b7dacabe",
+    "brew_temperature_time": 0,
+    "brew_temperature": 91,
+    "brew_time": 210,
+    "brew_quantity": 347.2,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 7,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 30,
+    "attachments": [],
+    "config": {
+      "uuid": "0f45dc75-a2cf-40b9-a120-43955be19533",
+      "unix_timestamp": 1741550665
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "f6e37419-d681-4bfd-bcbd-2b043b6c2959",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/0f45dc75-a2cf-40b9-a120-43955be19533_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.6.5",
+    "grind_weight": 17,
+    "method_of_preparation": "07d8f0f4-19a9-4a83-a9d6-3f8f2cf8e90b",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "41443c78-01fa-4389-a527-a84310f7c4f4",
+    "brew_temperature_time": 0,
+    "brew_temperature": 91,
+    "brew_time": 155,
+    "brew_quantity": 272,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 7.5,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 35,
+    "attachments": [],
+    "config": {
+      "uuid": "86b28040-d67b-4d21-a414-c2a35bc398c2",
+      "unix_timestamp": 1725347712
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.6.5",
+    "grind_weight": 18.1,
+    "method_of_preparation": "36f6e3b6-7b1f-4f4c-a96b-a14d6e71f969",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "cb542344-f847-4a6f-a849-282cd58ee362",
+    "brew_temperature_time": 0,
+    "brew_temperature": 94,
+    "brew_time": 150,
+    "brew_quantity": 271.4,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 46,
+    "attachments": [],
+    "config": {
+      "uuid": "17c43f59-d914-407f-ac2e-63b595f39e93",
+      "unix_timestamp": 1726523221
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "fca34fc8-3e6c-4abc-8ff5-1c699ba759fc",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/17c43f59-d914-407f-ac2e-63b595f39e93_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.6.5",
+    "grind_weight": 18,
+    "method_of_preparation": "36f6e3b6-7b1f-4f4c-a96b-a14d6e71f969",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "cb542344-f847-4a6f-a849-282cd58ee362",
+    "brew_temperature_time": 0,
+    "brew_temperature": 94,
+    "brew_time": 151,
+    "brew_quantity": 273,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "e95e28dd-2de2-43fc-ab60-0d9100c1a8c7",
+      "unix_timestamp": 1726523507
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "fca34fc8-3e6c-4abc-8ff5-1c699ba759fc",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/e95e28dd-2de2-43fc-ab60-0d9100c1a8c7_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.8.0",
+    "grind_weight": 25.2,
+    "method_of_preparation": "36f6e3b6-7b1f-4f4c-a96b-a14d6e71f969",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "03f16a50-741b-442b-acb4-c00e2ab3b622",
+    "brew_temperature_time": 0,
+    "brew_temperature": 94,
+    "brew_time": 211,
+    "brew_quantity": 427.7,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 5.5,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 60,
+    "attachments": [],
+    "config": {
+      "uuid": "b74c5367-2864-4f55-aae5-d6d0e7e2ff17",
+      "unix_timestamp": 1725830471
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/b74c5367-2864-4f55-aae5-d6d0e7e2ff17_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.7.5",
+    "grind_weight": 16.7,
+    "method_of_preparation": "36f6e3b6-7b1f-4f4c-a96b-a14d6e71f969",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "dd362ea7-4ab2-486f-a146-ed67ea4f8bb1",
+    "brew_temperature_time": 0,
+    "brew_temperature": 92,
+    "brew_time": 195,
+    "brew_quantity": 300.9,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8.5,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 60,
+    "attachments": [],
+    "config": {
+      "uuid": "9725b0bd-05fb-4631-aa17-005560048f6e",
+      "unix_timestamp": 1728158240
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "d4410025-1355-44db-86c9-d368c493ee64",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/9725b0bd-05fb-4631-aa17-005560048f6e_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.4.0",
+    "grind_weight": 18.1,
+    "method_of_preparation": "a8733048-42fa-4ecb-a8de-b1ac66c1d408",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "c255740a-40ff-4560-ab1b-e8c3c859f78b",
+    "brew_temperature_time": 0,
+    "brew_temperature": 85,
+    "brew_time": 140,
+    "brew_quantity": 272.6,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 7,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "a10d3821-87ea-4a8b-a53c-73dd85098822",
+      "unix_timestamp": 1730512463
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/a10d3821-87ea-4a8b-a53c-73dd85098822_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.7.0",
+    "grind_weight": 18,
+    "method_of_preparation": "72abfc8a-e0be-45b9-ac7a-58ace7e00f42",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "dd362ea7-4ab2-486f-a146-ed67ea4f8bb1",
+    "brew_temperature_time": 0,
+    "brew_temperature": 92,
+    "brew_time": 166,
+    "brew_quantity": 300.3,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 60,
+    "attachments": [],
+    "config": {
+      "uuid": "1a5415bc-f8ff-478f-a095-ebb30b3e8bb2",
+      "unix_timestamp": 1727993863
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "d4410025-1355-44db-86c9-d368c493ee64",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.4.0",
+    "grind_weight": 20,
+    "method_of_preparation": "c3a62359-cb56-46b5-afb1-11a2dad6c6e9",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "c255740a-40ff-4560-ab1b-e8c3c859f78b",
+    "brew_temperature_time": 0,
+    "brew_temperature": 85,
+    "brew_time": 230,
+    "brew_quantity": 301.2,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 6,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 40,
+    "attachments": [],
+    "config": {
+      "uuid": "a6e05001-d933-4de6-a971-e581a69c9564",
+      "unix_timestamp": 1730950337
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "f6e37419-d681-4bfd-bcbd-2b043b6c2959",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/a6e05001-d933-4de6-a971-e581a69c9564_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.6.0",
+    "grind_weight": 18.1,
+    "method_of_preparation": "15fa2627-21f1-4c3f-ab75-9b26deef65d4",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "cb542344-f847-4a6f-a849-282cd58ee362",
+    "brew_temperature_time": 0,
+    "brew_temperature": 94,
+    "brew_time": 123,
+    "brew_quantity": 276.6,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8.5,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "afe21a34-85f4-495f-a24e-be0bb7089805",
+      "unix_timestamp": 1726093781
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "fca34fc8-3e6c-4abc-8ff5-1c699ba759fc",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/afe21a34-85f4-495f-a24e-be0bb7089805_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.8.0",
+    "grind_weight": 18.1,
+    "method_of_preparation": "36f6e3b6-7b1f-4f4c-a96b-a14d6e71f969",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "dd362ea7-4ab2-486f-a146-ed67ea4f8bb1",
+    "brew_temperature_time": 0,
+    "brew_temperature": 92,
+    "brew_time": 180,
+    "brew_quantity": 301.1,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8.5,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 60,
+    "attachments": [],
+    "config": {
+      "uuid": "dd1e2eab-c719-41ac-aeef-2b778d86ad36",
+      "unix_timestamp": 1728256547
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": true,
+    "water": "d4410025-1355-44db-86c9-d368c493ee64",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/dd1e2eab-c719-41ac-aeef-2b778d86ad36_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.4.8",
+    "grind_weight": 15,
+    "method_of_preparation": "15fa2627-21f1-4c3f-ab75-9b26deef65d4",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "91f62930-7c1a-424b-aa49-cab42857223c",
+    "brew_temperature_time": 0,
+    "brew_temperature": 90,
+    "brew_time": 120,
+    "brew_quantity": 250,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 6.5,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 30,
+    "attachments": [],
+    "config": {
+      "uuid": "5f83c98f-c50a-4eb9-a7aa-0de15d4f7ee7",
+      "unix_timestamp": 1723058017
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": true,
+    "water": "bb516e65-265e-4e5b-88c3-bab2cec79213",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.6.5",
+    "grind_weight": 17,
+    "method_of_preparation": "07d8f0f4-19a9-4a83-a9d6-3f8f2cf8e90b",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "41443c78-01fa-4389-a527-a84310f7c4f4",
+    "brew_temperature_time": 0,
+    "brew_temperature": 91,
+    "brew_time": 145,
+    "brew_quantity": 272,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "9d3ff191-a3e2-402e-a2d4-eed91e51051e",
+      "unix_timestamp": 1725347767
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.4.3",
+    "grind_weight": 18,
+    "method_of_preparation": "c3a62359-cb56-46b5-afb1-11a2dad6c6e9",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "41443c78-01fa-4389-a527-a84310f7c4f4",
+    "brew_temperature_time": 0,
+    "brew_temperature": 92,
+    "brew_time": 270,
+    "brew_quantity": 288,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 6,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 50,
+    "attachments": [],
+    "config": {
+      "uuid": "652a4781-6c31-4cd9-a9b4-fa38e84c2b72",
+      "unix_timestamp": 1725346209
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.5.5",
+    "grind_weight": 15,
+    "method_of_preparation": "94687711-12cc-449f-afe3-0117459f8177",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "6f81941d-d82c-468a-a84b-aac2ace069c0",
+    "brew_temperature_time": 0,
+    "brew_temperature": 90,
+    "brew_time": 150,
+    "brew_quantity": 240,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 6,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "5d4e1700-b578-436c-a381-fe0472143f1a",
+      "unix_timestamp": 1721848417
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": true,
+    "water": "fca07f5d-1244-452a-b022-777f37b1584a",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.7.0",
+    "grind_weight": 18,
+    "method_of_preparation": "36f6e3b6-7b1f-4f4c-a96b-a14d6e71f969",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "dd362ea7-4ab2-486f-a146-ed67ea4f8bb1",
+    "brew_temperature_time": 0,
+    "brew_temperature": 92,
+    "brew_time": 166,
+    "brew_quantity": 300.3,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 60,
+    "attachments": [],
+    "config": {
+      "uuid": "46081211-c5c5-460e-ab67-10f120fc65a5",
+      "unix_timestamp": 1727993541
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "d4410025-1355-44db-86c9-d368c493ee64",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/46081211-c5c5-460e-ab67-10f120fc65a5_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.7.5",
+    "grind_weight": 18,
+    "method_of_preparation": "c3a62359-cb56-46b5-afb1-11a2dad6c6e9",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "03f16a50-741b-442b-acb4-c00e2ab3b622",
+    "brew_temperature_time": 0,
+    "brew_temperature": 94,
+    "brew_time": 204,
+    "brew_quantity": 270.6,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 7,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 0,
+    "attachments": [],
+    "config": {
+      "uuid": "ee7eff4a-7700-4283-a091-126acd0750ae",
+      "unix_timestamp": 1725321008
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/ee7eff4a-7700-4283-a091-126acd0750ae_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.7.0",
+    "grind_weight": 18.1,
+    "method_of_preparation": "72abfc8a-e0be-45b9-ac7a-58ace7e00f42",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "dd362ea7-4ab2-486f-a146-ed67ea4f8bb1",
+    "brew_temperature_time": 0,
+    "brew_temperature": 92,
+    "brew_time": 210,
+    "brew_quantity": 266.2,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 7,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 60,
+    "attachments": [],
+    "config": {
+      "uuid": "fd1fce14-c044-40d2-a7d8-2b8bfe9dd124",
+      "unix_timestamp": 1728066562
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "d4410025-1355-44db-86c9-d368c493ee64",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/fd1fce14-c044-40d2-a7d8-2b8bfe9dd124_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.4.0",
+    "grind_weight": 20,
+    "method_of_preparation": "c3a62359-cb56-46b5-afb1-11a2dad6c6e9",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "c255740a-40ff-4560-ab1b-e8c3c859f78b",
+    "brew_temperature_time": 0,
+    "brew_temperature": 85,
+    "brew_time": 180,
+    "brew_quantity": 300,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "f8b27da1-eada-4605-a3c5-6614cedba967",
+      "unix_timestamp": 1730441301
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "d4410025-1355-44db-86c9-d368c493ee64",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/f8b27da1-eada-4605-a3c5-6614cedba967_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.6.0",
+    "grind_weight": 18,
+    "method_of_preparation": "ecc90d61-1717-48ad-afbd-fd12cda72c9f",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "41443c78-01fa-4389-a527-a84310f7c4f4",
+    "brew_temperature_time": 0,
+    "brew_temperature": 89,
+    "brew_time": 165,
+    "brew_quantity": 272.3,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 9,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "1937c459-5366-4fc2-aed2-3b05b3194049",
+      "unix_timestamp": 1725510979
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/1937c459-5366-4fc2-aed2-3b05b3194049_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.8.0",
+    "grind_weight": 18,
+    "method_of_preparation": "c3a62359-cb56-46b5-afb1-11a2dad6c6e9",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "03f16a50-741b-442b-acb4-c00e2ab3b622",
+    "brew_temperature_time": 0,
+    "brew_temperature": 94,
+    "brew_time": 199,
+    "brew_quantity": 306.2,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 9,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 59,
+    "attachments": [],
+    "config": {
+      "uuid": "76edf7a8-e7fc-4ddb-a20f-8f081a720f43",
+      "unix_timestamp": 1725490269
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": true,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/76edf7a8-e7fc-4ddb-a20f-8f081a720f43_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.6.0",
+    "grind_weight": 24.9,
+    "method_of_preparation": "72abfc8a-e0be-45b9-ac7a-58ace7e00f42",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "cb542344-f847-4a6f-a849-282cd58ee362",
+    "brew_temperature_time": 0,
+    "brew_temperature": 94,
+    "brew_time": 185,
+    "brew_quantity": 329.3,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 9,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 60,
+    "attachments": [],
+    "config": {
+      "uuid": "bfcb4f0a-942c-430c-aeaf-95b06db67bc5",
+      "unix_timestamp": 1726615252
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": true,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/bfcb4f0a-942c-430c-aeaf-95b06db67bc5_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.7.5",
+    "grind_weight": 18,
+    "method_of_preparation": "c3a62359-cb56-46b5-afb1-11a2dad6c6e9",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "03f16a50-741b-442b-acb4-c00e2ab3b622",
+    "brew_temperature_time": 0,
+    "brew_temperature": 93,
+    "brew_time": 184,
+    "brew_quantity": 324.4,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 8.5,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "84095ed8-dc07-473a-a78a-b458aef1cbe1",
+      "unix_timestamp": 1725232466
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": false,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "brews/84095ed8-dc07-473a-a78a-b458aef1cbe1_flow_profile.json",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  },
+  {
+    "grind_size": "1.5.0",
+    "grind_weight": 18,
+    "method_of_preparation": "94687711-12cc-449f-afe3-0117459f8177",
+    "mill": "61c23d36-8129-4642-adb7-a94757da0d57",
+    "mill_speed": 0,
+    "mill_timer": 0,
+    "pressure_profile": "",
+    "bean": "c6cc7981-2569-4d36-a22a-a2e936042285",
+    "brew_temperature_time": 0,
+    "brew_temperature": 90,
+    "brew_time": 140,
+    "brew_quantity": 288,
+    "brew_quantity_type": "GR",
+    "note": "",
+    "rating": 6,
+    "coffee_type": "",
+    "coffee_concentration": "",
+    "coffee_first_drip_time": 0,
+    "coffee_blooming_time": 45,
+    "attachments": [],
+    "config": {
+      "uuid": "6d7aec1a-db4c-4f27-a800-ae3a4d22772a",
+      "unix_timestamp": 1723058017
+    },
+    "tds": 0,
+    "brew_beverage_quantity": 0,
+    "brew_beverage_quantity_type": "GR",
+    "mill_timer_milliseconds": 0,
+    "brew_time_milliseconds": 0,
+    "brew_temperature_time_milliseconds": 0,
+    "coffee_first_drip_time_milliseconds": 0,
+    "coffee_blooming_time_milliseconds": 0,
+    "coordinates": {
+      "accuracy": null,
+      "altitude": null,
+      "altitudeAccuracy": null,
+      "heading": null,
+      "latitude": null,
+      "longitude": null,
+      "speed": null
+    },
+    "cupping": {
+      "body": 0,
+      "brightness": 0,
+      "clean_cup": 0,
+      "complexity": 0,
+      "cuppers_correction": 0,
+      "dry_fragrance": 0,
+      "finish": 0,
+      "flavor": 0,
+      "sweetness": 0,
+      "uniformity": 0,
+      "wet_aroma": 0,
+      "notes": ""
+    },
+    "cupped_flavor": {
+      "predefined_flavors": {},
+      "custom_flavors": []
+    },
+    "method_of_preparation_tools": [],
+    "bean_weight_in": 0,
+    "favourite": false,
+    "best_brew": true,
+    "water": "71073031-615b-4d58-a92e-b7469089d4fa",
+    "vessel_name": "",
+    "vessel_weight": 0,
+    "flow_profile": "",
+    "reference_flow_profile": {
+      "type": "NONE",
+      "uuid": ""
+    },
+    "preparationDeviceBrew": {
+      "type": "NONE"
+    },
+    "customInformation": {
+      "visualizer_id": ""
+    }
+  }
+]
