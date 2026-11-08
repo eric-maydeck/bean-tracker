@@ -1,3 +1,15 @@
+## [1.110.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.0...v1.110.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* **auth:** async scrypt verify and a global failed-login cap
+* **auth:** reserve login attempts before verifying; cap concurrent checks
+* **recaps:** 404 unknown card slides before building the recap
+* **security:** answer oversized anonymous form actions with an ActionResult
+* **security:** require Origin on all mutating requests, cap anonymous bodies, add security headers
+* **share:** rate-limit short-link creation per IP
+
 # [1.110.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.109.0...v1.110.0) (2026-11-07)
 
 
