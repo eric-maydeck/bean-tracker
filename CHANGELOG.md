@@ -1,3 +1,10 @@
+## [1.110.7](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.6...v1.110.7) (2026-11-08)
+
+
+### Bug Fixes
+
+* **image:** label the source repo so the package links to it ([3aa982a](https://github.com/eric-maydeck/bean-tracker/commit/3aa982a29e6b6f2fbdf898e42ed54b9286df8985))
+
 ## [1.110.6](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.5...v1.110.6) (2026-11-08)
 
 
