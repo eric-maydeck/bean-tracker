@@ -7,6 +7,10 @@ updates:
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
+    ignore:
+      # Majors need a migration; security updates still arrive. Revisit in the upgrade backlog item.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -15,3 +19,7 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # Majors need a migration; security updates still arrive. Revisit in the upgrade backlog item.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
