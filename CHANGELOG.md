@@ -1,3 +1,11 @@
+## [1.110.5](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.4...v1.110.5) (2026-11-08)
+
+
+### Bug Fixes
+
+* **deps:** override fflate 0.7.5 and uuid 11.1.1 for open advisories ([9c00de0](https://github.com/eric-maydeck/bean-tracker/commit/9c00de0ce78f541257c2cbd10834b6a0530048dd))
+* **stats:** count dashed chart segments after every draw (chart.js 4.6 skips onComplete on update) ([55ea096](https://github.com/eric-maydeck/bean-tracker/commit/55ea0969189625c5fd120865f7b0d54bcfc8a2d4))
+
 ## [1.110.4](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.3...v1.110.4) (2026-11-08)
 
 
