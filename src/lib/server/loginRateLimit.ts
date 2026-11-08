@@ -25,7 +25,24 @@ interface AttemptRecord {
 
 const attempts = new Map<string, AttemptRecord>();
 
+// All password checks (login, /api/me, upload) share this cap on top of the per-IP
+// lockouts, so rotating IPs cannot grind scrypt forever. Fixed window.
+// ponytail: an attacker can trip it to lock the admin out for the window; fine for one admin.
+const GLOBAL_MAX_FAILURES = 50;
+const GLOBAL_WINDOW_MS = 15 * 60 * 1000;
+let globalFailures = 0;
+let globalWindowStart = 0;
+
+function globallyLocked(now: number): boolean {
+  if (now - globalWindowStart >= GLOBAL_WINDOW_MS) {
+    globalFailures = 0;
+    return false;
+  }
+  return globalFailures >= GLOBAL_MAX_FAILURES;
+}
+
 export function isLockedOut(ip: string): boolean {
+  if (globallyLocked(Date.now())) return true;
   const record = attempts.get(ip);
   if (!record?.lockedUntil) return false;
   if (Date.now() >= record.lockedUntil) {
@@ -48,6 +65,11 @@ function pruneExpired(now: number): void {
 
 export function recordFailedAttempt(ip: string): void {
   const now = Date.now();
+  if (globalFailures === 0 || now - globalWindowStart >= GLOBAL_WINDOW_MS) {
+    globalFailures = 0;
+    globalWindowStart = now;
+  }
+  globalFailures += 1;
   pruneExpired(now);
   const record = attempts.get(ip);
   if (record) {
@@ -67,15 +89,15 @@ export function recordSuccessfulAttempt(ip: string): void {
 
 export type LoginAttemptResult = { ok: true } | { ok: false; reason: 'locked' | 'invalid' };
 
-export function attemptLogin(
+export async function attemptLogin(
   ip: string,
   password: string,
   storedHash: string | undefined
-): LoginAttemptResult {
+): Promise<LoginAttemptResult> {
   if (isLockedOut(ip)) {
     return { ok: false, reason: 'locked' };
   }
-  if (!storedHash || !password || !verifyPassword(password, storedHash)) {
+  if (!storedHash || !password || !(await verifyPassword(password, storedHash))) {
     recordFailedAttempt(ip);
     return { ok: false, reason: 'invalid' };
   }
@@ -87,4 +109,6 @@ export function attemptLogin(
 // don't bleed into each other via this shared module-level Map.
 export function _resetForTests(): void {
   attempts.clear();
+  globalFailures = 0;
+  globalWindowStart = 0;
 }

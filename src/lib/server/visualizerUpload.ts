@@ -21,7 +21,7 @@ let lastGood: string | null = null;
 const memoKey = (header: string, storedHash: string) => createHash('sha256').update(header).update('\0').update(storedHash).digest('hex');
 
 /** The Basic password is the admin sign-in password (ADMIN_PASSWORD_HASH), as for /login; the username is ignored. */
-export function verifyUploadAuth(authorization: string | null): boolean {
+export async function verifyUploadAuth(authorization: string | null): Promise<boolean> {
   const stored = process.env.ADMIN_PASSWORD_HASH;
   if (!stored || !authorization) return false;
   const m = /^Basic (\S+)$/i.exec(authorization);
@@ -31,7 +31,7 @@ export function verifyUploadAuth(authorization: string | null): boolean {
   const decoded = Buffer.from(m[1], 'base64').toString('utf8');
   const i = decoded.indexOf(':');
   if (i < 0) return false;
-  if (!verifyPassword(decoded.slice(i + 1), stored)) return false;
+  if (!(await verifyPassword(decoded.slice(i + 1), stored))) return false;
   lastGood = key;
   return true;
 }

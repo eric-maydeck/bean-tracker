@@ -32,7 +32,7 @@ const shot = (k: number, uuid = UUID) => {
 };
 
 describe('saveShot / uploadStatus', () => {
-  it('a reading failure does not fail an upload whose flow is stored', () => {
+  it('a reading failure does not fail an upload whose flow is stored', async () => {
     const db = createDb(':memory:');
     db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bc_uuid, water_amount_g, ground_coffee_g, has_flow_profile, imported_at) VALUES ('2026-01-01T00:00:00Z', ?, 300, 18, 1, 'x')`).run(UUID);
     db.exec('DROP TABLE brew_pour_readings');
@@ -42,7 +42,7 @@ describe('saveShot / uploadStatus', () => {
     warn.mockRestore();
     expect(db.prepare('SELECT COUNT(*) n FROM beanconqueror_brew_flows').get()).toEqual({ n: 1 });
   });
-  it('upserts one row per uuid, second weights win, same id returned', () => {
+  it('upserts one row per uuid, second weights win, same id returned', async () => {
     const db = createDb(':memory:');
     const a = saveShot(db, shot(1));
     const b = saveShot(db, shot(2));
@@ -57,7 +57,7 @@ describe('saveShot / uploadStatus', () => {
     expect(uploadStatus(db).lastUploadAt).toBeTruthy();
   });
 
-  it('counts a flow without a brew as waiting until the zip import brings the brew', () => {
+  it('counts a flow without a brew as waiting until the zip import brings the brew', async () => {
     const db = createDb(':memory:');
     saveShot(db, shot(1));
     expect(uploadStatus(db)).toMatchObject({ flows: 1, joined: 0, waiting: 1, brewsWithFlow: 0 });
@@ -66,7 +66,7 @@ describe('saveShot / uploadStatus', () => {
     expect(uploadStatus(db)).toMatchObject({ flows: 1, joined: 1, waiting: 0, brewsWithFlow: 1 });
   });
 
-  it('boot migration keeps flows when createDb runs again on the same file', () => {
+  it('boot migration keeps flows when createDb runs again on the same file', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'vu-'));
     try {
       const path = join(dir, 't.db');
@@ -79,13 +79,13 @@ describe('saveShot / uploadStatus', () => {
 });
 
 describe('parseShot', () => {
-  it('returns uuid + compact flow, ignoring visualizerId', () => {
+  it('returns uuid + compact flow, ignoring visualizerId', async () => {
     const r = parseShot(payload({ visualizerId: 'never-issued' }));
     expect(r.uuid).toBe(UUID);
     expect(r.flow).toEqual(shot(1).flow);
   });
 
-  it('rejects with exact messages and status 400', () => {
+  it('rejects with exact messages and status 400', async () => {
     const cases: [unknown, string][] = [
       [payload({ application: 'OTHER' }), 'Not a Bean Conqueror upload'],
       [null, 'Not a Bean Conqueror upload'],
@@ -116,31 +116,31 @@ describe('verifyUploadAuth', () => {
     else process.env.ADMIN_PASSWORD_HASH = saved;
   });
 
-  it('is false when no sign-in password is configured', () => {
+  it('is false when no sign-in password is configured', async () => {
     delete process.env.ADMIN_PASSWORD_HASH;
-    expect(verifyUploadAuth(basic('bean-tracker', 'x'))).toBe(false);
+    expect(await verifyUploadAuth(basic('bean-tracker', 'x'))).toBe(false);
   });
 
-  it('accepts any username with the sign-in password, rejects the rest', () => {
+  it('accepts any username with the sign-in password, rejects the rest', async () => {
     const pw = 'sign-in-pw';
     process.env.ADMIN_PASSWORD_HASH = hashPassword(pw);
-    expect(verifyUploadAuth(basic('bean-tracker', pw))).toBe(true);
-    expect(verifyUploadAuth(basic('anyone', pw))).toBe(true);
-    expect(verifyUploadAuth(basic('anyone', pw))).toBe(true); // memo hit
-    expect(verifyUploadAuth(basic('bean-tracker', 'wrong'))).toBe(false);
-    expect(verifyUploadAuth('Basic !!!')).toBe(false);
-    expect(verifyUploadAuth('Basic ' + Buffer.from('nocolon').toString('base64'))).toBe(false);
-    expect(verifyUploadAuth(basic('u', pw).replace('Basic', 'basic'))).toBe(true);
-    expect(verifyUploadAuth(basic('u', ''))).toBe(false);
-    expect(verifyUploadAuth('Bearer ' + pw)).toBe(false);
-    expect(verifyUploadAuth(null)).toBe(false);
+    expect(await verifyUploadAuth(basic('bean-tracker', pw))).toBe(true);
+    expect(await verifyUploadAuth(basic('anyone', pw))).toBe(true);
+    expect(await verifyUploadAuth(basic('anyone', pw))).toBe(true); // memo hit
+    expect(await verifyUploadAuth(basic('bean-tracker', 'wrong'))).toBe(false);
+    expect(await verifyUploadAuth('Basic !!!')).toBe(false);
+    expect(await verifyUploadAuth('Basic ' + Buffer.from('nocolon').toString('base64'))).toBe(false);
+    expect(await verifyUploadAuth(basic('u', pw).replace('Basic', 'basic'))).toBe(true);
+    expect(await verifyUploadAuth(basic('u', ''))).toBe(false);
+    expect(await verifyUploadAuth('Bearer ' + pw)).toBe(false);
+    expect(await verifyUploadAuth(null)).toBe(false);
   });
 
-  it('a new hash invalidates the old password even after a memoized success', () => {
+  it('a new hash invalidates the old password even after a memoized success', async () => {
     process.env.ADMIN_PASSWORD_HASH = hashPassword('old');
-    expect(verifyUploadAuth(basic('u', 'old'))).toBe(true);
+    expect(await verifyUploadAuth(basic('u', 'old'))).toBe(true);
     process.env.ADMIN_PASSWORD_HASH = hashPassword('fresh');
-    expect(verifyUploadAuth(basic('u', 'old'))).toBe(false);
-    expect(verifyUploadAuth(basic('u', 'fresh'))).toBe(true);
+    expect(await verifyUploadAuth(basic('u', 'old'))).toBe(false);
+    expect(await verifyUploadAuth(basic('u', 'fresh'))).toBe(true);
   });
 });

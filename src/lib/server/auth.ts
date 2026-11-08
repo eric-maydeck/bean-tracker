@@ -1,7 +1,9 @@
-import { scryptSync, randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
+import { scrypt, scryptSync, randomBytes, createHmac, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
 import { error } from '@sveltejs/kit';
 
 const SCRYPT_KEYLEN = 64;
+const scryptAsync = promisify(scrypt) as (pw: string, salt: string, keylen: number) => Promise<Buffer>;
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex');
@@ -9,11 +11,12 @@ export function hashPassword(password: string): string {
   return `${salt}:${hash}`;
 }
 
-export function verifyPassword(password: string, storedHash: string): boolean {
+// Async so a login attempt runs scrypt on the libuv pool instead of blocking the event loop.
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
   const [salt, hashHex] = storedHash.split(':');
   if (!salt || !hashHex) return false;
   const stored = Buffer.from(hashHex, 'hex');
-  const candidate = scryptSync(password, salt, SCRYPT_KEYLEN);
+  const candidate = await scryptAsync(password, salt, SCRYPT_KEYLEN);
   if (candidate.length !== stored.length) return false;
   return timingSafeEqual(candidate, stored);
 }

@@ -16,7 +16,7 @@ export const actions: Actions = {
     const password = String(formData.get('password') ?? '');
     const remember = formData.get('remember') != null;
     const ip = resolveClientIp(request, getClientAddress);
-    const result = attemptLogin(ip, password, process.env.ADMIN_PASSWORD_HASH);
+    const result = await attemptLogin(ip, password, process.env.ADMIN_PASSWORD_HASH);
     if (!result.ok) {
       if (result.reason === 'locked') {
         return fail(429, { error: 'Too many attempts. Try again later.' });
