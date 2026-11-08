@@ -125,8 +125,7 @@ data-access layer, form validation, and the migration script.
   version from the commits since the last release and, if one is warranted,
   cuts a git tag, a GitHub Release, and a `CHANGELOG.md` entry.
 - Pushing to `main` does not release or deploy. Promote with
-  `git push origin main:release` (fast-forward only; its pre-push gate runs the full prod UI
-  suite). After a release, `.github/back-merge-release.sh` merges `release` back into `main`
+  `git push origin main:release` (fast-forward only; CI's full UI suite gates the release). After a release, `.github/back-merge-release.sh` merges `release` back into `main`
   so the bot's `chore(release)` commit is on both and the next promotion fast-forwards.
 - `semantic-release` authenticates as a dedicated GitHub App
   (`RELEASE_APP_ID` + `RELEASE_APP_PRIVATE_KEY` repo secrets), not the
