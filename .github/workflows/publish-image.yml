@@ -36,7 +36,7 @@ jobs:
           cache-from: type=gha
 
       # Blocks the push below on fixable HIGH/CRITICAL findings in the arm64 image the Pi runs.
-      - uses: aquasecurity/trivy-action@0.28.0
+      - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/eric-maydeck/bean-tracker:scan
           severity: HIGH,CRITICAL
