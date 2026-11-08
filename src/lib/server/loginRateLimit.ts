@@ -89,21 +89,31 @@ export function recordSuccessfulAttempt(ip: string): void {
 
 export type LoginAttemptResult = { ok: true } | { ok: false; reason: 'locked' | 'invalid' };
 
-export async function attemptLogin(
-  ip: string,
-  password: string,
-  storedHash: string | undefined
-): Promise<LoginAttemptResult> {
-  if (isLockedOut(ip)) {
-    return { ok: false, reason: 'locked' };
+// scrypt runs on the libuv pool; more than this many at once would starve everything else.
+const MAX_IN_FLIGHT = 4;
+let inFlight = 0;
+
+// The one place a password check is rate-limited. The attempt is counted as a failure
+// BEFORE the await (so a parallel burst cannot all pass the lock check) and rolled back on
+// success; checks beyond MAX_IN_FLIGHT are refused as locked without hashing.
+export async function guardedCheck(key: string, check: () => Promise<boolean>): Promise<LoginAttemptResult> {
+  if (isLockedOut(key) || inFlight >= MAX_IN_FLIGHT) return { ok: false, reason: 'locked' };
+  recordFailedAttempt(key);
+  inFlight++;
+  let ok = false;
+  try {
+    ok = await check();
+  } finally {
+    inFlight--;
   }
-  if (!storedHash || !password || !(await verifyPassword(password, storedHash))) {
-    recordFailedAttempt(ip);
-    return { ok: false, reason: 'invalid' };
-  }
-  recordSuccessfulAttempt(ip);
+  if (!ok) return { ok: false, reason: 'invalid' };
+  recordSuccessfulAttempt(key);
+  globalFailures = Math.max(0, globalFailures - 1);
   return { ok: true };
 }
+
+export const attemptLogin = (ip: string, password: string, storedHash: string | undefined) =>
+  guardedCheck(ip, async () => !!storedHash && !!password && (await verifyPassword(password, storedHash)));
 
 // Test-only: clears all rate-limit state so cases in loginRateLimit.test.ts
 // don't bleed into each other via this shared module-level Map.
@@ -111,4 +121,5 @@ export function _resetForTests(): void {
   attempts.clear();
   globalFailures = 0;
   globalWindowStart = 0;
+  inFlight = 0;
 }

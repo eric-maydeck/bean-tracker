@@ -5,6 +5,7 @@ import {
   recordFailedAttempt,
   recordSuccessfulAttempt,
   attemptLogin,
+  guardedCheck,
   resolveClientIp,
   _resetForTests
 } from './loginRateLimit';
@@ -125,6 +126,32 @@ describe('global failure cap', () => {
     vi.advanceTimersByTime(15 * 60 * 1000 + 1);
     expect(isLockedOut('fresh-ip')).toBe(false);
     expect(await attemptLogin('fresh-ip', 'correct-password', hash)).toEqual({ ok: true });
+  });
+});
+
+describe('concurrent attempts', () => {
+  it('20 parallel wrong attempts from one IP: at most 4 reach scrypt at once, at most 5 in total', async () => {
+    let running = 0, peak = 0, calls = 0;
+    const slow = async () => {
+      calls++;
+      peak = Math.max(peak, ++running);
+      await new Promise((r) => setTimeout(r, 10));
+      running--;
+      return false;
+    };
+    const p = Array.from({ length: 20 }, () => guardedCheck('7.7.7.7', slow));
+    await vi.advanceTimersByTimeAsync(50);
+    const results = await Promise.all(p);
+    expect(peak).toBeLessThanOrEqual(4);
+    expect(calls).toBeLessThanOrEqual(4);
+    expect(results.filter((r) => !r.ok && r.reason === 'locked').length).toBe(20 - calls);
+  });
+
+  it('a success rolls the reservation back', async () => {
+    for (let i = 0; i < 4; i++) await guardedCheck('8.8.8.8', async () => false);
+    expect(await guardedCheck('8.8.8.8', async () => true)).toEqual({ ok: true });
+    for (let i = 0; i < 4; i++) await guardedCheck('8.8.8.8', async () => false);
+    expect(isLockedOut('8.8.8.8')).toBe(false);
   });
 });
 
