@@ -33,7 +33,10 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
   const cookie = event.cookies.get(SESSION_COOKIE_NAME);
   event.locals.isAdmin = cookie != null && verifySessionCookieValue(cookie);
-  if (bodyTooLarge(event.request, event.url, event.locals.isAdmin))
+  if (bodyTooLarge(event.request, event.url, event.locals.isAdmin)) {
+    if (event.request.headers.get('x-sveltekit-action') === 'true')
+      return secured(json({ type: 'error', error: { message: 'Sign in again to upload' } }, { status: 413 }));
     return secured(text('Request body too large', { status: 413 }));
+  }
   return secured(await resolve(event));
 };

@@ -35,6 +35,14 @@ describe('handle: origin check', () => {
     expect((await json({ origin: 'http://localhost', 'content-length': '2' })).status).toBe(200);
   });
 
+  it('answers an oversized anonymous form action with an ActionResult', async () => {
+    const url = new URL('http://localhost/account?/upload');
+    const request = new Request(url, { method: 'POST', body: 'x', headers: { origin: 'http://localhost', 'content-length': '70000', 'x-sveltekit-action': 'true' } });
+    const r = await handle({ event: { request, url, cookies: { get: () => undefined }, locals: {} }, resolve: async () => new Response('ok') } as never);
+    expect(r.status).toBe(413);
+    expect(await r.json()).toEqual({ type: 'error', error: { message: 'Sign in again to upload' } });
+  });
+
   it('sets the security headers on resolved and refused responses', async () => {
     for (const r of [await run('/stats').res, await run('/api/shots/upload').res]) {
       expect(r.headers.get('strict-transport-security')).toBe('max-age=31536000');
