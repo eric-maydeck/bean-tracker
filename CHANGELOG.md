@@ -1,3 +1,10 @@
+## [1.110.6](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.5...v1.110.6) (2026-11-08)
+
+
+### Bug Fixes
+
+* **image:** drop npm from the runtime image (its bundled deps failed the Trivy gate) ([7890e4b](https://github.com/eric-maydeck/bean-tracker/commit/7890e4b8f3f748d5a43d32da0a8d4025895aaa09))
+
 ## [1.110.5](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.4...v1.110.5) (2026-11-08)
 
 
