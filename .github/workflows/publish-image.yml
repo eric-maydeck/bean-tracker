@@ -25,11 +25,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build image (arm64, loaded locally for scanning)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          tags: ghcr.io/eric-maydeck/bean-tracker:scan
+          cache-to: type=gha,mode=max
+          cache-from: type=gha
+
+      # Blocks the push below on fixable HIGH/CRITICAL findings in the arm64 image the Pi runs.
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/eric-maydeck/bean-tracker:scan
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      # Same build, served from cache; runs only if the scan passed.
       - uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/arm64
           push: true
+          cache-from: type=gha
           tags: |
             ghcr.io/eric-maydeck/bean-tracker:latest
             ghcr.io/eric-maydeck/bean-tracker:${{ github.event.release.tag_name }}
