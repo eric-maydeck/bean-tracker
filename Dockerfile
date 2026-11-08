@@ -13,7 +13,9 @@ ENV NODE_ENV=production
 # isn't installed under --omit=dev, so running it here fails with "husky:
 # not found". No runtime dependency needs an install script either.
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev --ignore-scripts
+# The runtime never calls npm; dropping it keeps its bundled dependencies out of the image (and its CVE scan).
+RUN npm ci --omit=dev --ignore-scripts \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 COPY --from=build /app/build ./build
 EXPOSE 3000
 USER node
