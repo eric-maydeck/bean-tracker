@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import {
+  allowShortLinkCreate,
   isShareablePath,
   canonicalSharePath,
   createShortLink,
@@ -102,5 +103,15 @@ describe('create / resolve', () => {
     const { n } = db.prepare('SELECT COUNT(*) n FROM short_links').get() as { n: number };
     expect(n).toBe(SHORT_LINK_MAX_ROWS);
     expect(resolveShortLink(db, 'c00000', t0)).toBeNull(); // oldest evicted
+  });
+});
+
+describe('allowShortLinkCreate', () => {
+  it('allows 30 per IP per hour, tracks IPs apart, and recovers', () => {
+    const t0 = 1_000_000;
+    for (let i = 0; i < 30; i++) expect(allowShortLinkCreate('1.1.1.1', t0 + i)).toBe(true);
+    expect(allowShortLinkCreate('1.1.1.1', t0 + 100)).toBe(false);
+    expect(allowShortLinkCreate('2.2.2.2', t0 + 100)).toBe(true);
+    expect(allowShortLinkCreate('1.1.1.1', t0 + 60 * 60 * 1000 + 30)).toBe(true);
   });
 });

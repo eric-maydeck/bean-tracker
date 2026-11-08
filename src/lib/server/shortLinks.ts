@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 // Public short links for sharing long, filter-heavy views. Bounded so a
 // flood can't grow the DB (it is copied with the DB):
 // site pages only, 2 KB max, 365 days since last use, 10k rows (LRU).
-// ponytail: no per-client rate limit; add one if the table gets flooded.
+// Non-admin creation is also capped per client IP (allowShortLinkCreate).
 export const SHORT_LINK_TTL_DAYS = 365;
 export const SHORT_LINK_MAX_ROWS = 10_000;
 export const SHORT_LINK_MAX_LENGTH = 2048;
@@ -30,6 +30,21 @@ export function canonicalSharePath(url: unknown): string | null {
   }
   if (parsed.origin !== 'http://local.invalid' || !SHAREABLE_PATH.test(parsed.pathname)) return null;
   return parsed.pathname + parsed.search;
+}
+
+const CREATE_LIMIT = 30;
+const CREATE_WINDOW_MS = 60 * 60 * 1000;
+const createdAt = new Map<string, number[]>();
+
+/** Per-IP cap on short-link requests (30/hour). Records the attempt when allowed. */
+export function allowShortLinkCreate(ip: string, now: number): boolean {
+  // ponytail: in-memory sliding window; the sweep is O(tracked IPs) per call, fine at this scale.
+  for (const [k, ts] of createdAt) if (ts.every((t) => now - t >= CREATE_WINDOW_MS)) createdAt.delete(k);
+  const recent = (createdAt.get(ip) ?? []).filter((t) => now - t < CREATE_WINDOW_MS);
+  if (recent.length >= CREATE_LIMIT) return false;
+  recent.push(now);
+  createdAt.set(ip, recent);
+  return true;
 }
 
 export function isShareablePath(url: unknown): url is string {
