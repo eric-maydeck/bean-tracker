@@ -3093,8 +3093,9 @@ button .sample-chip {
 @media (max-width: 640px) {
   .mode-tip-button {
     min-width: 44px;
-    padding: 16px 15px;
-    margin: -16px -15px;
+    /* 44px tall on any line height (a tile caption's is small); the negative margin cancels the padding. */
+    padding: max(16px, calc(22px - 0.5lh)) 15px;
+    margin: min(-16px, calc(0.5lh - 22px)) -15px;
   }
 }
 .mode-tip {
@@ -3213,6 +3214,11 @@ button .sample-chip {
 }
 .cap-list {
   display: block;
+}
+/* A tile's mode words sit under its title a step smaller: "Calibrated ratings" must fit a 3-up phone tile on any
+   font's metrics (Linux's ran ~10px wider than macOS's, so the word broke inside its own button). */
+.stat-item .cap-list {
+  font-size: 0.85em;
 }
 .cap-gap {
   word-spacing: var(--cap-ws, 0.6em);

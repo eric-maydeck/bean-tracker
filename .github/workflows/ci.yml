@@ -62,6 +62,9 @@ jobs:
       - run: npm audit --audit-level=high
 
   ui-full:
+    concurrency:
+      group: ui-full-${{ github.ref }}-${{ matrix.viewport }}-${{ matrix.shard }}
+      cancel-in-progress: true
     # release gating off until Linux runs are green
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -69,7 +72,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        viewport: [w360, w390, w480, w768, w1280, phone-portrait, phone-landscape]
+        viewport: [w360, w390, w480, w768, phone-portrait, phone-landscape]
+        shard: ['1/1']
+        include:
+          # w1280 is the slowest viewport, so it runs as two halves.
+          - { viewport: w1280, shard: '1/2' }
+          - { viewport: w1280, shard: '2/2' }
     permissions:
       contents: read
     steps:
@@ -84,8 +92,10 @@ jobs:
       - run: npx svelte-kit sync
       - run: npx playwright install --with-deps firefox
       # balanced = 4 workers, matching the 4-vCPU runner (performance's 9 overloads it).
-      - run: npm run test:ui:prod
+      - run: npm run test:ui:prod -- --shard=${{ matrix.shard }}
         env:
+          # The seed and the states assume the brewing zone; the runner is UTC, which adds a " UTC" suffix to times.
+          TZ: America/Denver
           UI_SHOTS: off
           UI_PROFILE: balanced
           UI_VIEWPORTS: ${{ matrix.viewport }}
@@ -93,7 +103,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report-${{ matrix.viewport }}
+          name: playwright-report-${{ matrix.viewport }}-${{ strategy.job-index }}
           path: |
             playwright-report/
             .ui-test/results/
