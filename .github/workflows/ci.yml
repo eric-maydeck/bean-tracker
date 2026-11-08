@@ -7,10 +7,8 @@ on:
     paths-ignore:
       - '**.md'
       - 'docs/**'
+  # No paths-ignore: a docs-only PR still gets its (instant) green check.
   pull_request:
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
 
 jobs:
   test:
@@ -104,6 +102,45 @@ jobs:
         if: failure()
         with:
           name: playwright-report-${{ matrix.viewport }}-${{ strategy.job-index }}
+          path: |
+            playwright-report/
+            .ui-test/results/
+
+  # The UI tests this PR's diff reaches (scripts/test-changed.ts: unit tests, then the matching route tags).
+  ui-changed:
+    concurrency:
+      group: ui-changed-${{ github.ref }}
+      cancel-in-progress: true
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npx svelte-kit sync
+      - run: npx playwright install --with-deps firefox
+      - run: node scripts/test-changed.ts -- $(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+        env:
+          TZ: America/Denver
+          UI_VIEWPORTS: w360,phone-portrait,w1280
+          UI_BUILD: prod
+          UI_SHOTS: off
+          UI_PROFILE: balanced
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report-changed
           path: |
             playwright-report/
             .ui-test/results/
