@@ -27,7 +27,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: release
           fetch-depth: 0
@@ -36,7 +36,7 @@ jobs:
       # raise `release: published` for events created by that token, so
       # publish-image.yml would never fire. A GitHub App installation token
       # doesn't have that restriction and needs no long-lived credential.
-      - uses: actions/create-github-app-token@v1
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
