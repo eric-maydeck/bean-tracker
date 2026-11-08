@@ -5131,8 +5131,9 @@ export const STATES: State[] = [
       const ageCanvas = page.locator('section.chart-panel:has(#onhand-age) canvas');
       for (const pt of await chartPoints(ageCanvas)) {
         await page.mouse.move(pt[0], pt[1]);
-        if (await tip.waitFor({ timeout: 60 }).then(() => true, () => false)) {
-          const href = await tip.getByRole('link', { name: /See coffees/ }).getAttribute('href');
+        // A mark's tip may have no link (check() below skips those too): don't wait on one.
+        if (await tip.waitFor({ timeout: 60 }).then(() => true, () => false) && (await tip.getByRole('link', { name: /See coffees/ }).count())) {
+          const href = await tip.getByRole('link', { name: /See coffees/ }).getAttribute('href', { timeout: 500 }).catch(() => null); // the tip can close under the pointer
           seen.add(decodeURIComponent(href ?? '').replace(/\+/g, ' ').match(/rest_state=([^&]*)/)?.[1] ?? '');
         }
       }
