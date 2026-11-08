@@ -7,7 +7,8 @@ import { createCoffee } from '../../src/lib/server/coffees';
 // Runs after every layout check (playwright.config.ts dependencies), so the
 // extra coffees it adds to the shared DB never show up in their screenshots.
 const RUNS = 7;
-const BUDGET = { open: 100, keystroke: 16 };
+// keystroke: one frame at 60Hz (16.7ms; each sample waits for a frame, so a 60Hz runner can't read lower).
+const BUDGET = { open: 100, keystroke: 17 };
 const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 let ids: number[] = [];
 

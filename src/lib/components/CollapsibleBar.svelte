@@ -21,7 +21,7 @@
   let phone = $state(false);
   let scrolled = $state(false);
   let expanded = $state(false);
-  let hashDone = false;
+  let moved = false; // the reader scrolled themselves: stop re-landing the hash target
 
   $effect(() => {
     const mq = matchMedia('(max-width: 640px), (max-height: 450px)');
@@ -49,12 +49,19 @@
     const h = phone ? 3.5 * parseFloat(getComputedStyle(document.documentElement).fontSize) : (desktopPinned ?? barH);
     pinnedBar.h = h;
     document.documentElement.style.scrollPaddingTop = `${h}px`;
-    if (h && !hashDone) {
-      hashDone = true; // the browser's own hash scroll ran before this padding existed
+    // The browser's own hash scroll ran before this padding existed, and the bar can still change height (web fonts
+    // wrapping its controls differently) before the reader moves: land the target again under the new height.
+    if (h && !moved) {
       try {
         document.getElementById(decodeURIComponent(location.hash.slice(1) || new URLSearchParams(location.search).get('chart') || ''))?.scrollIntoView();
       } catch { /* a malformed hash (#%E0): no target, no scroll */ }
     }
+  });
+  $effect(() => {
+    const stop = () => { moved = true; };
+    const ev = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const;
+    for (const e of ev) addEventListener(e, stop, { once: true, passive: true });
+    return () => { for (const e of ev) removeEventListener(e, stop); };
   });
   // Cleared only on unmount: clearing on every re-run would flash 0 at whatever reads pinnedBar.h.
   $effect(() => () => {

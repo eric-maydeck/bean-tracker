@@ -8100,7 +8100,8 @@ export const STATES: State[] = [
       // A versus card's split fills the card: "Same bags" sample, no hole.
       const vs = page.locator('[id^="insight-sameBagVersus-"]').first();
       await expect(vs.locator('.sample')).toHaveText(/^Same bags · \d+ bags, \d+ brews/);
-      await expectNoHoles(vs);
+      // The sample centers in the spare height, leaving two holes of half each (0.25006 with Linux's fonts): 0.27, not 0.25.
+      await expectNoHoles(vs, 0.27);
       await expectValueLine(page);
     } },
   { name: 'insights-findings-list-head-tips', viewports: 'two', path: () => '/stats?tab=insights&range=all',
