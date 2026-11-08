@@ -31,6 +31,36 @@ jobs:
       - run: npx tsc --noEmit
       - run: npx svelte-check --threshold error
 
+  gitleaks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # CLI via the official image (gitleaks-action needs a license in some setups).
+      # Scans full git history; any finding fails the job.
+      - run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.0 \
+            git /repo --redact --verbose
+
+  npm-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      # No --omit=dev: SvelteKit/Vite/etc. are devDependencies but get bundled into the server build.
+      - run: npm audit --audit-level=high
+
   ui-full:
     # release gating off until Linux runs are green
     if: github.event_name == 'workflow_dispatch'
