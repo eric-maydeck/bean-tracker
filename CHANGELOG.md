@@ -1,3 +1,6 @@
+## [1.110.4](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.3...v1.110.4) (2026-11-08)
+
+
 ## [1.110.3](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.2...v1.110.3) (2026-11-08)
 
 
