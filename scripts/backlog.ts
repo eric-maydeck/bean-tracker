@@ -1,7 +1,7 @@
 // Compact backlog listing for agents. Usage: node scripts/backlog.ts [next|all|<id>]  (<id>: 142 public, p12 private)
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { discoverRepos } from './backlog-setup.ts';
+import { discoverPrivate, discoverPublic } from './backlog-setup.ts';
 
 export type Item = { id: string; title: string; status: string; type?: string; size?: string; want?: number; severity?: number; parent?: string };
 
@@ -27,11 +27,11 @@ export function formatItems(items: Item[], mode: 'next' | 'all'): string {
   const ids = new Set(shown.map((i) => i.id));
   const kids = (id: string) => shown.filter((i) => i.parent === id);
   const out: string[] = [];
-  for (const i of shown) {
-    if (i.parent && ids.has(i.parent)) continue; // printed under its parent
-    out.push(line(i));
-    for (const k of kids(i.id)) out.push(line(k, '  '));
-  }
+  const walk = (i: Item, depth: number) => {
+    out.push(line(i, '  '.repeat(depth)));
+    for (const k of kids(i.id)) walk(k, depth + 1);
+  };
+  for (const i of shown) if (!(i.parent && ids.has(i.parent))) walk(i, 0); // children print under their parent
   return out.join('\n');
 }
 
@@ -42,7 +42,7 @@ export function toItems(raw: { items: RawItem[] }, [pub]: string[], parents: Rec
   const out: Item[] = [];
   for (const r of raw.items) {
     const c = r.content;
-    if (!c?.number || !c.repository) continue; // drafts
+    if (!c?.number || !c.repository || c.type === 'PullRequest') continue; // drafts and PRs
     const id = (c.repository === pub ? '' : 'p') + c.number;
     out.push({ id, title: r.title ?? '', status: r.status ?? 'Backlog', size: r.size, want: r.want, severity: r.severity,
       type: r.labels?.includes('epic') ? 'epic' : r.type, parent: parents[id] });
@@ -67,21 +67,27 @@ const gh = (...a: string[]) => {
   }
 };
 
-// ponytail: first 100 open issues per repo for parents; paginate if a repo ever has more.
 function parentMap(repos: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   repos.forEach((r, n) => {
     const [owner, name] = r.split('/');
-    const q = `query { repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { issues(states: OPEN, first: 100) { nodes { number parent { number repository { nameWithOwner } } } } } }`;
-    const nodes = JSON.parse(gh('api', 'graphql', '-f', `query=${q}`)).data.repository.issues.nodes;
-    for (const x of nodes) if (x.parent) out[(n ? 'p' : '') + x.number] = (x.parent.repository.nameWithOwner === repos[0] ? '' : 'p') + x.parent.number;
+    for (let after = ''; ;) {
+      const q = `query { repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { issues(states: OPEN, first: 100${after}) { pageInfo { hasNextPage endCursor } nodes { number parent { number repository { nameWithOwner } } } } } }`;
+      const page = JSON.parse(gh('api', 'graphql', '-f', `query=${q}`)).data.repository.issues;
+      for (const x of page.nodes) if (x.parent) out[(n ? 'p' : '') + x.number] = (x.parent.repository.nameWithOwner === repos[0] ? '' : 'p') + x.parent.number;
+      if (!page.pageInfo.hasNextPage) break;
+      after = `, after: ${JSON.stringify(page.pageInfo.endCursor)}`;
+    }
   });
   return out;
 }
 
+// Resolves only the repo asked for, so a public id works in a checkout without private/.
+export const repoFor = (which: 'public' | 'private', d = { pub: discoverPublic, priv: discoverPrivate }) =>
+  which === 'public' ? d.pub() : d.priv();
+
 function main() {
   const arg = process.argv[2] ?? 'next';
-  const repos = discoverRepos();
   if (arg === 'next' || arg === 'all') {
     let n: number;
     try { n = JSON.parse(readFileSync('.claude/work/project.json', 'utf8')).projectNumber; } catch {
@@ -91,12 +97,13 @@ function main() {
     try { raw = JSON.parse(gh('project', 'item-list', String(n), '--owner', '@me', '--format', 'json', '--limit', '500')); } catch (e) {
       throw new Error(/scope|permission/i.test(String((e as { stderr?: string }).stderr)) ? 'needs: gh auth refresh -s project' : String((e as Error).message).split('\n')[0]);
     }
+    const repos = [repoFor('public'), repoFor('private')];
     console.log(formatItems(toItems(raw, repos, parentMap(repos)), arg));
     return;
   }
   const id = parseId(arg);
   if (!id) throw new Error('usage: node scripts/backlog.ts [next|all|<id>]   (<id>: 142 public, p12 private)');
-  const view = JSON.parse(gh('issue', 'view', String(id.number), '-R', repos[id.repo === 'public' ? 0 : 1], '--json', 'title,body,comments'));
+  const view = JSON.parse(gh('issue', 'view', String(id.number), '-R', repoFor(id.repo), '--json', 'title,body,comments'));
   console.log(trimIssueView(view));
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatItems, parseId, toItems, trimIssueView, type Item } from './backlog';
+import { formatItems, parseId, repoFor, toItems, trimIssueView, type Item } from './backlog';
 
 const it_ = (o: Partial<Item> & { id: string }): Item => ({ title: 't' + o.id, status: 'Next', ...o });
 
@@ -39,6 +39,23 @@ describe('formatItems', () => {
   });
 });
 
+describe('grandchildren', () => {
+  it('grandchildren nest under their parent', () => {
+    const out = formatItems([
+      it_({ id: '1', want: 5 }), it_({ id: '2', parent: '1' }), it_({ id: '3', parent: '2' }),
+    ], 'all').split('\n');
+    expect(out.map((l) => l.match(/^ */)![0].length)).toEqual([0, 2, 4]);
+  });
+});
+
+describe('repoFor', () => {
+  it('public id resolution does not touch the private repo', () => {
+    const d = { pub: () => 'o/pub', priv: () => { throw new Error('private touched'); } };
+    expect(repoFor('public', d)).toBe('o/pub');
+    expect(() => repoFor('private', d)).toThrow('private touched');
+  });
+});
+
 describe('parseId', () => {
   it('keeps the p prefix', () => {
     expect(parseId('142')).toEqual({ repo: 'public', number: 142 });
@@ -55,9 +72,10 @@ describe('toItems', () => {
       content: { type: 'Issue', number: 5, repository: 'o/pub', title: 'A', url: 'u' }, repository: 'https://github.com/o/pub' },
     { id: 'PVTI_2', title: 'B', status: 'Backlog', labels: ['epic'],
       content: { type: 'Issue', number: 3, repository: 'o/priv', title: 'B', url: 'u' } },
+    { id: 'PVTI_4', title: 'pr', content: { type: 'PullRequest', number: 9, repository: 'o/pub', title: 'pr' } },
     { id: 'PVTI_3', title: 'draft', content: { type: 'DraftIssue', title: 'draft' } },
   ] };
-  it('maps project items to ids by repo, skipping drafts', () => {
+  it('maps project items to ids by repo, skipping drafts; pull requests are skipped', () => {
     const items = toItems(raw, ['o/pub', 'o/priv'], { '5': '3' });
     expect(items).toEqual([
       { id: '5', title: 'A', status: 'In progress', size: 'M', want: 4, type: 'feature', severity: 2, parent: undefined },

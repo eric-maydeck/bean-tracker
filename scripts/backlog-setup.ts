@@ -68,12 +68,11 @@ const projectCall = <T>(f: () => T): T => {
 };
 
 // [public, private] as owner/name: the checkout's gh repo and the private/ checkout's origin.
-export function discoverRepos(): [string, string] {
-  const pub = json('repo', 'view', '--json', 'nameWithOwner').nameWithOwner as string;
-  const priv = execFileSync('git', ['-C', 'private', 'remote', 'get-url', 'origin'], { encoding: 'utf8' })
+export const discoverPublic = (): string => json('repo', 'view', '--json', 'nameWithOwner').nameWithOwner as string;
+export const discoverPrivate = (): string =>
+  execFileSync('git', ['-C', 'private', 'remote', 'get-url', 'origin'], { encoding: 'utf8' })
     .trim().replace(/^.*github\.com[:/]/, '').replace(/\.git$/, '');
-  return [pub, priv];
-}
+export const discoverRepos = (): [string, string] => [discoverPublic(), discoverPrivate()];
 
 function main() {
   const args = process.argv.slice(2);
