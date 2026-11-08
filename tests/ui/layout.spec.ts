@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { stringify } from 'devalue';
 import { join } from 'node:path';
 import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody, outerHeight } from './collapsibleBar';
+import { PART, PARTS } from './viewports';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
@@ -11932,7 +11933,7 @@ const tabTag = (st: State) => {
 };
 
 const SHOTS = process.env.UI_SHOTS === 'all';
-for (const state of STATES) {
+for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   test(state.name, { tag: [routeTag(state), ...tabTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
     if (state.slow) test.slow();
     const s = seed();

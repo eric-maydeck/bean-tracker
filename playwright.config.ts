@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { setPriority } from 'node:os';
 import { profileFor, shotsOn } from './scripts/uiProfile.ts';
-import { TWO_VIEWPORTS, VIEWPORTS } from './tests/ui/viewports';
+import { PART, TWO_VIEWPORTS, VIEWPORTS } from './tests/ui/viewports';
 
 // Run profile (UI_PROFILE=performance|balanced|background, default balanced): workers + priority.
 // Workers and Firefox inherit the runner's priority. --workers=N on the CLI still wins.
@@ -55,8 +55,8 @@ export default defineConfig({
       ...(TWO_VIEWPORTS.includes(name) ? {} : { grepInvert: /@two\b/ }),
       use: { ...use, storageState: '.ui-test/admin.json' }
     })),
-    // Adds coffees to the shared DB, so it waits for every layout check.
-    {
+    // Adds coffees to the shared DB, so it waits for every layout check. (UI_PART > 1 runs layout states only.)
+    ...(PART > 1 ? [] : [{
       name: 'perf',
       testMatch: /perf\.spec\.ts/,
       dependencies: VIEWPORTS.map((v) => v.name),
@@ -68,6 +68,6 @@ export default defineConfig({
       testMatch: /save\.spec\.ts/,
       dependencies: ['perf'],
       use: { viewport: { width: 480, height: 909 }, deviceScaleFactor: 3, hasTouch: true, storageState: '.ui-test/admin.json' }
-    }
+    }])
   ]
 });

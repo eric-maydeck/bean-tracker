@@ -22,3 +22,9 @@ export function pickViewports(list: string | undefined) {
 export const VIEWPORTS = pickViewports(process.env.UI_VIEWPORTS);
 // Where width-independent behavior states (tagged @two in layout.spec.ts) run: one touch phone, one desktop.
 export const TWO_VIEWPORTS = ['phone-portrait', 'w1280'];
+
+// UI_PART=<i>/<n> (CI only): this run takes the i-th of n interleaved slices of the layout states, so a slow viewport can split
+// across jobs (Playwright's --shard keeps a project and its dependencies together, so it cannot). Part 1 also runs perf and save.
+const [PART, PARTS] = (process.env.UI_PART ?? '1/1').split('/').map(Number);
+if (!(PARTS >= 1 && PART >= 1 && PART <= PARTS)) throw new Error(`Bad UI_PART "${process.env.UI_PART}": use i/n, e.g. 1/2`);
+export { PART, PARTS };
