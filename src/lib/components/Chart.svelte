@@ -446,15 +446,15 @@
             ctx.restore();
           });
         }
-      }] : [])],
+      }] : []),
+        // dashGaps: how many dashed segments Chart.js really drew per line (the ui tests read it), after every draw.
+        ...(dashGaps ? [{ id: 'dashCount', afterDraw: (c: ChartJS) => { canvasEl.dataset.dashedSegments = c.data.datasets.map((_, i) => (c.getDatasetMeta(i).dataset as unknown as { segments?: { style?: { borderDash?: unknown } }[] } | undefined)?.segments?.filter((s) => s.style?.borderDash).length ?? 0).join(','); } }] : [])],
       options: {
         indexAxis: type === 'bar' && !vertical ? 'y' : undefined,
         responsive: true,
         maintainAspectRatio: false,
         animation: {
           duration: 400,
-          // dashGaps: how many dashed segments Chart.js really drew per line (the ui tests read it).
-          ...(dashGaps && { onComplete: ({ chart: c }: { chart: ChartJS }) => { canvasEl.dataset.dashedSegments = c.data.datasets.map((_, i) => (c.getDatasetMeta(i).dataset as unknown as { segments?: { style?: { borderDash?: unknown } }[] } | undefined)?.segments?.filter((s) => s.style?.borderDash).length ?? 0).join(','); } })
         },
         // A tip opens only on a mark (ui-rules 50): a bar or a slice, never the plot's empty space. A line chart's tip opens
         // for the nearest x anywhere in the plot (every line chart, as Runway at your pace) and shows every series there (index mode).
