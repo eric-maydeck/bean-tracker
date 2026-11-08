@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
-FROM --platform=$BUILDPLATFORM node:22-slim AS build
+FROM --platform=$BUILDPLATFORM node:25-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22-slim AS runtime
+FROM node:25-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 # --ignore-scripts: `prepare` (husky) is a devDependency-only concern and
