@@ -1,7 +1,7 @@
 // Reads a brew's weight series into pours, blooms, swirls and tares. Every measure uses time windows
 // over the linearly interpolated curve at a fixed 0.1 s step, never sample-to-sample, so the raw
 // series and the compact 0.05 s one read alike (bcFlow.test.ts). Thresholds were set against the
-// user's tagged brews: see fixtures/bcflow/README.md.
+// tagged sample brews: see fixtures/bcflow/README.md.
 import {
   FAST_GPS,
   FAST_MIN_AVG_GPS,
