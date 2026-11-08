@@ -47,10 +47,10 @@ Environment variables (secrets and the data path; never commit real values):
 | Variable | Purpose |
 |---|---|
 | `ADMIN_PASSWORD_HASH` | Required. `<saltHex>:<hashHex>`, produced by `node scripts/hash-password.ts <password>` |
+| `CONFIG_PATH` | Config file path (default `./config.yaml`) |
+| `DB_PATH` | SQLite file path (default `data/bean-tracker.db`) |
 | `SESSION_SECRET` | Required. A long random string, generated once, e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 | `TAVILY_API_KEY` | Optional. Tavily web search for the coffee form's image Suggest; without it Suggest searches only the roaster's Shopify store |
-| `DB_PATH` | SQLite file path (default `data/bean-tracker.db`) |
-| `CONFIG_PATH` | Config file path (default `./config.yaml`) |
 
 Everything else is in an optional `config.yaml`. Without it the site is named
 "Bean Tracker" and shows no contact email.
@@ -78,12 +78,12 @@ Mount a persistent volume for the data directory (the database and the
 
 | Command | What it does |
 |---|---|
-| `npm run dev` | Local dev server |
 | `npm run build` | Production build (`adapter-node`) |
-| `npm run preview` | Preview a production build locally |
-| `npm run test` | Full test suite (unit + route/script tests) |
+| `npm run dev` | Local dev server |
 | `npm run migrate -- --file "<path>" --dry-run` | Parse an xlsx export and print row counts without writing |
 | `npm run migrate -- --file "<path>" [--db <path>] [--clear]` | Import coffees/subscriptions from an xlsx export into the SQLite database |
+| `npm run preview` | Preview a production build locally |
+| `npm run test` | Full test suite (unit + route/script tests) |
 | `npx vite-node --config scripts/vite-node.config.mjs scripts/suggest-compare.ts <db copy> [n] [out]` | Image Suggest results per provider, side by side (on a DB copy) |
 
 ### Data migration

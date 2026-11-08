@@ -8,15 +8,15 @@ parser ignores them).
 
 | File | Shape |
 | --- | --- |
-| bbs.json | two ~20 s blooms, three fast pours and a slow one; a dripper lift (swirl) |
-| bbj.json | three fast pours, then two slow ones |
-| bbf.json | three fast pours and a slow one |
 | 4sy.json | one bloom, four fast pours |
 | 5sy.json | five fast pours |
+| bbf.json | three fast pours and a slow one |
+| bbj.json | three fast pours, then two slow ones |
+| bbs-30s.json | like bbs, with two ~30 s blooms |
+| bbs.json | two ~20 s blooms, three fast pours and a slow one; a dripper lift (swirl) |
+| long-pour.json | two fast pours and one long slow pour |
 | swirl.json | a rise >= 40 g within 0.3 s that falls back within 10 s; the scale holds only 52 g |
 | tare.json | a tare at 16 s (weight snaps to 0 and stays); cut at 125 s |
-| bbs-30s.json | like bbs, with two ~30 s blooms |
-| long-pour.json | two fast pours and one long slow pour |
 
 Logged values the detector tests pass (water g, dose g, brew time s): bbs 295.3/18/117, bbj 244.7/15.8/96,
 bbf 324/18/130, 4sy 303.3/18.1/88, 5sy 304/20.2/70, swirl 272/18.1/114 (the scale only holds 52 g of it:
