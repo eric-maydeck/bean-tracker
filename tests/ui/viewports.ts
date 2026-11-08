@@ -9,7 +9,6 @@ export const ALL_VIEWPORTS = [
 ];
 
 // UI_VIEWPORTS=<comma list of names> narrows a run (iterating only); unset = all.
-// The pre-push gate overrides it: all 7 on a release push, GATE_VIEWPORTS (scripts/pre-push.ts) otherwise.
 export function pickViewports(list: string | undefined) {
   if (!list) return ALL_VIEWPORTS;
   const names = list.split(',').map((n) => n.trim()).filter(Boolean);
