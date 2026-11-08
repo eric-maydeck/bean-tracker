@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDb, setHouseholdSize } from '$lib/server/db';
 import { localToday } from '$lib/server/localToday';
-import { recap, recapTiles } from './recap';
+import { isKnownSlide, recap, recapTiles } from './recap';
 import { freezeIds, frozenIds } from './store';
 
 function seed(db: ReturnType<typeof createDb>, years: number[]) {
@@ -147,5 +147,12 @@ describe('route load', () => {
   it('opened year is public; admin previews the current year', () => {
     expect(call(String(cur - 1), '', false)).toMatchObject({ isAdmin: false, recap: { year: cur - 1, preview: false } });
     expect(call(String(cur), '?preview=1', true)).toMatchObject({ isAdmin: true, recap: { preview: true }, state: { preview: true } });
+  });
+});
+
+describe('isKnownSlide', () => {
+  it('accepts the cover, poster, personality and pool facts; rejects anything else', () => {
+    for (const id of ['cover', 'poster', 'you', 'total', 'busiest-day']) expect(isKnownSlide(id)).toBe(true);
+    for (const id of ['nope', 'total2', 'Total', '']) expect(isKnownSlide(id)).toBe(false);
   });
 });

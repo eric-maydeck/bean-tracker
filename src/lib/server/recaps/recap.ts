@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { getHouseholdSize } from '$lib/server/db';
-import { recapHref, recapYears } from '$lib/recapsUrl';
+import { POSTER_ID, recapHref, recapYears } from '$lib/recapsUrl';
 import { fmtInt } from '$lib/recapFormat';
 import { md, POOL } from './pool';
 import { personality } from './traits';
@@ -8,6 +8,9 @@ import { coverTone, order, select, tonesFor } from './select';
 import { brewYears, extendFrozenIds, freezeIds, frozenIds } from './store';
 import type { Slide, Tone } from './types';
 import { loadYear } from './year';
+
+/** Every slide id a card can name: the cover, the poster, the personality slide and each fact in the pool. */
+export const isKnownSlide = (id: string) => id === 'cover' || id === POSTER_ID || id === 'you' || POOL.some((f) => f.id === id);
 
 export interface Recap {
   year: number; preview: boolean; span: { from: string; to: string };
