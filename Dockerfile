@@ -7,6 +7,7 @@ COPY . .
 RUN npm run build
 
 FROM node:22-slim AS runtime
+LABEL org.opencontainers.image.source=https://github.com/eric-maydeck/bean-tracker
 WORKDIR /app
 ENV NODE_ENV=production
 # --ignore-scripts: `prepare` (husky) is a devDependency-only concern and
