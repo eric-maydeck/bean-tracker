@@ -9,7 +9,7 @@ export const TITLE = 'Bean Tracker backlog';
 export const LABELS = ['type:feature', 'type:bug', 'type:chore', 'groomed', 'backfilled', 'epic'];
 export type FieldSpec = { name: string; dataType: 'SINGLE_SELECT' | 'NUMBER' | 'DATE'; options?: string[] };
 export const FIELDS: FieldSpec[] = [
-  { name: 'Type', dataType: 'SINGLE_SELECT', options: ['feature', 'bug', 'chore'] },
+  { name: 'Kind', dataType: 'SINGLE_SELECT', options: ['feature', 'bug', 'chore'] },
   { name: 'Size', dataType: 'SINGLE_SELECT', options: ['S', 'M', 'L'] },
   { name: 'Status', dataType: 'SINGLE_SELECT', options: ['Backlog', 'Next', 'In progress', 'Blocked', 'Done'] },
   { name: 'Want', dataType: 'NUMBER' },
@@ -88,9 +88,10 @@ function main() {
     if (!dry) for (const l of miss) gh('label', 'create', l, '-R', r);
   }
 
+  const owner = repos[0].split('/')[0]; // `gh project link` rejects @me against a named repo
   let project: { number: number; id: string } | undefined;
   try {
-    const list = projectCall(() => json('project', 'list', '--owner', '@me', '--format', 'json', '-L', '100'));
+    const list = projectCall(() => json('project', 'list', '--owner', owner, '--format', 'json', '-L', '100'));
     project = list.projects.find((p: { title: string }) => p.title === TITLE);
   } catch (e) {
     if (!dry) throw e;
@@ -100,17 +101,17 @@ function main() {
   }
   console.log(project ? `project #${project.number} exists` : `project to create: ${TITLE}`);
   if (dry && !project) { console.log(JSON.stringify(planFields(FRESH_PROJECT), null, 2)); return; }
-  if (!project) project = json('project', 'create', '--owner', '@me', '--title', TITLE, '--format', 'json');
+  if (!project) project = json('project', 'create', '--owner', owner, '--title', TITLE, '--format', 'json');
   const n = String(project!.number);
-  const fieldsNow = () => json('project', 'field-list', n, '--owner', '@me', '--format', 'json', '-L', '100').fields as ProjectField[];
+  const fieldsNow = () => json('project', 'field-list', n, '--owner', owner, '--format', 'json', '-L', '100').fields as ProjectField[];
 
   const plan = planFields(fieldsNow());
   console.log(`fields to create: ${plan.create.map((f) => f.name).join(', ') || '(none)'}`);
   console.log(`fields to set options: ${plan.setOptions.map((s) => `${s.field.name} -> ${s.options.join('|')}`).join('; ') || '(none)'}`);
   if (dry) return;
-  for (const r of repos) gh('project', 'link', n, '--owner', '@me', '-R', r); // re-linking is a no-op
+  for (const r of repos) gh('project', 'link', n, '--owner', owner, '-R', r); // re-linking is a no-op
   for (const f of plan.create) {
-    const a = ['project', 'field-create', n, '--owner', '@me', '--name', f.name, '--data-type', f.dataType];
+    const a = ['project', 'field-create', n, '--owner', owner, '--name', f.name, '--data-type', f.dataType];
     if (f.options) a.push('--single-select-options', f.options.join(','));
     gh(...a);
   }

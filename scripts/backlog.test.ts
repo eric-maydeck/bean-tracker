@@ -68,7 +68,7 @@ describe('parseId', () => {
 
 describe('toItems', () => {
   const raw = { items: [
-    { id: 'PVTI_1', title: 'A', status: 'In progress', size: 'M', want: 4, type: 'feature', severity: 2,
+    { id: 'PVTI_1', title: 'A', status: 'In progress', size: 'M', want: 4, kind: 'feature', severity: 2,
       content: { type: 'Issue', number: 5, repository: 'o/pub', title: 'A', url: 'u' }, repository: 'https://github.com/o/pub' },
     { id: 'PVTI_2', title: 'B', status: 'Backlog', labels: ['epic'],
       content: { type: 'Issue', number: 3, repository: 'o/priv', title: 'B', url: 'u' } },

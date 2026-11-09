@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { discoverPrivate, discoverPublic } from './backlog-setup.ts';
 
-export type Item = { id: string; title: string; status: string; type?: string; size?: string; want?: number; severity?: number; parent?: string };
+export type Item = { id: string; title: string; status: string; kind?: string; size?: string; want?: number; severity?: number; parent?: string };
 
 export function parseId(arg: string): { repo: 'public' | 'private'; number: number } | null {
   const m = /^#?(p?)(\d+)$/.exec(arg.trim());
@@ -36,7 +36,7 @@ export function formatItems(items: Item[], mode: 'next' | 'all'): string {
 }
 
 // Shape of `gh project item-list --format json`: field values are lowercased top-level keys, plus content{number,repository}.
-type RawItem = { title?: string; status?: string; type?: string; size?: string; want?: number; severity?: number; labels?: string[];
+type RawItem = { title?: string; status?: string; kind?: string; size?: string; want?: number; severity?: number; labels?: string[];
   content?: { type?: string; number?: number; repository?: string } };
 export function toItems(raw: { items: RawItem[] }, [pub]: string[], parents: Record<string, string> = {}): Item[] {
   const out: Item[] = [];
@@ -45,7 +45,7 @@ export function toItems(raw: { items: RawItem[] }, [pub]: string[], parents: Rec
     if (!c?.number || !c.repository || c.type === 'PullRequest') continue; // drafts and PRs
     const id = (c.repository === pub ? '' : 'p') + c.number;
     out.push({ id, title: r.title ?? '', status: r.status ?? 'Backlog', size: r.size, want: r.want, severity: r.severity,
-      type: r.labels?.includes('epic') ? 'epic' : r.type, parent: parents[id] });
+      type: r.labels?.includes('epic') ? 'epic' : r.kind, parent: parents[id] });
   }
   return out;
 }

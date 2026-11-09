@@ -11,7 +11,7 @@ const done: ProjectField[] = [
   ...fresh.slice(0, 1),
   { id: 'F_status', name: 'Status', type: 'ProjectV2SingleSelectField',
     options: ['Backlog', 'Next', 'In progress', 'Blocked', 'Done'].map((name, i) => ({ id: `s${i}`, name })) },
-  { id: 'F_type', name: 'Type', type: 'ProjectV2SingleSelectField', options: ['feature', 'bug', 'chore'].map((name, i) => ({ id: `t${i}`, name })) },
+  { id: 'F_type', name: 'Kind', type: 'ProjectV2SingleSelectField', options: ['feature', 'bug', 'chore'].map((name, i) => ({ id: `t${i}`, name })) },
   { id: 'F_size', name: 'Size', type: 'ProjectV2SingleSelectField', options: ['S', 'M', 'L'].map((name, i) => ({ id: `z${i}`, name })) },
   { id: 'F_want', name: 'Want', type: 'ProjectV2Field' },
   { id: 'F_sev', name: 'Severity', type: 'ProjectV2Field' },
@@ -25,7 +25,7 @@ describe('backlog-setup', () => {
   });
   it('fresh project: create five fields, rewrite built-in Status options', () => {
     const p = planFields(fresh);
-    expect(p.create.map((f) => f.name)).toEqual(['Type', 'Size', 'Want', 'Severity', 'Shipped']);
+    expect(p.create.map((f) => f.name)).toEqual(['Kind', 'Size', 'Want', 'Severity', 'Shipped']);
     expect(p.setOptions).toHaveLength(1);
     expect(p.setOptions[0].field.id).toBe('F_status');
     expect(p.setOptions[0].options).toEqual(['Backlog', 'Next', 'In progress', 'Blocked', 'Done']);
