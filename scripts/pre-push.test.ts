@@ -12,7 +12,7 @@ describe('diffRanges', () => {
 
 describe('gateSteps', () => {
   it('docs-only push runs nothing', () => {
-    expect(gateSteps({ files: ['docs/HANDOFF.md', 'README.md', 'notes/x.md'] })).toEqual([]);
+    expect(gateSteps({ files: ['docs/notes.md', 'README.md', 'notes/x.md'] })).toEqual([]);
   });
   it('code push runs typecheck and changed unit tests', () => {
     expect(gateSteps({ files: ['docs/a.md', 'src/lib/x.ts'] })).toEqual(ALL);

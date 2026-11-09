@@ -47,7 +47,7 @@ describe('scopeFor', () => {
       expect(scopeFor([f], SRC).kind, f).toBe('full');
   });
   it('skips UI tests for docs, unit tests and fixtures only', () => {
-    expect(scopeFor(['docs/HANDOFF.md', 'src/lib/x.test.ts', 'src/lib/server/fixtures/a.json'], SRC)).toEqual({ kind: 'none' });
+    expect(scopeFor(['docs/notes.md', 'src/lib/x.test.ts', 'src/lib/server/fixtures/a.json'], SRC)).toEqual({ kind: 'none' });
     expect(scopeFor([], SRC)).toEqual({ kind: 'none' });
   });
   it('reads the real src/ tree', () => {
