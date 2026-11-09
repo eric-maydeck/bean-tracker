@@ -14,7 +14,8 @@ if (profile.background) execFileSync('taskpolicy', ['-b', '-p', String(process.p
 
 // Throwaway admin password "test" (same convention as the LAN test server).
 const ADMIN_PASSWORD_HASH = execFileSync('node', ['scripts/hash-password.ts', 'test']).toString().trim();
-const PORT = 5198;
+// UI_PORT: per-worktree port from scripts/ports.ts, so parallel worktrees can run UI tests.
+const PORT = Number(process.env.UI_PORT) || 5198;
 
 export default defineConfig({
   testDir: 'tests/ui',
