@@ -3,7 +3,8 @@
 import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 
-export const PREVIEW_BASE = 5173;
+// Issue previews use 5300-5399 so they never land on the main checkout's 5199.
+export const PREVIEW_BASE = 5300;
 export const UI_BASE = 5200;
 
 export function portFor(issue: number, base: number): number {
@@ -26,7 +27,7 @@ if (process.argv[1]?.endsWith('ports.ts')) {
   const [cmd, id] = process.argv.slice(2);
   const n = numFor(id);
   if (cmd === 'db') console.log(previewDbFor(n));
-  else if (cmd === 'port') console.log(n == null ? PREVIEW_BASE + 26 : portFor(n, PREVIEW_BASE));
+  else if (cmd === 'port') console.log(n == null ? 5199 : portFor(n, PREVIEW_BASE));
   else if (cmd === 'uiport') console.log(n == null ? 5198 : portFor(n, UI_BASE));
   else { console.error('usage: ports.ts <port|uiport|db> [id]'); process.exit(2); }
 }
