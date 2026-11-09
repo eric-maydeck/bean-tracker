@@ -46,6 +46,8 @@ cited file, not by copying it elsewhere.
 
 ## Rules
 
+Summarises the numbered rules in `docs/ui-rules.md`.
+
 - One place per action. Do not offer the same control in two spots.
 - One term per concept, used everywhere (for example "Sign in" and "Sign out", never mixed with "Log out").
 - Alike things look alike: menu items share icon and button style; icons come from the one set.
@@ -57,3 +59,4 @@ cited file, not by copying it elsewhere.
 - Edit forms use the same groups and field order as the page they edit. Change both in the same commit.
 - Opening a picker, menu or panel never focuses its text input; focus the list or the opener, so a phone keyboard does not pop up.
 - Every UI change gets automated layout checks (no sideways scroll, no wrapping or clipped buttons and chips, 44px targets on phones, aligned rows) at all test viewports before a manual check. Add each new state to `tests/ui`.
+- Alignment: `table.data-table` th and td are all `text-align: left` (`src/app.css:908`), numeric columns included; only tooltip value columns (`.tip-rows dd`) right-align, with `tabular-nums` so digits line up (`src/app.css:2923-2924`). Tile captions: the first line and the value stay level across a row, extra lines flow down (`ui-rules.md` rule 44). Sibling controls in one bar share a baseline (`ui-rules.md` rule 32).
