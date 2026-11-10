@@ -61,5 +61,3 @@ Most differences reach the user's review; cost differences under 1 and archive s
 without review. Proposals that fill a blank site field with a verified `high` value and no conflict with BQ go through
 automatically. Each (coffee, field) gets one outcome: a site-wins difference beats a proposal for that field, and two
 proposals with different values for one field both go to review.
-
-<!-- Session workflow test (#45); safe to remove. -->
