@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { discoverPrivate, discoverPublic } from './backlog-setup.ts';
 
-export type Item = { id: string; title: string; status: string; kind?: string; size?: string; want?: number; severity?: number; parent?: string };
+export type Item = { id: string; title: string; status: string; type?: string; size?: string; want?: number; severity?: number; parent?: string };
 
 export function parseId(arg: string): { repo: 'public' | 'private'; number: number } | null {
   const m = /^#?(p?)(\d+)$/.exec(arg.trim());

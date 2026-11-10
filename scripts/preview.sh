@@ -15,6 +15,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 [ -n "$id" ] || id=$(git rev-parse --abbrev-ref HEAD | sed -nE 's/^worktree-(p?[0-9]+)-.*/\1/p')
+if [ -n "$id" ] && ! [[ $id =~ ^p?[0-9]+$ ]]; then echo "bad --issue '$id' (want 142 or p12)" >&2; exit 2; fi
 port=$(node scripts/ports.ts port "$id")
 [ -n "$src" ] || src=$(node scripts/ports.ts db "$id")
 # A fresh worktree has no per-issue copy yet: take the shared one, if there is one.
