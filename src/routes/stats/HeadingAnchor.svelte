@@ -21,8 +21,10 @@
   }
 </script>
 
-<!-- Named by its text alone (aria-labelledby), not "… Copy link". -->
-<svelte:element this={`h${level}`} {id} class="heading-anchor {cls}" aria-labelledby="{id}-text">
+<!-- Named by its text alone (aria-labelledby), not "… Copy link". Its own row scope (checkLayout): the icon rides the heading's
+     text line, so its tap area follows the heading's line height, not that of a "?" button beside the heading (LabHead);
+     the two icons share the row's baseline. -->
+<svelte:element this={`h${level}`} {id} class="heading-anchor {cls}" aria-labelledby="{id}-text" data-row-scope>
   <a bind:this={a} id="{id}-text" href={link.href(id)} onclickcapture={onclick} data-sveltekit-preload-data="off">{@render children()}</a><button
     type="button" class="copy-link" aria-label="Copy link" onclick={() => a && copyLinkOf(a)}><Icon name="link" /></button>
 </svelte:element>
