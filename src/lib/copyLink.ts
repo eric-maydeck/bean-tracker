@@ -15,16 +15,9 @@ export async function copyText(text: string, prompt = 'Copy this link'): Promise
 // A plain left click: modified clicks (new tab, download, …) and other buttons are left to the browser.
 export const plainClick = (e: MouseEvent): boolean => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 
-// A section heading's or tile caption's link to itself (HeadingAnchor, TileCaption, the overview's .caption-link):
-// a plain click still does what the link does (updates the address bar), and also copies the full URL it points
-// to (filters and #anchor included) with a "Link copied" toast, as GitHub / MDN heading links do. The URL is the
-// anchor's resolved href, read at click time, so a chart link (?…&chart=<id>#<id>) copies the URL it produces
-// even before its replaceState lands.
-export function copyOnClick(node: HTMLAnchorElement): { destroy: () => void } {
-  function onclick(e: MouseEvent) {
-    if (!plainClick(e)) return;
-    void copyText(node.href).then((r) => r === 'copied' && showToast('Link copied'));
-  }
-  node.addEventListener('click', onclick);
-  return { destroy: () => node.removeEventListener('click', onclick) };
+// A heading's link icon (HeadingAnchor): copies the full URL its link points to (filters and #anchor included)
+// with a "Link copied" toast, as GitHub / MDN heading links do; the heading text itself only follows the link.
+// The URL is the anchor's resolved href, so a chart link copies the ?…&chart=<id>#<id> URL it produces.
+export async function copyLinkOf(a: HTMLAnchorElement): Promise<void> {
+  if ((await copyText(a.href)) === 'copied') showToast('Link copied');
 }

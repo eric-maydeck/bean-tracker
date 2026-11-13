@@ -7507,8 +7507,9 @@ export const STATES: State[] = [
       await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).toHaveURL(/caffeine=decaf#record-nightOwl$/);
     } },
-  // A heading's or tile caption's link still updates the address bar, and a plain click also copies its full URL
-  // (filters and #anchor) with a "Link copied" toast.
+  // A heading's text still only updates the address bar; its link icon copies the link's full URL (filters and
+  // #anchor) with a "Link copied" toast. Tile captions only follow their link. The icon shows on hover (desktop)
+  // and always on touch.
   { name: 'insights-copy-link', viewports: 'two', path: () => '/stats?tab=overview&range=all',
     act: async (page) => {
       await page.evaluate(() => {
@@ -7518,14 +7519,27 @@ export const STATES: State[] = [
       });
       const copies = () => page.evaluate(() => (window as unknown as { copies: string[] }).copies);
       const origin = new URL(page.url()).origin;
+      const toast = page.locator('.toast', { hasText: 'Link copied' });
       await page.locator('#overview-avg-brew-time a.caption-link').click();
       await expect(page).toHaveURL(/#overview-avg-brew-time$/);
-      await expect(page.locator('.toast', { hasText: 'Link copied' })).toBeVisible();
-      expect(await copies()).toEqual([`${origin}/stats?tab=overview&range=all#overview-avg-brew-time`]);
       await page.locator('h2#overview-recent a').click();
       await expect(page).toHaveURL(/chart=overview-recent.*#overview-recent$/);
-      expect((await copies())[1]).toMatch(new RegExp(`^${origin}/stats\\?(?=.*range=all)(?=.*chart=overview-recent).*#overview-recent$`));
-      expect((await copies())[1]).toBe(page.url());
+      expect(await copies(), 'text clicks copy nothing').toEqual([]);
+      await expect(toast).toHaveCount(0);
+      const icon = page.locator('h2#overview-recent .copy-link');
+      const touch = await page.evaluate(() => matchMedia('(hover: none)').matches);
+      if (!touch) {
+        await page.mouse.move(0, 0);
+        await expect(icon).toHaveCSS('opacity', '0');
+        await page.locator('h2#overview-recent').hover();
+      }
+      await expect(icon).toHaveCSS('opacity', '1');
+      const urlBefore = page.url();
+      await (touch ? icon.tap() : icon.click());
+      await expect(toast).toBeVisible();
+      expect(await copies()).toEqual([urlBefore]);
+      expect(urlBefore).toMatch(new RegExp(`^${origin}/stats\\?(?=.*range=all)(?=.*chart=overview-recent).*#overview-recent$`));
+      expect(page.url(), 'the icon leaves the address bar alone').toBe(urlBefore);
     } },
   { name: 'insights-overview-anchor', path: () => '/stats?tab=overview#overview-avg-brew-time',
     act: async (page) => {

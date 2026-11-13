@@ -52,7 +52,6 @@
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
   import { toParams, type StatusTab } from '$lib/coffeeViewState';
-  import { copyOnClick } from '$lib/copyLink';
 
   let { data }: { data: PageData } = $props();
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
@@ -877,7 +876,7 @@
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || t.ratingSwitch} class:has-cap={pp || t.ratingSwitch}
-              ><a class="caption-link" href="#{tileId(t.key)}" use:copyOnClick use:truncTip={t.label}>{t.label}</a>{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
+              ><a class="caption-link" href="#{tileId(t.key)}" use:truncTip={t.label}>{t.label}</a>{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
                 >{/if}{#if pp || t.ratingSwitch}{' '}<span class="cap-block"><span class="cap-list">{#if t.ratingSwitch}<CapItem><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
                   ><span class="tip-text">{RATINGS_LABEL[s.ratings]}</span>{#if s.dial !== 'all'}<Icon name="question" />{/if}</button
                 ></CapItem>{#if s.dial === 'all'}<CapItem><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"

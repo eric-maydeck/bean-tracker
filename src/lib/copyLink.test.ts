@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { copyOnClick, copyText, plainClick } from './copyLink';
+import { copyLinkOf, copyText, plainClick } from './copyLink';
 import { toasts } from './toast.svelte';
 
 const click = (o: Partial<MouseEvent> = {}) => ({ button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, ...o }) as MouseEvent;
@@ -11,16 +11,7 @@ function stubClipboard(writeText: (t: string) => Promise<void>) {
   return prompt;
 }
 
-// A stand-in anchor: copyOnClick only needs href and click listeners.
-function anchor(href: string) {
-  let listener: ((e: MouseEvent) => void) | undefined;
-  const node = {
-    href,
-    addEventListener: (_: string, f: (e: MouseEvent) => void) => (listener = f),
-    removeEventListener: () => (listener = undefined)
-  } as unknown as HTMLAnchorElement;
-  return { node, fire: (e: MouseEvent) => listener?.(e), bound: () => !!listener };
-}
+const anchor = (href: string) => ({ href }) as HTMLAnchorElement;
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -49,28 +40,18 @@ describe('plainClick', () => {
   });
 });
 
-describe('copyOnClick', () => {
-  it("copies the link's full URL on a plain click and toasts", async () => {
+describe('copyLinkOf', () => {
+  it("copies the link's full URL and toasts", async () => {
     const copies: string[] = [];
     stubClipboard(async (t) => void copies.push(t));
-    const a = anchor('https://x.test/stats?tab=records&chart=record-a#record-a');
-    copyOnClick(a.node);
-    a.fire(click({ metaKey: true }));
-    a.fire(click());
-    await vi.waitFor(() => expect(toasts.map((t) => t.text)).toEqual(['Link copied']));
+    await copyLinkOf(anchor('https://x.test/stats?tab=records&chart=record-a#record-a'));
     expect(copies).toEqual(['https://x.test/stats?tab=records&chart=record-a#record-a']);
+    expect(toasts.map((t) => t.text)).toEqual(['Link copied']);
   });
   it('shows no toast when it fell back to the prompt', async () => {
     const prompt = stubClipboard(async () => { throw new Error('denied'); });
-    const a = anchor('https://x.test/stats#overview-recent');
-    copyOnClick(a.node);
-    a.fire(click());
-    await vi.waitFor(() => expect(prompt).toHaveBeenCalled());
+    await copyLinkOf(anchor('https://x.test/stats#overview-recent'));
+    expect(prompt).toHaveBeenCalledWith('Copy this link', 'https://x.test/stats#overview-recent');
     expect(toasts).toHaveLength(0);
-  });
-  it('unbinds on destroy', () => {
-    const a = anchor('https://x.test/');
-    copyOnClick(a.node).destroy();
-    expect(a.bound()).toBe(false);
   });
 });
