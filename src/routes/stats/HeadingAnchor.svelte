@@ -2,24 +2,25 @@
   import type { Snippet } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { useChartLink } from './chartLink';
+  import { copyOnClick, plainClick } from '$lib/copyLink';
 
   // A section heading that links to itself (?…&chart=<id>#<id>), so its URL can be copied and previews name it:
   // a plain click puts that URL in the address bar without a reload (the page's replaceState), a modified click
   // follows the href. No hover preload (it would fetch the page data for a link that never navigates). Capture
   // phase: SvelteKit's own link handler runs before a delegated onclick. The link icon shows on hover and focus
   // (faintly always on touch, which has no hover). A load or click on the hash scrolls the heading to just under
-  // the sticky filter bar (CollapsibleBar sets scroll-padding-top).
+  // the sticky filter bar (CollapsibleBar sets scroll-padding-top). A plain click also copies the URL (copyOnClick).
   let { id, level = 2, class: cls = '', children }: { id: string; level?: 2 | 3; class?: string; children: Snippet } = $props();
   const link = useChartLink();
   function onclick(e: MouseEvent) {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (!plainClick(e)) return;
     e.preventDefault();
     link.go(id);
   }
 </script>
 
 <svelte:element this={`h${level}`} {id} class="heading-anchor {cls}">
-  <a href={link.href(id)} onclickcapture={onclick} data-sveltekit-preload-data="off">{@render children()}<Icon name="link" /></a>
+  <a href={link.href(id)} onclickcapture={onclick} use:copyOnClick data-sveltekit-preload-data="off">{@render children()}<Icon name="link" /></a>
 </svelte:element>
 
 <style>

@@ -6603,7 +6603,13 @@ export const STATES: State[] = [
       const panel = page.locator('section.recent');
       await expect(panel.getByRole('heading', { name: 'Last 10 brews' })).toBeVisible();
       await expect(panel.getByRole('heading', { name: 'Last 10 coffees finished' })).toBeVisible();
-      await expect(panel.locator('.board-head .val')).toHaveText(['Rating', 'Days open']);
+      await expect(panel.locator('.board-head .val')).toHaveText(['Rating', 'Rating']);
+      // The Recent heading links to itself, like the other Overview sections.
+      expect(await panel.locator('h2#overview-recent a').getAttribute('href')).toMatch(/chart=overview-recent.*#overview-recent$/);
+      // Finished coffees lead with the rating (— unrated); how long it was open and when it ran out sit under the name.
+      const finished = panel.locator('.board-rows').nth(1).locator('.board-row');
+      for (const v of await finished.locator('.val').allTextContents()) expect(v).toMatch(/^(\d+\.\d|—)$/);
+      for (const sub of await finished.locator('small').allTextContents()) expect(sub).toMatch(/^Open for (1 day|\d+ days) · Finished \d{4}-\d{2}-\d{2}$/);
       // Recent is the last panel on Overview.
       await expect(page.locator('section.chart-panel').last()).toHaveClass(/recent/);
       const lists = panel.locator('.board-rows');
@@ -7500,6 +7506,26 @@ export const STATES: State[] = [
       await dlg.getByLabel('Caffeine').selectOption('decaf');
       await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).toHaveURL(/caffeine=decaf#record-nightOwl$/);
+    } },
+  // A heading's or tile caption's link still updates the address bar, and a plain click also copies its full URL
+  // (filters and #anchor) with a "Link copied" toast.
+  { name: 'insights-copy-link', viewports: 'two', path: () => '/stats?tab=overview&range=all',
+    act: async (page) => {
+      await page.evaluate(() => {
+        const w = window as unknown as { copies: string[] };
+        w.copies = [];
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t: string) => void w.copies.push(t) }, configurable: true });
+      });
+      const copies = () => page.evaluate(() => (window as unknown as { copies: string[] }).copies);
+      const origin = new URL(page.url()).origin;
+      await page.locator('#overview-avg-brew-time a.caption-link').click();
+      await expect(page).toHaveURL(/#overview-avg-brew-time$/);
+      await expect(page.locator('.toast', { hasText: 'Link copied' })).toBeVisible();
+      expect(await copies()).toEqual([`${origin}/stats?tab=overview&range=all#overview-avg-brew-time`]);
+      await page.locator('h2#overview-recent a').click();
+      await expect(page).toHaveURL(/chart=overview-recent.*#overview-recent$/);
+      expect((await copies())[1]).toMatch(new RegExp(`^${origin}/stats\\?(?=.*range=all)(?=.*chart=overview-recent).*#overview-recent$`));
+      expect((await copies())[1]).toBe(page.url());
     } },
   { name: 'insights-overview-anchor', path: () => '/stats?tab=overview#overview-avg-brew-time',
     act: async (page) => {

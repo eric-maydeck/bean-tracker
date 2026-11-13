@@ -7,6 +7,7 @@
   import type { RecentBrew, RecentBag } from '$lib/server/insights/overview';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import ShowMore from './ShowMore.svelte';
+  import HeadingAnchor from './HeadingAnchor.svelte';
 
   let { brews, bags, n, nc, choose, wholeKeys }: {
     wholeKeys: BrewFilterKey[]; brews: RecentBrew[]; bags: RecentBag[]; n: Top | undefined; nc: Top | undefined; choose: (c: InsightsUrlState) => void;
@@ -14,7 +15,6 @@
 
   const day = formatDate;
   const rating = (r: number | null) => (r === null ? '—' : r.toFixed(1));
-  const maxDays = $derived(Math.max(0, ...bags.map((b) => b.days)));
   // Each list shows 10, 20 or 50 (the server sends 50); Show more / Show less steps between them.
   const shownBrews = $derived(brews.slice(0, n ?? 10));
   const shownBags = $derived(bags.slice(0, nc ?? 10));
@@ -29,7 +29,7 @@
 {/snippet}
 
 <section class="chart-panel recent">
-  <h2 id="overview-recent">Recent</h2>
+  <HeadingAnchor id="overview-recent">Recent</HeadingAnchor>
   <div class="board-row board-head"><h3>Last {shownBrews.length} brews</h3><span class="val">Rating</span></div>
   {#if brews.length}
     <ol class="board-rows">
@@ -43,14 +43,15 @@
     </ol>
     <ShowMore count={brews.length} {n} set={(v) => choose({ recent: v })} />
   {:else}<p class="recent-note">No brews yet.</p>{/if}
-  <div class="board-row board-head second"><h3>Last {shownBags.length} coffees finished</h3><span class="val">Days open</span></div>
+  <div class="board-row board-head second"><h3>Last {shownBags.length} coffees finished</h3><span class="val">Rating</span></div>
+  <!-- Led by the coffee's rating (bar on the 10 scale, as for brews); how long it was open and when it ran out under its name. -->
   {#if bags.length}
     <ol class="board-rows">
       {#each shownBags as b, i (b.id)}
-        <li class="board-row bar" style:--share={maxDays ? b.days / maxDays : 0}>
+        <li class="board-row bar" style:--share={(b.rating ?? 0) / RATING_MAX}>
           <span class="rank">{i + 1}</span>
-          {@render who(b.name, b.slug, `${b.rating === null ? 'Unrated' : `Rated ${rating(b.rating)}`} · ${day(b.finished)}`)}
-          <span class="val">{b.days} {b.days === 1 ? 'day' : 'days'}</span>
+          {@render who(b.name, b.slug, `Open for ${b.days} ${b.days === 1 ? 'day' : 'days'} · Finished ${day(b.finished)}`)}
+          <span class="val">{rating(b.rating)}</span>
         </li>
       {/each}
     </ol>
