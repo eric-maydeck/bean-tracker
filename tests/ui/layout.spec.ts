@@ -6603,7 +6603,13 @@ export const STATES: State[] = [
       const panel = page.locator('section.recent');
       await expect(panel.getByRole('heading', { name: 'Last 10 brews' })).toBeVisible();
       await expect(panel.getByRole('heading', { name: 'Last 10 coffees finished' })).toBeVisible();
-      await expect(panel.locator('.board-head .val')).toHaveText(['Rating', 'Days open']);
+      await expect(panel.locator('.board-head .val')).toHaveText(['Rating', 'Rating']);
+      // The Recent heading links to itself, like the other Overview sections.
+      expect(await panel.locator('h2#overview-recent a').getAttribute('href')).toMatch(/chart=overview-recent.*#overview-recent$/);
+      // Finished coffees lead with the rating (— unrated); how long it was open and when it ran out sit under the name.
+      const finished = panel.locator('.board-rows').nth(1).locator('.board-row');
+      for (const v of await finished.locator('.val').allTextContents()) expect(v).toMatch(/^(\d+\.\d|—)$/);
+      for (const sub of await finished.locator('small').allTextContents()) expect(sub).toMatch(/^Open for (1 day|\d+ days) · Finished \d{4}-\d{2}-\d{2}$/);
       // Recent is the last panel on Overview.
       await expect(page.locator('section.chart-panel').last()).toHaveClass(/recent/);
       const lists = panel.locator('.board-rows');
@@ -7500,6 +7506,40 @@ export const STATES: State[] = [
       await dlg.getByLabel('Caffeine').selectOption('decaf');
       await dlg.getByRole('button', { name: 'Apply' }).click();
       await expect(page).toHaveURL(/caffeine=decaf#record-nightOwl$/);
+    } },
+  // A heading's text still only updates the address bar; its link icon copies the link's full URL (filters and
+  // #anchor) with a "Link copied" toast. Tile captions only follow their link. The icon shows on hover (desktop)
+  // and always on touch.
+  { name: 'insights-copy-link', viewports: 'two', path: () => '/stats?tab=overview&range=all',
+    act: async (page) => {
+      await page.evaluate(() => {
+        const w = window as unknown as { copies: string[] };
+        w.copies = [];
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t: string) => void w.copies.push(t) }, configurable: true });
+      });
+      const copies = () => page.evaluate(() => (window as unknown as { copies: string[] }).copies);
+      const origin = new URL(page.url()).origin;
+      const toast = page.locator('.toast', { hasText: 'Link copied' });
+      await page.locator('#overview-avg-brew-time a.caption-link').click();
+      await expect(page).toHaveURL(/#overview-avg-brew-time$/);
+      await page.locator('h2#overview-recent a').click();
+      await expect(page).toHaveURL(/chart=overview-recent.*#overview-recent$/);
+      expect(await copies(), 'text clicks copy nothing').toEqual([]);
+      await expect(toast).toHaveCount(0);
+      const icon = page.locator('h2#overview-recent .copy-link');
+      const touch = await page.evaluate(() => matchMedia('(hover: none)').matches);
+      if (!touch) {
+        await page.mouse.move(0, 0);
+        await expect(icon).toHaveCSS('opacity', '0');
+        await page.locator('h2#overview-recent').hover();
+      }
+      await expect(icon).toHaveCSS('opacity', '1');
+      const urlBefore = page.url();
+      await (touch ? icon.tap() : icon.click());
+      await expect(toast).toBeVisible();
+      expect(await copies()).toEqual([urlBefore]);
+      expect(urlBefore).toMatch(new RegExp(`^${origin}/stats\\?(?=.*range=all)(?=.*chart=overview-recent).*#overview-recent$`));
+      expect(page.url(), 'the icon leaves the address bar alone').toBe(urlBefore);
     } },
   { name: 'insights-overview-anchor', path: () => '/stats?tab=overview#overview-avg-brew-time',
     act: async (page) => {

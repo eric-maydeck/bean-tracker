@@ -4,6 +4,7 @@
   import { useChartLink } from './chartLink';
   import { truncTip } from '$lib/components/labelTip';
   import CapItem from '$lib/components/CapItem.svelte';
+  import { plainClick } from '$lib/copyLink';
 
   // A Records / Milestones tile's name at its foot: bold in the label color, linking to the tile's
   // own #anchor. `children` follows the name on the same line (Records' "· Current" mode words).
@@ -16,7 +17,7 @@
   // A name made of parts ("Coarsest grind · A4Z"): its parts are caption items, so the dot hangs and no line starts or ends with it.
   const parts = $derived(label.split(' · '));
   function onclick(e: MouseEvent) {
-    if (!chart || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (!chart || !plainClick(e)) return;
     e.preventDefault();
     link.go(chart);
   }
