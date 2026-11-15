@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import { copyText } from '$lib/copyLink';
 
   // Long, filter-heavy views get a short link (/s/<code>); short ones are
   // shared as-is. Phones get the native share sheet; elsewhere the link is
@@ -37,13 +38,10 @@
         if ((e as DOMException).name !== 'InvalidStateError') return;
       }
     }
-    try {
-      await navigator.clipboard.writeText(link);
+    if ((await copyText(link)) === 'copied') {
       copied = true;
       clearTimeout(timer);
       timer = setTimeout(() => (copied = false), 2000);
-    } catch {
-      window.prompt('Copy this link', link);
     }
   }
 </script>
