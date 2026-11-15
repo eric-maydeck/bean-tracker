@@ -45,8 +45,9 @@
   /* Inline-block on the heading's line height, like a "?" button beside it, so the two share a top and height. */
   .copy-link {
     display: inline-block;
-    margin-inline-start: 0.15em;
-    padding: 0 0.15em;
+    /* The same 1.1em after the text as the icon took inside the link (0.3em gap + 0.8em icon), so tight heads
+       (Leaderboards' board heads in phone landscape) still fit on one row. */
+    padding: 0 0 0 0.3em;
     border: 0;
     background: none;
     color: var(--color-text-muted);
