@@ -1,3 +1,25 @@
+# [1.111.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.7...v1.111.0) (2026-11-15)
+
+
+### Bug Fixes
+
+* **backlog:** link repos by owner login, name the type field Kind (GitHub reserves Type) ([d186a45](https://github.com/eric-maydeck/bean-tracker/commit/d186a45c4246bfb88ca7f964fbe0106950803914))
+* **backlog:** paginate parents, lazy private repo, nest grandchildren, skip PRs ([f585917](https://github.com/eric-maydeck/bean-tracker/commit/f585917b4971b88ca7688261d6ee3bd7f4d9b909))
+* **sessions:** backlog Item type field, preview.sh rejects bad --issue ids ([703b4ab](https://github.com/eric-maydeck/bean-tracker/commit/703b4abd097bfb705e982c5536535fb8881c71a9))
+* **sessions:** issue previews on 5300-5399, clear of the main checkout ([0ac463f](https://github.com/eric-maydeck/bean-tracker/commit/0ac463fd536025ae303f4417453e409927298fc8))
+* **stats:** heading link icon keeps the old 1.1em footprint ([#57](https://github.com/eric-maydeck/bean-tracker/issues/57)) ([209073b](https://github.com/eric-maydeck/bean-tracker/commit/209073bce731901eea313f6b1b79d6ce2f9f7f3a)), closes [#55](https://github.com/eric-maydeck/bean-tracker/issues/55) [overview-recent#overview-recent](https://github.com/overview-recent/issues/overview-recent) [#anchor](https://github.com/eric-maydeck/bean-tracker/issues/anchor) [#55](https://github.com/eric-maydeck/bean-tracker/issues/55) [#55](https://github.com/eric-maydeck/bean-tracker/issues/55) [#55](https://github.com/eric-maydeck/bean-tracker/issues/55) [#55](https://github.com/eric-maydeck/bean-tracker/issues/55)
+* **stats:** keep tile mode words on one line on Linux fonts; ci: full-suite TZ, w1280 split ([b87e936](https://github.com/eric-maydeck/bean-tracker/commit/b87e936f9ff94da0100596a09cb6d17f9ced0d0d))
+* **ui:** re-land hash target as the bar settles; test: perf frame budget, versus-card hole ([d8aba3f](https://github.com/eric-maydeck/bean-tracker/commit/d8aba3f9559075e32a3649cb4b6f53edf71cee6a))
+
+
+### Features
+
+* **backlog:** compact queue listing for agents ([1a3a5a9](https://github.com/eric-maydeck/bean-tracker/commit/1a3a5a966fcdc37fd0c505aed61659a945b17542))
+* **backlog:** project setup script ([d08c3b6](https://github.com/eric-maydeck/bean-tracker/commit/d08c3b608357eb59f4ad26ce52553d906eaa3948))
+* **ci:** pre-push runs typecheck and changed unit tests only ([46d3091](https://github.com/eric-maydeck/bean-tracker/commit/46d309112f70c90d180bf469f32df02f18004dea))
+* **sessions:** per-issue ports and preview db for worktrees ([1952f4c](https://github.com/eric-maydeck/bean-tracker/commit/1952f4c63bde654f7afce5ecf69291c1829e3808))
+* **stats:** link Recent, copy heading links from the link icon, rating-led finished coffees ([#56](https://github.com/eric-maydeck/bean-tracker/issues/56)) ([00deacf](https://github.com/eric-maydeck/bean-tracker/commit/00deacf97dc44f98b4f3936b34777866c8ed3411)), closes [#55](https://github.com/eric-maydeck/bean-tracker/issues/55) [overview-recent#overview-recent](https://github.com/overview-recent/issues/overview-recent) [#anchor](https://github.com/eric-maydeck/bean-tracker/issues/anchor) [#55](https://github.com/eric-maydeck/bean-tracker/issues/55) [#55](https://github.com/eric-maydeck/bean-tracker/issues/55) [#55](https://github.com/eric-maydeck/bean-tracker/issues/55)
+
 ## [1.110.7](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.6...v1.110.7) (2026-11-08)
 
 
