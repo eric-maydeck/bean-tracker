@@ -1,3 +1,28 @@
+# [1.112.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.111.0...v1.112.0) (2026-11-16)
+
+
+### Bug Fixes
+
+* **stats:** bar label columns on phones, smooth 3.5px sparklines, legend swatches ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([ae73af6](https://github.com/eric-maydeck/bean-tracker/commit/ae73af6a7b9e83ed5bba84fe7dbeac9ae1b0d0f7))
+* **stats:** crowded phone bars share one zero line and a wider track ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([129c8f4](https://github.com/eric-maydeck/bean-tracker/commit/129c8f40f75705ceeab54221abc95d1a9055ee3a))
+* **stats:** detail list headers line up across a row ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([14d65f9](https://github.com/eric-maydeck/bean-tracker/commit/14d65f91efe2a229aad46832e175fca066ea4f65))
+* **stats:** detail-list cards size LARGE so lists show on phone; recipe card lists others ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([ddd4cd4](https://github.com/eric-maydeck/bean-tracker/commit/ddd4cd46f39fa34d4286a92937cf219ad4681e1c))
+* **stats:** flat rest card charts brews per rest band ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([977b55c](https://github.com/eric-maydeck/bean-tracker/commit/977b55c6b22b1037299971440c5b5a3fe11b72c2))
+* **stats:** flat rest card shows average rating per 15-day rest bracket ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([e718454](https://github.com/eric-maydeck/bean-tracker/commit/e718454bcfaf241d0875b19910437253ede0d98d))
+* **stats:** gap bars with sign colors, one-line versus labels, drop flat rest bars ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([2c63ff0](https://github.com/eric-maydeck/bean-tracker/commit/2c63ff0a11124abc4df5368967fc6411441151c7))
+* **stats:** horizontal bars over 5 on phones, start-aligned legend names ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([87adb99](https://github.com/eric-maydeck/bean-tracker/commit/87adb99f1170bb8fbbd7a718bf5797a5bb681752))
+* **stats:** rest band tooltips say days ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([a5f3e65](https://github.com/eric-maydeck/bean-tracker/commit/a5f3e65d2eae6f36f049a311c7f5bb41a2194053))
+* **stats:** rest card body in plain words ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([47eaaee](https://github.com/eric-maydeck/bean-tracker/commit/47eaaee12c3660d2594a65c968f9929b9d8e2f90))
+* **stats:** rows for crowded bars at any width, weekend color on phone rows, centered legends ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([a3685a7](https://github.com/eric-maydeck/bean-tracker/commit/a3685a754332fcf1ff2b2c3f04661fa5d6e649f0))
+* **stats:** short plain card text, verdict labels over raw stats, no repeated dripper era ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([b1c16ff](https://github.com/eric-maydeck/bean-tracker/commit/b1c16ffe26b30fe9798ac406c25c3f06b729bbe2))
+* **stats:** zero line on signed bars, short dial-in side labels, signed early and rest bars ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([ade8e5c](https://github.com/eric-maydeck/bean-tracker/commit/ade8e5cf61bb4475faaeb5e60571263c1dd973a1))
+
+
+### Features
+
+* **stats:** fill the thin Highlights tiles with bars and detail lists ([#19](https://github.com/eric-maydeck/bean-tracker/issues/19)) ([ded4d35](https://github.com/eric-maydeck/bean-tracker/commit/ded4d358371bbc92fe4e010549742c5fb692320c))
+* **stats:** sections drawer replaces the side rail and View select ([#20](https://github.com/eric-maydeck/bean-tracker/issues/20)) ([80669bd](https://github.com/eric-maydeck/bean-tracker/commit/80669bdfb89d2f83831df7aa0d47a380c3d69fd2))
+
 # [1.111.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.110.7...v1.111.0) (2026-11-15)
 
 
