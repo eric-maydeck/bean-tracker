@@ -12,6 +12,13 @@ import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
+/** Switches the /stats tab the way a user does: "☰ View: …" (or, scrolled on a phone, the short row's ☰), then the drawer link for `tab`. */
+async function pickTab(page: Page, tab: string) {
+  const mini = page.locator('.mini-menu');
+  await (await mini.isVisible() ? mini : page.locator('.section-row')).click();
+  await page.locator('dialog.tab-drawer a').evaluateAll((as, t) => (as as HTMLAnchorElement[]).find((a) => (new URL(a.href).searchParams.get('tab') ?? 'overview') === t)!.click(), tab);
+}
+
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; labTwo: string; sey: string; skip: string; brew: string; brewNew: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
@@ -4763,10 +4770,10 @@ export const STATES: State[] = [
       await legend.nth(2).click();
       await legend.nth(2).click();
       await still();
-      await page.getByLabel('View').selectOption('consumption'); // a much shorter page
+      await pickTab(page, 'consumption'); // a much shorter page
       await expect(page).toHaveURL(/tab=consumption/);
       await expect(page.locator('section[data-section="consumption-time-to-open"]')).toBeVisible();
-      await page.getByLabel('View').selectOption('spend');
+      await pickTab(page, 'spend');
       await expect(share).toBeVisible();
       await page.waitForTimeout(300);
       await still();
@@ -5595,7 +5602,7 @@ export const STATES: State[] = [
       await list.evaluate((l) => { l.removeAttribute('data-ready'); const w = document.createTreeWalker(l, NodeFilter.SHOW_TEXT); const n = w.nextNode() as Text; n.data = n.data; });
       await expect(list).toHaveAttribute('data-ready', '');
       // A people toggle (no navigation) changes the caption items in place.
-      await page.goto('/stats?tab=onhand&range=3m');
+      await gotoReady(page, '/stats?tab=onhand&range=3m');
       const toggle = page.getByRole('button', { name: 'Per person', exact: true });
       if (await toggle.isVisible()) { // (the bar is collapsed on phones, and People is hidden in a one-person household)
         await toggle.click();
@@ -6238,7 +6245,7 @@ export const STATES: State[] = [
     name: 'insights-reset', viewports: 'two',
     path: () => '/stats?tab=habits&range=1w&measure=grams&ratings=all',
     act: async (page) => {
-      await page.getByLabel('View').selectOption('consumption');
+      await pickTab(page, 'consumption');
       await expect(page).toHaveURL(/tab=consumption/);
       await expect(page).toHaveURL(/measure=grams/);
       await page.getByRole('button', { name: 'Reset' }).click();
@@ -7005,7 +7012,7 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/rank=brews/);
       expect(page.url()).not.toContain('chart=');
       // A tab switch drops chart= and the hash; the new tab's headings link with their own chart=.
-      await page.getByLabel('View').selectOption('habits');
+      await pickTab(page, 'habits');
       await expect(page).toHaveURL(/tab=habits/);
       expect(page.url()).toContain('range=all');
       expect(page.url()).not.toMatch(/chart=|#/);
@@ -7330,10 +7337,10 @@ export const STATES: State[] = [
       const liked = await h('[data-board="coffees"] .board-row.liked');
       if ((page.viewportSize()?.width ?? 0) <= 640) { expect(plain).toBeCloseTo(48, 0); expect(liked).toBeGreaterThan(plain + 8); }
       else expect(Math.abs(plain - liked)).toBeLessThanOrEqual(1);
-      await page.getByLabel('View').selectOption('records');
+      await pickTab(page, 'records');
       await expect(page.locator('.like-line').first()).toBeVisible();
       await expectDeltaInk(page);
-      await page.getByLabel('View').selectOption('sweetspots');
+      await pickTab(page, 'sweetspots');
       await expect(page.locator('.like-line').first()).toBeVisible();
       await expectDeltaInk(page);
     } },
@@ -8471,12 +8478,12 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
-      await page.getByLabel('View').selectOption('overview'); // sticky: both come back on Overview
+      await pickTab(page, 'overview'); // sticky: both come back on Overview
       await expect(page.getByLabel('Compare')).toHaveValue('1');
       await expect(page).toHaveURL(/compare=1/);
       await expect(page).toHaveURL(/people=person/);
       await expect(page).toHaveURL(/grinder=zp6-special/); // lab picks stick through a non-lab tab too
-      await page.getByLabel('View').selectOption('gear'); // a second action on the non-lab tab
+      await pickTab(page, 'gear'); // a second action on the non-lab tab
       // grinder= already matched on Overview: wait for the Gear tab itself before the layout checks.
       await expect(page).toHaveURL(/tab=gear.*grinder=zp6-special/);
       await expect(page.getByLabel('Compare')).toHaveCount(0);
@@ -11251,7 +11258,8 @@ export const STATES: State[] = [
       await page.evaluate(() => scrollTo(0, 700));
       await frames(page);
       const bar = (await page.locator('.filter-bar').boundingBox())!, c = (await ctl.boundingBox())!;
-      expect(Math.abs(bar.y)).toBeLessThanOrEqual(1);
+      const top = await page.locator('.filter-bar').evaluate((e) => parseFloat(getComputedStyle(e).top));
+      expect(Math.abs(bar.y - top), 'pinned at its sticky top').toBeLessThanOrEqual(1);
       expect(c.y).toBeGreaterThanOrEqual(bar.y - 1);
       expect(c.y + c.height).toBeLessThanOrEqual(bar.y + bar.height + 1);
       // Nothing of the tab's bar is left inline in the page below the sticky bar.
@@ -11325,8 +11333,7 @@ export const STATES: State[] = [
       const body = () => page.locator('.rail-main').evaluate((el) => [...el.children].filter((c) => !c.matches('.filter-bar, .toolbar, .chart-note, dialog, .cbar, .cbar-mini')).map((c) => (c as HTMLElement).innerText).join('|').slice(0, 4000));
       let before = await body();
       for (const t of tabs.slice(1)) {
-        await page.locator('.section-row').click();
-        await page.locator('dialog.tab-drawer a').evaluateAll((as, t) => (as as HTMLAnchorElement[]).find((a) => (new URL(a.href).searchParams.get('tab') ?? 'overview') === t)!.click(), t);
+        await pickTab(page, t);
         await expect(page).toHaveURL(new RegExp(`tab=${t}`));
         await expect.poll(body, { message: `content after switching to ${t}` }).not.toBe(before);
         before = await body();
