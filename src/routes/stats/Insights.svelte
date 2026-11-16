@@ -745,15 +745,17 @@
   }
   .hrows {
     display: none;
+    grid-template-columns: fit-content(40%) minmax(0, 1fr) auto;
+    gap: 0 0.4rem;
     margin: 0;
     padding: 0;
     list-style: none;
   }
   .hrows li {
     display: grid;
-    grid-template-columns: minmax(0, 6.5rem) minmax(0, 1fr) 2.6rem;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     align-items: center;
-    gap: 0 0.4rem;
     font-size: 0.68rem;
     line-height: 1.5;
     color: var(--color-text-muted);
@@ -791,7 +793,7 @@
       display: none;
     }
     .bars.many .hrows {
-      display: block;
+      display: grid;
     }
   }
   .bars rect.up {
