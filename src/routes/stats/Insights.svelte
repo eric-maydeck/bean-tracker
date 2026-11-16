@@ -25,6 +25,7 @@
 <script lang="ts">
   import { formatDate } from '$lib/formatDate';
   import { unitGap } from '$lib/unitGap';
+  import { labelTip } from '$lib/components/labelTip';
   import WholeNote from './WholeNote.svelte';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
@@ -279,7 +280,7 @@
         {#if i}<span class="vs-x" aria-hidden="true">vs</span>{/if}
         <div class="vs-side">
           <span class="hl-value"><CoffeeName text={v} />{#if unit}<small>{`${unitGap(unit)}${unit}`}</small>{/if}</span>
-          <span class="vs-label"><CoffeeName text={s.label} /></span>
+          <span class="vs-label" use:labelTip={s.label}><CoffeeName text={s.label} /></span>
         </div>
       {/each}
     </div>
@@ -307,10 +308,10 @@
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
         {#each f.series as p, i (i)}
           <rect x={i * w + w * 0.15} width={w * 0.7} y={2 + (hi - Math.max(0, p.value)) * k} height={Math.abs(p.value) * k}
-            class:weekend={/^(Sat|Sun)/.test(p.label)} />
+            class:weekend={!f.diverging && /^(Sat|Sun)/.test(p.label)} class:up={f.diverging && p.value >= 0} class:down={f.diverging && p.value < 0} />
         {/each}
       </svg>
-      <BarLabels series={f.series} full={f.barLabels === 'full'} />
+      <BarLabels series={f.series} full={f.barLabels === 'full'} diverging={f.diverging} />
     </div>
   {:else if f.series && f.series.length > 1}
     {@const l = line(f.series)}
@@ -655,6 +656,10 @@
     margin-left: 0.25em; /* its leading space trims inside an inline-block */
   }
   .finding .vs-label {
+    --vs-clamp: 1; /* one line: a long roaster name is cut with an ellipsis, its tip carries the whole name */
+    max-width: 100%;
+    overflow-wrap: normal;
+    hyphens: none;
     font-size: clamp(0.8rem, 8cqw / var(--q, 2), 0.9rem); /* the base size on a narrow card, so "Comparison" fits */
   }
   /* Its sample line centers in the spare height under the split, so no hole opens above or under it. */
@@ -721,6 +726,12 @@
   }
   .bars rect {
     fill: var(--series-brown-1);
+  }
+  .bars rect.up {
+    fill: var(--div-high);
+  }
+  .bars rect.down {
+    fill: var(--div-low);
   }
   .bars rect.weekend {
     fill: var(--series-brown-3);

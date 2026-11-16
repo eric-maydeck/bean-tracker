@@ -2,12 +2,14 @@
   import { labelTip } from '$lib/components/labelTip';
   // Labels under a row of bars (findings' bars, Brewing's Brews until dialed in): one-letter initials (weekday bars,
   // weekends bold), or `full`: the value, then the name, ellipsized; on phones "value name" chips, names whole.
-  let { series, full = false }: { series: { label: string; value: number }[]; full?: boolean } = $props();
+  let { series, full = false, diverging = false }: { series: { label: string; value: number }[]; full?: boolean; diverging?: boolean } = $props();
+  // Gaps read signed to 2 dp (+0.17, −0.13); plain values 1 dp.
+  const val = (v: number) => (diverging ? `${v < -0.005 ? '−' : '+'}${Math.abs(v).toFixed(2)}` : `${+v.toFixed(1)}`);
 </script>
 
 <div class="bar-labels" class:full aria-hidden="true" style:--n={series.length}>
   {#each series as p, i (i)}
-    {#if full}<span use:labelTip={p.label}><b>{+p.value.toFixed(1)}</b>{p.label}</span>
+    {#if full}<span use:labelTip={p.label}><b>{val(p.value)}</b>{p.label}</span>
     {:else}<span class:weekend={/^(Sat|Sun)/.test(p.label)}>{p.label[0]}</span>{/if}
   {/each}
 </div>

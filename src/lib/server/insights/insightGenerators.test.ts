@@ -76,12 +76,12 @@ describe('dial-in speed', () => {
     const f = gen('dialinSpeed', b, bags(3))!;
     expect(f).toMatchObject({ theme: 'dialin', kind: 'versus', z: null, strength: null, headline: 'Dial-in takes up to 4 brews' });
     // "Fastest: 1 brew" is no contest: the other side counts the bags right on brew 1.
-    expect(f.sides).toEqual([{ label: 'Slowest: R Bag 1', value: '4 brews' }, { label: 'Right on brew 1', value: '1 of 3 bags' }]);
+    expect(f.sides).toEqual([{ label: 'Slowest: R Bag 1', value: '4 brews' }, { label: 'Right on brew 1 (of 3)', value: '1 bag' }]);
   });
   it('skips bags that began before the period (brewIndex > 1)', () => {
     const late = seq(4, [9, 9, 9, 9, 9, 9], '2026-07-01', (i) => ({ brewIndex: i + 4 }));
     const f = gen('dialinSpeed', [...b, ...late], bags(4))!;
-    expect(f.sides![1]).toEqual({ label: 'Right on brew 1', value: '1 of 3 bags' }); // Bag 4 would make it 2
+    expect(f.sides![1]).toEqual({ label: 'Right on brew 1 (of 3)', value: '1 bag' }); // Bag 4 would make it 2
     expect(f.sample).toBe('3 bags');
     expect(gen('dialinSpeed', [...b.slice(0, 11), ...late], bags(4))).toBeNull();
   });
@@ -109,6 +109,7 @@ describe('second cup', () => {
     expect(f).toMatchObject({ theme: 'dialin', strength: 'solid', value: '+0.30', headline: 'Your second cup is better', sample: '40 pairs', chart: 'bars' });
     expect(f.series!.map((x) => x.label)).toEqual(['1st cup', '2nd cup']);
     expect(f.series![1].value - f.series![0].value).toBeCloseTo(0.3, 6);
+    expect(f.diverging).toBe(true); // gaps from the all-brews mean
   });
   it('null on 5 pairs', () => expect(gen('secondCup', mk(5))).toBeNull());
   it('skips a day with a backfilled brew (its time is a guess)', () => {
@@ -329,6 +330,7 @@ describe('notes mean trouble', () => {
     expect(f).toMatchObject({ chart: 'bars', barLabels: 'full' });
     expect(f.series!.map((x) => x.label)).toEqual(['Noted', 'Plain']);
     expect(f.series![0].value).toBeLessThan(f.series![1].value);
+    expect(f.diverging).toBe(true);
   });
 });
 
@@ -415,6 +417,8 @@ describe('weekday ratings', () => {
     expect(f.chart).toBe('bars');
     expect(f.barLabels).toBeUndefined(); // one-letter weekday bars
     expect(f.series!.map((x) => x.label)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    expect(f.diverging).toBe(true); // demeaned gaps, not raw ratings: Monday up, the rest slightly down
+    expect(f.series!.at(-1)!.value).toBeLessThan(0.5);
     expect(f.series![0].value).toBeGreaterThan(0);
   });
   it('a weak standout is too early, with the multiple-comparison caveat', () => {
@@ -543,6 +547,8 @@ describe('price vs rating', () => {
     const v = gen('priceVsRating', brews, bs)!.series!;
     expect(v.map((x) => x.label)).toEqual(['Cheapest third', 'Middle third', 'Priciest third']);
     expect(v[0].value).toBeLessThan(v[2].value);
+    expect(gen('priceVsRating', brews, bs)!.diverging).toBe(true);
+    expect(v.reduce((t, x) => t + x.value, 0)).toBeCloseTo(0, 6); // gaps from the all-bags mean
   });
   it('cost 0 is not a price; null under 30 bags', () => {
     const { bs, brews } = mk((i) => 7 + i / 20);
@@ -603,6 +609,8 @@ describe('rest myth', () => {
     const wide = Array.from({ length: 40 }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8], '2026-07-01', (j) => ({ restDays: 5 + 12 * j + (i % 2) }))).flat();
     expect(gen('restMyth', wide)).toMatchObject({ chart: 'bars', barLabels: 'full' });
     expect(gen('restMyth', wide)!.series!.map((x) => x.label)).toEqual(['0–13 d', '14–29 d', '30–59 d', '60+ d']);
+    const flat = Array.from({ length: 40 }, (_, i) => seq(i + 1, [8, 8.01, 8, 8.01, 8, 8.01], '2026-07-01', (j) => ({ restDays: 5 + 12 * j + (i % 2) }))).flat();
+    expect(gen('restMyth', flat)).not.toHaveProperty('series'); // bands all within 0.05: flat zeros, no chart
   });
 });
 
@@ -631,6 +639,7 @@ describe('origin myth', () => {
     expect(f.series!.map((x) => x.label)).toEqual(['Colombia', 'Ethiopia', 'Kenya']); // signed gap vs other bags, biggest first
     expect(f.series![0].value).toBeGreaterThan(0);
     expect(f.series![2].value).toBeLessThan(0);
+    expect(f.diverging).toBe(true);
     expect(gen('originMyth', brews, bs)).toMatchObject({ theme: 'taste', kind: 'myth', headline: 'Origin barely matters', value: '±0.2', sample: '90 bags',
       body: 'All 3 origins with 3+ bags rate within ±0.2 of your other bags, ±0.2 at most with the margin of error.' });
   });
