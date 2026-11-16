@@ -8121,7 +8121,7 @@ export const STATES: State[] = [
       // One headline tip on every device (user, 2026-10-18): the full headline, then the card's clarifying lines
       // (likeStandout: the like-group compared with). Hover on desktop; a tap follows the #anchor and opens it too.
       const head = page.locator('#insight-likeStandout .caption-link'), full = (await head.textContent())!.trim();
-      expect(full).toMatch(/ like coffees by /);
+      expect(full).toMatch(/ (above|below) similar coffees$/);
       const tip = page.locator('.cell-tip:popover-open');
       if (!touch()) {
         await head.hover();
