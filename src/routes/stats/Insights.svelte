@@ -25,12 +25,13 @@
 <script lang="ts">
   import { formatDate } from '$lib/formatDate';
   import { unitGap } from '$lib/unitGap';
+  import { labelTip } from '$lib/components/labelTip';
   import WholeNote from './WholeNote.svelte';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
-  import BarLabels from './BarLabels.svelte';
+  import BarLabels, { barValue } from './BarLabels.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
@@ -38,7 +39,7 @@
   import { THEMES, WHATIF_LIMITS as L, type BrewFilterKey, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding } from '$lib/server/insights/insightGenerators';
-  import { lines } from './multiLine';
+  import { lines, smooth } from './multiLine';
   import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
@@ -60,10 +61,10 @@
   // Top stories come bucketed from the server (insightsTab): the deck and the grid never share a finding.
   let deck = $derived(t.stories);
   let grid = $derived(t.grid);
-  // Card sizes come from content (ui-rules 34): a chart or a versus split is LARGE, a number SMALL.
+  // Card sizes come from content (ui-rules 34): a chart, a versus split or a detail list is LARGE, a number SMALL.
   // The card's title: the headline plus each versus side in full (a clamped side label's only full-text route besides the popover).
   // A card's hover tip: the headline and, for a two-sided finding, each side (the click popover adds the body).
-  const large = (f: Finding) => f.sides?.length === 2 || (f.series?.length ?? 0) > 1 || (!!f.multi && f.multi.x.length > 1 && f.multi.lines.length > 0);
+  const large = (f: Finding) => !!f.details?.length || f.sides?.length === 2 || (f.series?.length ?? 0) > 1 || (!!f.multi && f.multi.x.length > 1 && f.multi.lines.length > 0);
   let sized = $derived(sizedGrid(grid, large));
   let mythVars = $derived(rowVars(t.myths.length));
 
@@ -77,6 +78,7 @@
     const run = () => {
       const groups = [...el.querySelectorAll<HTMLElement>('.dgroup')];
       for (const g of groups) g.hidden = true;
+      for (const d of el.querySelectorAll<HTMLElement>('.details')) d.style.marginTop = '';
       const cards = [...el.children] as HTMLElement[];
       // A fixed-height findings card whose text doesn't fit tightens step by step (CSS [data-tight],
       // ui-rules 34); still overflowing at 4 is a test failure. Auto-height cards never overflow.
@@ -105,6 +107,20 @@
             }
           }
         }
+      }
+      // List headers line up across a row (user, 2026-11-16): each list starts level with its row's lowest,
+      // when that still fits.
+      const shown = cards.flatMap((c) => {
+        const d = c.querySelector<HTMLElement>('.details:has(.dgroup:not([hidden]))');
+        return d ? [{ c, d, top: d.getBoundingClientRect().top - c.getBoundingClientRect().top }] : [];
+      });
+      const rowTop = new Map<number, number>();
+      for (const s of shown) rowTop.set(s.c.offsetTop, Math.max(rowTop.get(s.c.offsetTop) ?? 0, s.top));
+      for (const { c, d, top } of shown) {
+        const extra = rowTop.get(c.offsetTop)! - top;
+        if (extra < 1) continue;
+        d.style.marginTop = `calc(var(--space-1) + ${extra}px)`;
+        if (c.scrollHeight > rowMax.get(c.offsetTop)!) d.style.marginTop = '';
       }
       el.style.alignItems = '';
       el.classList.remove('fit');
@@ -247,12 +263,12 @@
   const early = (f: Finding) => f.caveat ?? 'Not yet enough to rule out chance.';
   const pct = (p: number) => `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`;
 
-  // A series as a 2px line over a 100×32 box; a dashed zero line when it crosses zero.
+  // A series as a smooth 3.5px line over a 100×32 box; a dashed zero line when it crosses zero.
   function line(s: { value: number }[]) {
     const vs = s.map((p) => p.value), lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
     const y = (v: number) => 30 - ((v - lo) / span) * 28;
     return {
-      points: vs.map((v, i) => `${vs.length > 1 ? (i / (vs.length - 1)) * 100 : 50},${y(v).toFixed(2)}`).join(' '),
+      d: smooth(vs.map((v, i): [number, number] => [vs.length > 1 ? (i / (vs.length - 1)) * 100 : 50, y(v)])),
       zero: lo < 0 && hi > 0 ? y(0) : null
     };
   }
@@ -299,24 +315,41 @@
       </ul>
     </div>
   {:else if f.series && f.series.length > 1 && f.chart === 'bars'}
-    {@const max = Math.max(...f.series.map((p) => p.value)) || 1}
+    {@const hi = Math.max(0, ...f.series.map((p) => p.value))}
+    {@const k = 38 / ((hi - Math.min(0, ...f.series.map((p) => p.value))) || 1)}
     {@const w = 100 / f.series.length}
-    <!-- Magnitudes from zero: bars. Weekend bars take the second color (and their initials are bold). -->
-    <div class="bars" role="img" aria-label={seriesText(f)}>
+    <!-- Magnitudes from zero (below it for gaps): bars. Weekend bars take the second color (and their initials are bold). -->
+    {@const lo = Math.min(0, ...f.series.map((p) => p.value))}
+    {@const span = hi - lo || 1}
+    <div class="bars" class:many={f.series.length > 5} class:crowded={f.series.length > 7} role="img" aria-label={seriesText(f)}>
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
         {#each f.series as p, i (i)}
-          <rect x={i * w + w * 0.15} width={w * 0.7} y={40 - (Math.max(0, p.value) / max) * 38} height={(Math.max(0, p.value) / max) * 38}
-            class:weekend={/^(Sat|Sun)/.test(p.label)} />
+          <rect x={i * w + w * 0.15} width={w * 0.7} y={2 + (hi - Math.max(0, p.value)) * k} height={Math.abs(p.value) * k}
+            class:weekend={!f.diverging && /^(Sat|Sun)/.test(p.label)} class:up={f.diverging && p.value >= 0} class:down={f.diverging && p.value < 0} />
         {/each}
+        {#if f.diverging}<line class="zero" x1="0" x2="100" y1={2 + hi * k} y2={2 + hi * k} />{/if}
       </svg>
-      <BarLabels series={f.series} full={f.barLabels === 'full'} />
+      <BarLabels series={f.series} full={f.barLabels === 'full'} diverging={f.diverging} />
+      <!-- Over 5 bars on a phone the columns are too narrow: horizontal rows (name, bar from the zero line, value) take over. -->
+      {#if f.series.length > 5}
+        <ul class="hrows" aria-hidden="true" style:--z="{(-lo / span) * 100}%">
+          {#each f.series as p, i (i)}
+            <li>
+              <span class="hname" use:labelTip={p.tip ?? p.label}>{p.label}</span>
+              <span class="htrack"><span class="hbar" class:weekend={!f.diverging && /^(Sat|Sun)/.test(p.label)} class:up={f.diverging && p.value >= 0} class:down={f.diverging && p.value < 0}
+                style:left="{((Math.min(0, p.value) - lo) / span) * 100}%" style:width="{(Math.abs(p.value) / span) * 100}%"></span></span>
+              <b>{barValue(p.value, f.diverging)}</b>
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </div>
   {:else if f.series && f.series.length > 1}
     {@const l = line(f.series)}
     <div class="spark" role="img" aria-label={seriesText(f)}>
       <svg viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
         {#if l.zero !== null}<line class="zero" x1="0" x2="100" y1={l.zero} y2={l.zero} />{/if}
-        <polyline points={l.points} />
+        <path d={l.d} />
       </svg>
       <div class="spark-ends"><span>{f.series[0].label}</span><span>{f.series.at(-1)!.label}</span></div>
     </div>
@@ -721,6 +754,86 @@
   .bars rect {
     fill: var(--series-brown-1);
   }
+  .bars .zero {
+    stroke: var(--color-border);
+    vector-effect: non-scaling-stroke;
+  }
+  .hrows {
+    display: none;
+    grid-template-columns: fit-content(40%) minmax(0, 1fr) auto;
+    gap: 0 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .hrows li {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+    font-size: 0.68rem;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+  }
+  .hname {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    justify-self: start;
+    max-width: 100%;
+  }
+  .htrack {
+    position: relative;
+    height: 0.7rem;
+  }
+  .htrack::before {
+    content: '';
+    position: absolute;
+    inset: -1px auto -1px var(--z);
+    border-left: 1px solid var(--color-border);
+  }
+  .hbar {
+    position: absolute;
+    inset-block: 0;
+    background: var(--series-brown-1);
+  }
+  .hrows b {
+    color: var(--color-text);
+    font-weight: 700;
+    text-align: end;
+  }
+  @media (max-width: 480px) {
+    .bars.many svg,
+    .bars.many :global(.bar-labels) {
+      display: none;
+    }
+    .bars.many .hrows {
+      display: grid;
+    }
+  }
+  /* Too many bars for column labels at any width: rows everywhere. */
+  .bars.crowded svg,
+  .bars.crowded :global(.bar-labels) {
+    display: none;
+  }
+  .bars.crowded .hrows {
+    display: grid;
+  }
+  .bars rect.up {
+    fill: var(--div-high);
+  }
+  .bars rect.down {
+    fill: var(--div-low);
+  }
+  .hbar.up {
+    background: var(--div-high);
+  }
+  .hbar.down {
+    background: var(--div-low);
+  }
+  .hbar.weekend {
+    background: var(--series-brown-3);
+  }
   .bars rect.weekend {
     fill: var(--series-brown-3);
     stroke: var(--series-brown-3-ink);
@@ -754,7 +867,7 @@
   }
   .multi path {
     fill: none;
-    stroke-width: 2.5;
+    stroke-width: 3.5;
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
@@ -771,15 +884,15 @@
     line-height: 1.3;
   }
   .legend li {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
     min-width: 0;
+    text-align: center; /* the swatch is inline, so a wrapped name stays centered with it beside the first line */
   }
   .swatch {
-    flex-shrink: 0;
+    display: inline-block;
     width: 0.7rem;
     height: 2px;
+    margin-right: 0.25rem;
+    vertical-align: middle;
     border-radius: 1px;
   }
   .story-visual .multi {
@@ -825,10 +938,10 @@
     height: 2.25rem;
     overflow: visible;
   }
-  .spark polyline {
+  .spark path {
     fill: none;
     stroke: var(--chart-color-1);
-    stroke-width: 2;
+    stroke-width: 3.5;
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
@@ -899,7 +1012,7 @@
     flex-shrink: 0;
   }
   /* Supporting lists (details): small label, names left, values right; they take the card's spare
-     height, centered, so a short card beside a chart card has no hole. */
+     height, top-aligned so headers line up across a row (filler() levels them). */
   .details:not(:has(.dgroup:not([hidden]))),
   .details :global(li[hidden]) {
     display: none;
@@ -907,7 +1020,6 @@
   .details {
     display: flex;
     flex-direction: column;
-    justify-content: center;
     gap: var(--space-2);
     flex: 1 0 auto;
     width: 100%;
