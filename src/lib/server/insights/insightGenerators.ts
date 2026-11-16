@@ -25,7 +25,7 @@ export interface Finding {
   value?: string; // the big value ("+0.28")
   sides?: { label: string; value: string }[]; // versus: exactly 2
   body?: string; // 1-3 plain sentences
-  series?: { label: string; value: number }[]; // mini chart points
+  series?: { label: string; value: number; tip?: string }[]; // mini chart points (`tip`: the label's hover text when it differs)
   sample: string;
   settle?: string; // too-early: what would settle it
   href?: string; // "See the data" deep link
@@ -770,7 +770,7 @@ const restMyth: Generator = (c) => {
   // equal heights are the finding (user, #19 round 4).
   const avg = mean(rows.map((r) => r.rating!)), cuts = [15, 30, 45, 60, 75, 90];
   const level = gaps.length ? [] : banded(rows, (r) => r.restDays!, cuts, [0, ...cuts].map((c, i) => (cuts[i] ? `${c}–${cuts[i] - 1}` : `${c}+`)))
-    .map((b) => ({ label: b.label, value: avg + b.value }));
+    .map((b) => ({ label: b.label, value: avg + b.value, tip: `${b.label} days` }));
   return myth({
     key: 'restMyth', theme: 'dialin',
     headline: { none: "Longer rest doesn't make a better cup", unclear: 'No clear link between rest and rating yet', up: 'Longer rest helps', down: 'Longer rest hurts' }[rVerdict(p, rows.length)],

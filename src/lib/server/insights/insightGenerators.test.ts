@@ -612,6 +612,7 @@ describe('rest myth', () => {
     const flat = Array.from({ length: 40 }, (_, i) => seq(i + 1, [8, 8.01, 8, 8.01, 8, 8.01], '2026-07-01', (j) => ({ restDays: 5 + 12 * j + (i % 2) }))).flat();
     const f = gen('restMyth', flat)!; // bands all within 0.05: average rating per 15-day band instead of sub-pixel gap bars
     expect(f.series!.map((x) => x.label)).toEqual(['0–14', '15–29', '30–44', '45–59', '60–74']);
+    expect(f.series![0].tip).toBe('0–14 days');
     expect(f.series!.every((x) => Math.abs(x.value - 8.005) < 0.01)).toBe(true);
     expect(f).not.toHaveProperty('diverging');
   });

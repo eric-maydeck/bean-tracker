@@ -320,7 +320,7 @@
         <ul class="hrows" aria-hidden="true" style:--z="{(-lo / span) * 100}%">
           {#each f.series as p, i (i)}
             <li>
-              <span class="hname" use:labelTip={p.label}>{p.label}</span>
+              <span class="hname" use:labelTip={p.tip ?? p.label}>{p.label}</span>
               <span class="htrack"><span class="hbar" class:weekend={!f.diverging && /^(Sat|Sun)/.test(p.label)} class:up={f.diverging && p.value >= 0} class:down={f.diverging && p.value < 0}
                 style:left="{((Math.min(0, p.value) - lo) / span) * 100}%" style:width="{(Math.abs(p.value) / span) * 100}%"></span></span>
               <b>{barValue(p.value, f.diverging)}</b>
