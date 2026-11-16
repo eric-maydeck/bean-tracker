@@ -94,11 +94,11 @@ const bars = (series: Bar[], full = true, diverging = false): Pick<Finding, 'ser
 // Gaps of values from a base (the overall mean), for diverging bars.
 const gapsFrom = (series: Bar[], base: number): Bar[] => series.map((x) => ({ ...x, value: x.value - base }));
 // Mean demeaned rating of the rows whose x falls in each band (`cuts` are the lower edges after the first); bands under MIN_BREWS are dropped.
-const banded = <T extends { dm: number }>(rows: T[], x: (r: T) => number, cuts: number[], labels: string[]) =>
+const banded = <T extends { dm: number }>(rows: T[], x: (r: T) => number, cuts: number[], labels: string[]): Bar[] =>
   labels.map((label, i) => ({ label, g: rows.filter((r) => x(r) >= (cuts[i - 1] ?? -Infinity) && x(r) < (cuts[i] ?? Infinity)).map((r) => r.dm) }))
-    .filter((b) => b.g.length >= MIN_BREWS);
+    .filter((b) => b.g.length >= MIN_BREWS).map((b) => ({ label: b.label, value: mean(b.g) }));
 const bands = <T extends { dm: number }>(rows: T[], x: (r: T) => number, cuts: number[], labels: string[]): Bar[] =>
-  banded(rows, x, cuts, labels).map((b) => ({ label: b.label, value: mean(b.g) }))
+  banded(rows, x, cuts, labels)
     // ponytail: bands all within 0.05 of each other read as flat zeros: no chart (cards fall back to value + caption).
     .filter((_, __, all) => all.some((x) => Math.abs(x.value) >= 0.05));
 // Mean y per third of [x, y] points sorted by x, as gaps from the mean of all points.
@@ -765,19 +765,21 @@ const restMyth: Generator = (c) => {
   if (r === null || p === null) return null;
   // A null only covers the rests you brew at (mostly 30–90 days): say the range.
   const days = [...x].sort((a, b) => a - b), lo = days[Math.floor(0.1 * (days.length - 1))], hi = days[Math.ceil(0.9 * (days.length - 1))];
-  const band = [(r: (typeof rows)[number]) => r.restDays!, [14, 30, 60], ['0–13 d', '14–29 d', '30–59 d', '60+ d']] as const;
-  const gaps = bands(rows, ...band);
-  // Flat gaps would be sub-pixel bars: chart brews per rest band instead (user, #19 round 4).
-  const counts = gaps.length ? [] : banded(rows, ...band).map((b) => ({ label: b.label, value: b.g.length }));
+  const gaps = bands(rows, (r) => r.restDays!, [14, 30, 60], ['0–13 d', '14–29 d', '30–59 d', '60+ d']);
+  // Flat gaps would be sub-pixel bars: chart the bag-for-bag average rating per 15-day rest band instead, whose
+  // equal heights are the finding (user, #19 round 4).
+  const avg = mean(rows.map((r) => r.rating!)), cuts = [15, 30, 45, 60, 75, 90];
+  const level = gaps.length ? [] : banded(rows, (r) => r.restDays!, cuts, [0, ...cuts].map((c, i) => (cuts[i] ? `${c}–${cuts[i] - 1}` : `${c}+`)))
+    .map((b) => ({ label: b.label, value: avg + b.value }));
   return myth({
     key: 'restMyth', theme: 'dialin',
     headline: { none: "Longer rest doesn't make a better cup", unclear: 'No clear link between rest and rating yet', up: 'Longer rest helps', down: 'Longer rest hurts' }[rVerdict(p, rows.length)],
     value: rValue(p, rows.length),
     body: `Rest days and rating line up at r = ${num(r)}; with brew number held fixed, r = ${num(p)}.` +
       (Math.abs(p) < Math.abs(r) - 0.05 ? ' Later brews of a bag are both more rested and better dialed in.' : '') +
-      ` Most brews rested ${lo}–${hi} days; outside that it can't say.` + (counts.length > 1 ? ' Bars: brews at each rest.' : ''),
+      ` Most brews rested ${lo}–${hi} days; outside that it can't say.` + (level.length > 1 ? ' Bars: average rating by days of rest, bag for bag.' : ''),
     sample: `${rows.length} brews`, href: `${LB}&open=coffees`,
-    ...(gaps.length ? bars(gaps, true, true) : bars(counts))
+    ...(gaps.length ? bars(gaps, true, true) : bars(level))
   });
 };
 

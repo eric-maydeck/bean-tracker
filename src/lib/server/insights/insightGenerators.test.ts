@@ -610,8 +610,9 @@ describe('rest myth', () => {
     expect(gen('restMyth', wide)).toMatchObject({ chart: 'bars', barLabels: 'full' });
     expect(gen('restMyth', wide)!.series!.map((x) => x.label)).toEqual(['0–13 d', '14–29 d', '30–59 d', '60+ d']);
     const flat = Array.from({ length: 40 }, (_, i) => seq(i + 1, [8, 8.01, 8, 8.01, 8, 8.01], '2026-07-01', (j) => ({ restDays: 5 + 12 * j + (i % 2) }))).flat();
-    const f = gen('restMyth', flat)!; // bands all within 0.05: brews per band instead of sub-pixel gap bars
-    expect(f).toMatchObject({ chart: 'bars', series: [{ label: '0–13 d', value: 40 }, { label: '14–29 d', value: 60 }, { label: '30–59 d', value: 100 }, { label: '60+ d', value: 40 }] });
+    const f = gen('restMyth', flat)!; // bands all within 0.05: average rating per 15-day band instead of sub-pixel gap bars
+    expect(f.series!.map((x) => x.label)).toEqual(['0–14', '15–29', '30–44', '45–59', '60–74']);
+    expect(f.series!.every((x) => Math.abs(x.value - 8.005) < 0.01)).toBe(true);
     expect(f).not.toHaveProperty('diverging');
   });
 });
