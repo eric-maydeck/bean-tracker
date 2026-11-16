@@ -76,24 +76,24 @@ describe('dial-in speed', () => {
     const f = gen('dialinSpeed', b, bags(3))!;
     expect(f).toMatchObject({ theme: 'dialin', kind: 'versus', z: null, strength: null, headline: 'Dial-in takes up to 4 brews' });
     // "Fastest: 1 brew" is no contest: the other side counts the bags right on brew 1.
-    expect(f.sides).toEqual([{ label: 'Slowest: R Bag 1', value: '4 brews' }, { label: 'Right on brew 1 (of 3)', value: '1 bag' }]);
+    expect(f.sides).toEqual([{ label: 'slowest bag', value: '4 brews' }, { label: 'right on brew 1', value: '1 bag' }]);
   });
   it('skips bags that began before the period (brewIndex > 1)', () => {
     const late = seq(4, [9, 9, 9, 9, 9, 9], '2026-07-01', (i) => ({ brewIndex: i + 4 }));
     const f = gen('dialinSpeed', [...b, ...late], bags(4))!;
-    expect(f.sides![1]).toEqual({ label: 'Right on brew 1 (of 3)', value: '1 bag' }); // Bag 4 would make it 2
+    expect(f.sides![1]).toEqual({ label: 'right on brew 1', value: '1 bag' }); // Bag 4 would make it 2
     expect(f.sample).toBe('3 bags');
     expect(gen('dialinSpeed', [...b.slice(0, 11), ...late], bags(4))).toBeNull();
   });
   it('a fastest bag past brew 1 keeps the fastest side', () => {
     const f = gen('dialinSpeed', [...seq(1, [5, 6, 7, 8, 8, 8]), ...seq(2, [6, 8, 8, 8, 8, 8]), ...seq(3, [6, 7, 8, 8, 8, 8])], bags(3))!;
     expect(f.headline).toBe('Dial-in takes 2 to 4 brews');
-    expect(f.sides![1]).toEqual({ label: 'Fastest: R Bag 2', value: '2 brews' });
+    expect(f.sides![1]).toEqual({ label: 'fastest bag', value: '2 brews' });
   });
-  it('details: the next slowest bags and the most common brews-to-settle', () => {
+  it('details: the slowest bag first, then the next slowest, and the most common brews-to-settle', () => {
     const more = [...b, ...seq(4, [6, 7, 8, 8, 8, 8]), ...seq(5, [8, 8, 8, 8, 8, 8])];
     expect(gen('dialinSpeed', more, bags(5, (i) => ({ slug: `b${i + 1}` })))!.details).toEqual([
-      { label: 'Next slowest', items: [{ name: 'R Bag 4', value: '3 brews', href: '/coffees/b4' }, { name: 'R Bag 3', value: '2 brews', href: '/coffees/b3' }] },
+      { label: 'Slowest', items: [{ name: 'R Bag 1', value: '4 brews', href: '/coffees/b1' }, { name: 'R Bag 4', value: '3 brews', href: '/coffees/b4' }] },
       { label: 'Most bags settle by', items: [{ name: 'brew 1', value: '2 bags' }, { name: 'brew 2', value: '1 bag' }] }
     ]);
   });

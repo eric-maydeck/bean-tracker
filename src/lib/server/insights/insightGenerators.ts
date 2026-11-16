@@ -227,11 +227,11 @@ const dialinSpeed: Generator = (c) => {
   const hits = sorted.filter((x) => x.pos === 1).length;
   return {
     key: 'dialinSpeed', theme: 'dialin', kind: 'versus', headline: hits ? `Dial-in takes up to ${last.pos} brews` : `Dial-in takes ${fast.pos} to ${last.pos} brews`,
-    sides: [{ label: `Slowest: ${label(s)}`, value: plural(s.pos, 'brew') },
-      hits ? { label: `Right on brew 1 (of ${slow.length})`, value: plural(hits, 'bag') } : { label: `Fastest: ${label(fast)}`, value: plural(fast.pos, 'brew') }],
+    sides: [{ label: 'slowest bag', value: plural(s.pos, 'brew') },
+      hits ? { label: 'right on brew 1', value: plural(hits, 'bag') } : { label: 'fastest bag', value: plural(fast.pos, 'brew') }],
     sample: `${slow.length} bags`, href: `${LB}&open=coffees`, z: null, strength: null,
     ...details(
-      ['Next slowest', [...sorted].reverse().filter((x) => x !== s).map((x) => detail(label(x), plural(x.pos, 'brew'), coffeeHref(c.bags.find((b) => b.id === x.id))))],
+      ['Slowest', [s, ...[...sorted].reverse().filter((x) => x !== s)].map((x) => detail(label(x), plural(x.pos, 'brew'), coffeeHref(c.bags.find((b) => b.id === x.id))))],
       ['Most bags settle by', [...groupBy(sorted, (x) => x.pos)].sort((a, b) => b[1].length - a[1].length || a[0] - b[0])
         .map(([pos, g]) => detail(`brew ${pos}`, plural(g.length, 'bag')))]
     )
@@ -471,7 +471,7 @@ const earlyBrews: Generator = (c) => {
   return graded({
     key: 'earlyBrews', theme: 'habits', kind: 'number', headline: `Brews before 9 am rate ${Math.abs(diff).toFixed(d)} ${diff < 0 ? 'lower' : 'higher'}`,
     value: signed(diff, d), sample: `${early.length} early vs ${rest.length} later brews`, href: HABITS,
-    ...bars(bands(rows, minuteOf, [7 * 60, 9 * 60, 12 * 60], ['Before 7', '7–9', '9–12', 'After 12']))
+    ...bars(bands(rows, minuteOf, [7 * 60, 9 * 60, 12 * 60], ['Before 7', '7–9', '9–12', 'After 12']), true, true)
   }, z, true, 'brews', Math.min(early.length, rest.length));
 };
 
@@ -771,7 +771,7 @@ const restMyth: Generator = (c) => {
       (Math.abs(p) < Math.abs(r) - 0.05 ? ' Later brews of a bag are both more rested and better dialed in.' : '') +
       ` Most brews rested ${lo}–${hi} days; outside that it can't say.`,
     sample: `${rows.length} brews`, href: `${LB}&open=coffees`,
-    ...bars(bands(rows, (r) => r.restDays!, [14, 30, 60], ['0–13 d', '14–29 d', '30–59 d', '60+ d']))
+    ...bars(bands(rows, (r) => r.restDays!, [14, 30, 60], ['0–13 d', '14–29 d', '30–59 d', '60+ d']), true, true)
   });
 };
 
