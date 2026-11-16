@@ -86,6 +86,19 @@ function details(...groups: [string, DetailItem[]][]): Pick<Finding, 'details'> 
   const out = groups.map(([label, items]) => ({ label, items: items.filter((x, i) => items.findIndex((y) => y.name === x.name) === i).slice(0, DETAIL_ITEMS) })).filter((g) => g.items.length);
   return out.length ? { details: out } : {};
 }
+// Mini bars from labelled values: full labels (value + name) unless `full` is false (the one-letter weekday bars). <2 bars: none.
+type Bar = { label: string; value: number };
+const bars = (series: Bar[], full = true): Pick<Finding, 'series' | 'chart' | 'barLabels'> =>
+  series.length > 1 ? { series, chart: 'bars', ...(full ? { barLabels: 'full' as const } : {}) } : {};
+// Mean demeaned rating of the rows whose x falls in each band (`cuts` are the lower edges after the first); bands under MIN_BREWS are dropped.
+const bands = <T extends { dm: number }>(rows: T[], x: (r: T) => number, cuts: number[], labels: string[]): Bar[] =>
+  labels.map((label, i) => ({ label, g: rows.filter((r) => x(r) >= (cuts[i - 1] ?? -Infinity) && x(r) < (cuts[i] ?? Infinity)).map((r) => r.dm) }))
+    .filter((b) => b.g.length >= MIN_BREWS).map((b) => ({ label: b.label, value: mean(b.g) }));
+// Mean y per third of [x, y] points sorted by x.
+const thirds = (pts: number[][], names: string[]): Bar[] => {
+  const s = [...pts].sort((a, b) => a[0] - b[0]), k = Math.floor(s.length / 3);
+  return names.map((label, i) => ({ label, value: mean(s.slice(i * k, i === 2 ? undefined : (i + 1) * k).map((p) => p[1])) }));
+};
 // Cached per bags array: bagLabel and the generators call it inside loops.
 const bagMaps = new WeakMap<readonly BagFact[], Map<number, BagFact>>();
 const bagById = (c: GenCtx) => bagMaps.get(c.bags) ?? (bagMaps.set(c.bags, new Map(c.bags.map((b) => [b.id, b]))), bagMaps.get(c.bags)!);
@@ -223,12 +236,14 @@ const dialinSpeed: Generator = (c) => {
 const secondCup: Generator = (c) => {
   const days = groupBy(counted(c), (b) => (b.coffeeId === null ? null : `${b.coffeeId}|${b.localDate}`));
   // A backfilled brew's time is a guess, so its day can't say which cup came second.
-  const d = [...days.values()].filter((g) => g.length >= 2 && !g.some((b) => b.backfilled)).map((g) => g.sort((a, b) => a.localTime.localeCompare(b.localTime))).map((g) => g[1].rating! - g[0].rating!);
+  const pairs = [...days.values()].filter((g) => g.length >= 2 && !g.some((b) => b.backfilled)).map((g) => g.sort((a, b) => a.localTime.localeCompare(b.localTime)));
+  const d = pairs.map((g) => g[1].rating! - g[0].rating!);
   if (d.length < MIN_BREWS) return null;
   const { m, z } = paired(d);
   return graded({
     key: 'secondCup', theme: 'dialin', kind: 'number', headline: m >= 0 ? 'Your second cup is better' : 'Your second cup is worse',
-    value: signed(m, dp(m, z)), sample: `${d.length} pairs`, href: `${LB}&open=coffees`
+    value: signed(m, dp(m, z)), sample: `${d.length} pairs`, href: `${LB}&open=coffees`,
+    ...bars(['1st cup', '2nd cup'].map((label, i) => ({ label, value: mean(pairs.map((g) => g[i].rating!)) })))
   }, z, true, 'pairs', d.length);
 };
 
@@ -348,6 +363,7 @@ const notesTrouble: Generator = (c) => {
   return graded({
     key: 'notesTrouble', theme: 'taste', kind: 'number', headline: diff < 0 ? 'Brews you write notes on rate lower' : 'Brews you write notes on rate higher',
     value: signed(diff, dp(diff, z)), sample: `${yes.length} noted vs ${no.length} plain brews`, href: `${LB}&open=coffees`,
+    ...bars([{ label: 'Noted', value: mean(yes) }, { label: 'Plain', value: mean(no) }]),
     // Which way it runs is unknown; the audit's reading (2026-10-17) is the likelier one.
     ...(diff < 0 ? { caveat: "Likely the other way round: you write notes when a cup is off." } : {})
   }, z, true, 'brews', Math.min(yes.length, no.length));
@@ -449,7 +465,8 @@ const earlyBrews: Generator = (c) => {
   const diff = mean(early) - mean(rest), z = brewZ(early, rest, sd(rows.map((r) => r.dm))), d = dp(diff, z);
   return graded({
     key: 'earlyBrews', theme: 'habits', kind: 'number', headline: `Brews before 9 am rate ${Math.abs(diff).toFixed(d)} ${diff < 0 ? 'lower' : 'higher'}`,
-    value: signed(diff, d), sample: `${early.length} early vs ${rest.length} later brews`, href: HABITS
+    value: signed(diff, d), sample: `${early.length} early vs ${rest.length} later brews`, href: HABITS,
+    ...bars(bands(rows, minuteOf, [7 * 60, 9 * 60, 12 * 60], ['Before 7', '7–9', '9–12', 'After 12']))
   }, z, true, 'brews', Math.min(early.length, rest.length));
 };
 
@@ -471,7 +488,8 @@ const weekdayRatings: Generator = (c) => {
   const d = dp(best.diff, best.z);
   return graded({
     key: 'weekday', theme: 'habits', kind: 'number', headline: `${DAY_NAMES[best.d]} rate ${Math.abs(best.diff).toFixed(d)} ${best.diff < 0 ? 'lower' : 'higher'}`,
-    value: signed(best.diff, d), sample: `${best.n} brews on ${plural(best.days, DAY_NAMES[best.d].slice(0, -1))}`, href: HABITS
+    value: signed(best.diff, d), sample: `${best.n} brews on ${plural(best.days, DAY_NAMES[best.d].slice(0, -1))}`, href: HABITS,
+    ...bars(groups.sort(([a], [b]) => a - b).map(([wd, g]) => ({ label: DAY_NAMES[wd].slice(0, 3), value: mean(g.map((r) => r.dm)) })), false)
   }, best.z, true, DAY_NAMES[best.d], best.days, `With ${groups.length} weekdays compared, one usually stands out by chance.`, groups.length, dayMeans.length);
 };
 
@@ -671,7 +689,8 @@ const priceVsRating: Generator = (c) => {
     key: 'priceVsRating', theme: 'money',
     headline: { none: "Price doesn't buy rating", unclear: 'No clear link between price and rating yet', up: 'Pricier bags rate higher', down: 'Cheaper bags rate higher' }[rVerdict(r, pts.length)],
     value: rValue(r, pts.length), body: `Across ${pts.length} bags, $/100g and your bag rating ${moves(r)} (by rank).`,
-    sample: `${pts.length} bags`, href: `${LB}&open=coffees&rank=ppg`
+    sample: `${pts.length} bags`, href: `${LB}&open=coffees&rank=ppg`,
+    ...bars(thirds(pts, ['Cheapest third', 'Middle third', 'Priciest third']))
   });
 };
 
@@ -688,7 +707,8 @@ const costPerCup: Generator = (c) => {
     key: 'costPerCup', theme: 'money', kind: 'number', headline: `${money(avg)} a cup`, value: money(avg),
     ...(top.length >= 10 ? { body: `A 9+ cup costs ${money(mean(top.map((b) => b.costPerBrew!)))} on average.` } : {}),
     sample: `${cost.length} brews`, href: `${LB}&rank=spend`, z: null, strength: null,
-    ...(perBagCost.length >= 6 ? details(['Priciest cups', perBagCost.map(cup)], ['Cheapest cups', [...perBagCost].reverse().map(cup)]) : {})
+    // 6+ bags fill both lists; 3-5 only the priciest.
+    ...details(['Priciest cups', perBagCost.length >= MIN_BAGS ? perBagCost.map(cup) : []], ['Cheapest cups', perBagCost.length >= 6 ? [...perBagCost].reverse().map(cup) : []])
   };
 };
 
@@ -745,7 +765,8 @@ const restMyth: Generator = (c) => {
     body: `Rest days and rating line up at r = ${num(r)}; with brew number held fixed, r = ${num(p)}.` +
       (Math.abs(p) < Math.abs(r) - 0.05 ? ' Later brews of a bag are both more rested and better dialed in.' : '') +
       ` Most brews rested ${lo}–${hi} days; outside that it can't say.`,
-    sample: `${rows.length} brews`, href: `${LB}&open=coffees`
+    sample: `${rows.length} brews`, href: `${LB}&open=coffees`,
+    ...bars(bands(rows, (r) => r.restDays!, [14, 30, 60], ['0–13 d', '14–29 d', '30–59 d', '60+ d']))
   });
 };
 
@@ -779,9 +800,9 @@ const originMyth: Generator = (c) => {
     .map((g) => ({ g, vs: againstKind(g, bs.filter((b) => !g.includes(b)), m, w) })).filter((x) => x.vs.group.length >= MIN_BAGS);
   const gs = cmp.map((x) => x.vs.group.map((y) => y.b));
   if (gs.length < 3) return null;
-  const gaps = cmp.map(({ vs }) => {
+  const gaps = cmp.map(({ g, vs }) => {
     const gv = vs.group.map((x) => x.v), gw = vs.group.map((x) => x.w), rv = vs.rest.map((x) => x.v), rw = vs.rest.map((x) => x.w);
-    return { d: Math.abs(wmean(gv, gw) - wmean(rv, rw)), se: spread * Math.sqrt(1 / effN(gw) + 1 / effN(rw)) };
+    return { origin: g[0].origin!, gap: wmean(gv, gw) - wmean(rv, rw), d: Math.abs(wmean(gv, gw) - wmean(rv, rw)), se: spread * Math.sqrt(1 / effN(gw) + 1 / effN(rw)) };
   });
   const max = Math.max(...gaps.map((x) => x.d)), band = Math.max(...gaps.map((x) => x.d + 2 * x.se));
   if (max > ORIGIN_EVEN) return null;
@@ -790,7 +811,8 @@ const originMyth: Generator = (c) => {
     key: 'originMyth', theme: 'taste', headline: sure ? 'Origin barely matters' : 'No origin stands out yet', value: `±${max.toFixed(1)}`,
     body: `All ${gs.length} origins with ${MIN_BAGS}+ bags rate within ±${max.toFixed(1)} of your other bags` +
       (sure ? `, ±${band.toFixed(1)} at most with the margin of error.` : `; with so few bags each, the margin of error reaches ±${band.toFixed(1)}.`),
-    sample: plural(sum(gs.map((g) => g.length)), 'bag'), href: `${LB}&open=origins`
+    sample: plural(sum(gs.map((g) => g.length)), 'bag'), href: `${LB}&open=origins`,
+    ...bars(gaps.map((x) => ({ label: x.origin, value: x.gap })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label)))
   });
 };
 
@@ -807,7 +829,8 @@ const backlogWaitMyth: Generator = (c) => {
     key: 'backlogWaitMyth', theme: 'money',
     headline: { none: "Waiting in the backlog doesn't hurt", unclear: 'No clear link between backlog wait and rating yet', up: 'Bags that wait rate higher', down: 'Bags that wait rate lower' }[rVerdict(r, pts.length)],
     value: rValue(r, pts.length), body: `Across ${pts.length} bags, days from roast to first brew and the bag's rating ${moves(r)}.`,
-    sample: `${pts.length} bags`, href: '/stats?tab=consumption'
+    sample: `${pts.length} bags`, href: '/stats?tab=consumption',
+    ...bars(thirds(pts, ['Shortest wait', 'Middle third', 'Longest wait']))
   });
 };
 
@@ -837,7 +860,8 @@ const variablesMyth: Generator = (c) => {
   return myth({
     key: 'variablesMyth', theme: 'dialin', headline: 'Your brew variables barely move the rating', value: `|r| ≤ ${max.toFixed(2)}`,
     body: `${list(names)} all stay within |r| ≤ ${max.toFixed(2)} of your rating, within a bag, each give or take ${num(rBand(Math.min(...rs.map((x) => x.n))))} at most.`,
-    sample: `${rows.length} brews`, href: `${LB}&open=grinder`
+    sample: `${rows.length} brews`, href: `${LB}&open=grinder`,
+    ...bars(rs.map((x, i) => ({ label: names[i], value: x.r })))
   });
 };
 
@@ -885,11 +909,12 @@ const likeStandouts: Generator = (c) => {
   // Roasters: the Leaderboards figure (roasterLikes: against other roasters' coffees), 3+ bags each.
   const rl = roasterLikes(counted(c), twins, bagSizes(c.brews, c.ratings)), allGaps = [...rl.values()].flatMap((x) => x.gaps);
   const roasters = [...rl].filter(([, x]) => !pooled(x.bags, x.brews).small); // the board's small-sample rule
-  const best = roasters.map(([r, x]) => ({ r, ...x })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap) || a.r.localeCompare(b.r))[0];
+  const byRoaster = roasters.map(([r, x]) => ({ r, ...x })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap) || a.r.localeCompare(b.r)), best = byRoaster[0];
   const roaster = best ? graded({
     key: 'likeRoaster', theme: 'taste', kind: 'number',
     headline: `${best.r} rates ${Math.abs(best.gap).toFixed(1)} ${best.gap >= 0 ? 'above' : 'below'} like coffees`,
-    value: gapText(best.gap), sample: plural(best.bags, 'bag'), href: `${LB}&rank=like&open=roasters`
+    value: gapText(best.gap), sample: plural(best.bags, 'bag'), href: `${LB}&rank=like&open=roasters`,
+    ...details([best.gap >= 0 ? 'Also above their peers' : 'Also below their peers', byRoaster.slice(1).filter((x) => (x.gap >= 0) === (best.gap >= 0)).map((x) => detail(x.r, gapText(x.gap), listHref('roaster', [x.r])))])
   }, restZ(best.gaps, [...rl].filter(([r]) => r !== best.r).flatMap(([, x]) => x.gaps), best.ws, [...rl].filter(([r]) => r !== best.r).flatMap(([, x]) => x.ws)), true, 'bags', best.bags, undefined, roasters.length, allGaps.length) : null;
   return [coffee, roaster].filter((f): f is Finding => f !== null);
 };

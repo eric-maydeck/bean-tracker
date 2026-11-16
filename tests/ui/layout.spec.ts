@@ -8212,7 +8212,9 @@ export const STATES: State[] = [
       const i = await page.locator('.finding-grid .hl-card').evaluateAll((cs) => {
         // Prefer a body already cut by its line clamp: a longer text in a body that fits would grow a fixed-height card.
         const cut = (c: Element) => { const e = c.querySelector('.body'); return !!e && e.scrollHeight > e.clientHeight + 1; };
-        const j = cs.findIndex(cut) >= 0 ? cs.findIndex(cut) : cs.findIndex((c) => c.querySelector('.body'));
+        // Else the roomiest body (a card whose body already fills its card grows when the text does).
+        const room = (c: Element) => c.querySelector('.body')?.clientHeight ?? -1;
+        const j = cs.findIndex(cut) >= 0 ? cs.findIndex(cut) : cs.findIndex((c) => room(c) >= 0 && room(c) === Math.max(...cs.map(room)));
         if (j >= 0) cs[j].querySelector('.body')!.textContent = 'A very long finding body that keeps going. '.repeat(12);
         return j;
       });
