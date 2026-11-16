@@ -78,6 +78,7 @@
     const run = () => {
       const groups = [...el.querySelectorAll<HTMLElement>('.dgroup')];
       for (const g of groups) g.hidden = true;
+      for (const d of el.querySelectorAll<HTMLElement>('.details')) d.style.marginTop = '';
       const cards = [...el.children] as HTMLElement[];
       // A fixed-height findings card whose text doesn't fit tightens step by step (CSS [data-tight],
       // ui-rules 34); still overflowing at 4 is a test failure. Auto-height cards never overflow.
@@ -106,6 +107,20 @@
             }
           }
         }
+      }
+      // List headers line up across a row (user, 2026-11-16): each list starts level with its row's lowest,
+      // when that still fits.
+      const shown = cards.flatMap((c) => {
+        const d = c.querySelector<HTMLElement>('.details:has(.dgroup:not([hidden]))');
+        return d ? [{ c, d, top: d.getBoundingClientRect().top - c.getBoundingClientRect().top }] : [];
+      });
+      const rowTop = new Map<number, number>();
+      for (const s of shown) rowTop.set(s.c.offsetTop, Math.max(rowTop.get(s.c.offsetTop) ?? 0, s.top));
+      for (const { c, d, top } of shown) {
+        const extra = rowTop.get(c.offsetTop)! - top;
+        if (extra < 1) continue;
+        d.style.marginTop = `calc(var(--space-1) + ${extra}px)`;
+        if (c.scrollHeight > rowMax.get(c.offsetTop)!) d.style.marginTop = '';
       }
       el.style.alignItems = '';
       el.classList.remove('fit');
@@ -997,7 +1012,7 @@
     flex-shrink: 0;
   }
   /* Supporting lists (details): small label, names left, values right; they take the card's spare
-     height, centered, so a short card beside a chart card has no hole. */
+     height, top-aligned so headers line up across a row (filler() levels them). */
   .details:not(:has(.dgroup:not([hidden]))),
   .details :global(li[hidden]) {
     display: none;
@@ -1005,7 +1020,6 @@
   .details {
     display: flex;
     flex-direction: column;
-    justify-content: center;
     gap: var(--space-2);
     flex: 1 0 auto;
     width: 100%;
