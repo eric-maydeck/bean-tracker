@@ -196,7 +196,7 @@
     display: flex;
     flex-direction: column;
   }
-  /* viewport 900px (no rail; the rail narrows it) */
+  /* viewport 900px */
   @container insights (min-width: 868px) {
     .water-pair > .span {
       grid-column: 1 / -1;
@@ -213,7 +213,7 @@
     display: flex;
     flex-direction: column;
   }
-  /* viewport 1150px (no rail; the rail narrows it) */
+  /* viewport 1150px */
   @container insights (min-width: 1118px) {
     .heat-grid.paired {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

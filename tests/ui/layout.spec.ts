@@ -12,6 +12,13 @@ import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
+/** Switches the /stats tab the way a user does: "☰ View: …" (or, scrolled on a phone, the short row's ☰), then the drawer link for `tab`. */
+async function pickTab(page: Page, tab: string) {
+  const mini = page.locator('.mini-menu');
+  await (await mini.isVisible() ? mini : page.locator('.section-row')).click();
+  await page.locator('dialog.tab-drawer a').evaluateAll((as, t) => (as as HTMLAnchorElement[]).find((a) => (new URL(a.href).searchParams.get('tab') ?? 'overview') === t)!.click(), tab);
+}
+
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; labTwo: string; sey: string; skip: string; brew: string; brewNew: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
@@ -59,8 +66,6 @@ interface State {
   // 'two' (tagged @two): phone-portrait + w1280 only (TWO_VIEWPORTS, playwright.config.ts). Only for a state whose
   // assertions are all width-independent (tip text, URL sync, labels) and whose path an 'all' state also loads.
   viewports?: 'all' | 'two';
-  /** Reloads the page dozens of times (insights-rail: 36 loads at w1280): triple the 30 s timeout, which the `background` profile's slow loads overrun. */
-  slow?: boolean;
 }
 
 // The gear edit form's grid (wide dialogs): Save/Cancel fill the cell after the last field, Preview/Discard share their row and
@@ -262,7 +267,8 @@ async function expectStickyBar(page: Page, bar: Locator) {
   }
   const b = (await bar.boundingBox())!;
   const tabRow = await tabRowHeight(bar);
-  expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
+  const top = await bar.evaluate((e) => parseFloat(getComputedStyle(e).top));
+  expect(Math.abs(b.y - top), 'pinned at its sticky top').toBeLessThanOrEqual(1);
   // Phone landscape: one short controls row, plus (when filters are set) the one-line chips row (gate r2 A3), at most
   // 44px (a phone tap target's height).
   if (page.viewportSize()!.height <= 450) expect(b.height - tabRow).toBeLessThanOrEqual(60 + ((await bar.locator('.coffee-chips').count()) ? 44 : 0));
@@ -1121,10 +1127,7 @@ export const STATES: State[] = [
       await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
       await expect(page.locator('.recap-tile .badge')).toHaveText(['Preview']);
       await expectNoMidWord(page, '.recap-tile b', '.recap-tile b .fit', LONG_NAMES);
-      const vp = page.viewportSize()!;
-      const rail = page.locator('nav.insights-rail a');
-      if (vp.width >= 1000 && vp.height >= 500) await expect(rail.last()).toHaveText('Recaps');
-      else expect(await page.getByRole('combobox', { name: 'View' }).locator('option').allTextContents()).toContain('Recaps');
+      await expect(page.locator('dialog.tab-drawer a').last()).toHaveText('Recaps');
     } },
   // The Period picks the years: one year, and a range with none (an empty line naming it, not a blank panel).
   { name: 'insights-recaps-period', path: () => `/stats?tab=recaps&range=${recapYear() - 1}`,
@@ -4767,10 +4770,10 @@ export const STATES: State[] = [
       await legend.nth(2).click();
       await legend.nth(2).click();
       await still();
-      await page.getByLabel('View').selectOption('consumption'); // a much shorter page
+      await pickTab(page, 'consumption'); // a much shorter page
       await expect(page).toHaveURL(/tab=consumption/);
       await expect(page.locator('section[data-section="consumption-time-to-open"]')).toBeVisible();
-      await page.getByLabel('View').selectOption('spend');
+      await pickTab(page, 'spend');
       await expect(share).toBeVisible();
       await page.waitForTimeout(300);
       await still();
@@ -5599,7 +5602,7 @@ export const STATES: State[] = [
       await list.evaluate((l) => { l.removeAttribute('data-ready'); const w = document.createTreeWalker(l, NodeFilter.SHOW_TEXT); const n = w.nextNode() as Text; n.data = n.data; });
       await expect(list).toHaveAttribute('data-ready', '');
       // A people toggle (no navigation) changes the caption items in place.
-      await page.goto('/stats?tab=onhand&range=3m');
+      await gotoReady(page, '/stats?tab=onhand&range=3m');
       const toggle = page.getByRole('button', { name: 'Per person', exact: true });
       if (await toggle.isVisible()) { // (the bar is collapsed on phones, and People is hidden in a one-person household)
         await toggle.click();
@@ -6242,7 +6245,7 @@ export const STATES: State[] = [
     name: 'insights-reset', viewports: 'two',
     path: () => '/stats?tab=habits&range=1w&measure=grams&ratings=all',
     act: async (page) => {
-      await page.getByLabel('View').selectOption('consumption');
+      await pickTab(page, 'consumption');
       await expect(page).toHaveURL(/tab=consumption/);
       await expect(page).toHaveURL(/measure=grams/);
       await page.getByRole('button', { name: 'Reset' }).click();
@@ -7009,7 +7012,7 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/rank=brews/);
       expect(page.url()).not.toContain('chart=');
       // A tab switch drops chart= and the hash; the new tab's headings link with their own chart=.
-      await page.getByLabel('View').selectOption('habits');
+      await pickTab(page, 'habits');
       await expect(page).toHaveURL(/tab=habits/);
       expect(page.url()).toContain('range=all');
       expect(page.url()).not.toMatch(/chart=|#/);
@@ -7334,10 +7337,10 @@ export const STATES: State[] = [
       const liked = await h('[data-board="coffees"] .board-row.liked');
       if ((page.viewportSize()?.width ?? 0) <= 640) { expect(plain).toBeCloseTo(48, 0); expect(liked).toBeGreaterThan(plain + 8); }
       else expect(Math.abs(plain - liked)).toBeLessThanOrEqual(1);
-      await page.getByLabel('View').selectOption('records');
+      await pickTab(page, 'records');
       await expect(page.locator('.like-line').first()).toBeVisible();
       await expectDeltaInk(page);
-      await page.getByLabel('View').selectOption('sweetspots');
+      await pickTab(page, 'sweetspots');
       await expect(page.locator('.like-line').first()).toBeVisible();
       await expectDeltaInk(page);
     } },
@@ -7595,70 +7598,42 @@ export const STATES: State[] = [
       await page.evaluate(() => document.getElementById('frac')!.remove());
     }
   },
-  // Side rail: from 1000px wide and 500px tall. It adds width (rail + gap
-  // = 176px), so with it at viewport W the content lays out exactly as the page without it at W - 176 (a
-  // (W - 176) x 499 viewport: too short for the rail), and from 1416px the content column is the full 1208px.
-  // At w1280 this state also runs the comparisons at other sizes, then ends back at 1280 x 800.
+  // Sections: "☰ View: X" under the title opens the drawer; a link switches the tab, keeps the other params, marks
+  // itself current and closes the drawer. Previous / Next end every tab in drawer order. Scrolled, desktop keeps the
+  // row pinned with the controls right under it; a phone's short row leads with a ☰ that opens the same drawer.
   {
-    name: 'insights-rail',
-    slow: true,
-    path: () => '/stats?range=all',
+    name: 'insights-sections',
+    path: () => '/stats?range=all&tab=habits',
     act: async (page) => {
-      const rail = page.locator('nav.insights-rail');
-      const main = page.locator('.rail-main');
-      const vp = page.viewportSize()!;
-      if (vp.width < 1000 || vp.height < 500) return expect(rail).toBeHidden();
-      await expect(rail).toBeVisible();
-      if (vp.width !== 1280) return;
-      // The content column's width, every element's width in it, and each grid's column count (distinct child lefts).
-      const shape = () => main.evaluate((m) => ({
-        width: Math.round(m.getBoundingClientRect().width),
-        widths: [...m.querySelectorAll('*')].map((e) => Math.round(e.getBoundingClientRect().width)).filter((w) => w > 0),
-        cols: [...m.querySelectorAll('.stat-row, .fit, .hl-grid, .board-band, .insights-charts, .lab-grid')].map(
-          (g) => new Set([...g.children].map((c) => Math.round(c.getBoundingClientRect().left))).size)
-      }));
-      // fitPairs stretches the lab pairs a frame after fonts load and after a width change, so a snapshot taken
-      // at once can be pre-fit at one width and post-fit at the other: wait for its [data-fit-pending] to clear.
-      const settled = async () => {
-        await page.waitForFunction(() => !document.querySelector('[data-fit-pending]'));
-        return shape();
-      };
-      const at = async (width: number, height: number, url: string) => {
-        await page.setViewportSize({ width, height });
-        await gotoReady(page, url);
-        await expect(rail).toBeVisible({ visible: width >= 1000 && height >= 500 });
-      };
-      for (const w of [1100, 1280, 1436])
-        for (const q of ['', '&tab=insights', '&tab=leaderboards', '&tab=habits', '&tab=consumption', '&tab=brewing']) {
-          const url = `/stats?range=all${q}`;
-          const bare = Math.min(w, 1416) - 176; // --container-max (1416px) caps the page, rail included
-          await at(bare, 499, url);
-          const today = await settled();
-          await at(w, 900, url);
-          expect(await settled(), `${w}px tab${q || '=overview'}: as without the rail at ${bare}px`).toEqual(today);
-        }
-      // Full width from 1416px: every tab's content column is 1240 - 2rem.
-      await at(1436, 900, '/stats?range=all');
-      for (const t of await rail.locator('a').all()) {
-        await gotoReady(page, (await t.getAttribute('href'))!.replace(/^\?/, '/stats?'));
-        expect(Math.round((await main.boundingBox())!.width), (await t.textContent()) ?? '').toBe(1208);
-      }
-      // Milestones: the ruler is left of the feed without the rail, right of it beside the rail.
-      const rulerX = async () => (await page.locator('nav.ruler').boundingBox())!.x - (await page.locator('.feed').boundingBox())!.x;
-      await at(999, 800, '/stats?tab=milestones&range=all');
-      expect(await rulerX()).toBeLessThan(0);
-      await at(1436, 900, '/stats?tab=milestones&range=all');
-      expect(await rulerX(), 'ruler right of the feed beside the rail').toBeGreaterThan(0);
-      // A rail link switches the tab, keeps the other params and marks itself current.
-      await gotoReady(page, '/stats?range=all&tab=habits');
-      await expect(rail.locator('[aria-current="page"]')).toHaveText('Habits');
-      await rail.getByRole('link', { name: 'Records', exact: true }).click();
-      await expect(rail.locator('[aria-current="page"]')).toHaveText('Records');
-      await expect(page.getByRole('combobox', { name: 'View' })).toHaveValue('records');
+      const row = page.locator('.section-row'), drawer = page.locator('dialog.tab-drawer');
+      await expect(row).toHaveText('View: Habits');
+      await row.click();
+      await expect(drawer).toBeVisible();
+      await expect(drawer.locator('[aria-current="page"]')).toHaveText('Habits');
+      await expect(drawer.getByRole('group', { name: 'Lab' }).getByRole('link')).toHaveText(['Sweet spots', 'Brewing', 'Pours', 'Water', 'Gear']);
+      await drawer.getByRole('link', { name: 'Records', exact: true }).click();
+      await expect(drawer).toBeHidden();
+      await expect(row).toHaveText('View: Records');
       const u = new URL(page.url());
       expect([u.searchParams.get('tab'), u.searchParams.get('range')]).toEqual(['records', 'all']);
-      await expect(rail.getByRole('group', { name: 'Lab' }).getByRole('link')).toHaveText(['Sweet spots', 'Brewing', 'Pours', 'Water', 'Gear']);
-      await at(1280, 800, '/stats?range=all');
+      const pager = page.locator('nav.tab-pager');
+      await expect(pager.locator('.prev')).toContainText('Spend');
+      await pager.locator('.next').click();
+      await expect(row).toHaveText('View: Milestones');
+      await expect(pager.locator('.prev')).toContainText('Records');
+      await gotoReady(page, '/stats?range=all');
+      await expect(pager.locator('.prev')).toHaveCount(0);
+      await scrollPastBar(page);
+      if (isPhone(page)) await page.locator('.mini-menu').click();
+      else {
+        const [r, bar] = [(await page.locator('.section-bar').boundingBox())!, (await page.locator('.filter-bar').boundingBox())!];
+        expect(Math.abs(r.y), 'row pinned at the top').toBeLessThanOrEqual(1);
+        expect(Math.abs(bar.y - (r.y + r.height)), 'controls right under it').toBeLessThanOrEqual(1);
+        await row.click();
+      }
+      await expect(drawer).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(drawer).toBeHidden();
     }
   },
   // A feed shorter than the full side ruler caps it to the feed: it never sticks out below (M10). A window
@@ -8503,12 +8478,12 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
-      await page.getByLabel('View').selectOption('overview'); // sticky: both come back on Overview
+      await pickTab(page, 'overview'); // sticky: both come back on Overview
       await expect(page.getByLabel('Compare')).toHaveValue('1');
       await expect(page).toHaveURL(/compare=1/);
       await expect(page).toHaveURL(/people=person/);
       await expect(page).toHaveURL(/grinder=zp6-special/); // lab picks stick through a non-lab tab too
-      await page.getByLabel('View').selectOption('gear'); // a second action on the non-lab tab
+      await pickTab(page, 'gear'); // a second action on the non-lab tab
       // grinder= already matched on Overview: wait for the Gear tab itself before the layout checks.
       await expect(page).toHaveURL(/tab=gear.*grinder=zp6-special/);
       await expect(page.getByLabel('Compare')).toHaveCount(0);
@@ -9092,7 +9067,7 @@ export const STATES: State[] = [
       // Recipe deltas line up down the list.
       const rights = await page.locator('[data-section="water-recipes"] .val').evaluateAll((vs) => vs.map((v) => Math.round(v.getBoundingClientRect().right)));
       expect(new Set(rights).size).toBe(1);
-      // The heatmaps pair up from a 1118 px content column (a 1150 px viewport without the side rail; neither
+      // The heatmaps pair up from a 1118 px content column (a 1150 px viewport; neither
       // scrolls), stacked below.
       const cw = (await page.locator('.rail-main').boundingBox())!.width; // content column
       const wide = cw >= 1118;
@@ -11283,7 +11258,8 @@ export const STATES: State[] = [
       await page.evaluate(() => scrollTo(0, 700));
       await frames(page);
       const bar = (await page.locator('.filter-bar').boundingBox())!, c = (await ctl.boundingBox())!;
-      expect(Math.abs(bar.y)).toBeLessThanOrEqual(1);
+      const top = await page.locator('.filter-bar').evaluate((e) => parseFloat(getComputedStyle(e).top));
+      expect(Math.abs(bar.y - top), 'pinned at its sticky top').toBeLessThanOrEqual(1);
       expect(c.y).toBeGreaterThanOrEqual(bar.y - 1);
       expect(c.y + c.height).toBeLessThanOrEqual(bar.y + bar.height + 1);
       // Nothing of the tab's bar is left inline in the page below the sticky bar.
@@ -11357,7 +11333,7 @@ export const STATES: State[] = [
       const body = () => page.locator('.rail-main').evaluate((el) => [...el.children].filter((c) => !c.matches('.filter-bar, .toolbar, .chart-note, dialog, .cbar, .cbar-mini')).map((c) => (c as HTMLElement).innerText).join('|').slice(0, 4000));
       let before = await body();
       for (const t of tabs.slice(1)) {
-        await page.getByRole('combobox', { name: 'View', exact: true }).selectOption(t);
+        await pickTab(page, t);
         await expect(page).toHaveURL(new RegExp(`tab=${t}`));
         await expect.poll(body, { message: `content after switching to ${t}` }).not.toBe(before);
         before = await body();
@@ -11370,12 +11346,13 @@ export const STATES: State[] = [
     act: (page) => cbarAct(page, 5) },
   { name: 'insights-cbar-custom', path: () => `/stats?range=${iso(-120)}..${iso(-30)}&compare=${iso(-240)}..${iso(-150)}`, act: (page) => cbarAct(page) },
   // Staying open: every change inside the expanded bar keeps it open, the spacer follows its height, a closed dialog
-  // returns focus into it; the pull tab and the short row's button work from the keyboard.
-  { name: 'insights-cbar-stays-open', path: () => '/stats?tab=habits&range=all',
+  // returns focus into it; the pull tab and the short row's button work from the keyboard. Tabs switch from the
+  // sections drawer, outside the bar, so the Records half reopens the bar on that tab.
+  { name: 'insights-cbar-stays-open', path: () => '/stats?tab=consumption&range=all',
     act: async (page) => {
       if (!isPhone(page)) return;
       await scrollPastBar(page);
-      const overlay = await expandBar(page);
+      let overlay = await expandBar(page);
       const combo = (name: string) => overlay.getByRole('combobox', { name, exact: true });
       const check = async (url: RegExp | null, dialog = false) => {
         if (url) await expect(page).toHaveURL(url);
@@ -11385,8 +11362,6 @@ export const STATES: State[] = [
       };
       await combo('Period').selectOption('3m');
       await check(/range=3m/);
-      await combo('View').selectOption('consumption');
-      await check(/tab=consumption/);
       const first = await combo('Compare').evaluate((s: HTMLSelectElement) => [...s.options].map((o) => o.value).find((v) => v !== '0' && v !== 'custom')!);
       await combo('Compare').selectOption(first);
       await check(/compare=/);
@@ -11403,8 +11378,9 @@ export const STATES: State[] = [
       await by.click();
       await expect.poll(() => page.url()).not.toBe(url);
       await check(null);
-      await combo('View').selectOption('records');
-      await check(/tab=records/);
+      await gotoReady(page, '/stats?tab=records&range=3m');
+      await scrollPastBar(page);
+      overlay = await expandBar(page);
       await overlay.getByRole('button', { name: /^Ratings and brews/ }).click();
       await page.locator('#switch-menu').getByRole('button', { name: 'All ratings' }).click();
       await check(/ratings=all/);
@@ -11476,7 +11452,9 @@ export const STATES: State[] = [
       await expect(page.locator('.cbar.overlay')).toHaveCount(0);
       await expect(page.locator('.cbar-mini')).toHaveCount(0);
       await scrollPastBar(page);
-      expect(Math.abs((await page.locator('.filter-bar').boundingBox())!.y), 'controls pinned at desktop width').toBeLessThanOrEqual(1);
+      const bar = page.locator('.filter-bar');
+      const top = await bar.evaluate((e) => parseFloat(getComputedStyle(e).top));
+      expect(Math.abs((await bar.boundingBox())!.y - top), 'controls pinned at desktop width').toBeLessThanOrEqual(1);
     } },
   // An overlay taller than the screen scrolls inside; the pull tab stays at its visible bottom-right, clear of the last row.
   { name: 'insights-cbar-overlay-scroll', path: () => '/stats?tab=brewing&range=all',
@@ -11560,7 +11538,8 @@ export const STATES: State[] = [
       await scrollPastBar(page);
       const barH = () => page.locator('.timeline').evaluate((el) => parseFloat(el.style.getPropertyValue('--bar-h')));
       if (!isPhone(page)) {
-        expect(Math.abs((await barH()) - (await page.locator('.filter-bar').evaluate((el: HTMLElement) => el.offsetHeight)))).toBeLessThanOrEqual(1);
+        const b = (await page.locator('.filter-bar').boundingBox())!; // the "View: …" row and the controls
+        expect(Math.abs((await barH()) - (b.y + b.height))).toBeLessThanOrEqual(1);
         return;
       }
       const mini = (await page.locator('.cbar-mini').boundingBox())!.height;
@@ -11978,7 +11957,6 @@ const tabTag = (st: State) => {
 const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   test(state.name, { tag: [routeTag(state), ...tabTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
-    if (state.slow) test.slow();
     const s = seed();
     await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);

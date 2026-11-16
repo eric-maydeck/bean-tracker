@@ -266,7 +266,7 @@
     white-space: normal;
     overflow-wrap: anywhere;
   }
-  /* viewport 900px (no rail; the rail narrows it) */
+  /* viewport 900px */
   @container insights (min-width: 868px) {
     .lab-grid {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

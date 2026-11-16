@@ -453,7 +453,7 @@
       --cols: 2;
     }
   }
-  /* viewport 1000px (no rail; the rail narrows it) */
+  /* viewport 1000px */
   @container insights (min-width: 968px) {
     .band-6,
     .band-7 {
@@ -699,7 +699,7 @@
   }
   /* Origins: map beside its list on wide screens (list column fixed, map takes the rest and
      sits at the top), above it below 1100px at its natural height. */
-  /* viewport 1100px (no rail; the rail narrows it) */
+  /* viewport 1100px */
   @container insights (min-width: 1068px) {
     .board[data-board='origins'] .board-body {
       display: grid;
