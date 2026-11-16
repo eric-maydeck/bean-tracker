@@ -2996,8 +2996,8 @@ select.quick-filter-select {
   grid-template-columns: minmax(0, 1fr);
   margin-bottom: var(--space-5);
 }
-/* Container `insights` = /stats' content column (viewport - 2rem without its side rail). */
-/* viewport 900px (no rail; the rail narrows it) */
+/* Container `insights` = /stats' content column (viewport - 2rem). */
+/* viewport 900px */
 @container insights (min-width: 868px) {
   .insights-charts {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

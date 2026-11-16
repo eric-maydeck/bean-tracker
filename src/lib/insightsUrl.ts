@@ -91,7 +91,7 @@ export const TABS = ['overview', 'onhand', 'leaderboards', 'habits', 'consumptio
 export const RC_COLS = ['roaster', 'bags', 'spent', 'ppg', 'rating', 'like', 'last'] as const;
 export type RcCol = (typeof RC_COLS)[number];
 export type Tab = (typeof TABS)[number];
-// The desktop side rail's groups, in TABS order: a new tab joins one group here (a test checks every tab is in one).
+// The /stats sections drawer's groups, in TABS order: a new tab joins one group here (a test checks every tab is in one).
 export const TAB_GROUPS: readonly { label: string; tabs: readonly Tab[] }[] = [
   { label: 'Summary', tabs: ['overview', 'onhand', 'leaderboards'] },
   { label: 'Habits', tabs: ['habits', 'consumption', 'spend'] },

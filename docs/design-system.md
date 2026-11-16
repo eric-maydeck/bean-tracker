@@ -29,6 +29,7 @@ cited file, not by copying it elsewhere.
 ## Controls
 
 - Tap target: 44px minimum on phones (`.card-actions .button` `min-height: 44px`; `.ctl-select` goes to `min-height: 44px; font-size: 16px` under `@media (max-width: 640px)`, which also stops iOS input zoom).
+- Click targets fit their content: a button or link covers its icon, its text and its padding, never stretched empty space. To put one on its own line, use `display: flex; width: fit-content`, not `width: 100%` or `flex-basis: 100%`. Charts and tooltips may be exceptions, where a whole-area hit helps.
 - Desktop select: `.ctl-select` `min-height: 2.25rem`, 0.85rem text (`src/app.css`).
 - Button: `.button` is padding `--space-2` x `--space-4`, accent fill, inverts on hover; variants `.button-secondary`, `.button-danger`, `.button-success`, `.button-ghost`. Icon-only: `.button.button-icon`.
 - Icons: one set, Phosphor regular paths in `src/lib/components/Icon.svelte`. No emoji.
@@ -36,7 +37,7 @@ cited file, not by copying it elsewhere.
 
 ## Layout and patterns
 
-- Width: `--container-max` 1416px on `.container` and the nav: 1240px content plus the `/stats` rail (`--rail-w` 10rem + `--rail-gap` 1rem = 176px, `src/routes/stats/+page.svelte`). The rail shows at `min-width: 1000px` and `min-height: 500px`.
+- Width: `--container-max` 1416px on `.container` and the nav (`src/app.css`).
 - Card: `.card` is surface, 1px border, `--radius`, `--shadow`, `--space-4` padding. Lists use `.grid` (`repeat(auto-fill, minmax(260px, 1fr))`, gap `--space-4`). Example: `src/routes/coffees/+page.svelte`.
 - Stat tile: `.stat-item` is a square (`aspect-ratio: 1`) card; compact rows drop the ratio. `.stat-grid` is `auto-fill, minmax(140px, 1fr)` (`src/app.css`).
 - Section break: `.section-heading` adds a top border and `--space-6` margin.

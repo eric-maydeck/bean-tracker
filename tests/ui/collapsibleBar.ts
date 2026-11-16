@@ -60,7 +60,9 @@ export async function expectShortRow(page: Page) {
   expect(m.x + m.width).toBeLessThanOrEqual(vw + 1);
   const oneLine = await page.locator('.cbar-summary').evaluate((el) => {
     const cs = getComputedStyle(el);
-    return { nowrap: cs.whiteSpace === 'nowrap', fits: el.scrollHeight <= (parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.6) + 1 };
+    // One line: no taller than a text line or its tallest inline control (the /stats ☰).
+    const line = Math.max(parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.6, ...[...el.children].map((c) => (c as HTMLElement).offsetHeight));
+    return { nowrap: cs.whiteSpace === 'nowrap', fits: el.scrollHeight <= line + 1 };
   });
   expect(oneLine, 'summary is one line').toEqual({ nowrap: true, fits: true });
   const b = (await mini.getByRole('button', { name: 'Show controls' }).boundingBox())!;
@@ -148,7 +150,9 @@ export async function cbarAct(page: Page, filters = 0) {
     await expect(page.getByRole('button', { name: 'Show controls' })).toHaveCount(0);
     await scrollPastBar(page);
     const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
-    expect(Math.abs((await box('.filter-bar')).y), 'controls pinned').toBeLessThanOrEqual(1);
+    const [row, bar] = [await box('.section-bar'), await box('.filter-bar')];
+    expect(Math.abs(row.y), '"View: …" row pinned at the top').toBeLessThanOrEqual(1);
+    expect(Math.abs(bar.y - (row.y + row.height)), 'controls pinned right under it').toBeLessThanOrEqual(1);
     const [t, p] = [await box('.toolbar'), await box('.period-row')];
     expect(t.y + t.height, 'heading scrolled away').toBeLessThan(0);
     expect(p.y + p.height, 'period row scrolled away').toBeLessThan(0);
@@ -161,7 +165,7 @@ export async function cbarAct(page: Page, filters = 0) {
   await scrollPastBar(page);
   await expectShortRow(page);
   const [view, period, summary] = await Promise.all([
-    page.locator('select[aria-label="View"]').evaluate((s: HTMLSelectElement) => s.selectedOptions[0].textContent!.trim()),
+    page.locator('.section-row').evaluate((b) => b.textContent!.trim().replace(/^View: /, '')),
     page.locator('.insights-period').first().innerText(),
     page.locator('.cbar-summary').innerText()
   ]);
