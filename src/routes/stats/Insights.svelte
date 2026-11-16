@@ -25,12 +25,13 @@
 <script lang="ts">
   import { formatDate } from '$lib/formatDate';
   import { unitGap } from '$lib/unitGap';
+  import { labelTip } from '$lib/components/labelTip';
   import WholeNote from './WholeNote.svelte';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
-  import BarLabels from './BarLabels.svelte';
+  import BarLabels, { barValue } from './BarLabels.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
@@ -303,7 +304,9 @@
     {@const k = 38 / ((hi - Math.min(0, ...f.series.map((p) => p.value))) || 1)}
     {@const w = 100 / f.series.length}
     <!-- Magnitudes from zero (below it for gaps): bars. Weekend bars take the second color (and their initials are bold). -->
-    <div class="bars" role="img" aria-label={seriesText(f)}>
+    {@const lo = Math.min(0, ...f.series.map((p) => p.value))}
+    {@const span = hi - lo || 1}
+    <div class="bars" class:many={f.series.length > 5} role="img" aria-label={seriesText(f)}>
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
         {#each f.series as p, i (i)}
           <rect x={i * w + w * 0.15} width={w * 0.7} y={2 + (hi - Math.max(0, p.value)) * k} height={Math.abs(p.value) * k}
@@ -312,6 +315,19 @@
         {#if f.diverging}<line class="zero" x1="0" x2="100" y1={2 + hi * k} y2={2 + hi * k} />{/if}
       </svg>
       <BarLabels series={f.series} full={f.barLabels === 'full'} diverging={f.diverging} />
+      <!-- Over 5 bars on a phone the columns are too narrow: horizontal rows (name, bar from the zero line, value) take over. -->
+      {#if f.series.length > 5}
+        <ul class="hrows" aria-hidden="true" style:--z="{(-lo / span) * 100}%">
+          {#each f.series as p, i (i)}
+            <li>
+              <span class="hname" use:labelTip={p.label}>{p.label}</span>
+              <span class="htrack"><span class="hbar" class:up={f.diverging && p.value >= 0} class:down={f.diverging && p.value < 0}
+                style:left="{((Math.min(0, p.value) - lo) / span) * 100}%" style:width="{(Math.abs(p.value) / span) * 100}%"></span></span>
+              <b>{barValue(p.value, f.diverging)}</b>
+            </li>
+          {/each}
+        </ul>
+      {/if}
     </div>
   {:else if f.series && f.series.length > 1}
     {@const l = line(f.series)}
@@ -727,11 +743,68 @@
     stroke: var(--color-border);
     vector-effect: non-scaling-stroke;
   }
+  .hrows {
+    display: none;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .hrows li {
+    display: grid;
+    grid-template-columns: minmax(0, 6.5rem) minmax(0, 1fr) 2.6rem;
+    align-items: center;
+    gap: 0 0.4rem;
+    font-size: 0.68rem;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+  }
+  .hname {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    justify-self: start;
+    max-width: 100%;
+  }
+  .htrack {
+    position: relative;
+    height: 0.7rem;
+  }
+  .htrack::before {
+    content: '';
+    position: absolute;
+    inset: -1px auto -1px var(--z);
+    border-left: 1px solid var(--color-border);
+  }
+  .hbar {
+    position: absolute;
+    inset-block: 0;
+    background: var(--series-brown-1);
+  }
+  .hrows b {
+    color: var(--color-text);
+    font-weight: 700;
+    text-align: end;
+  }
+  @media (max-width: 480px) {
+    .bars.many svg,
+    .bars.many :global(.bar-labels) {
+      display: none;
+    }
+    .bars.many .hrows {
+      display: block;
+    }
+  }
   .bars rect.up {
     fill: var(--div-high);
   }
   .bars rect.down {
     fill: var(--div-low);
+  }
+  .hbar.up {
+    background: var(--div-high);
+  }
+  .hbar.down {
+    background: var(--div-low);
   }
   .bars rect.weekend {
     fill: var(--series-brown-3);
@@ -783,6 +856,7 @@
     line-height: 1.3;
   }
   .legend li {
+    text-align: start; /* a wrapped name lines up under its first line, beside the swatch */
     display: inline-flex;
     align-items: flex-start; /* a wrapped name keeps its swatch beside the first line */
     gap: 0.25rem;
