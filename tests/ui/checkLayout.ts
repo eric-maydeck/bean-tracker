@@ -92,9 +92,10 @@ export async function checkLayout(page: Page): Promise<void> {
     // cards are separate scopes, overlapping vertically) have the same top and height. Buttons with no flex/grid
     // ancestor sit in plain inline flow (baseline-aligned): one group, so an
     // inline-flex button riding a few px off its inline-block neighbors shows.
+    // A sticky/fixed bar is its own scope: content scrolled under it is no row with it.
     const container = (el: Element) => {
       let p = el.parentElement;
-      while (p && !p.hasAttribute('data-row-scope') && !/flex|grid/.test(getComputedStyle(p).display)) p = p.parentElement;
+      while (p && !p.hasAttribute('data-row-scope') && !/flex|grid/.test(getComputedStyle(p).display) && !/sticky|fixed/.test(getComputedStyle(p).position)) p = p.parentElement;
       return p ?? document.body;
     };
     const groups = new Map<Element, HTMLElement[]>();
