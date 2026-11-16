@@ -306,7 +306,7 @@
     <!-- Magnitudes from zero (below it for gaps): bars. Weekend bars take the second color (and their initials are bold). -->
     {@const lo = Math.min(0, ...f.series.map((p) => p.value))}
     {@const span = hi - lo || 1}
-    <div class="bars" class:many={f.series.length > 5} role="img" aria-label={seriesText(f)}>
+    <div class="bars" class:many={f.series.length > 5} class:crowded={f.series.length > 7} role="img" aria-label={seriesText(f)}>
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
         {#each f.series as p, i (i)}
           <rect x={i * w + w * 0.15} width={w * 0.7} y={2 + (hi - Math.max(0, p.value)) * k} height={Math.abs(p.value) * k}
@@ -321,7 +321,7 @@
           {#each f.series as p, i (i)}
             <li>
               <span class="hname" use:labelTip={p.label}>{p.label}</span>
-              <span class="htrack"><span class="hbar" class:up={f.diverging && p.value >= 0} class:down={f.diverging && p.value < 0}
+              <span class="htrack"><span class="hbar" class:weekend={!f.diverging && /^(Sat|Sun)/.test(p.label)} class:up={f.diverging && p.value >= 0} class:down={f.diverging && p.value < 0}
                 style:left="{((Math.min(0, p.value) - lo) / span) * 100}%" style:width="{(Math.abs(p.value) / span) * 100}%"></span></span>
               <b>{barValue(p.value, f.diverging)}</b>
             </li>
@@ -796,6 +796,14 @@
       display: grid;
     }
   }
+  /* Too many bars for column labels at any width: rows everywhere. */
+  .bars.crowded svg,
+  .bars.crowded :global(.bar-labels) {
+    display: none;
+  }
+  .bars.crowded .hrows {
+    display: grid;
+  }
   .bars rect.up {
     fill: var(--div-high);
   }
@@ -807,6 +815,9 @@
   }
   .hbar.down {
     background: var(--div-low);
+  }
+  .hbar.weekend {
+    background: var(--series-brown-3);
   }
   .bars rect.weekend {
     fill: var(--series-brown-3);
@@ -858,17 +869,15 @@
     line-height: 1.3;
   }
   .legend li {
-    text-align: start; /* a wrapped name lines up under its first line, beside the swatch */
-    display: inline-flex;
-    align-items: flex-start; /* a wrapped name keeps its swatch beside the first line */
-    gap: 0.25rem;
     min-width: 0;
+    text-align: center; /* the swatch is inline, so a wrapped name stays centered with it beside the first line */
   }
   .swatch {
-    flex-shrink: 0;
+    display: inline-block;
     width: 0.7rem;
     height: 2px;
-    margin-top: calc(0.65em - 1px); /* the middle of the first line (line-height 1.3) */
+    margin-right: 0.25rem;
+    vertical-align: middle;
     border-radius: 1px;
   }
   .story-visual .multi {
