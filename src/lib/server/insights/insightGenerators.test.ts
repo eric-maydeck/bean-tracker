@@ -598,8 +598,8 @@ describe('rest myth', () => {
   it('raw r falls once brew number is held fixed', () => {
     const f = gen('restMyth', mk(10))!;
     expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', headline: 'No clear link between rest and rating yet', value: 'r = 0.00 ± 0.26' });
-    expect(f.body).toMatch(/^Rest days and rating line up at r = 0\.\d\d; with brew number held fixed, r = 0\.00\. Later brews/);
-    expect(f.body).toMatch(/ Most brews rested \d+–\d+ days; outside that it can't say\.$/);
+    expect(f.body).toMatch(/^Each bag's cups are compared with that bag's other cups\. Later cups are both more rested/);
+    expect(f.body).toMatch(/ Most cups rested \d+–\d+ days, so shorter or longer rests aren't covered\.$/);
   });
   it('a null claim needs the whole margin under a weak link (|r| + 2 SE < 0.2)', () =>
     expect(gen('restMyth', mk(60))).toMatchObject({ headline: "Longer rest doesn't make a better cup" }));

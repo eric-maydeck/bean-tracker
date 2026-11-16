@@ -775,9 +775,10 @@ const restMyth: Generator = (c) => {
     key: 'restMyth', theme: 'dialin',
     headline: { none: "Longer rest doesn't make a better cup", unclear: 'No clear link between rest and rating yet', up: 'Longer rest helps', down: 'Longer rest hurts' }[rVerdict(p, rows.length)],
     value: rValue(p, rows.length),
-    body: `Rest days and rating line up at r = ${num(r)}; with brew number held fixed, r = ${num(p)}.` +
-      (Math.abs(p) < Math.abs(r) - 0.05 ? ' Later brews of a bag are both more rested and better dialed in.' : '') +
-      ` Most brews rested ${lo}–${hi} days; outside that it can't say.` + (level.length > 1 ? ' Bars: average rating by days of rest, bag for bag.' : ''),
+    // Plain words (user, #19): the r is the card's value; the body says what was compared and what it can't cover.
+    body: "Each bag's cups are compared with that bag's other cups." +
+      (Math.abs(p) < Math.abs(r) - 0.05 ? ' Later cups are both more rested and better dialed in, so that is taken out.' : '') +
+      ` Most cups rested ${lo}–${hi} days, so shorter or longer rests aren't covered.` + (level.length > 1 ? ' Bars: average rating at each rest length.' : ''),
     sample: `${rows.length} brews`, href: `${LB}&open=coffees`,
     ...(gaps.length ? bars(gaps, true, true) : bars(level))
   });
