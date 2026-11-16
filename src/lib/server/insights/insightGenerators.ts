@@ -1051,10 +1051,13 @@ const poursRecipe: Generator = (c) => {
   const top = rows.filter((r) => Math.abs(r.stat!.delta!) >= POUR_MIN_DELTA).sort((a, b) => Math.abs(testZ(b.stat!)!) - Math.abs(testZ(a.stat!)!))[0];
   if (!top) return null;
   const s = top.stat!, d = s.delta!;
+  const others = (c.pours!.tab!.recipes).filter((r) => r !== top && r.id !== null && r.stat && !r.stat.sample.small && r.stat.delta !== null)
+    .sort((a, b) => b.stat!.delta! - a.stat!.delta! || a.name.localeCompare(b.name));
   return graded({
     key: `pours:recipe:${top.id}`, theme: 'taste', kind: 'number', value: gapText(d), href: `${POURS}&chart=pours-recipes#pours-recipes`,
     headline: `${top.name} rates ${Math.abs(d).toFixed(1)} ${d >= 0 ? 'above' : 'below'} your other brews of the same bags`,
-    sample: `${plural(s.brews, 'brew')}, ${plural(s.bags, 'bag')}`
+    sample: `${plural(s.brews, 'brew')}, ${plural(s.bags, 'bag')}`,
+    ...details(['Other recipes', others.map((r) => detail(r.name, gapText(r.stat!.delta!)))])
   }, testZ(s)!, true, 'bags', s.bags, undefined, rows.length);
 };
 const poursRecipeBy: Generator = (c) => {

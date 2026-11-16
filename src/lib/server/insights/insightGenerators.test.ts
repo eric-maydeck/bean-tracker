@@ -1148,6 +1148,7 @@ describe('pour findings', () => {
     expect(by('pours:recipe:1').headline).toBe('R1 rates 0.6 above your other brews of the same bags');
     expect(by('pours:recipe:1').sample).toBe('12 brews, 6 bags');
     expect(by('pours:recipe:1').href).toBe('/stats?tab=pours&chart=pours-recipes#pours-recipes');
+    expect(by('pours:recipe:1').details).toEqual([{ label: 'Other recipes', items: [{ name: 'R2', value: '−0.6' }] }]);
     expect(fs.filter((f) => f.key.startsWith('pours:recipe:')).length).toBe(1); // the mirror pair is one card
     expect(by('pours:agitation:process:Washed').headline).toBe('High agitation beats low on Washed coffees by 1.2');
     expect(fs.every(finite)).toBe(true);

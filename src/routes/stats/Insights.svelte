@@ -61,10 +61,10 @@
   // Top stories come bucketed from the server (insightsTab): the deck and the grid never share a finding.
   let deck = $derived(t.stories);
   let grid = $derived(t.grid);
-  // Card sizes come from content (ui-rules 34): a chart or a versus split is LARGE, a number SMALL.
+  // Card sizes come from content (ui-rules 34): a chart, a versus split or a detail list is LARGE, a number SMALL.
   // The card's title: the headline plus each versus side in full (a clamped side label's only full-text route besides the popover).
   // A card's hover tip: the headline and, for a two-sided finding, each side (the click popover adds the body).
-  const large = (f: Finding) => f.sides?.length === 2 || (f.series?.length ?? 0) > 1 || (!!f.multi && f.multi.x.length > 1 && f.multi.lines.length > 0);
+  const large = (f: Finding) => !!f.details?.length || f.sides?.length === 2 || (f.series?.length ?? 0) > 1 || (!!f.multi && f.multi.x.length > 1 && f.multi.lines.length > 0);
   let sized = $derived(sizedGrid(grid, large));
   let mythVars = $derived(rowVars(t.myths.length));
 
