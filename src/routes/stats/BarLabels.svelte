@@ -1,13 +1,18 @@
+<script module lang="ts">
+  // A bar's value as its label shows it: gaps signed to 2 dp (+0.17, −0.13), plain values 1 dp.
+  export const barValue = (v: number, diverging = false) => (diverging ? `${v < -0.005 ? '−' : '+'}${Math.abs(v).toFixed(2)}` : `${+v.toFixed(1)}`);
+</script>
+
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
   // Labels under a row of bars (findings' bars, Brewing's Brews until dialed in): one-letter initials (weekday bars,
-  // weekends bold), or `full`: the value, then the name, ellipsized; on phones "value name" chips, names whole.
-  let { series, full = false }: { series: { label: string; value: number }[]; full?: boolean } = $props();
+  // weekends bold), or `full`: the value stacked over the name, centered under its bar, the name ellipsized (full text in its tip).
+  let { series, full = false, diverging = false }: { series: { label: string; value: number; tip?: string }[]; full?: boolean; diverging?: boolean } = $props();
 </script>
 
 <div class="bar-labels" class:full aria-hidden="true" style:--n={series.length}>
   {#each series as p, i (i)}
-    {#if full}<span use:labelTip={p.label}><b>{+p.value.toFixed(1)}</b>{p.label}</span>
+    {#if full}<span use:labelTip={p.tip ?? p.label}><b>{barValue(p.value, diverging)}</b>{p.label}</span>
     {:else}<span class:weekend={/^(Sat|Sun)/.test(p.label)}>{p.label[0]}</span>{/if}
   {/each}
 </div>
@@ -37,23 +42,6 @@
     display: block;
     color: var(--color-text);
     font-weight: 700;
-  }
-  /* Phones: columns are too narrow for names, so the labels wrap as "value name" chips under the bars, whole. */
-  @media (max-width: 480px) {
-    .bar-labels.full {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0 0.6rem;
-    }
-    .bar-labels.full span {
-      flex: none;
-      max-width: 100%;
-    }
-    .bar-labels.full b {
-      display: inline;
-      margin-right: 0.25em;
-    }
   }
   .bar-labels .weekend {
     color: var(--color-text);

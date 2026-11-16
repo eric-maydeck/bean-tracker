@@ -8121,7 +8121,7 @@ export const STATES: State[] = [
       // One headline tip on every device (user, 2026-10-18): the full headline, then the card's clarifying lines
       // (likeStandout: the like-group compared with). Hover on desktop; a tap follows the #anchor and opens it too.
       const head = page.locator('#insight-likeStandout .caption-link'), full = (await head.textContent())!.trim();
-      expect(full).toMatch(/ like coffees by /);
+      expect(full).toMatch(/ (above|below) similar coffees$/);
       const tip = page.locator('.cell-tip:popover-open');
       if (!touch()) {
         await head.hover();
@@ -8212,7 +8212,9 @@ export const STATES: State[] = [
       const i = await page.locator('.finding-grid .hl-card').evaluateAll((cs) => {
         // Prefer a body already cut by its line clamp: a longer text in a body that fits would grow a fixed-height card.
         const cut = (c: Element) => { const e = c.querySelector('.body'); return !!e && e.scrollHeight > e.clientHeight + 1; };
-        const j = cs.findIndex(cut) >= 0 ? cs.findIndex(cut) : cs.findIndex((c) => c.querySelector('.body'));
+        // Else the roomiest body (a card whose body already fills its card grows when the text does).
+        const room = (c: Element) => c.querySelector('.body')?.clientHeight ?? -1;
+        const j = cs.findIndex(cut) >= 0 ? cs.findIndex(cut) : cs.findIndex((c) => room(c) >= 0 && room(c) === Math.max(...cs.map(room)));
         if (j >= 0) cs[j].querySelector('.body')!.textContent = 'A very long finding body that keeps going. '.repeat(12);
         return j;
       });
@@ -10051,7 +10053,7 @@ export const STATES: State[] = [
         expect(spill).toBe(0);
       }
       for (const id of ['rescuedBags', 'likeRoaster', 'likeStandout']) await expect(page.locator(`#insight-${id}`)).toBeVisible();
-      // Crowded bars (prod has 4-5 groups with long names): five long labels stay whole on a phone and never spill.
+      // Crowded bars (prod has 4-5 groups with long names): five long labels never spill their card.
       const crowded = await page.locator('#insight-dialinBy-roastLevel').evaluate((card) => {
         const row = card.querySelector('.bar-labels.full') as HTMLElement, saved = row.innerHTML, n0 = row.style.getPropertyValue('--n');
         const names = ['Nordic Light', 'Nordic', 'Ultralight', 'Extended Ferment Washed', 'Anaerobic Washed'];
@@ -10069,7 +10071,7 @@ export const STATES: State[] = [
         row.style.setProperty('--n', n0);
         return out;
       });
-      if (crowded.phone) expect(crowded.cut, 'labels cut at phone width').toBe(0);
+      // Names ellipsize inside their own column (full text in the tip), so some are cut on a phone; none spill.
       expect(crowded.outside).toBe(0);
       expect(crowded.overflow, 'card overflow with crowded labels').toBeLessThanOrEqual(1);
       // A badge explains itself on tap.

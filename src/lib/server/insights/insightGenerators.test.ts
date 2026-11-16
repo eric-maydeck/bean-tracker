@@ -53,12 +53,12 @@ describe('dial-in curve', () => {
   it('story variant: raw means and share of bags', () => {
     const f = gen('dialinStory', brews)!;
     expect(f.kind).toBe('story');
-    expect(f.body).toBe("Brew #1 rates 1.4 below its bag's average; by brew #6, 0.6 above. The first brew rated below the bag's later brews in 100% of 30 bags.");
+    expect(f.body).toBe("First cup: 1.4 below the bag's average; cup 6: 0.6 above. The first cup was weaker in 100% of 30 bags.");
   });
   it("story share: first brew below the bag's later brews, not only its single lowest", () => {
     // Brew #2 is each bag's low point, yet brew #1 still rates below the later brews' average.
     const f = gen('dialinStory', Array.from({ length: 30 }, (_, i) => seq(i + 1, [7, 6, 8, 8, 8, 8])).flat())!;
-    expect(f.body).toMatch(/rated below the bag's later brews in 100% of 30 bags\.$/);
+    expect(f.body).toMatch(/was weaker in 100% of 30 bags\.$/);
   });
   it('under 30 first brews is hidden, not a finding', () =>
     expect(gen('dialinCurve', Array.from({ length: 12 }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8])).flat())).toBeNull());
@@ -76,24 +76,24 @@ describe('dial-in speed', () => {
     const f = gen('dialinSpeed', b, bags(3))!;
     expect(f).toMatchObject({ theme: 'dialin', kind: 'versus', z: null, strength: null, headline: 'Dial-in takes up to 4 brews' });
     // "Fastest: 1 brew" is no contest: the other side counts the bags right on brew 1.
-    expect(f.sides).toEqual([{ label: 'Slowest: R Bag 1', value: '4 brews' }, { label: 'Right on brew 1', value: '1 of 3 bags' }]);
+    expect(f.sides).toEqual([{ label: 'slowest bag', value: '4 brews' }, { label: 'right on brew 1', value: '1 bag' }]);
   });
   it('skips bags that began before the period (brewIndex > 1)', () => {
     const late = seq(4, [9, 9, 9, 9, 9, 9], '2026-07-01', (i) => ({ brewIndex: i + 4 }));
     const f = gen('dialinSpeed', [...b, ...late], bags(4))!;
-    expect(f.sides![1]).toEqual({ label: 'Right on brew 1', value: '1 of 3 bags' }); // Bag 4 would make it 2
+    expect(f.sides![1]).toEqual({ label: 'right on brew 1', value: '1 bag' }); // Bag 4 would make it 2
     expect(f.sample).toBe('3 bags');
     expect(gen('dialinSpeed', [...b.slice(0, 11), ...late], bags(4))).toBeNull();
   });
   it('a fastest bag past brew 1 keeps the fastest side', () => {
     const f = gen('dialinSpeed', [...seq(1, [5, 6, 7, 8, 8, 8]), ...seq(2, [6, 8, 8, 8, 8, 8]), ...seq(3, [6, 7, 8, 8, 8, 8])], bags(3))!;
     expect(f.headline).toBe('Dial-in takes 2 to 4 brews');
-    expect(f.sides![1]).toEqual({ label: 'Fastest: R Bag 2', value: '2 brews' });
+    expect(f.sides![1]).toEqual({ label: 'fastest bag', value: '2 brews' });
   });
-  it('details: the next slowest bags and the most common brews-to-settle', () => {
+  it('details: the slowest bag first, then the next slowest, and the most common brews-to-settle', () => {
     const more = [...b, ...seq(4, [6, 7, 8, 8, 8, 8]), ...seq(5, [8, 8, 8, 8, 8, 8])];
     expect(gen('dialinSpeed', more, bags(5, (i) => ({ slug: `b${i + 1}` })))!.details).toEqual([
-      { label: 'Next slowest', items: [{ name: 'R Bag 4', value: '3 brews', href: '/coffees/b4' }, { name: 'R Bag 3', value: '2 brews', href: '/coffees/b3' }] },
+      { label: 'Slowest', items: [{ name: 'R Bag 1', value: '4 brews', href: '/coffees/b1' }, { name: 'R Bag 4', value: '3 brews', href: '/coffees/b4' }] },
       { label: 'Most bags settle by', items: [{ name: 'brew 1', value: '2 bags' }, { name: 'brew 2', value: '1 bag' }] }
     ]);
   });
@@ -106,7 +106,10 @@ describe('second cup', () => {
   const mk = (n: number) => Array.from({ length: n }, (_, i) => pair(i)).flat();
   it('solid on 40 pairs', () => {
     const f = gen('secondCup', mk(28).concat(Array.from({ length: 12 }, (_, i) => pair(i).map((x) => ({ ...x, localDate: `2026-08-${String(i + 1).padStart(2, '0')}` }))).flat()))!;
-    expect(f).toMatchObject({ theme: 'dialin', strength: 'solid', value: '+0.30', headline: 'Your second cup is better', sample: '40 pairs' });
+    expect(f).toMatchObject({ theme: 'dialin', strength: 'solid', value: '+0.30', headline: 'Your second cup is better', sample: '40 pairs', chart: 'bars' });
+    expect(f.series!.map((x) => x.label)).toEqual(['1st cup', '2nd cup']);
+    expect(f.series![1].value - f.series![0].value).toBeCloseTo(0.3, 6);
+    expect(f.diverging).toBe(true); // gaps from the all-brews mean
   });
   it('null on 5 pairs', () => expect(gen('secondCup', mk(5))).toBeNull());
   it('skips a day with a backfilled brew (its time is a guess)', () => {
@@ -310,7 +313,10 @@ describe('details (supporting lists)', () => {
       { label: 'Priciest cups', items: [{ name: 'Bag 6', value: '$6.00' }, { name: 'Bag 5', value: '$5.00' }] },
       { label: 'Cheapest cups', items: [{ name: 'Bag 1', value: '$1.00' }, { name: 'Bag 2', value: '$2.00' }] }
     ]);
-    expect(gen('costPerCup', brews.slice(0, 30), bs)!.details).toBeUndefined(); // 5 costed bags
+    expect(gen('costPerCup', brews.slice(0, 30), bs)!.details).toEqual([{ label: 'Priciest cups', items: [{ name: 'Bag 5', value: '$5.00' }, { name: 'Bag 4', value: '$4.00' }] }]); // 5 costed bags: one list
+    const few = (n: number) => bs.slice(0, n).flatMap((x) => Array.from({ length: 36 / n }, () => brew({ id: nextId++, coffeeId: x.id, costPerBrew: x.id })));
+    expect(gen('costPerCup', few(3), bs)!.details).toHaveLength(1); // 3 costed bags
+    expect(gen('costPerCup', few(2), bs)).not.toHaveProperty('details'); // 2 costed bags
   });
 });
 
@@ -319,6 +325,13 @@ describe('notes mean trouble', () => {
   it('60 noted at -0.3 vs 60 plain at +0.3', () =>
     expect(gen('notesTrouble', mk(12))).toMatchObject({ theme: 'taste', strength: 'solid', value: '-0.6', headline: 'Brews you write notes on rate lower' }));
   it('null under 30 per side', () => expect(gen('notesTrouble', mk(5))).toBeNull());
+  it('bars: noted vs plain', () => {
+    const f = gen('notesTrouble', mk(12))!;
+    expect(f).toMatchObject({ chart: 'bars', barLabels: 'full' });
+    expect(f.series!.map((x) => x.label)).toEqual(['Noted', 'Plain']);
+    expect(f.series![0].value).toBeLessThan(f.series![1].value);
+    expect(f.diverging).toBe(true);
+  });
 });
 
 describe('backlog runway', () => {
@@ -329,7 +342,7 @@ describe('backlog runway', () => {
   it('days of cover over tracked days, bought vs brewed', () =>
     expect(gen('backlogRunway', brews, bs, o)).toMatchObject({
       theme: 'money', z: null, strength: null, headline: '10.4kg on hand, about 143 days', sample: '41 days',
-      body: 'At 73g/day. Bought 3.8kg vs brewed 3kg in this period.'
+      body: 'At 73g a day. Bought 3.8kg, brewed 3kg.'
     }));
   it('a period starting before dataStart counts only tracked days', () =>
     expect(gen('backlogRunway', brews, bs, { ...o, period: { from: '2026-01-01', to: '2026-09-30' } })!.sample).toBe('30 days'));
@@ -387,6 +400,8 @@ describe('before 9 am', () => {
     seq(i + 1, r, `2026-07-${String(i + 1).padStart(2, '0')}`, (j) => ({ localTime: `2026-07-${String(i + 1).padStart(2, '0')}T${j < 5 ? '08' : '10'}:1${j}`, ...o(j) }))).flat();
   it('early brews rate lower (demeaned)', () =>
     expect(gen('earlyBrews', mk(12))).toMatchObject({ theme: 'habits', strength: 'solid', value: '-0.6', headline: 'Brews before 9 am rate 0.6 lower', sample: '60 early vs 60 later brews' }));
+  it('bars by hour band: empty bands dropped', () =>
+    expect(gen('earlyBrews', mk(12))).toMatchObject({ chart: 'bars', barLabels: 'full', series: [{ label: '7–9', value: expect.any(Number) }, { label: '9–12', value: expect.any(Number) }] }));
   it('back-filled brews are skipped', () => expect(gen('earlyBrews', mk(12, (j) => ({ backfilled: j < 5 })))).toBeNull());
   it('null under 30 per side', () => expect(gen('earlyBrews', mk(5))).toBeNull());
 });
@@ -399,6 +414,12 @@ describe('weekday ratings', () => {
     const f = gen('weekday', mk(7, 1))!;
     expect(f).toMatchObject({ theme: 'habits', strength: 'solid', sample: '35 brews on 5 Mondays' });
     expect(f.headline).toMatch(/^Mondays rate 1\.\d higher$/);
+    expect(f.chart).toBe('bars');
+    expect(f.barLabels).toBeUndefined(); // one-letter weekday bars
+    expect(f.series!.map((x) => x.label)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    expect(f.diverging).toBe(true); // demeaned gaps, not raw ratings: Monday up, the rest slightly down
+    expect(f.series!.at(-1)!.value).toBeLessThan(0.5);
+    expect(f.series![0].value).toBeGreaterThan(0);
   });
   it('a weak standout is too early, with the multiple-comparison caveat', () => {
     // ±0.5 week-to-week noise that cancels per weekday over 6 weeks; Mondays only +0.05
@@ -445,7 +466,7 @@ describe('gear eras', () => {
   const brews = [...month('04', 18, 2), ...month('05', 20, 0), ...month('06', 3, 17)];
   it('80%+ months merge into eras', () => {
     const f = gen('gearEras:dripper', brews)!;
-    expect(f).toMatchObject({ theme: 'gear', kind: 'pattern', headline: 'Dripper eras: Alpha Switch → CT62', body: 'Alpha Switch 95% of Apr 26–May 26, CT62 85% of Jun 26.', sample: '3 months' });
+    expect(f).toMatchObject({ theme: 'gear', kind: 'pattern', headline: 'Dripper eras: Alpha Switch → CT62', body: 'Alpha Switch in Apr 26–May 26, then CT62 from Jun 26.', sample: '3 months' });
     expect(f.multi).toEqual({ x: ['Apr 26', 'May 26', 'Jun 26'], unit: '%', lines: [
       { label: 'Alpha Switch', values: [90, 100, 15] }, { label: 'CT62', values: [10, 0, 85] }
     ] });
@@ -498,7 +519,7 @@ describe('wildcard brewer', () => {
   it('widest vs narrowest demeaned spread', () => {
     const f = gen('wildcardBrewer', mk(4))!;
     expect(f).toMatchObject({ theme: 'gear', kind: 'versus', strength: 'solid', headline: 'The Graycano is your wildcard', sample: '80 brews' });
-    expect(f.sides).toEqual([{ label: 'Graycano', value: '±1.00' }, { label: 'Alpha Switch', value: '±0.20' }]);
+    expect(f.sides).toEqual([{ label: 'Graycano', value: '1.00' }, { label: 'Alpha Switch', value: '0.20' }]);
   });
   it('null under 30 brews a dripper', () => expect(gen('wildcardBrewer', mk(2))).toBeNull());
   it('the pick of k drippers is held to a Bonferroni bar over k', () => {
@@ -518,11 +539,16 @@ describe('price vs rating', () => {
   };
   it('no link: a myth', () => {
     const { bs, brews } = mk((i) => 7 + Math.abs(i - 14.5) / 10); // V shape: r = 0
-    expect(gen('priceVsRating', brews, bs)).toMatchObject({ theme: 'money', kind: 'myth', z: null, headline: 'No clear link between price and rating yet', value: 'r = 0.00 ± 0.38', sample: '30 bags', body: 'Across 30 bags, $/100g and your bag rating barely move together (by rank).' });
+    expect(gen('priceVsRating', brews, bs)).toMatchObject({ theme: 'money', kind: 'myth', z: null, headline: 'No clear link between price and rating yet', value: 'Too soon to tell', headPoints: [['Correlation', 'r = 0.00 ± 0.38']], sample: '30 bags', body: "Across 30 bags, pricier coffee didn't rate differently." });
   });
   it('a real link says so', () => {
     const { bs, brews } = mk((i) => 7 + i / 20);
-    expect(gen('priceVsRating', brews, bs)).toMatchObject({ headline: 'Pricier bags rate higher', value: 'r = 1.00 ± 0.00' });
+    expect(gen('priceVsRating', brews, bs)).toMatchObject({ headline: 'Pricier bags rate higher', value: 'Clear link', body: 'Across 30 bags, pricier coffee clearly rated higher.', chart: 'bars', barLabels: 'full' });
+    const v = gen('priceVsRating', brews, bs)!.series!;
+    expect(v.map((x) => x.label)).toEqual(['Cheapest third', 'Middle third', 'Priciest third']);
+    expect(v[0].value).toBeLessThan(v[2].value);
+    expect(gen('priceVsRating', brews, bs)!.diverging).toBe(true);
+    expect(v.reduce((t, x) => t + x.value, 0)).toBeCloseTo(0, 6); // gaps from the all-bags mean
   });
   it('cost 0 is not a price; null under 30 bags', () => {
     const { bs, brews } = mk((i) => 7 + i / 20);
@@ -533,7 +559,7 @@ describe('price vs rating', () => {
 describe('cost per cup', () => {
   const brews = [...Array.from({ length: 30 }, () => brew({ id: nextId++, costPerBrew: 2, rating: 7 })), ...Array.from({ length: 10 }, () => brew({ id: nextId++, costPerBrew: 4, rating: 9 }))];
   it('average and 9+ cups', () =>
-    expect(gen('costPerCup', brews)).toMatchObject({ theme: 'money', z: null, strength: null, headline: '$2.50 a cup', body: 'A 9+ cup costs $4.00 on average.', sample: '40 brews' }));
+    expect(gen('costPerCup', brews)).toMatchObject({ theme: 'money', z: null, strength: null, headline: '$2.50 a cup', body: 'Cups rated 9+ average $4.00.', sample: '40 brews' }));
   it('no 9+ line under 10 such cups; null under 30 costed brews', () => {
     expect(gen('costPerCup', brews.slice(0, 35))!.body).toBeUndefined();
     expect(gen('costPerCup', brews.slice(0, 29))).toBeNull();
@@ -559,7 +585,7 @@ describe('roaster loyalty', () => {
   it('top 3 share and the rising roaster', () =>
     expect(gen('loyalty', [], bs, o)).toMatchObject({
       theme: 'money', headline: 'Top 3 roasters: 75% of bags', value: '75%', sample: '12 bags, 5 roasters',
-      body: 'A, B and C. Rising: D, 2 of your last 2 bags (0 of 10 before).',
+      body: 'A, B and C. Rising: D, 2 of your last 2 bags (was 0 of 10).',
       details: [{ label: 'Top roasters', items: [
         { name: 'A', value: '4 bags', href: '/coffees?status=all&roaster=A' }, { name: 'B', value: '3 bags', href: '/coffees?status=all&roaster=B' }] }]
     }));
@@ -571,13 +597,25 @@ describe('rest myth', () => {
   const mk = (n: number) => Array.from({ length: n }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8], '2026-07-01', (j) => ({ restDays: 10 + 2 * (j + 1) + (i % 2) * 3 }))).flat();
   it('raw r falls once brew number is held fixed', () => {
     const f = gen('restMyth', mk(10))!;
-    expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', headline: 'No clear link between rest and rating yet', value: 'r = 0.00 ± 0.26' });
-    expect(f.body).toMatch(/^Rest days and rating line up at r = 0\.\d\d; with brew number held fixed, r = 0\.00\. Later brews/);
-    expect(f.body).toMatch(/ Most brews rested \d+–\d+ days; outside that it can't say\.$/);
+    expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', headline: 'No clear link between rest and rating yet', value: 'Too soon to tell' });
+    expect(f.body).toMatch(/^Each bag vs itself\. Later cups are also better dialed in; that is taken out\./);
+    expect(f.body).toMatch(/ Most cups rested \d+–\d+ days\.$/);
   });
   it('a null claim needs the whole margin under a weak link (|r| + 2 SE < 0.2)', () =>
     expect(gen('restMyth', mk(60))).toMatchObject({ headline: "Longer rest doesn't make a better cup" }));
   it('null under 30 brews', () => expect(gen('restMyth', mk(4))).toBeNull());
+  it('bars by rest-days band; bands under 30 brews dropped', () => {
+    expect(gen('restMyth', mk(10))).not.toHaveProperty('series'); // one band left
+    const wide = Array.from({ length: 40 }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8], '2026-07-01', (j) => ({ restDays: 5 + 12 * j + (i % 2) }))).flat();
+    expect(gen('restMyth', wide)).toMatchObject({ chart: 'bars', barLabels: 'full' });
+    expect(gen('restMyth', wide)!.series!.map((x) => x.label)).toEqual(['0–13 d', '14–29 d', '30–59 d', '60+ d']);
+    const flat = Array.from({ length: 40 }, (_, i) => seq(i + 1, [8, 8.01, 8, 8.01, 8, 8.01], '2026-07-01', (j) => ({ restDays: 5 + 12 * j + (i % 2) }))).flat();
+    const f = gen('restMyth', flat)!; // bands all within 0.05: average rating per 15-day band instead of sub-pixel gap bars
+    expect(f.series!.map((x) => x.label)).toEqual(['0–14', '15–29', '30–44', '45–59', '60–74']);
+    expect(f.series![0].tip).toBe('0–14 days');
+    expect(f.series!.every((x) => Math.abs(x.value - 8.005) < 0.01)).toBe(true);
+    expect(f).not.toHaveProperty('diverging');
+  });
 });
 
 describe('rest window myth', () => {
@@ -600,13 +638,19 @@ describe('origin myth', () => {
   };
   it('every origin within 0.5 of the other bags, margin of error too: barely matters', () => {
     const { bs, brews } = mk([8, 8, 8.2], undefined, 30);
-    expect(gen('originMyth', brews, bs)).toMatchObject({ theme: 'taste', kind: 'myth', headline: 'Origin barely matters', value: '±0.2', sample: '90 bags',
-      body: 'All 3 origins with 3+ bags rate within ±0.2 of your other bags, ±0.2 at most with the margin of error.' });
+    const f = gen('originMyth', brews, bs)!;
+    expect(f.chart).toBe('bars');
+    expect(f.series!.map((x) => x.label)).toEqual(['Colombia', 'Ethiopia', 'Kenya']); // signed gap vs other bags, biggest first
+    expect(f.series![0].value).toBeGreaterThan(0);
+    expect(f.series![2].value).toBeLessThan(0);
+    expect(f.diverging).toBe(true);
+    expect(gen('originMyth', brews, bs)).toMatchObject({ theme: 'taste', kind: 'myth', headline: 'Origin barely matters', value: 'All close', sample: '90 bags',
+      headPoints: [['Widest gap', '±0.2'], ['Margin of error', '±0.2']], body: 'All 3 origins land within 0.2 of your other bags.' });
   });
   it('within 0.5, but a margin of error past it: no origin stands out yet', () => {
     const { bs, brews } = mk([8, 8.2, 7.8]);
-    expect(gen('originMyth', brews, bs)).toMatchObject({ headline: 'No origin stands out yet', value: '±0.3',
-      body: 'All 3 origins with 3+ bags rate within ±0.3 of your other bags; with so few bags each, the margin of error reaches ±0.5.' });
+    expect(gen('originMyth', brews, bs)).toMatchObject({ headline: 'No origin stands out yet', value: 'All close', headPoints: [['Widest gap', '±0.3'], ['Margin of error', '±0.5']],
+      body: 'All 3 origins land within 0.3 of your other bags, but there are too few bags each to be sure.' });
   });
   it('an origin whose bags have no same-kind rest is left out, not counted as even', () => {
     // 4 origins x 3 bags; Peru is the only caffeinated one, so it has no caffeinated rest and drops out of the 4.
@@ -630,7 +674,8 @@ describe('backlog wait myth', () => {
   };
   it('no link: a myth', () => {
     const { bs, brews } = mk((i) => 7 + Math.abs(i - 14.5) / 10);
-    expect(gen('backlogWaitMyth', brews, bs)).toMatchObject({ kind: 'myth', headline: 'No clear link between backlog wait and rating yet', value: 'r = 0.00 ± 0.38', sample: '30 bags' });
+    expect(gen('backlogWaitMyth', brews, bs)).toMatchObject({ kind: 'myth', headline: 'No clear link between backlog wait and rating yet', value: 'Too soon to tell', sample: '30 bags',
+      body: 'Across 30 bags, the wait from roast to first brew made no difference.' });
   });
   it('a link shows; freezer time is left out of the wait', () => {
     const { bs, brews } = mk((i) => 9 - i / 20);
@@ -639,7 +684,8 @@ describe('backlog wait myth', () => {
     const same = bs.map((b) => ({ ...b, firstBrew: '2026-06-30' }));
     expect(gen('backlogWaitMyth', brews, same)).toBeNull();
     const frozen = same.map((b, i) => ({ ...b, frozenStart: '2026-06-01', frozenEnd: addDays('2026-06-01', i) }));
-    expect(gen('backlogWaitMyth', brews, frozen)).toMatchObject({ headline: 'Bags that wait rate higher', value: 'r = 1.00 ± 0.00' });
+    expect(gen('backlogWaitMyth', brews, frozen)).toMatchObject({ headline: 'Bags that wait rate higher', value: 'Clear link' });
+    expect(gen('backlogWaitMyth', brews, bs)!.series!.map((x) => x.label)).toEqual(['Shortest wait', 'Middle third', 'Longest wait']);
   });
   it('null under 30 bags', () => { const { bs, brews } = mk((i) => 9 - i / 20, 29); expect(gen('backlogWaitMyth', brews, bs)).toBeNull(); });
 });
@@ -649,8 +695,10 @@ describe('brew variables myth', () => {
     seq(i + 1, ratings, '2026-07-01', (j) => ({ ratio: ratio[j], dose: [15, 15, 16, 16][j], grind: ['1.5', '1.5', '1.10', '1.10'][j], grinder: 'ZP6' }))).flat();
   it('all |r| ≤ 0.1: one myth card', () => {
     const f = gen('variablesMyth', mk(10))!;
-    expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', value: '|r| ≤ 0.05', sample: '40 brews' });
-    expect(f.body).toBe('Ratio, dose and ZP6 grind all stay within |r| ≤ 0.05 of your rating, within a bag, each give or take 0.33 at most.');
+    expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', value: 'No link', headPoints: [['Strongest link', '|r| ≤ 0.05 ± 0.33']], sample: '40 brews' });
+    expect(f.series!.map((x) => x.label)).toEqual(['Ratio', 'dose', 'ZP6 grind']);
+    expect(f.series!.every((x) => Math.abs(x.value) <= 0.1)).toBe(true);
+    expect(f.body).toBe('Within a bag, ratio, dose and ZP6 grind barely change the rating.');
   });
   it('no card when every |r| rounds to 0.00', () => expect(gen('variablesMyth', mk(10, undefined, [7.9, 8.1, 8.1, 7.9]))).toBeNull());
   it('a variable that matters: no myth', () => expect(gen('variablesMyth', mk(10, [15, 17, 17, 15]))).toBeNull());
@@ -664,7 +712,7 @@ describe('calibration', () => {
   it('monthly spread first vs last month, brews rated in a row', () =>
     expect(gen('calibration', [...jul, unrated, ...sep])).toMatchObject({
       theme: 'taste', kind: 'myth', headline: 'Your ratings have settled', value: '2.00 → 0.50', sample: '2 months',
-      body: 'Monthly rating spread (SD) went from 2.00 in Jul 26 to 0.50 in Sep 26. 30 brews in a row rated.'
+      body: 'Monthly swings shrank from 2.00 to 0.50. Last 30 brews all rated.'
     }));
   it('the current (partial) month is left out', () => {
     const oct = seq(3, Array.from({ length: 30 }, (_, i) => alt(2, 10)(i)), '2026-10-05'); // today is 2026-10-11
@@ -673,7 +721,6 @@ describe('calibration', () => {
   it('ignores the Current/All ratings switch: a pre-June month still counts', () => {
     const mar = seq(1, Array.from({ length: 30 }, (_, i) => alt(6, 10)(i)), '2026-03-01');
     expect(gen('calibration', [...mar, ...sep], [], { ratings: 'current' })).toMatchObject({ value: '2.00 → 0.50' });
-    expect(gen('calibration', [...mar, ...sep], [], { ratings: 'current' })!.body).toContain('in Mar 26 to 0.50 in Sep 26');
   });
   it('null with one month of 30 rated brews', () => expect(gen('calibration', [...jul, ...sep.slice(0, 29)])).toBeNull());
 });
@@ -850,7 +897,7 @@ describe('like-with-like findings', () => {
   const bags = Array.from({ length: 12 }, (_, k) => bag({ id: k + 1, name: `Bag ${k + 1}`, roaster: k < 6 ? 'Sey' : 'Other', ...LW }));
   it('standout: the coffee furthest from its like-group', () => {
     const f = gen('likeStandout', peers, bags);
-    expect(f?.headline).toMatch(/Bag 1 beats like coffees by/);
+    expect(f?.headline).toMatch(/Bag 1 rates [\d.]+ above similar coffees/);
     expect(f?.headPoints).toEqual([['Compared with', 'Washed Light coffees by Sey']]); // the like-group, in the headline's tip
     expect(f?.value).toMatch(/^\+1\.\d$/);
   });
@@ -878,6 +925,14 @@ describe('like-with-like findings', () => {
     expect(f.headline).toMatch(/^Sey rates/);
     expect(f.value).toBe(likeGap(row.value)); // the board's format ("−", not "-"; 1 decimal)
     expect(f.sample).toBe(`${row.bags} bags`);
+  });
+  it('likeRoaster: lists the next roasters on the same side', () => {
+    const rs = (roaster: string, ids: number[], r: number) => ids.flatMap((id) => [0, 1, 2, 3, 4].map((i) => brew({ id: id * 10 + i, coffeeId: id, roaster, ...LW, rating: r + (i % 2) * 0.2, brewIndex: i + 1 })));
+    const all = [...rs('Hi', [1, 2, 3, 4, 5, 6], 9), ...rs('Up', [7, 8, 9, 10, 11, 12], 8.5), ...rs('Mid', [13, 14, 15, 16, 17, 18], 7), ...rs('Low', [19, 20, 21, 22, 23, 24], 6)];
+    const gb = all.filter((b) => b.brewIndex === 1).map((b) => bag({ id: b.coffeeId!, roaster: b.roaster!, ...LW }));
+    const f = gen('likeRoaster', all, gb)!;
+    expect(f.headline).toMatch(/^Low rates \d\.\d below/);
+    expect(f.details).toEqual([{ label: 'Also below their peers', items: [{ name: 'Mid', value: expect.stringMatching(/^−0\.\d$/), href: expect.stringContaining('Mid') }] }]);
   });
   const dialRows = (ids: number[], ratings: number[], o: Partial<BrewFact>) =>
     ids.flatMap((id) => ratings.map((r, i) => brew({ id: id * 100 + i, coffeeId: id, rating: r, brewIndex: i + 1, ...o })));
@@ -929,14 +984,14 @@ describe('like-with-like findings', () => {
     const ids = Array.from({ length: 22 }, (_, k) => bag({ id: k + 1 }));
     const f = gen('rescuedBags', raw, ids, { allBrews: raw, dialIn })!;
     expect(f.headline).toBe('10 bags rescued after a rough start');
-    expect(f.body).toBe('Their first two brews averaged 5.0; once dialed, 9.0. About 2 would look rescued by chance alone. 2 started well then dropped.');
+    expect(f.body).toBe('First two cups averaged 5.0; dialed in, 9.0. About 2 could be luck, and 2 others went the other way.');
     expect(f.strength).toBe('solid'); // 10 vs about 2
     // 12 bags of 5, 5, 9, 9 in shuffled orders, 2 in the rescued one: chance says 2 (1/6 each), so no badge.
     const orders = [[5, 5, 9, 9], [5, 5, 9, 9], ...Array.from({ length: 10 }, (_, k) => (k % 2 ? [9, 5, 5, 9] : [5, 9, 9, 5]))];
     const mixed = orders.flatMap((rs, k) => mk(k + 1, rs));
     const d2 = new Set(mixed.filter((b) => b.brewIndex <= 2).map((b) => b.id));
     expect(gen('rescuedBags', mixed, ids, { allBrews: mixed, dialIn: d2 })).toMatchObject({ value: '2 of 12', strength: null, z: null,
-      body: expect.stringContaining('About 2 would look rescued by chance alone.') });
+      body: expect.stringContaining('About 2 could be luck') });
   });
   it('rescued bags: needs a start below your mean, an end at or above it, and a 1 point lift', () => {
     const mk = (id: number, rs: number[]) => rs.map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1 }));
@@ -1093,6 +1148,7 @@ describe('pour findings', () => {
     expect(by('pours:recipe:1').headline).toBe('R1 rates 0.6 above your other brews of the same bags');
     expect(by('pours:recipe:1').sample).toBe('12 brews, 6 bags');
     expect(by('pours:recipe:1').href).toBe('/stats?tab=pours&chart=pours-recipes#pours-recipes');
+    expect(by('pours:recipe:1').details).toEqual([{ label: 'Other recipes', items: [{ name: 'R2', value: '−0.6' }] }]);
     expect(fs.filter((f) => f.key.startsWith('pours:recipe:')).length).toBe(1); // the mirror pair is one card
     expect(by('pours:agitation:process:Washed').headline).toBe('High agitation beats low on Washed coffees by 1.2');
     expect(fs.every(finite)).toBe(true);
