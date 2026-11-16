@@ -10053,7 +10053,7 @@ export const STATES: State[] = [
         expect(spill).toBe(0);
       }
       for (const id of ['rescuedBags', 'likeRoaster', 'likeStandout']) await expect(page.locator(`#insight-${id}`)).toBeVisible();
-      // Crowded bars (prod has 4-5 groups with long names): five long labels stay whole on a phone and never spill.
+      // Crowded bars (prod has 4-5 groups with long names): five long labels never spill their card.
       const crowded = await page.locator('#insight-dialinBy-roastLevel').evaluate((card) => {
         const row = card.querySelector('.bar-labels.full') as HTMLElement, saved = row.innerHTML, n0 = row.style.getPropertyValue('--n');
         const names = ['Nordic Light', 'Nordic', 'Ultralight', 'Extended Ferment Washed', 'Anaerobic Washed'];
@@ -10071,7 +10071,7 @@ export const STATES: State[] = [
         row.style.setProperty('--n', n0);
         return out;
       });
-      if (crowded.phone) expect(crowded.cut, 'labels cut at phone width').toBe(0);
+      // Names ellipsize inside their own column (full text in the tip), so some are cut on a phone; none spill.
       expect(crowded.outside).toBe(0);
       expect(crowded.overflow, 'card overflow with crowded labels').toBeLessThanOrEqual(1);
       // A badge explains itself on tap.

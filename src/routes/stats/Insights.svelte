@@ -38,7 +38,7 @@
   import { THEMES, WHATIF_LIMITS as L, type BrewFilterKey, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding } from '$lib/server/insights/insightGenerators';
-  import { lines } from './multiLine';
+  import { lines, smooth } from './multiLine';
   import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
@@ -247,12 +247,12 @@
   const early = (f: Finding) => f.caveat ?? 'Not yet enough to rule out chance.';
   const pct = (p: number) => `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`;
 
-  // A series as a 2px line over a 100×32 box; a dashed zero line when it crosses zero.
+  // A series as a smooth 3.5px line over a 100×32 box; a dashed zero line when it crosses zero.
   function line(s: { value: number }[]) {
     const vs = s.map((p) => p.value), lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
     const y = (v: number) => 30 - ((v - lo) / span) * 28;
     return {
-      points: vs.map((v, i) => `${vs.length > 1 ? (i / (vs.length - 1)) * 100 : 50},${y(v).toFixed(2)}`).join(' '),
+      d: smooth(vs.map((v, i): [number, number] => [vs.length > 1 ? (i / (vs.length - 1)) * 100 : 50, y(v)])),
       zero: lo < 0 && hi > 0 ? y(0) : null
     };
   }
@@ -318,7 +318,7 @@
     <div class="spark" role="img" aria-label={seriesText(f)}>
       <svg viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
         {#if l.zero !== null}<line class="zero" x1="0" x2="100" y1={l.zero} y2={l.zero} />{/if}
-        <polyline points={l.points} />
+        <path d={l.d} />
       </svg>
       <div class="spark-ends"><span>{f.series[0].label}</span><span>{f.series.at(-1)!.label}</span></div>
     </div>
@@ -766,7 +766,7 @@
   }
   .multi path {
     fill: none;
-    stroke-width: 2.5;
+    stroke-width: 3.5;
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
@@ -784,7 +784,7 @@
   }
   .legend li {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start; /* a wrapped name keeps its swatch beside the first line */
     gap: 0.25rem;
     min-width: 0;
   }
@@ -792,6 +792,7 @@
     flex-shrink: 0;
     width: 0.7rem;
     height: 2px;
+    margin-top: calc(0.65em - 1px); /* the middle of the first line (line-height 1.3) */
     border-radius: 1px;
   }
   .story-visual .multi {
@@ -837,10 +838,10 @@
     height: 2.25rem;
     overflow: visible;
   }
-  .spark polyline {
+  .spark path {
     fill: none;
     stroke: var(--chart-color-1);
-    stroke-width: 2;
+    stroke-width: 3.5;
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
