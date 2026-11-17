@@ -3,7 +3,7 @@ import fixture from './fixtures/bq-export-main.json';
 import { bcRoastDate } from './beanConquerorJson.ts';
 import { coffeeBeanUuid } from './bqBeanUuid.ts';
 import {
-  NEW_BEAN_TEMPLATE, applyPatchPlan, bqDateFromLocal, buildPatchPlan, comparePatched,
+  NEW_BEAN_TEMPLATE, applyPatchPlan, bqDateFromLocal, buildPatchPlan, comparePatched, setBrewSpeeds,
   type PatchCoffee, type PatchPlan
 } from './bqPatch.ts';
 
@@ -259,5 +259,18 @@ describe('buildPatchPlan', () => {
     expect(buildPatchPlan([nb(null)], mainOf(bean('stray', { name: 'Alpha', roaster: 'r1', roastingDate: bqDateFromLocal('2026-03-01') })), {}).unexpected).toHaveLength(1);
     const other = bean('stray', { name: 'Alpha', roaster: 'r1', roastingDate: bqDateFromLocal('2026-01-01') });
     expect(buildPatchPlan([nb('2026-03-01')], mainOf(other), {}).unexpected).toEqual([]);
+  });
+});
+
+describe('setBrewSpeeds', () => {
+  const brew = (uuid: string, mill_speed: number) => ({ config: { uuid }, mill_speed, note: 'n' });
+  it('sets only listed unset brews', () => {
+    const brews = [brew('a', 0), brew('b', 0)];
+    const changes = setBrewSpeeds(brews, { a: 4 });
+    expect(brews).toEqual([brew('a', 4), brew('b', 0)]);
+    expect(changes).toEqual([{ uuid: 'a', name: 'brew', field: 'mill_speed', from: 0, to: 4 }]);
+  });
+  it('refuses a brew that already has a speed', () => {
+    expect(() => setBrewSpeeds([brew('a', 6)], { a: 4 })).toThrow(/already has/);
   });
 });

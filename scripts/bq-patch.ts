@@ -1,5 +1,6 @@
-// One-time tool: patch the BEANS key of a Bean Conqueror export without touching anything else.
-//   apply  --export <dir> --out <dir> [--plan <file.json>] [--max-age-hours 24]
+// One-time tool: patch the BEANS key (and, with --speeds, brew mill_speed) of a Bean Conqueror export without
+// touching anything else.
+//   apply  --export <dir> --out <dir> [--plan <file.json>] [--speeds <uuid-to-speed.json>] [--max-age-hours 24]
 //   apply  --export <dir> --out <dir> --db <DB COPY> --images <images root> --keep <keep.json>
 //          [--settled <settled.json>] [--dry-run]   (builds the plan from the site; --dry-run writes report.json and copies nothing)
 //   verify --zip <zip> --dump <dump.json>
@@ -14,7 +15,7 @@ import { parseArgs } from 'node:util';
 import JSZip from 'jszip';
 import sharp from 'sharp';
 import {
-  applyPatchPlan, buildPatchPlan, comparePatched, type PatchCoffee, type PatchPlan
+  applyPatchPlan, buildPatchPlan, comparePatched, setBrewSpeeds, type PatchCoffee, type PatchPlan
 } from '../src/lib/server/bqPatch.ts';
 import { coffeeBeanUuid } from '../src/lib/server/bqBeanUuid.ts';
 import { copyPath } from '../src/lib/server/imageCopies.ts';
@@ -31,6 +32,7 @@ const { positionals, values: a } = parseArgs({
     images: { type: 'string' },
     keep: { type: 'string' },
     settled: { type: 'string' },
+    speeds: { type: 'string' },
     'dry-run': { type: 'boolean' },
     'max-age-hours': { type: 'string', default: '24' }
   }
@@ -82,6 +84,17 @@ async function apply() {
     }
   }
   const { main: patched, changes } = applyPatchPlan(main, plan, photoNames);
+  // Brews are split: the first batch in Beanconqueror.json, the rest in Beanconqueror_Brews_N.json.
+  const brewFiles = new Map<string, Record<string, unknown>[]>();
+  if (a.speeds) {
+    const speeds: Record<string, number> = JSON.parse(readFileSync(a.speeds, 'utf8'));
+    for (const n of names.filter((n) => /^Beanconqueror_Brews_\d+\.json$/.test(n))) {
+      brewFiles.set(n, JSON.parse(await zip.files[n].async('string')));
+    }
+    const set = [patched.BREWS as Record<string, unknown>[], ...brewFiles.values()].flatMap((b) => setBrewSpeeds(b, speeds));
+    if (set.length !== Object.keys(speeds).length) fail(`--speeds lists ${Object.keys(speeds).length} brews, found ${set.length}`);
+    changes.push(...set);
+  }
   const counts: Record<string, number> = {};
   for (const c of changes) {
     const f = c.field.replace('bean_information[0].', 'origin.');
@@ -113,7 +126,8 @@ async function apply() {
     const f = zip.files[n];
     if (f.dir) next.folder(n);
     else {
-      const bytes = n === 'Beanconqueror.json' ? JSON.stringify(patched) : await f.async('uint8array');
+      const bytes = n === 'Beanconqueror.json' ? JSON.stringify(patched)
+        : brewFiles.has(n) ? JSON.stringify(brewFiles.get(n)) : await f.async('uint8array');
       next.file(n, bytes, { date: f.date });
     }
   }

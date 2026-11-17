@@ -78,6 +78,20 @@ export function applyPatchPlan(
   return { main: { ...main, BEANS: beans }, changes };
 }
 
+/** Sets `mill_speed` on unset brews from a reviewed uuid -> speed map (in place). Refuses a brew that already has one. */
+export function setBrewSpeeds(brews: Rec[], speeds: Record<string, number>): BeanChange[] {
+  const changes: BeanChange[] = [];
+  for (const b of brews) {
+    const u = uuidOf(b);
+    const to = u === undefined ? undefined : speeds[u];
+    if (to === undefined) continue;
+    if (b.mill_speed) throw new Error(`Brew ${u} already has mill_speed ${b.mill_speed}`);
+    changes.push({ uuid: u!, name: 'brew', field: 'mill_speed', from: b.mill_speed, to });
+    b.mill_speed = to;
+  }
+  return changes;
+}
+
 const canon = (v: unknown): string =>
   JSON.stringify(v, (_k, x) =>
     x && typeof x === 'object' && !Array.isArray(x)
