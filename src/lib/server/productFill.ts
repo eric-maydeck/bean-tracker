@@ -8,6 +8,8 @@ import { conciseProcess } from '../processGroups';
 import { formatOriginField } from '../originFormat.ts';
 import { suggestRest } from '../coffeeFormFill';
 import { beanBaseCreditUrl } from './beanBase';
+import type { DatabaseSync } from 'node:sqlite';
+import { accentsFrom, buildVocab, standardizeField, useVocab, type StdField } from './standards';
 
 export interface UsdRates {
   date: string;
@@ -381,4 +383,25 @@ export function mergeBeanBase(fill: FillSuccess, bb: { id: string; fields: FillF
   if (notes[0]?.startsWith('Filled ')) notes[0] = `Filled ${Object.keys(fields).length} fields`;
   if (!bb) return { ...fill, fields: fields as FillFields, notes, beanBase: null };
   return { ...fill, fields: fields as FillFields, notes, beanBase: { id: bb.id, url: beanBaseCreditUrl(bb.id), fields: added } };
+}
+
+const STD_FIELDS = ['origin', 'roast_level', 'processing', 'variety', 'region', 'elevation', 'harvest_time', 'certification', 'tasting_notes', 'producer'];
+
+// The one standardizer for fill values, shared by Fill from URL and the Bean Base picker so they cannot drift.
+export function fillStandardizer(db: DatabaseSync): StdFn {
+  const vocab = buildVocab(db.prepare('SELECT producer, farm, variety, region FROM coffees').all());
+  return (field, v) => {
+    if (!STD_FIELDS.includes(field)) return { value: v };
+    const r = standardizeField(field as StdField, v);
+    return r.review ? r : { value: useVocab(field, r.value, vocab) };
+  };
+}
+
+// Bean Base drops accents; the page text (already fetched) may have them. Site spelling then wins inside std.
+export function standardizeBeanBase(fill: FillSuccess, hit: { id: string; fields: FillFields } | null, opts: { db: DatabaseSync; pageText?: string }): FillSuccess {
+  const { pageText } = opts;
+  const bb = hit && pageText != null
+    ? { ...hit, fields: Object.fromEntries(Object.entries(hit.fields).map(([k, v]) => [k, typeof v === 'string' ? accentsFrom(v, pageText) : v])) as FillFields }
+    : hit;
+  return mergeBeanBase(fill, bb, fillStandardizer(opts.db));
 }

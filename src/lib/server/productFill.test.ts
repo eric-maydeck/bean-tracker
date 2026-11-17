@@ -4,7 +4,7 @@ import type { ProductData } from './productParse';
 import { parseShopifyProduct, parseHtmlProduct } from './productParse';
 import type { FillHistoryRow } from './coffees';
 import { standardizeField, type StdField } from './standards';
-import { parseGrams, cleanName, stripSiteSuffix, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, mergeBeanBase, findOriginDetail, type UsdRates, type FillContext } from './productFill';
+import { parseGrams, cleanName, stripSiteSuffix, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, mergeBeanBase, standardizeBeanBase, findOriginDetail, type UsdRates, type FillContext } from './productFill';
 
 export function product(overrides: Partial<ProductData> = {}): ProductData {
   return {
@@ -445,5 +445,17 @@ describe('mergeBeanBase', () => {
     const r = mergeBeanBase(base({ elevation: 'between 1800 and 2200 meters' }), { id: '5', fields: { elevation: 'high up' } }, std);
     expect(r.fields.elevation).toBeUndefined();
     expect(r.notes).toContain('Elevation "between 1800 and 2200 meters" couldn\'t be converted, not filled');
+  });
+});
+
+describe('standardizeBeanBase', () => {
+  const db = { prepare: () => ({ all: () => [] }) } as unknown as Parameters<typeof standardizeBeanBase>[2]['db'];
+  const base = (fields: object) => ({ fields, variants: [], selected: null, notes: [], restNote: null, beanBase: null }) as Parameters<typeof standardizeBeanBase>[0];
+  it('restores page accents on Bean Base values', () => {
+    const out = standardizeBeanBase(base({}), { id: 'x', fields: { region: 'Narino' } }, { db, pageText: 'Region: Nariño' });
+    expect(out.fields.region).toBe('Nariño');
+  });
+  it('standardizes a page-only fill without a hit', () => {
+    expect(standardizeBeanBase(base({ variety: 'SL34 / SL28' }), null, { db }).fields.variety).toBe('SL28, SL34');
   });
 });

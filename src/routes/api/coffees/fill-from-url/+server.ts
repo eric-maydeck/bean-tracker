@@ -5,12 +5,9 @@ import { requireAdmin } from '$lib/server/auth';
 import { getDistinctFieldValues, getFillHistory } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { fetchProductData, getUsdRates, FillError } from '$lib/server/productFetch';
-import { buildFill, mergeBeanBase, type FillContext } from '$lib/server/productFill';
+import { buildFill, standardizeBeanBase, type FillContext } from '$lib/server/productFill';
 import type { ProductData } from '$lib/server/productParse';
 import { lookupBeanBase } from '$lib/server/beanBase';
-import { accentsFrom, buildVocab, standardizeField, useVocab, type StdField } from '$lib/server/standards';
-
-const STD_FIELDS = ['origin', 'roast_level', 'processing', 'variety', 'region', 'elevation', 'harvest_time', 'certification', 'tasting_notes', 'producer'];
 
 const NO_PAGE: ProductData = {
   title: null, vendor: null, siteName: null, brand: null, tags: [], description: '',
@@ -48,18 +45,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       ? await lookupBeanBase(roaster, { coffee_name: fill.fields.coffee_name ?? '', product_url: url }, ctx)
       : null;
     if (pageError && !(hit && 'id' in hit)) throw pageError;
-    const vocab = buildVocab(db.prepare('SELECT producer, farm, variety, region FROM coffees').all());
-    const std = (field: string, v: string) => {
-      if (!STD_FIELDS.includes(field)) return { value: v };
-      const r = standardizeField(field as StdField, v);
-      return r.review ? r : { value: useVocab(field, r.value, vocab) };
-    };
-    // Bean Base drops accents; the page text (already fetched) may have them. Site spelling then wins inside std.
-    const text = [product.title, product.description, ...Object.values(product.attributes)].join('\n');
-    const bb = hit && 'id' in hit
-      ? { ...hit, fields: Object.fromEntries(Object.entries(hit.fields).map(([k, v]) => [k, typeof v === 'string' ? accentsFrom(v, text) : v])) }
-      : null;
-    return json(mergeBeanBase(fill, bb, std));
+    // Bean Base drops accents; the page text (already fetched) may have them.
+    const pageText = [product.title, product.description, ...Object.values(product.attributes)].join('\n');
+    return json(standardizeBeanBase(fill, hit && 'id' in hit ? hit : null, { db, pageText }));
   } catch (err) {
     if (err instanceof FillError) return json({ error: err.message }, { status: 422 });
     const name = err instanceof Error ? err.name : '';
