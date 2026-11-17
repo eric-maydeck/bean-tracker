@@ -124,6 +124,12 @@ describe('searchBeanBase', () => {
     expect(await searchBeanBase('Lume', 'x', ctx, { key: 'k', fetcher: bad })).toEqual({ status: 'failed' });
     expect(await searchBeanBase('Lume', 'x', ctx, { key: 'k', fetcher: ok({ nope: 1 }) })).toEqual({ status: 'failed' });
   });
+  it('reads the live API shape: lists wrapped in { data }', async () => {
+    const r = await searchBeanBase('Lume Coffee', 'Kenya Kiambu', ctx, { key: 'k', fetcher: router({ data: lume }, { data: [] }) });
+    expect(r).toMatchObject({ status: 'ok', roaster: 'Lume Coffee' });
+    const miss = await searchBeanBase('Big Sur', 'x', ctx, { key: 'k', fetcher: router({ data: [] }, { data: ['Big Sur Coffee'] }) });
+    expect(miss).toEqual({ status: 'roaster', closest: ['Big Sur Coffee'] });
+  });
   it('roaster miss returns the closest names, best first, max 5', async () => {
     const names = ['Lume Coffee', 'Zebra Roasters', 'Lumen Brew', 'Big Sur Coffee', 'Sur Roasters', 'Big Sun', 'Big Sur Roasters', 'Big Sir'];
     const r = await searchBeanBase('Big Sur', 'x', ctx, { key: 'k', fetcher: router([], { roasters: names }) });

@@ -3,7 +3,8 @@ import { conciseProcess } from '../processGroups';
 import { words } from './imageSuggest/rankImages';
 import { canonical, normalizeRoaster, type FillFields } from './productFill';
 
-const BASE_URL = 'https://api.loffeelabs.com/api/v2';
+// The docs say api.loffeelabs.com, but that host doesn't resolve (checked 2026-11-17); the API is served from www.
+const BASE_URL = 'https://www.loffeelabs.com/api/v2';
 
 export interface BeanBaseBean {
   id: number;
@@ -142,8 +143,8 @@ export async function lookupBeanBase(
   const key = opts.key === undefined ? beanBaseKey() : opts.key;
   if (!key) return { miss: 'no-key' };
   try {
-    const body = (await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}`, key, opts.fetcher)) as BeanBaseBean[] | { beans: BeanBaseBean[] };
-    const beans = Array.isArray(body) ? body : body.beans;
+    const body = (await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}`, key, opts.fetcher)) as BeanBaseBean[] | { data?: BeanBaseBean[]; beans?: BeanBaseBean[] };
+    const beans = Array.isArray(body) ? body : (body.data ?? body.beans);
     if (!Array.isArray(beans)) return { miss: 'error' };
     const mapped = mapRoaster(roaster, coffee.product_url, beans);
     if (!mapped) return { miss: 'roaster' };
@@ -211,7 +212,7 @@ export async function rankedBeans(
   const key = opts.key === undefined ? beanBaseKey() : opts.key;
   if (!key) return { status: 'no-key' };
   try {
-    const list = (body: unknown, k: string) => (Array.isArray(body) ? body : (body as Record<string, unknown> | null)?.[k]);
+    const list = (body: unknown, k: string) => (Array.isArray(body) ? body : (body as Record<string, unknown> | null)?.data ?? (body as Record<string, unknown> | null)?.[k]);
     // ponytail: fetchBeanBase builds its own timeout signal, so a caller's abort signal isn't passed through.
     const body = await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}&limit=1000`, key, opts.fetcher);
     const beans = list(body, 'beans') as BeanBaseBean[];
