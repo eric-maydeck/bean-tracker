@@ -270,8 +270,8 @@ describe('recent', () => {
       brew({ id: i + 1, coffeeId: i === 11 ? null : 1, localDate: `2026-09-${String(i + 1).padStart(2, '0')}`, rating: i === 10 ? null : 8 }));
     const r = recent(brews, [bag({ id: 1, name: 'Kenya', slug: 'kenya' })]).brews;
     expect(r.map((b) => b.id)).toEqual([12, 11, 10, 9, 8, 7, 6, 5, 4, 3]);
-    expect(r[0]).toEqual({ id: 12, name: null, slug: null, date: '2026-09-12', rating: 8 });
-    expect(r[1]).toEqual({ id: 11, name: 'Kenya', slug: 'kenya', date: '2026-09-11', rating: null });
+    expect(r[0]).toMatchObject({ id: 12, name: null, slug: null, roaster: null, date: '2026-09-12', rating: 8 });
+    expect(r[1]).toMatchObject({ id: 11, name: 'Kenya', slug: 'kenya', roaster: 'R', date: '2026-09-11', rating: null });
     expect(r[2].rating).toBe(8);
   });
 

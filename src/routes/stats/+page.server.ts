@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { hasRecaps, recapTiles } from '$lib/server/recaps/recap';
-import { getDb, getHouseholdSize, getDefaultCaffeine, lastImportedAt } from '$lib/server/db';
+import { getDb, getDateFormat, getHouseholdSize, getDefaultCaffeine, lastImportedAt } from '$lib/server/db';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
@@ -15,6 +15,8 @@ import { onHandTab } from '$lib/server/insights/onHand';
 import { getSubscriptions } from '$lib/server/subscriptions';
 import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
+import { recentExtra } from '$lib/server/insights/recentTips';
+import { formatDay, DEFAULT_DATE_FORMAT } from '$lib/localDate';
 import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { getGearDetails } from '$lib/server/gearDetails';
 import { trophyCase, gearArchive } from '$lib/server/insights/trophies';
@@ -236,7 +238,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
     recapsTab,
     recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin, period) : null,
     // The last-brews and finished-bags lists show every coffee and its rating, whatever the Caffeine filter says.
-    recent: s.tab === 'overview' ? recent(ownBrews, cafBags, 50) : null,
+    recent: s.tab === 'overview' ? recent(ownBrews, cafBags, 50, { all: everyBrew, dialIn, day: (d) => formatDay(d, isAdmin ? getDateFormat(db) : DEFAULT_DATE_FORMAT), extra: (b, g) => recentExtra(db, b, g) }) : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {
       finished: paceDelta(now.finished, nowPrev.finished, days(period), days(prev!), pace),
