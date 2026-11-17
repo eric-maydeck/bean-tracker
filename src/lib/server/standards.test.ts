@@ -159,6 +159,7 @@ describe('site vocabulary (G1 across the site)', () => {
   });
   it('leaves unknown values and other fields alone', () => {
     expect(useVocab('region', 'Huila', vocab)).toBe('Huila');
+    expect(useVocab('producer', 'Ana aka Bob', buildVocab([{ producer: 'Ana Aka Bob' }]))).toBe('Ana aka Bob');
     expect(useVocab('processing', 'Narino', vocab)).toBe('Narino');
   });
 });

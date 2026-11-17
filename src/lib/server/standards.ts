@@ -160,7 +160,11 @@ export function buildVocab(rows: Record<string, unknown>[]): Vocab {
 }
 export function useVocab(field: string, value: string | null, vocab?: Vocab): string | null {
   if (!value || !vocab || !VOCAB_FIELDS.includes(field)) return value;
-  const one = (x: string) => vocab.get(`${field}:${fold(x)}`) ?? x;
+  // only to add accents: the vocab holds unconverted rows too, so it must not undo casing rules (`Aka` -> `aka`)
+  const one = (x: string) => {
+    const v = vocab.get(`${field}:${fold(x)}`);
+    return v && accents(v.normalize('NFD')) > accents(x.normalize('NFD')) ? v : x;
+  };
   return field === 'producer' || field === 'farm' ? one(value) : value.split(', ').map(one).join(', ');
 }
 
