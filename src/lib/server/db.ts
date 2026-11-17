@@ -8,6 +8,7 @@ import { COFFEE_ORIGIN_FIELDS } from '../types.ts';
 import { applyCoffeeFixes } from './coffees.ts';
 import { PRODUCT_PAGE_BACKFILLS } from './productPageBackfill.ts';
 import { BEAN_DATA_BACKFILLS } from './beanDataBackfill.ts';
+import { BEAN_BASE_BACKFILLS } from './beanBaseBackfill.ts';
 import { COFFEE_CORRECTIONS } from './coffeeCorrections.ts';
 import { applySubscriptionUrls, SUBSCRIPTION_URLS_2026_10_08 } from './subscriptions.ts';
 import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConquerorLinks.ts';
@@ -129,6 +130,7 @@ export function applySchema(db: DatabaseSync): void {
   applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER);
   for (const b of PRODUCT_PAGE_BACKFILLS) applyCoffeeFixes(db, b); // own transaction each, after roaster defaults
   for (const b of BEAN_DATA_BACKFILLS) applyCoffeeFixes(db, b); // reviewed origin/amount/cost fixes + unlinked deletes
+  for (const b of BEAN_BASE_BACKFILLS) applyCoffeeFixes(db, b); // reviewed Bean Base fills (tasting notes, bean_base_id, origin detail)
   for (const b of COFFEE_CORRECTIONS) applyCoffeeFixes(db, b);
   applyImageSources(db, IMAGE_SOURCES_2026_10);
   applySubscriptionUrls(db, SUBSCRIPTION_URLS_2026_10_08, 'subscription_urls_2026_10_08');

@@ -241,7 +241,7 @@ export type CoffeeFix = {
   coffee_id: number;
   roaster?: string;
   field: 'roast_date' | 'coffee_name' | 'origin' | 'processing' | 'product_url' | 'image_url' | 'roast_level'
-    | 'frozen_end_date' | 'rest_days_low' | 'rest_days_high' | CoffeeOriginField
+    | 'frozen_end_date' | 'rest_days_low' | 'rest_days_high' | 'bean_base_id' | CoffeeOriginField
     | 'amount_g' | 'cost' | 'decaf';
   from: string | number | null;
   to: string | number;
