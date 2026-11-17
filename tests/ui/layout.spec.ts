@@ -4123,14 +4123,16 @@ export const STATES: State[] = [
       // One run of items: left-aligned, fixed order, joined by " · ".
       expect(await foot.evaluate((el) => getComputedStyle(el).textAlign)).not.toBe('center');
       const lines = (await foot.locator(':scope > div').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
-      expect(lines).toHaveLength(2);
+      expect(lines).toHaveLength(3);
       const stacked = page.viewportSize()!.width <= 640;
+      // The data credit has its own line above the AI note (user, 2026-11-16).
+      expect(lines[0]).toBe('Coffee data from Loffee Labs Bean Base');
       // Phones stack one item per line with no separators (the links share a line, joined by one dot); wider screens run the items together.
-      expect(lines[0]).toBe(stacked ? 'Built with help from Claude Code, an AI coding assistant How AI was used · Contact' : 'Built with help from Claude Code, an AI coding assistant · How AI was used · Contact');
-      expect(lines[1]).toMatch(stacked ? /^v[\d.]+ Last updated: [^·]+ Last deployed: [^·]+ Coffee data from Loffee Labs Bean Base$/ : /^v[\d.]+ · Last updated: .+ · Last deployed: .+ · Coffee data from Loffee Labs Bean Base$/);
+      expect(lines[1]).toBe(stacked ? 'Built with help from Claude Code, an AI coding assistant How AI was used · Contact' : 'Built with help from Claude Code, an AI coding assistant · How AI was used · Contact');
+      expect(lines[2]).toMatch(stacked ? /^v[\d.]+ Last updated: [^·]+ Last deployed: [^·]+$/ : /^v[\d.]+ · Last updated: .+ · Last deployed: [^·]+$/);
       const spans = foot.locator(':scope > div > span');
       const sizes = await foot.locator(':scope > div').evaluateAll((ds) => ds.map((d) => getComputedStyle(d).fontSize + getComputedStyle(d).color));
-      expect(sizes[0], 'same size and colour on both lines').toBe(sizes[1]);
+      expect(new Set(sizes).size, 'same size and colour on every line').toBe(1);
       const fb = (await foot.boundingBox())!;
       const firstX = await spans.first().evaluate((e) => e.getBoundingClientRect().x);
       expect(Math.abs(firstX - fb.x), 'first item at the content edge').toBeLessThan(1.5);
@@ -4146,9 +4148,9 @@ export const STATES: State[] = [
         return out;
       });
       for (const c of lineStarts) expect(c, 'a line never starts with a separator').not.toBe('·');
-      if (page.viewportSize()!.width >= 1200) expect(lineStarts.length, 'one line each on a wide screen').toBe(2);
+      if (page.viewportSize()!.width >= 1200) expect(lineStarts.length, 'one line each on a wide screen').toBe(3);
       if (stacked) {
-        expect(lineStarts, 'sentence, links, version, updated, deployed, credit').toHaveLength(6);
+        expect(lineStarts, 'credit, sentence, links, version, updated, deployed').toHaveLength(6);
         const shown = await foot.locator('.d').evaluateAll((ds) => ds.filter((d) => getComputedStyle(d).display !== 'none').length);
         expect(shown, 'only the dot between the two links shows').toBe(1);
         const xs = await spans.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().x)));

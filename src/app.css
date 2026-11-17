@@ -1355,10 +1355,8 @@ nav.site-nav a[aria-current='page'] {
   color: var(--color-text-muted);
   font-size: 0.8rem;
 }
-/* Footer lines are runs of items separated by " · " (the dot trails its item, so a line never starts with one); an item stays whole. */
-.site-footer > div + div {
-  margin-top: var(--space-2);
-}
+/* Footer lines are runs of items separated by " · " (the dot trails its item, so a line never starts with one); an item stays
+   whole. Lines sit at the same spacing (no gap between them). */
 .site-footer .fi {
   white-space: nowrap;
 }
