@@ -218,4 +218,23 @@ describe('proposeStandards', () => {
     expect(proposeStandards(dbWith('Still'), { mode: 'fill', values: { roaster: 'norml' }, incoming: { roaster: 'STILL' } }))
       .toMatchObject([{ field: 'roaster', proposed: 'Still', roasterCount: 1 }]);
   });
+  it('fill: only standard fields produce rows', () => {
+    expect(fill({ image_url: 'a', amount_g: '100' }, { image_url: 'b', amount_g: '200' })).toEqual([]);
+  });
+  it('fill: unformattable incoming locked value is never proposed', () => {
+    expect(fill({ harvest_time: '2025' }, { harvest_time: 'new crop' })).toEqual([]);
+  });
+  it('fill: cost compares both sides formatted', () => {
+    expect(fill({ cost: '20.989' }, { cost: '21' })).toMatchObject([{ kind: 'choice', now: '20.99', proposed: '21' }]);
+  });
+  it('save: a typed placeholder is a choice to blank (G3)', () => {
+    expect(save({ ...KEYS, variety: 'n/a' }, ['variety'])).toMatchObject([{ kind: 'choice', now: 'n/a', proposed: null }]);
+  });
+  it('save: malformed cost is blocked, proper thousands commas pass', () => {
+    for (const c of ['1,0', '12abc']) expect(save({ ...KEYS, cost: c }, ['cost'])).toMatchObject([{ kind: 'blocked', proposed: null }]);
+    expect(save({ ...KEYS, cost: '1,234.5' }, ['cost'])).toMatchObject([{ kind: 'locked', proposed: '1234.5' }]);
+  });
+  it('save: fields outside the standard set are ignored', () => {
+    expect(save({ ...KEYS, image_url: 'x' }, ['image_url', 'amount_g'])).toEqual([]);
+  });
 });

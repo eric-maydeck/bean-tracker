@@ -241,14 +241,16 @@ const LABELS: Record<string, string> = {
   processing: 'Processing', cost: 'Cost', amount_g: 'Weight', roast_date: 'Roast date'
 };
 const REJECTABLE = ['producer', 'farm', 'variety', 'processing', 'roast_level', 'region', 'certification', 'tasting_notes'];
+// only these fields are checked; anything else a form or fill sends (image_url, amount_g, ...) is ignored
+const CHECKED = ['roaster', 'coffee_name', 'origin', 'roast_level', 'processing', 'cost', ...Object.keys(COFFEE_ORIGIN_LABELS)];
 const isLocked = (f: string) => (LOCKED_FIELDS as readonly string[]).includes(f);
 
 export function formatLocked(field: string, value: string | number | null): { value: string | number | null; ok: boolean } {
   const t = value === null ? '' : String(value).trim();
   if (!t) return { value: null, ok: true };
   if (field === 'cost') {
-    const n = t.replace(/^\$/, '').replace(/,/g, '');
-    return /^\d+(\.\d+)?$/.test(n) ? { value: roundCents(Number(n)), ok: true } : { value: t, ok: false };
+    const n = t.replace(/^\$/, '');
+    return /^(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$/.test(n) ? { value: roundCents(Number(n.replace(/,/g, ''))), ok: true } : { value: t, ok: false };
   }
   const r = standardizeField(field as StdField, t);
   return r.review ? { value: t, ok: false } : { value: r.value, ok: r.value !== null };
@@ -278,7 +280,7 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
 
   if (input.mode === 'save') {
     for (const f of MISSING_KEY_FIELDS) if (!val(f)) add(f, null, null, 'missing');
-    for (const f of input.fields) {
+    for (const f of input.fields.filter((x) => CHECKED.includes(x))) {
       const v = val(f);
       if (!v) continue;
       if (f === 'roaster') roasterRow(v, v);
@@ -302,7 +304,7 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
     return rows;
   }
 
-  for (const [f, raw] of Object.entries(input.incoming)) {
+  for (const [f, raw] of Object.entries(input.incoming).filter(([k]) => CHECKED.includes(k))) {
     const inc = (raw ?? '').trim(), cur = val(f);
     if (!inc || !cur) continue;
     if (f === 'roaster') { roasterRow(cur, inc); continue; }
