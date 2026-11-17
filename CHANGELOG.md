@@ -1,3 +1,11 @@
+# [1.117.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.116.0...v1.117.0) (2026-11-17)
+
+
+### Features
+
+* **coffees:** a no photo placeholder keeps loffee labs cards the same size ([b4c2c01](https://github.com/eric-maydeck/bean-tracker/commit/b4c2c01861a5c563090b3bc2a68b695f4c944ea2))
+* **coffees:** say no photo available, larger, on the loffee labs placeholder ([5ac0adf](https://github.com/eric-maydeck/bean-tracker/commit/5ac0adf90be4839e580bf4a0e3d26d1558e8280e))
+
 # [1.116.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.115.0...v1.116.0) (2026-11-17)
 
 
