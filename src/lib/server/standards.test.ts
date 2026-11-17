@@ -5,6 +5,7 @@ import { accentsFrom, applyDataStandards, buildVocab, useVocab,roundCents, split
 const OK: [StdField, string, string | null][] = [
   ['elevation', '1850 masl', '1,850 masl'],
   ['elevation', '1,700-1,900 masl', '1,700 - 1,900 masl'],
+  ['elevation', 'null', null],
   ['elevation', '>2000', '2,000+ masl'],
   ['elevation', 'above 2000m', '2,000+ masl'],
   ['elevation', 'Over 1,800 meters', '1,800+ masl'],
@@ -183,6 +184,16 @@ describe('proposeStandards', () => {
   const save = (values: Record<string, string>, fields: string[], db = dbWith()) => proposeStandards(db, { mode: 'save', values, fields });
   const fill = (values: Record<string, string>, incoming: Record<string, string>) => proposeStandards(dbWith(), { mode: 'fill', values, incoming });
   const KEYS = { roast_date: 'x', cost: '1', amount_g: '1' };
+
+  it('save: a placeholder in a locked field proposes blank, never the text "null"', () => {
+    expect(save({ ...KEYS, elevation: 'n/a' }, ['elevation'])).toEqual([
+      { field: 'elevation', label: 'Elevation', now: 'n/a', proposed: null, kind: 'locked' }]);
+  });
+  it('fill: a placeholder on either side never becomes the text "null"', () => {
+    for (const rows of [fill({ elevation: 'n/a' }, { elevation: '1800m' }), fill({ elevation: '1,800 masl' }, { elevation: 'n/a' }), fill({ elevation: '-' }, { elevation: '1,900 masl' })]) {
+      expect(JSON.stringify(rows)).not.toContain('"null"');
+    }
+  });
 
   it('save: locked format change', () => {
     expect(save({ ...KEYS, elevation: '1800m' }, ['elevation'])).toEqual([

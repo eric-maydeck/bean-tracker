@@ -10,7 +10,7 @@ export type StdField =
 type Std = { value: string | null; review?: string };
 
 const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
-const PLACEHOLDER = /^(n\/a|\?+|-)$/i;
+const PLACEHOLDER = /^(n\/a|\?+|-|null|undefined)$/i; // never store these words as a value
 const naturalCmp = new Intl.Collator('en', { numeric: true }).compare;
 const dedupe = (xs: string[]) => xs.filter((x, i) => xs.findIndex((y) => fold(y) === fold(x)) === i);
 const splitList = (v: string) => v.split(/\s*(?:,|;|\/)\s*|\s+(?:and|&|-|–)\s+/i).map((s) => s.trim()).filter(Boolean);
@@ -273,6 +273,9 @@ const REJECTABLE = ['producer', 'farm', 'variety', 'processing', 'roast_level', 
 // only these fields are checked; anything else a form or fill sends (image_url, amount_g, ...) is ignored
 const isLocked = (f: string) => (LOCKED_FIELDS as readonly string[]).includes(f);
 
+// A formatLocked result as text: blank for null, never the word "null".
+const text = (r: { value: string | number | null }) => (r.value === null ? '' : String(r.value));
+
 export function formatLocked(field: string, value: string | number | null): { value: string | number | null; ok: boolean } {
   const t = value === null ? '' : String(value).trim();
   if (!t) return { value: null, ok: true };
@@ -315,7 +318,7 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
       else if (isLocked(f)) {
         const r = formatLocked(f, v);
         if (!r.ok) add(f, v, null, 'blocked', { note: `${LABELS[f]} can't be converted` });
-        else if (String(r.value) !== v) add(f, v, String(r.value), 'locked');
+        else if (text(r) !== v) add(f, v, r.value === null ? null : text(r), 'locked');
       } else if (REJECTABLE.includes(f)) {
         let pv = v;
         if (f === 'producer') {
@@ -339,10 +342,11 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
     if (isLocked(f)) {
       const a = formatLocked(f, cur), b = formatLocked(f, inc);
       if (!b.ok) continue; // an unformattable source value is never filled
-      const bs = String(b.value);
+      if (b.value === null) continue; // a placeholder source value is no value
+      const bs = text(b);
       if (!a.ok) add(f, cur, bs, 'forced');
-      else if (String(a.value) === bs) { if (cur !== bs) add(f, cur, bs, 'locked'); }
-      else add(f, String(a.value), bs, 'choice');
+      else if (text(a) === bs) { if (cur !== bs) add(f, cur, bs, 'locked'); }
+      else add(f, text(a), bs, 'choice');
     } else if (inc !== cur) add(f, cur, inc, 'choice');
   }
   return rows;
