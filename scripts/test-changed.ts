@@ -1,8 +1,8 @@
-// npm run test:changed: unit tests, then only the test:ui route tags the change touches.
+// npm run test:changed: unit tests (not in CI: the test job runs them), then only the test:ui route tags the change touches.
 // `-- <files>` (pre-push) scopes to those files instead of this branch's diff + working tree.
 import { spawnSync } from 'node:child_process';
 import { scopeFor } from './testScope.ts';
-import { VIEWPORTS } from '../tests/ui/viewports.ts';
+import { PART, PARTS, TWO_VIEWPORTS, VIEWPORTS } from '../tests/ui/viewports.ts';
 
 // Iterating wants pictures: screenshots on unless UI_SHOTS says otherwise.
 const env = { ...process.env, UI_SHOTS: process.env.UI_SHOTS || 'all' };
@@ -21,7 +21,7 @@ const scope = scopeFor(files);
 console.log('scope:', scope.kind === 'full' ? `full: ${scope.reason}` : scope.kind === 'tags' ? `tags: ${scope.tags.join(' ')}` : 'none (no UI tests)');
 
 const pw = (args: string[]) => run('npx', ['playwright', 'test', ...args]);
-const unit = run('npx', ['vitest', 'run']);
+const unit = process.env.CI ? 0 : run('npx', ['vitest', 'run']);
 if (unit) process.exit(unit);
 
 if (scope.kind === 'full') process.exit(pw([]));
@@ -34,7 +34,14 @@ const viewports = VIEWPORTS.map((v) => `--project=${v.name}`);
 const count = (args: string[]) => (spawnSync('npx', ['playwright', 'test', '--list', ...args], { encoding: 'utf8' }).stdout.match(/Total: (\d+) tests?/) ?? [])[1] ?? '0';
 const layoutTests = Number(count([...viewports, '--grep', grep])) - Number(count(['--project=setup']));
 const tail = ['--project=setup', '--project=perf', '--project=save', '--no-deps', '--workers=1', '--grep', `@setup|${grep}`];
-const tailTests = Number(count(tail)) - Number(count(['--project=setup']));
+// A CI slice (one part, or no @two viewport) can rightly match nothing; the strict job (full layout set) catches a dead tag
+// and is the only one that runs the perf/save tail. UI_PART > 1 has no perf/save projects (playwright.config.ts).
+const slice = !!process.env.CI && (PARTS > 1 || !VIEWPORTS.some((v) => TWO_VIEWPORTS.includes(v.name)));
+const tailTests = PART > 1 || slice ? 0 : Number(count(tail)) - Number(count(['--project=setup']));
+if (layoutTests + tailTests <= 0 && slice) {
+  console.log(`no UI tests matched ${grep} in this slice`);
+  process.exit(0);
+}
 if (layoutTests + tailTests <= 0) {
   console.error(`no UI tests matched ${grep}`);
   process.exit(1);
