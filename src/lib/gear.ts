@@ -35,10 +35,11 @@ const num = (key: string, label: string, unit: string, min: number, max: number,
   ({ key, label, type: 'number', unit, min, max, aliases, help });
 
 export const COMMON_FIELDS: readonly GearField[] = [
+  // Two to a row on the view and edit screens: Brand | Official website, then Model | Cost.
   text('brand', 'Brand', undefined, ['brand', 'manufacturer']),
+  { key: 'website', label: 'Official website', type: 'url', aliases: ['official website', 'website'] },
   text('model', 'Model', undefined, ['model', 'model number']),
-  { key: 'cost', label: 'Cost', type: 'money', min: 0, max: 100000, aliases: ['cost', 'price'] },
-  { key: 'website', label: 'Official website', type: 'url', aliases: ['official website', 'website'] }
+  { key: 'cost', label: 'Cost', type: 'money', min: 0, max: 100000, aliases: ['cost', 'price'] }
 ];
 export const OWN_DATA_SIMILAR = "Yes, use similar gear's brews";
 export const OWN_DATA_ONLY = "No, only this gear's brews";

@@ -53,8 +53,9 @@
     if (!(e.target as Element).closest('a, button, .sample-note')) open(key);
   }
   const reason = (t: Trophy) => (t.archived ? 'Archived in Bean Conqueror' : `No brew since ${formatDate(t.lastUsed)}`);
-  // Stored specs that are filled in, in the standard's order; blanks never show.
-  const specs = (t: Trophy) => fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed }).filter((f) => t.values[f.key] !== undefined);
+  // Every field the edit form has, in its order and two to a row; blanks show a dash. Gear with nothing filled in shows a note instead.
+  const specs = (t: Trophy) => fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed });
+  const hasSpecs = (t: Trophy) => specs(t).some((f) => t.values[f.key] !== undefined);
   const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? withUnit(v, f.unit) : String(v));
   const withLabel = (t: Trophy) => (t.kind === 'dripper' ? 'Favorite filter' : 'Favorite dripper');
 </script>
@@ -193,12 +194,12 @@
             </div>
             <div class="detail-body">
               {@render heading(t)}
-              {#if specs(t).length}
+              {#if hasSpecs(t)}
                 <div class="stat-grid specs">
                   {#each specs(t) as f (f.key)}
                     {@const v = t.values[f.key]}
                     <div class="stat"><span class="stat-label">{f.label}</span>
-                      <span class="stat-value">{#if f.type === 'url'}<a href={String(v)} target="_blank" rel="noopener">{hostOf(String(v))}</a>{:else}{specText(f, v)}{/if}</span></div>
+                      <span class="stat-value">{#if v === undefined}—{:else if f.type === 'url'}<a href={String(v)} target="_blank" rel="noopener">{hostOf(String(v))}</a>{:else}{specText(f, v)}{/if}</span></div>
                   {/each}
                 </div>
               {:else}
@@ -593,6 +594,11 @@
 
   .trophy-detail .specs {
     margin-bottom: var(--space-3);
+  }
+  /* Two to a row, as in the edit form, so pairs (Dial min | Speed at dial min) share a row. */
+  .trophy-dialog .stat-grid.specs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .trophy-dialog .stat {
     flex: 1 1 8.5rem;
