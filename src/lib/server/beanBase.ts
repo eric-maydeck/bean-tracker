@@ -39,7 +39,7 @@ export async function fetchBeanBase(path: string, key: string | null, fetcher: t
     headers: { Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(timeoutMs)
   });
-  if (!res.ok) throw new Error(`Bean Base ${res.status}`);
+  if (!res.ok) throw new Error(`Bean Base ${res.status} ${(await res.text().catch(() => '')).slice(0, 200)}`.trim());
   return res.json();
 }
 
@@ -195,6 +195,12 @@ function closestRoasters(typed: string, names: string[], n = 5): string[] {
 type SearchOpts = { key?: string | null; fetcher?: typeof fetch; roastDate?: string | null; productUrl?: string | null };
 type Ranked = { b: BeanBaseBean; match: number; days: number };
 
+// Logs only the response's top-level keys (never bean data or the key), so a changed API shape shows in the server log.
+function shapeFail(path: string, got: unknown): { status: 'failed' } {
+  console.error(`bean base search: unexpected ${path} response`, got && typeof got === 'object' ? Object.keys(got).slice(0, 10) : typeof got);
+  return { status: 'failed' };
+}
+
 // The roaster's beans in image Suggest's order: product link, exact name, coffee-name words,
 // nearest the roast date (undated last), newest. Shared by the search dialog and the image provider.
 export async function rankedBeans(
@@ -207,12 +213,14 @@ export async function rankedBeans(
   try {
     const list = (body: unknown, k: string) => (Array.isArray(body) ? body : (body as Record<string, unknown> | null)?.[k]);
     // ponytail: fetchBeanBase builds its own timeout signal, so a caller's abort signal isn't passed through.
-    const beans = list(await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}&limit=1000`, key, opts.fetcher), 'beans') as BeanBaseBean[];
-    if (!Array.isArray(beans)) return { status: 'failed' };
+    const body = await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}&limit=1000`, key, opts.fetcher);
+    const beans = list(body, 'beans') as BeanBaseBean[];
+    if (!Array.isArray(beans)) return shapeFail('/beans', body);
     const mapped = mapRoaster(roaster, null, beans);
     if (!mapped) {
-      const names = list(await fetchBeanBase('/roasters?flat=true', key, opts.fetcher), 'roasters');
-      if (!Array.isArray(names)) return { status: 'failed' };
+      const rBody = await fetchBeanBase('/roasters?flat=true', key, opts.fetcher);
+      const names = list(rBody, 'roasters');
+      if (!Array.isArray(names)) return shapeFail('/roasters', rBody);
       return { status: 'roaster', closest: closestRoasters(roaster, names.filter((x): x is string => typeof x === 'string')) };
     }
     const nameWords = [...new Set(words(coffeeName))];
@@ -235,7 +243,8 @@ export async function rankedBeans(
       })
       .sort((a, b) => b.link - a.link || b.exact - a.exact || b.match - a.match || (a.days === b.days ? 0 : a.days < b.days ? -1 : 1) || b.ms - a.ms);
     return { status: 'ok', roaster: mapped, ranked: scored };
-  } catch {
+  } catch (err) {
+    console.error('bean base search failed:', err instanceof Error ? err.message : String(err));
     return { status: 'failed' };
   }
 }
