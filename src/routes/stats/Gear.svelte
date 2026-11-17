@@ -115,7 +115,7 @@
       <ChartToggle label="Group by" options={SPEED_BY_OPTIONS} value={speedBy} pick={(v) => choose({ speedBy: v === 'process' || v === 'origin' ? v : undefined })} />
     </LabHead>
     {#if t.speedByGroup}
-      <div class="fit-body"><LabHeatmap by={t.speedByGroup} noun="grind speed for this group" scale={['Worse than its other speeds', 'Better']} ariaLabel="Grind speed by coffee group" /></div>
+      <div class="fit-body"><LabHeatmap by={t.speedByGroup} noun="grind speed for this group" vs="group avg, all speeds" scale={['Worse than its other speeds', 'Better']} ariaLabel="Grind speed by coffee group" /></div>
     {:else}
       <p class="hl-empty">{emptyLine(t.speeds.length ? 'No coffee group with 3+ bags brewed at 2+ grind speeds in this period.' : 'No rated brews with a grind speed in this period.')}</p>
     {/if}
