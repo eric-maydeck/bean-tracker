@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
-import { applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, proposeStandards, type StdField } from './standards';
+import { accentsFrom, applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, proposeStandards, type StdField } from './standards';
 
 const OK: [StdField, string, string | null][] = [
   ['elevation', '1850 masl', '1,850 masl'],
@@ -49,6 +49,9 @@ const OK: [StdField, string, string | null][] = [
   ['tasting_notes', 'Peach, peach', 'Peach'],
   ['certification', 'Organic And Rainforest Alliance', 'Organic, Rainforest Alliance'],
   ['variety', 'SL-28', 'SL28'],
+  ['variety', 'Bourbon & Typica', 'Bourbon, Typica'],
+  ['region', 'Bench Maji – Oma', 'Bench Maji, Oma'],
+  ['region', 'Bench Maji - Oma', 'Bench Maji, Oma'],
   ['variety', 'SL34, SL28, Batian', 'Batian, SL28, SL34'],
   ['variety', 'SL28, SL34, Ruiru 11, Batian', 'Batian, Ruiru 11, SL28, SL34'],
   ['variety', '74112, 74110, 74158', '74110, 74112, 74158'],
@@ -236,5 +239,18 @@ describe('proposeStandards', () => {
   });
   it('save: fields outside the standard set are ignored', () => {
     expect(save({ ...KEYS, image_url: 'x' }, ['image_url', 'amount_g'])).toEqual([]);
+  });
+});
+
+describe('accentsFrom', () => {
+  it('takes the page spelling for each item', () => {
+    expect(accentsFrom('Narino, Huila', 'grown in Nariño by…')).toBe('Nariño, Huila');
+  });
+  it('leaves a value the page does not spell with accents', () => {
+    expect(accentsFrom('Narino', 'grown in Narino')).toBe('Narino');
+  });
+  it('matches multi-word values', () => {
+    expect(accentsFrom('Finca La Esperanza', 'Finca La Esperanza')).toBe('Finca La Esperanza');
+    expect(accentsFrom('Jose Perez', 'by José Pérez today')).toBe('José Pérez');
   });
 });

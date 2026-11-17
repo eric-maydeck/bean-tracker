@@ -2,7 +2,8 @@ import type { ProductData } from './productParse';
 import { COUNTRY_NAMES } from '../countryFlags';
 import type { FillHistoryRow } from './coffees';
 import type { CoffeeRow } from '../types';
-import { COFFEE_ORIGIN_FIELDS, type CoffeeOriginField } from '../types';
+import { COFFEE_ORIGIN_FIELDS, COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '../types';
+import { LOCKED_FIELDS } from '../standardsDialog.ts';
 import { conciseProcess } from '../processGroups';
 import { formatOriginField } from '../originFormat.ts';
 import { suggestRest } from '../coffeeFormFill';
@@ -353,11 +354,31 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
   };
 }
 
-// The page wins: Bean Base only fills fields the page left blank.
-export function mergeBeanBase(fill: FillSuccess, bb: { id: string; fields: FillFields } | null): FillSuccess {
-  if (!bb) return { ...fill, beanBase: null };
-  const added = (Object.keys(bb.fields) as (keyof FillFields)[]).filter((k) => fill.fields[k] == null);
-  const fields = { ...fill.fields };
-  for (const k of added) Object.assign(fields, { [k]: bb.fields[k] });
-  return { ...fill, fields, beanBase: { id: bb.id, url: beanBaseCreditUrl(bb.id), fields: added } };
+// Rule 7d: per field, the first usable value wins, page then Bean Base. A locked field neither can convert is
+// dropped with a note; any other field keeps the page value as is.
+type StdFn = (field: string, v: string) => { value: string | null; review?: string };
+export function mergeBeanBase(fill: FillSuccess, bb: { id: string; fields: FillFields } | null, std: StdFn): FillSuccess {
+  const fields: Record<string, unknown> = { ...fill.fields };
+  const notes = [...fill.notes];
+  const added: (keyof FillFields)[] = [];
+  const check = (k: string, v: unknown) => {
+    if (v == null || v === '') return null;
+    if (typeof v !== 'string') return { value: v };
+    const r = std(k, v);
+    return r.value != null && !r.review ? { value: r.value } : null;
+  };
+  for (const k of new Set([...Object.keys(fill.fields), ...Object.keys(bb?.fields ?? {})])) {
+    const pv = fields[k], bv = (bb?.fields as Record<string, unknown> | undefined)?.[k];
+    const page = check(k, pv), theirs = check(k, bv);
+    if (page) fields[k] = page.value;
+    else if (theirs) { fields[k] = theirs.value; added.push(k as keyof FillFields); }
+    else if ((LOCKED_FIELDS as readonly string[]).includes(k)) {
+      delete fields[k];
+      const shown = pv ?? bv;
+      if (shown != null && shown !== '') notes.push(`${COFFEE_ORIGIN_LABELS[k as CoffeeOriginField] ?? k[0].toUpperCase() + k.slice(1)} "${shown}" couldn't be converted, not filled`);
+    }
+  }
+  if (notes[0]?.startsWith('Filled ')) notes[0] = `Filled ${Object.keys(fields).length} fields`;
+  if (!bb) return { ...fill, fields: fields as FillFields, notes, beanBase: null };
+  return { ...fill, fields: fields as FillFields, notes, beanBase: { id: bb.id, url: beanBaseCreditUrl(bb.id), fields: added } };
 }

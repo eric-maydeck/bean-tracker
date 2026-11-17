@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { ProductData } from './productParse';
 import { parseShopifyProduct, parseHtmlProduct } from './productParse';
 import type { FillHistoryRow } from './coffees';
+import { standardizeField, type StdField } from './standards';
 import { parseGrams, cleanName, stripSiteSuffix, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, mergeBeanBase, findOriginDetail, type UsdRates, type FillContext } from './productFill';
 
 export function product(overrides: Partial<ProductData> = {}): ProductData {
@@ -411,21 +412,38 @@ describe('findOriginDetail format', () => {
 });
 
 describe('mergeBeanBase', () => {
+  const std = (f: string, v: string) => standardizeField(f as StdField, v);
   const base = (fields: object) => ({ fields, variants: [], selected: null, notes: [], restNote: null, beanBase: null }) as Parameters<typeof mergeBeanBase>[0];
   it('keeps page values, fills blanks and tasting notes, lists what it filled', () => {
-    const r = mergeBeanBase(base({ origin: 'Kenya' }), { id: '5', fields: { origin: 'Ethiopia', producer: 'Ana', tasting_notes: 'Peach' } });
+    const r = mergeBeanBase(base({ origin: 'Kenya' }), { id: '5', fields: { origin: 'Ethiopia', producer: 'Ana', tasting_notes: 'Peach' } }, std);
     expect(r.fields).toEqual({ origin: 'Kenya', producer: 'Ana', tasting_notes: 'Peach' });
     expect(r.beanBase).toMatchObject({ id: '5', fields: ['producer', 'tasting_notes'] });
   });
   it('keeps page tasting notes', () => {
-    expect(mergeBeanBase(base({ tasting_notes: 'Mine' }), { id: '5', fields: { tasting_notes: 'Theirs' } }).fields.tasting_notes).toBe('Mine');
+    expect(mergeBeanBase(base({ tasting_notes: 'Mine' }), { id: '5', fields: { tasting_notes: 'Theirs' } }, std).fields.tasting_notes).toBe('Mine');
   });
-  it('null leaves the fill unchanged', () => {
-    const r = mergeBeanBase(base({ origin: 'Kenya' }), null);
-    expect(r.fields).toEqual({ origin: 'Kenya' });
+  it('a page-only fill is still standardized and unconvertible locked fields dropped', () => {
+    const r = mergeBeanBase({ ...base({ variety: 'SL34 / SL28', elevation: 'high up', origin: 'Kenya' }), notes: ['Filled 3 fields'] }, null, std);
+    expect(r.fields).toEqual({ variety: 'SL28, SL34', origin: 'Kenya' });
+    expect(r.notes).toEqual(['Filled 2 fields', 'Elevation "high up" couldn\'t be converted, not filled']);
     expect(r.beanBase).toBeNull();
   });
   it('a match that fills nothing still carries the id', () => {
-    expect(mergeBeanBase(base({ origin: 'Kenya' }), { id: '5', fields: { origin: 'Ethiopia' } }).beanBase).toMatchObject({ id: '5', fields: [] });
+    expect(mergeBeanBase(base({ origin: 'Kenya' }), { id: '5', fields: { origin: 'Ethiopia' } }, std).beanBase).toMatchObject({ id: '5', fields: [] });
+  });
+  it('an unusable page elevation gives way to a usable Bean Base one', () => {
+    const r = mergeBeanBase(base({ elevation: 'between 1800 and 2200 meters' }), { id: '5', fields: { elevation: '1,800 - 2,200 masl' } }, std);
+    expect(r.fields.elevation).toBe('1,800 - 2,200 masl');
+    expect(r.beanBase?.fields).toContain('elevation');
+  });
+  it('a usable page variety beats Bean Base', () => {
+    const r = mergeBeanBase(base({ variety: 'Bourbon' }), { id: '5', fields: { variety: 'Caturra' } }, std);
+    expect(r.fields.variety).toBe('Bourbon');
+    expect(r.beanBase?.fields).not.toContain('variety');
+  });
+  it('a locked field neither source can convert is dropped with a note', () => {
+    const r = mergeBeanBase(base({ elevation: 'between 1800 and 2200 meters' }), { id: '5', fields: { elevation: 'high up' } }, std);
+    expect(r.fields.elevation).toBeUndefined();
+    expect(r.notes).toContain('Elevation "between 1800 and 2200 meters" couldn\'t be converted, not filled');
   });
 });

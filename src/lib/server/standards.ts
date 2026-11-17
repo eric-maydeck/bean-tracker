@@ -13,7 +13,7 @@ const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCas
 const PLACEHOLDER = /^(n\/a|\?+|-)$/i;
 const naturalCmp = new Intl.Collator('en', { numeric: true }).compare;
 const dedupe = (xs: string[]) => xs.filter((x, i) => xs.findIndex((y) => fold(y) === fold(x)) === i);
-const splitList = (v: string) => v.split(/\s*(?:,|;|\/)\s*|\s+and\s+/i).map((s) => s.trim()).filter(Boolean);
+const splitList = (v: string) => v.split(/\s*(?:,|;|\/)\s*|\s+(?:and|&|-|–)\s+/i).map((s) => s.trim()).filter(Boolean);
 const titleCase = (s: string) => s.replace(/(^|[\s-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
 
 // Alias tables: lowercase key -> canonical. Seeded from the prod tally (2026-11).
@@ -168,6 +168,21 @@ export function useVocab(field: string, value: string | null, vocab?: Vocab): st
     return v && accents(v.normalize('NFD')) > accents(x.normalize('NFD')) ? v : x;
   };
   return field === 'producer' || field === 'farm' ? one(value) : value.split(', ').map(one).join(', ');
+}
+
+// Bean Base drops accents ("Narino"); when the product page spells an item with more accents, take the page's spelling.
+export function accentsFrom(value: string, text: string): string {
+  const words = text.match(/[\p{L}\p{M}][\p{L}\p{M}'’-]*/gu) ?? [];
+  const one = (item: string) => {
+    const n = item.split(/\s+/).length, f = fold(item);
+    for (let i = 0; i + n <= words.length; i++) {
+      const run = words.slice(i, i + n).join(' ');
+      if (fold(run) === f && accents(run.normalize('NFD')) > accents(item.normalize('NFD'))) return run;
+    }
+    return item;
+  };
+  const whole = one(value);
+  return whole !== value ? whole : value.split(', ').map(one).join(', ');
 }
 
 const FIELDS: StdField[] = ['origin', 'roast_level', 'processing', 'variety', 'region', 'elevation', 'harvest_time', 'certification', 'tasting_notes', 'producer'];
