@@ -12,7 +12,7 @@
   // badge and the same-bag delta. The sub line keeps non-numeric context only (a recipe's months). Narrow
   // boards drop SD, then bags. Thin rows muted (global .small-sample). `slots`: a side-by-side partner's length; the
   // empty slots are faint placeholders (as on Leaderboards). `noun`: what a row is ("no match" tip).
-  let { rows, slots = 0, noun, placeTip }: { rows: LeaderRow[]; slots?: number; noun: string; placeTip: (e: ToggleEvent) => void } = $props();
+  let { rows, slots = 0, noun, vs = 'vs bag', placeTip }: { rows: LeaderRow[]; slots?: number; noun: string; vs?: string; placeTip: (e: ToggleEvent) => void } = $props();
   const uid = $props.id();
   let ses = $derived(rows.filter((r) => r.delta !== null).map((r) => r.se));
 </script>
@@ -24,7 +24,7 @@
       ><button class="mode-tip-button sd-tip" popovertarget="{uid}-sd" aria-describedby="{uid}-sd" onfocus={sdFocus} onblur={sdBlur}><span class="tip-text">SD</span></button></span
     >
     <div class="mode-tip" id="{uid}-sd" popover onbeforetoggle={placeTip}><TipBody tip={SD_TIP} /></div>
-    <span></span><span class="num">vs bag</span>
+    <span></span><span class="num">{vs}</span>
   </div>
   <ol class="board-rows lab-rows">
     {#each rows as r, i (i)}

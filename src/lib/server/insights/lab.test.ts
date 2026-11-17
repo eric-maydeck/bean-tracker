@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { restZ, strengthOf } from './stats';
-import { single } from '$lib/sample';
 import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, matchesCoffee, labFn, labOptions, matchesBrew, exceptOwn, ladder, HEAD_FIT, MAYBE_FIT, TIE_MARGIN, mightBe, thinOf, tieHead, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import type { BandStat } from './lab';
@@ -717,28 +716,49 @@ describe('gearTab', () => {
     expect(m.cells[0][0]).toMatchObject({ solid: true, brews: 30, bags: 3 });
   });
   describe('grind speed', () => {
-    const bag = (id: number, name: string) => ({ id, roaster: 'R', name }) as BagFact;
-    const bags = [bag(1, 'One'), bag(2, 'Two'), bag(3, 'Three')];
-    const at = (id: number, rpm: number, r: number, k = 4) => many(k, id, 92, r, { rpm });
-    const rows = [...at(1, 750, 7), ...at(1, 1250, 8), ...at(2, 750, 8), ...at(2, 1250, 8.5), ...at(3, 750, 7)];
-    const t = gearTab(rows, bags, { period: P, ratings: 'all' });
-    it('speeds: banded RPM, one row per speed', () => expect(t.speeds.map((s) => s.label).sort()).toEqual(['~1,250 RPM', '~750 RPM']));
-    it('speedByCoffee: coffees at 2+ speeds as rows, speeds as columns, cell = delta within the bag', () => {
-      const m = t.speedByCoffee!;
-      expect(m.rows).toEqual(['R · One', 'R · Two']); // Three has one speed
-      expect(m.cols).toEqual(t.speeds.map((s) => s.label));
-      const i = m.cols.indexOf('~1,250 RPM');
-      expect(m.cells[0][i]!.delta).toBeCloseTo(0.5);
-      expect(m.cells[1][i]!.delta).toBeCloseTo(0.25);
+    const at = (id: number, rpm: number, r: number, o: Partial<BrewFact> = {}) => many(10, id, 92, r, { rpm, grinder: 'A', roastLevel: 'Light', ...o });
+    // Grinder A: three bags only at 750 (rating 7), three only at 1250 (9): its average is 8, no bag is brewed both ways.
+    const rows = [1, 2, 3].flatMap((id) => at(id, 750, 7)).concat([4, 5, 6].flatMap((id) => at(id, 1250, 9)));
+    const run = (r: BrewFact[], speedBy?: 'process' | 'origin') => gearTab(r, [], { period: P, ratings: 'all', speedBy });
+    it('score = rating less the grinder average; bags at one speed count; bands in RPM labels', () => {
+      const v = Object.fromEntries(run(rows).speeds.map((s) => [s.label, s]));
+      expect(v['~750 RPM'].delta).toBeCloseTo(-1);
+      expect(v['~1,250 RPM'].delta).toBeCloseTo(1);
+      expect(v['~750 RPM']).toMatchObject({ solid: true, bags: 3, brews: 30 });
+      expect(run(rows).speeds[0].label).toBe('~1,250 RPM'); // ranked best first
     });
-    it('a cell is one coffee: single() sample, solid from the one-bag rule', () => {
-      const m = gearTab([...at(1, 750, 7), ...at(1, 1250, 8, 2)], bags, { period: P, ratings: 'all' }).speedByCoffee!;
-      const cs = m.cells[0];
-      expect(cs.map((c) => c!.sample)).toEqual(cs.map((c) => single(c!.brews)));
-      expect(cs.map((c) => [c!.brews, c!.solid]).sort()).toEqual([[2, false], [4, true]]);
+    it('each grinder has its own baseline', () => {
+      const b = [7, 8, 9].flatMap((id) => at(id, 750, 5, { grinder: 'B' })).concat([10, 11, 12].flatMap((id) => at(id, 1250, 6, { grinder: 'B' })));
+      const v = Object.fromEntries(run([...rows, ...b]).speeds.map((s) => [s.label, s.delta]));
+      expect(v['~750 RPM']).toBeCloseTo(-0.75); // (-1 and -0.5) bag means over 6 bags
+      expect(v['~1,250 RPM']).toBeCloseTo(0.75);
     });
-    it('one speed overall: no heatmap', () => {
-      expect(gearTab(at(1, 750, 7), bags, { period: P, ratings: 'all' }).speedByCoffee).toBeNull();
+    it('fixed-speed brews (no rpm) are ignored', () => {
+      expect(run([...rows, ...many(40, 9, 92, 3, { grinder: 'A' })]).speeds.map((s) => s.delta?.toFixed(2))).toEqual(['1.00', '-1.00']);
+    });
+    it('a thin band (one bag) is not solid', () => {
+      const t = run([...rows, ...at(7, 2000, 10)]).speeds.find((s) => s.label === '~2,000 RPM')!;
+      expect(t).toMatchObject({ solid: false, bags: 1 });
+    });
+    it('plot: a column per band in RPM order, trend y = grinder average + value, overall average', () => {
+      const p = run(rows).speedPlot!;
+      expect(p.cols.map((c) => c.label)).toEqual(['~750 RPM', '~1,250 RPM']);
+      expect(p.cols.map((c) => c.y)).toEqual([expect.closeTo(7, 1), expect.closeTo(9, 1)]);
+      expect(p.cols[0].ratings).toHaveLength(30);
+      expect(p.avg).toBeCloseTo(8, 1);
+    });
+    it('heatmap: rows = coffee groups, cell = group value at that speed less its value over all speeds', () => {
+      const m = run(rows).speedByGroup!;
+      expect(m.rows).toEqual(['Light']);
+      expect(m.cols).toEqual(['~750 RPM', '~1,250 RPM']);
+      expect(m.cells[0].map((c) => c!.delta)).toEqual([expect.closeTo(-1), expect.closeTo(1)]);
+      expect(m.cells[0][0]).toMatchObject({ solid: true, bags: 3, brews: 30 });
+      expect(run(rows, 'process').speedByGroup!.rows).toEqual(['Washed']); // Group by switch
+      expect(run(rows, 'origin').speedByGroup).toBeNull(); // no origin on these bags
+    });
+    it('one speed overall: no heatmap, no trend value problem', () => {
+      expect(run(rows.filter((b) => b.rpm === 750)).speedByGroup).toBeNull();
+      expect(run([]).speedPlot).toBeNull();
     });
   });
   it('eras: each month\'s shares sum to 100', () => {

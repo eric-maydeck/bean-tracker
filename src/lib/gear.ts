@@ -72,12 +72,12 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
       'How far one click moves the burrs, in microns (µm): ~12–25µm on most hand grinders, smaller is finer control.'),
     // Speed: the plain `rpm` for fixed-speed grinders, the conversion set when BQ marks the grinder's speed adjustable.
     num('rpm', 'Motor speed', 'RPM', 1, 20000, []),
-    { ...text('rpmConvert', 'Convert dial to RPM', ['Yes', 'No'], [],
-      "Yes: BQ's speed is a dial setting; enter the dial range and the RPM at each end (linear between). No: BQ's speed is already RPM."), type: 'select' },
     num('dialMin', 'Dial min', '', 0, 1000, []),
-    num('dialMax', 'Dial max', '', 0, 1000, []),
     num('rpmMin', 'Speed at dial min', 'RPM', 1, 20000, []),
-    num('rpmMax', 'Speed at dial max', 'RPM', 1, 20000, [])
+    num('dialMax', 'Dial max', '', 0, 1000, []),
+    num('rpmMax', 'Speed at dial max', 'RPM', 1, 20000, []),
+    { ...text('rpmConvert', 'Convert dial to RPM', ['Yes', 'No'], [],
+      "Yes: BQ's speed is a dial setting; enter the dial range and the RPM at each end (linear between). No: BQ's speed is already RPM."), type: 'select' }
   ],
   filter: [
     text('material', 'Material', ['Paper', 'Cloth', 'Metal'], ['material', 'materials'],

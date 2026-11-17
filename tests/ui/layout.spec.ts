@@ -9217,8 +9217,13 @@ export const STATES: State[] = [
       await expect(board.getByRole('heading', { name: 'Ratings by grind speed' })).toBeVisible();
       await expect(board).toContainText('~750 RPM');
       await expect(board).toContainText('~1,250 RPM');
-      await expect(map.getByRole('heading', { name: 'Grind speed × coffee' })).toBeVisible();
-      await expect(map.locator('[aria-label="Grind speed by coffee"]')).toBeVisible();
+      await expect(board.locator('.speed-chart svg.plot')).toBeVisible();
+      await expect(map.getByRole('heading', { name: 'Grind speed × coffee group' })).toBeVisible();
+      await expect(map.locator('[aria-label="Grind speed by coffee group"]')).toBeVisible();
+      await map.getByRole('button', { name: 'Process' }).click();
+      await expect(page).toHaveURL(/speedBy=process/);
+      await map.getByRole('button', { name: 'Roast' }).click();
+      await expect(page).not.toHaveURL(/speedBy=/);
       await expect(page.getByRole('navigation').getByRole('link', { name: 'Grind speed ratings' }).first()).toBeAttached();
     } },
   { name: 'insights-gear-speeds-empty', viewports: 'two', path: () => '/stats?tab=gear&range=1w',

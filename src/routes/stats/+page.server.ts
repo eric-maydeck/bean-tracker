@@ -232,7 +232,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
       : null,
     pours: poursData,
     water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,
-    gear: s.tab === 'gear' ? gearTab(scored, bags, labCtx) : null,
+    gear: s.tab === 'gear' ? gearTab(scored, bags, { ...labCtx, speedBy: s.speedBy }) : null,
     recapsTab,
     recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin, period) : null,
     // The last-brews and finished-bags lists show every coffee and its rating, whatever the Caffeine filter says.

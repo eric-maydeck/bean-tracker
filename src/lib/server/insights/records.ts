@@ -2,7 +2,7 @@ import { usd } from '$lib/money';
 import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
 import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, boardBrews, leaderboard } from './leaderboards';
-import { labFn, pairedDeltas } from './lab';
+import { labFn, speedTab } from './lab';
 import { likeGaps, twinKeys, type Like } from './likeGroup';
 import { isFinished } from './overview';
 import { bagSizes, countsForRating, ratedGroups } from './ratings';
@@ -263,11 +263,11 @@ const least = (board: Board, href?: string, by: Avg = 'adjusted') => (c: RecCtx)
       }
     }));
 };
-// Grind speed bands (same-bag paired deltas, solid rows only); one row is the average itself. Holder date = the band's latest brew.
+// Grind speed bands (score vs the grinder's average, bag-mean value, solid bands only); one row is the average itself. Holder date = the band's latest brew.
 const speeds = (c: RecCtx): Candidate[] => {
   const rows = c.brews.filter((b) => countsForRating(b, c.ratings) && b.rating! > 0);
   const band = labFn('rpm');
-  const solid = pairedDeltas(rows, band).filter((s) => s.solid && s.delta !== null);
+  const solid = speedTab(rows, () => null).speeds.filter((s) => s.solid && s.delta !== null);
   return solid.length < 2 ? [] : solid.map((s) => ({
     value: s.delta!,
     holder: { label: s.label, href: '/stats?tab=gear#gear-speeds', date: rows.filter((b) => band(b)?.label === s.label).map((b) => b.localDate).sort().pop()! }

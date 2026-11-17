@@ -300,14 +300,15 @@ export interface InsightsUrlState {
   gearBy?: 'grinder'; // Gear usage over time: Grinder (absent = Dripper)
   gearView?: 'lines'; // Gear usage over time: Lines (absent = Bars)
   waterView?: 'lines'; // Water usage over time: Lines (absent = Bars); each chart keeps its own
+  speedBy?: 'process' | 'origin'; // Gear: Grind speed × coffee group's Group by (absent = Roast)
   dial?: Dial; // only 'all' is ever explicit
 }
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
-type Optional = 'avg' | 'trend' | 'gearBy' | 'gearView' | 'waterView' | 'open' | 'low' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
+type Optional = 'avg' | 'trend' | 'gearBy' | 'gearView' | 'waterView' | 'speedBy' | 'open' | 'low' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
   | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'chart' | 'retired' | 'gear' | 'spendView' | 'spendSeries' | 'rcSort' | 'rcDir' | 'rcTop' | 'waitBy' | 'recipeBy' | 'pourThin' | 'recipeVs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  avg?: Avg; trend?: Trend; gearBy?: 'grinder'; gearView?: 'lines'; waterView?: 'lines'; open?: Board[]; low?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
+  avg?: Avg; trend?: Trend; gearBy?: 'grinder'; gearView?: 'lines'; waterView?: 'lines'; speedBy?: 'process' | 'origin'; open?: Board[]; low?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
   tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; chart?: string; retired?: 'open'; gear?: GearKind; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top; waitBy?: WaitBy; recipeBy?: 'process' | 'roaster'; pourThin?: 'open'; recipeVs?: (typeof RECIPE_VS)[number];
@@ -432,6 +433,7 @@ export function parseInsightsUrl(
     gearBy: pickOne(p, 'gearBy', ['grinder']),
     gearView: pickOne(p, 'gearView', ['lines']),
     waterView: pickOne(p, 'waterView', ['lines']),
+    speedBy: pickOne(p, 'speedBy', ['process', 'origin']),
     brewer: pickOne(p, 'brewer', brewerTypes),
     kinds: parseList(p, 'kinds', KINDS),
     caffeine: pickOne(p, 'caffeine', CAFFEINES),
@@ -530,6 +532,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.gearBy) p.set('gearBy', s.gearBy);
   if (s.gearView) p.set('gearView', s.gearView);
   if (s.waterView) p.set('waterView', s.waterView);
+  if (s.speedBy) p.set('speedBy', s.speedBy);
   if (s.brewer) p.set('brewer', s.brewer);
   if (s.kinds) p.set('kinds', s.kinds.join(','));
   if (s.caffeine) p.set('caffeine', s.caffeine);
@@ -673,6 +676,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     gearBy: s.gearBy,
     gearView: s.gearView,
     waterView: s.waterView,
+    speedBy: s.speedBy,
     dial: s.dial ?? DEFAULTS.dial,
     brewer: s.brewer,
     kinds: s.kinds,
