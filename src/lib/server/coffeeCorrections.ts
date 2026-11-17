@@ -181,5 +181,17 @@ export const COFFEE_CORRECTIONS: CoffeeFixBatch[] = [
     ],
     websites: [],
     tavilyCalls: []
+  },
+  {
+    // BQ reconcile (2026-11-16, user): subscription bags carry the subscription's size and price.
+    marker: 'coffee_corrections_2026_11_c',
+    fixes: [
+      { coffee_id: 327, roaster: 'norml coffee ppl', field: 'amount_g', from: 100, to: 60 },
+      { coffee_id: 327, roaster: 'norml coffee ppl', field: 'cost', from: 26, to: 19.48 },
+      { coffee_id: 328, roaster: 'norml coffee ppl', field: 'amount_g', from: 100, to: 60 },
+      { coffee_id: 328, roaster: 'norml coffee ppl', field: 'cost', from: 26, to: 19.48 }
+    ],
+    websites: [],
+    tavilyCalls: []
   }
 ];
