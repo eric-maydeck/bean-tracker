@@ -557,7 +557,7 @@
         }}
       />
       <div class="inline-row-actions" data-button-row>
-        <button class="button" type="button" disabled={filling} onclick={fillFromPage}>
+        <button class="button fill-button" type="button" disabled={filling} onclick={fillFromPage}>
           {filling ? 'Filling…' : 'Fill from page'}
         </button>
         <BeanBaseSearch
@@ -979,6 +979,11 @@
     flex-wrap: wrap;
     min-width: 0;
     gap: var(--space-2);
+  }
+  /* "Fill from page" and "Filling…" share one width, so the buttons beside it don't shift. */
+  .fill-button {
+    min-width: 8.5rem;
+    text-align: center;
   }
   /* The gap spaces them; app.css .button's margin would double it. */
   .inline-row-actions > :global(.button) {
