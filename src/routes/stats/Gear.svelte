@@ -99,7 +99,7 @@
     </section>
   {/if}
 
-  <!-- Grind speed (RPM): the chart + board and the heatmap side by side from 768 px; the grid stretches the shorter tile to the taller one and the heatmap rows fill it (no fitPairs: its 2× cap would make the board scroll inside). Each one short line when there is nothing to show. -->
+  <!-- Grind speed (RPM): the chart + board and the heatmap side by side from 768 px; the chart tile sets the row height and the heatmap's rows shrink to fit it (.confine, from 768 px; no fitPairs: its 2× cap would make the board scroll inside). Each one short line when there is nothing to show. -->
   <div class="gear-pair">
   <section class="chart-panel" data-section="gear-speeds">
     <LabHead id="gear-speeds" title="Ratings by grind speed" help={SPEED_HELP} {placeTip} />
@@ -110,7 +110,7 @@
       <p class="hl-empty">{emptyLine('No rated brews with a grind speed in this period.')}</p>
     {/if}
   </section>
-  <section class="chart-panel" data-section="gear-speed-coffee">
+  <section class="chart-panel" class:confine={!!t.speedByGroup} data-section="gear-speed-coffee">
     <LabHead id="gear-speed-coffee" title="Grind speed × coffee group" {placeTip}
       help={['Rows: coffees grouped by roast, process or origin (3+ bags, 2+ speeds); the 10 with the most brews, A–Z.', "A cell: the group's value at that speed vs its value over all speeds.", 'Values are scores vs the grinder average, averaged over bags.',
         SAMPLE_HELP, 'Blank: never brewed at that speed.']}>
@@ -171,6 +171,22 @@
   @media (min-width: 768px) {
     .gear-pair {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    /* The speed heatmap never stretches the pair: size containment drops its height from the row, so the chart tile sets it and the heatmap rows split what is left (10 rows max, lab.ts SPEED_ROWS). Only with a heatmap, so an empty tile's line and toggle can't clip. */
+    .confine {
+      contain: size;
+    }
+    .confine :global(:is(.fit-body, .heatmap, .frame)) {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .confine :global(.diverging .grid) {
+      flex: 1 1 0;
+      min-height: 0;
+      grid-template-rows: auto;
+      grid-auto-rows: minmax(0, 1fr);
     }
   }
 </style>

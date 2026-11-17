@@ -9220,6 +9220,9 @@ export const STATES: State[] = [
       await expect(board.locator('.speed-chart svg.plot')).toBeVisible();
       await expect(map.getByRole('heading', { name: 'Grind speed × coffee group' })).toBeVisible();
       await expect(map.locator('[aria-label="Grind speed by coffee group"]')).toBeVisible();
+      // Confined to the chart tile's height (from 768 px): the legend still sits inside the tile.
+      const [tile, legend] = [(await map.boundingBox())!, (await map.locator('.div-legend').boundingBox())!];
+      expect(legend.y + legend.height).toBeLessThanOrEqual(tile.y + tile.height + 0.5);
       await map.getByRole('button', { name: 'Process' }).click();
       await expect(page).toHaveURL(/speedBy=process/);
       await map.getByRole('button', { name: 'Roast' }).click();
