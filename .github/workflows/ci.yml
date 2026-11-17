@@ -59,8 +59,10 @@ jobs:
       # No --omit=dev: SvelteKit/Vite/etc. are devDependencies but get bundled into the server build.
       # Skips only the Kit remote-function form DoS advisory (no 2.x fix; the app has no remote functions).
       # Remove ALLOW and go back to plain `npm audit --audit-level=high` with the Kit 3 migration (#68).
+      # GHSA-fc5q-39xc-vjpf: picomatch ReDoS, no patched release yet; build tooling only (not in the server bundle).
+      # Remove it once picomatch ships a fix (#90). Every ALLOW entry has a child issue under #89.
       - env:
-          ALLOW: GHSA-3r8g-jcqq-3p5j
+          ALLOW: GHSA-3r8g-jcqq-3p5j GHSA-fc5q-39xc-vjpf
         run: |
           npm audit --json > audit.json || true
           node -e '
