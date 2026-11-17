@@ -11005,13 +11005,17 @@ export const STATES: State[] = [
       await expect(d.getByRole('heading', { name: 'Loffee Labs matches' })).toBeVisible();
       await expect(d.locator('.suggest-pick')).toHaveCount(3);
       await expect(d.getByText('Loffee Labs roaster: Moonwake Coffee Roasters ·')).toBeVisible();
-      // The first card has an image with both badges, Closest before Sold out; text-only cards have no image box.
+      // The first card has an image with both badges, Closest before Sold out; a card with no photo gets a same-size placeholder.
       const first = d.locator('.suggest-pick').first();
       await expect(first.locator('.suggest-image img')).toHaveCount(1);
       await expect(first.locator('.badge')).toHaveText(['Closest to roast date', 'Sold out']);
       const [a, b] = await first.locator('.badge').evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
       expect(b.top).toBeGreaterThanOrEqual(a.bottom - 0.5);
-      await expect(d.locator('.suggest-pick').nth(1).locator('.suggest-image')).toHaveCount(0);
+      const noPhoto = d.locator('.suggest-pick').nth(1).locator('.suggest-image');
+      await expect(noPhoto.locator('img')).toHaveCount(0);
+      await expect(noPhoto).toContainText('No photo');
+      const [ib, pb] = await Promise.all([first.locator('.suggest-image').boundingBox(), noPhoto.boundingBox()]);
+      expect(Math.abs(ib!.height - pb!.height)).toBeLessThan(1);
       await expect(d.locator('.suggest-pick').nth(2).locator('.badge')).toHaveText(['Sold out']);
       await expect(first).toContainText('Ethiopia · Bensa, Sidama');
       await expect(first).toContainText('2,100 masl · March 2026');

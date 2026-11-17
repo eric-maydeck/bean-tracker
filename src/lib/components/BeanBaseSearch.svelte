@@ -8,6 +8,7 @@
   import type { BeanCard, BeanSearch } from '$lib/server/beanBase';
   import { formatDate } from '$lib/formatDate';
   import SuggestSheet from './SuggestSheet.svelte';
+  import Icon from './Icon.svelte';
 
   // "Search Loffee Labs": the Bean Base twin of ImageSuggest (same dialog shell, same flow). The parent owns the
   // fields: body() reads the roaster and coffee name when a search starts, matching() describes them as typed,
@@ -109,21 +110,18 @@
         <div class="suggest-list">
           {#each r.beans as c (c.id)}
             <button type="button" class="suggest-pick" onclick={() => { onpick(c); sheet.close(); }}>
-              {#if c.image}
-                <span class="suggest-image">
+              <!-- Every card gets the square, so cards in a row match (a placeholder when there's no photo). -->
+              <span class="suggest-image">
+                {#if c.image}
                   <img src={c.image} alt="" />
-                  {#if c.closest}<span class="badge">Closest to roast date</span>{/if}
-                  {#if c.soldout}<span class="badge badge-sold">Sold out</span>{/if}
-                </span>
-              {/if}
+                {:else}
+                  <span class="no-photo"><Icon name="coffee" /><span>No photo</span></span>
+                {/if}
+                {#if c.closest}<span class="badge">Closest to roast date</span>{/if}
+                {#if c.soldout}<span class="badge badge-sold">Sold out</span>{/if}
+              </span>
               <span class="suggest-text">
                 <span class="suggest-title">{c.name}</span>
-                {#if !c.image && (c.closest || c.soldout)}
-                  <span class="badge-row">
-                    {#if c.closest}<span class="badge badge-inline">Closest to roast date</span>{/if}
-                    {#if c.soldout}<span class="badge badge-inline">Sold out</span>{/if}
-                  </span>
-                {/if}
                 {#each lines(c.fields) as line, i (i)}
                   {#if line}<span class={i === 2 ? 'text-muted suggest-excerpt' : 'text-muted suggest-meta'}>{line}</span>{/if}
                 {/each}
@@ -165,16 +163,22 @@
   .suggest-image :global(.badge-sold) {
     top: calc(var(--space-1) + 1.5rem);
   }
-  .badge-row {
+  .no-photo {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: var(--space-1);
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius);
+    background: var(--color-bg);
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
   }
-  /* The no-image card has no badge corner, so the badge sits in the text. */
-  .badge-inline {
-    padding: 0.1rem 0.4rem;
-    font-size: 0.7rem;
-    background: var(--color-sunflower);
-    color: var(--color-sunflower-text);
+  .no-photo :global(svg) {
+    width: 2.5rem;
+    height: 2.5rem;
+    opacity: 0.6;
   }
 </style>
