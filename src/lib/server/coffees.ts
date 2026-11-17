@@ -28,6 +28,7 @@ export interface NewCoffeeInput extends CoffeeOriginFields {
   moved_date?: string | null;
   decaf?: boolean;
   blend?: boolean;
+  bean_base_id?: string | null;
 }
 
 const ORDER_BY_NAME = `ORDER BY c.roaster COLLATE NOCASE, c.coffee_name COLLATE NOCASE`;
@@ -146,8 +147,8 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
         roaster, coffee_name, origin, roast_level, processing,
         amount_g, cost, roast_date, frozen_start_date, frozen_end_date,
         rest_days_low, rest_days_high, image_url, product_url, image_source_url, slug, drank, status, moved_date, decaf, blend, subscription_id, created_at, updated_at,
-        ${COFFEE_ORIGIN_FIELDS.join(', ')}
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${', ?'.repeat(COFFEE_ORIGIN_FIELDS.length)})`
+        bean_base_id, ${COFFEE_ORIGIN_FIELDS.join(', ')}
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${', ?'.repeat(COFFEE_ORIGIN_FIELDS.length)})`
     )
     .run(
       input.roaster,
@@ -174,6 +175,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       input.subscription_id ?? null,
       now,
       now,
+      input.bean_base_id ?? null,
       ...COFFEE_ORIGIN_FIELDS.map((f) => input[f] ?? null)
     );
 
@@ -217,6 +219,9 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
   if (input.subscription_id !== undefined) {
     db.prepare(`UPDATE coffees SET subscription_id = ? WHERE id = ?`).run(input.subscription_id, id);
   }
+  if (input.bean_base_id !== undefined) {
+    db.prepare(`UPDATE coffees SET bean_base_id = ? WHERE id = ?`).run(input.bean_base_id || null, id);
+  }
   // Same rule for the origin details: undefined = not sent, '' / null clears.
   for (const f of COFFEE_ORIGIN_FIELDS) {
     if (input[f] !== undefined) db.prepare(`UPDATE coffees SET ${f} = ? WHERE id = ?`).run(input[f] || null, id);
@@ -236,7 +241,7 @@ export type CoffeeFix = {
   coffee_id: number;
   roaster?: string;
   field: 'roast_date' | 'coffee_name' | 'origin' | 'processing' | 'product_url' | 'image_url' | 'roast_level'
-    | 'frozen_end_date' | 'rest_days_low' | 'rest_days_high' | CoffeeOriginField
+    | 'frozen_end_date' | 'rest_days_low' | 'rest_days_high' | 'bean_base_id' | CoffeeOriginField
     | 'amount_g' | 'cost' | 'decaf';
   from: string | number | null;
   to: string | number;

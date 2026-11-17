@@ -77,6 +77,9 @@
   let filling = $state(false);
   let fillError = $state<string | null>(null);
   let fillNotes = $state<string[]>([]);
+  // Set by a fill that matched Bean Base; a fill without a match leaves the saved id alone.
+  let beanBaseId = $state(String((coffee?.bean_base_id ?? prefill?.bean_base_id) ?? ''));
+  let beanBaseCredit = $state<string | null>(null);
   let fillVariants = $state<FillVariant[]>([]);
   let selectedVariant = $state<number | null>(null);
 
@@ -269,6 +272,8 @@
         showPreview(data.fields.image_url);
       }
       fillNotes = data.notes;
+      if (data.beanBase) beanBaseId = data.beanBase.id;
+      beanBaseCredit = data.beanBase?.fields.length ? data.beanBase.url : null;
       fillVariants = data.variants;
       selectedVariant = data.selected;
     } catch {
@@ -456,7 +461,10 @@
       {/if}
     {/if}
     {#if fillNotes.length}
-      <p class="text-muted fill-note" aria-live="polite">{fillNotes.join(' · ')}</p>
+      <p class="text-muted fill-note" aria-live="polite">
+        {fillNotes.join(' · ')}{#if beanBaseCredit}
+          · <a href={beanBaseCredit} target="_blank" rel="noopener">From Loffee Labs Bean Base</a>{/if}
+      </p>
     {/if}
     {#if fillVariants.length}
       {@render sizeChips()}
@@ -540,6 +548,7 @@
       {/if}
       <!-- Always sent: empty means cleared, so a staged merge never brings back the stored source. -->
       <input type="hidden" name="image_source_url" value={imageSource} />
+      <input type="hidden" name="bean_base_id" value={beanBaseId} />
       {#if roasterWebsite}
         <input type="hidden" name="roaster_website" value={roasterWebsite} />
       {/if}
@@ -603,6 +612,7 @@
     {@render detail('elevation')}
     {@render detail('harvest_time')}
     {@render detail('certification')}
+    {@render detail('tasting_notes')}
   </fieldset>
 
   <fieldset class="form-group">

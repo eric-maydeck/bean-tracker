@@ -230,7 +230,8 @@
     <div>
       <span class="fi">v{data.version}<span class="d" aria-hidden="true">&nbsp;·</span></span>
       <span class="fi">Last updated: <Stamp iso={data.lastUpdated} empty="no data yet" minute /><span class="d" aria-hidden="true">&nbsp;·</span></span>
-      <span class="fi">Last deployed: <Stamp iso={data.lastDeployed} empty="no data yet" minute /></span>
+      <span class="fi">Last deployed: <Stamp iso={data.lastDeployed} empty="no data yet" minute /><span class="d" aria-hidden="true">&nbsp;·</span></span>
+      <span class="fi">Coffee data from <a href="https://www.loffeelabs.com" target="_blank" rel="noopener noreferrer">Loffee Labs Bean Base</a></span>
     </div>
   </footer>
   {/if}

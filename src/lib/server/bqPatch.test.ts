@@ -123,7 +123,7 @@ const site = (o: Partial<PatchCoffee> = {}): PatchCoffee => ({
   degrees_of_roast: null, amount_g: null, cost: null, decaf: 0, blend: 0, status: 'open',
   frozen_start_date: null, frozen_end_date: null, origin: null, processing: null, producer: null,
   farm: null, variety: null, region: null, elevation: null, harvest_time: null, certification: null,
-  bean_uuid: 'u1', photo: null, ...o
+  tasting_notes: null, bean_uuid: 'u1', photo: null, ...o
 });
 const plan = (c: Partial<PatchCoffee>, b = bean('u1'), keep = {}) =>
   buildPatchPlan([site(c)], mainOf(b), keep);
@@ -162,6 +162,16 @@ describe('buildPatchPlan', () => {
     for (const status of ['open', 'backlog']) {
       expect(plan({ status }, bean('u1', { finished: true })).plan.beans[0].set).toEqual({ finished: false });
     }
+  });
+
+  it('tasting notes fill a blank aromatics, never over one, never touch cupped_flavor or note', () => {
+    const r = plan({ tasting_notes: 'Peach, jasmine' });
+    expect(r.plan.beans[0].set).toEqual({ aromatics: 'Peach, jasmine' });
+    expect(r.unexpected).toEqual([]);
+    const kept = plan({ tasting_notes: 'Peach, jasmine' }, bean('u1', { aromatics: 'Cocoa' }));
+    expect(kept.plan.beans).toEqual([]);
+    expect(kept.unexpected).toEqual([]);
+    expect(JSON.stringify(r.plan)).not.toMatch(/cupped_flavor|"note"/);
   });
 
   it('producer writes farmer', () => {

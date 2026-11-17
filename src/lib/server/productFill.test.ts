@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { ProductData } from './productParse';
 import { parseShopifyProduct, parseHtmlProduct } from './productParse';
 import type { FillHistoryRow } from './coffees';
-import { parseGrams, cleanName, stripSiteSuffix, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, findOriginDetail, type UsdRates, type FillContext } from './productFill';
+import { parseGrams, cleanName, stripSiteSuffix, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, mergeBeanBase, findOriginDetail, type UsdRates, type FillContext } from './productFill';
 
 export function product(overrides: Partial<ProductData> = {}): ProductData {
   return {
@@ -225,6 +225,16 @@ const ctx = (o: Partial<FillContext> = {}): FillContext => ({
   url: 'https://example.coffee/products/x', history: [], roastLevels: LEVELS, origins: [], processing: [], rates: RATES, ...o
 });
 
+describe('buildFill tasting notes', () => {
+  it('fills tasting notes from a labelled line', () => {
+    for (const label of ['tasting notes', 'notes', 'flavor notes']) {
+      const r = buildFill(product({ title: 'Lot', attributes: { [label]: 'Peach, jasmine' } }), ctx());
+      expect(r.fields.tasting_notes).toBe('Peach, jasmine');
+    }
+    expect(buildFill(product({ title: 'Lot' }), ctx()).fields).not.toHaveProperty('tasting_notes');
+  });
+});
+
 describe('buildFill', () => {
   it('only returns found, non-empty fields (never blanks what the user typed)', () => {
     const r = buildFill(product({ title: 'Mystery Lot', currency: 'USD' }), ctx());
@@ -397,5 +407,25 @@ describe('findOriginDetail format', () => {
   it('returns the standard format', () => {
     expect(findOriginDetail(product({ attributes: { elevation: '1500masl' } }), 'elevation')).toBe('1,500 masl');
     expect(findOriginDetail(product({ attributes: { variety: 'Geisha' } }), 'variety')).toBe('Gesha');
+  });
+});
+
+describe('mergeBeanBase', () => {
+  const base = (fields: object) => ({ fields, variants: [], selected: null, notes: [], restNote: null, beanBase: null }) as Parameters<typeof mergeBeanBase>[0];
+  it('keeps page values, fills blanks and tasting notes, lists what it filled', () => {
+    const r = mergeBeanBase(base({ origin: 'Kenya' }), { id: '5', fields: { origin: 'Ethiopia', producer: 'Ana', tasting_notes: 'Peach' } });
+    expect(r.fields).toEqual({ origin: 'Kenya', producer: 'Ana', tasting_notes: 'Peach' });
+    expect(r.beanBase).toMatchObject({ id: '5', fields: ['producer', 'tasting_notes'] });
+  });
+  it('keeps page tasting notes', () => {
+    expect(mergeBeanBase(base({ tasting_notes: 'Mine' }), { id: '5', fields: { tasting_notes: 'Theirs' } }).fields.tasting_notes).toBe('Mine');
+  });
+  it('null leaves the fill unchanged', () => {
+    const r = mergeBeanBase(base({ origin: 'Kenya' }), null);
+    expect(r.fields).toEqual({ origin: 'Kenya' });
+    expect(r.beanBase).toBeNull();
+  });
+  it('a match that fills nothing still carries the id', () => {
+    expect(mergeBeanBase(base({ origin: 'Kenya' }), { id: '5', fields: { origin: 'Ethiopia' } }).beanBase).toMatchObject({ id: '5', fields: [] });
   });
 });
