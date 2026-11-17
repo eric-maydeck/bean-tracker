@@ -1571,6 +1571,24 @@ export const STATES: State[] = [
         await expect(modal).toHaveCount(0);
       }
     } },
+  // Fill from page (stubbed) that matched Bean Base: the credit link joins the fill note, on a layout-clean form.
+  { name: 'coffees-add-fill-bean-base', viewports: 'two', path: (s) => `/coffees/${s.slugs.long}`,
+    act: async (page) => {
+      await page.route('**/api/coffees/fill-from-url', (route) => route.fulfill({ json: {
+        fields: { roaster: 'Sey', coffee_name: 'Lot 7', producer: 'Ana Maria Gutierrez Calderon de la Vega', tasting_notes: 'Peach, jasmine' },
+        variants: [], selected: null, notes: ['Filled 4 fields'], restNote: null,
+        beanBase: { id: '9', url: 'https://www.loffeelabs.com', fields: ['producer', 'tasting_notes'] }
+      } }));
+      await page.getByRole('button', { name: '+ Add Coffee' }).click();
+      const modal = page.locator('.modal');
+      await modal.locator('#product_url').fill('https://example.com/products/lot-7');
+      await modal.getByRole('button', { name: 'Fill from page' }).click();
+      const credit = modal.getByRole('link', { name: 'From Loffee Labs Bean Base' });
+      await expect(credit).toBeVisible();
+      await expect(modal.locator('input[name="bean_base_id"]')).toHaveValue('9');
+      await expect(modal.locator('#tasting_notes')).toHaveValue('Peach, jasmine');
+      await checkLayout(page);
+    } },
   { name: 'coffee-detail-like', path: (s) => `/coffees/${s.slugs.lab}`,
     act: async (page) => {
       const panel = page.locator('[data-section="like"]');
