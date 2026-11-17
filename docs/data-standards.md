@@ -12,7 +12,7 @@ One stored form per coffee field. Every entry point normalizes to it: the add an
 | Field | Stored form | Examples |
 |---|---|---|
 | Cost | Number rounded to cents, shown in USD (`$20.99`). Per-user currency is a separate item. | `20.9900000000016` → `20.99` |
-| Elevation | Thousands comma, ` masl` suffix, range with a spaced hyphen; `~` and `>` attach to the number. | `1,850 masl`, `1,700 - 1,900 masl`, `>2,000 masl`; `60-250` → `60 - 250 masl` |
+| Elevation | Thousands comma, ` masl` suffix, range with a spaced hyphen; `~` and `+` (and above) attach to the number; `>2,000` becomes `2,000+`. | `1,850 masl`, `1,700 - 1,900 masl`, `2,000+ masl`, `2,300 - 2,500+ masl`; `60-250` → `60 - 250 masl` |
 | Farm | As named. Filled from the producer split below when blank. | `Finca Example` |
 | Harvest | `2026`, `2025/26`, `January 2026`, `Q3 2025`, `Late 2025`; ranges `December 2025 - January 2026` (year on both sides). No year → review. | `January-April 2026` → `January 2026 - April 2026`; `2026 New Crop` → `2026` |
 | Origin | Country name. | `Colombia` |

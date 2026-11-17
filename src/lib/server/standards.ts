@@ -24,7 +24,10 @@ const VARIETY_ALIAS: Record<string, string> = {
 const PROCESSING_ALIAS: Record<string, string> = {
   'fully washed': 'Washed',
   'tyoxidator washed': 'Tyoxy Washed',
-  'red fruits co-ferment': 'Red Fruits Co-Ferment'
+  'red fruits co-ferment': 'Red Fruits Co-Ferment',
+  // decaf with more than a base method (user, 2026-11-16)
+  'sugarcane (ea) decaffeinated, thermal shock washed anaerobic': 'EA Decaf Thermal Shock Anaerobic Washed',
+  'red fruits co-ferment decaf': 'EA Decaf Red Fruits Co-Ferment'
 };
 const ROAST_RANK = ['hyperlight', 'ultralight', 'nordic', 'nordic light', 'light', 'medium', 'dark'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -38,10 +41,12 @@ export function roundCents(n: number): number {
 }
 
 function elevation(v: string): Std {
-  const m = /^([~>]?)\s*(\d[\d,]*)\s*(?:[-–]\s*([~>]?)\s*(\d[\d,]*))?\s*(?:m|masl|meters)?$/i.exec(v);
+  // `+` means "and above" (user, 2026-11-16: `2,000+ masl` over `>2,000 masl`); a leading `>` converts to it.
+  const m = /^(~?)(>?)\s*(\d[\d,]*)(\+?)\s*(?:[-–]\s*(~?)(>?)\s*(\d[\d,]*)(\+?))?\s*(?:m|masl|meters)?$/i.exec(v);
   if (!m) return { value: v, review: 'elevation not a number or range' };
   const num = (s: string) => String(Number(s.replace(/,/g, ''))).replace(/\B(?=(\d{3})+$)/g, ',');
-  return { value: `${m[1]}${num(m[2])}${m[4] ? ` - ${m[3]}${num(m[4])}` : ''} masl` };
+  const side = (t: string, gt: string, n: string, plus: string) => `${t}${num(n)}${gt || plus ? '+' : ''}`;
+  return { value: `${side(m[1], m[2], m[3], m[4])}${m[7] ? ` - ${side(m[5], m[6], m[7], m[8])}` : ''} masl` };
 }
 
 function harvest(v: string): Std {
@@ -66,6 +71,8 @@ function roast(v: string): Std {
 }
 
 function processing(v: string): Std {
+  if (PROCESSING_ALIAS[v.toLowerCase()]) return { value: PROCESSING_ALIAS[v.toLowerCase()] };
+  if (/^EA Decaf /.test(v)) return { value: v };
   const d = /^(.*?)\b(?:EA\s+)?Decaf(?:feinated)?\b(.*)$/i.exec(v);
   if (d) {
     const base = `${d[1]} ${d[2]}`.trim();

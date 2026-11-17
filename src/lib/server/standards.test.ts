@@ -5,7 +5,11 @@ import { applyDataStandards, roundCents, splitProducerFarm, standardizeCoffee, s
 const OK: [StdField, string, string | null][] = [
   ['elevation', '1850 masl', '1,850 masl'],
   ['elevation', '1,700-1,900 masl', '1,700 - 1,900 masl'],
-  ['elevation', '>2000', '>2,000 masl'],
+  ['elevation', '>2000', '2,000+ masl'],
+  ['elevation', '2,000+ masl', '2,000+ masl'],
+  ['elevation', '2,300-2,500+ masl', '2,300 - 2,500+ masl'],
+  ['processing', 'Sugarcane (EA) Decaffeinated, Thermal Shock Washed Anaerobic', 'EA Decaf Thermal Shock Anaerobic Washed'],
+  ['processing', 'Red Fruits Co-Ferment Decaf', 'EA Decaf Red Fruits Co-Ferment'],
   ['elevation', '60-250 masl', '60 - 250 masl'],
   ['elevation', '~1,850 masl', '~1,850 masl'],
   ['harvest_time', 'January-April 2026', 'January 2026 - April 2026'],
@@ -67,12 +71,9 @@ describe('standardizeField', () => {
   });
 
   it.each<[StdField, string]>([
-    ['elevation', '2,300-2,500+ masl'],
     ['elevation', 'high'],
     ['harvest_time', 'March - July'],
     ['harvest_time', 'Spring'],
-    ['processing', 'Sugarcane (EA) Decaffeinated, Thermal Shock Washed Anaerobic'],
-    ['processing', 'Red Fruits Co-Ferment Decaf'],
     ['producer', 'A, B, C'],
     ['roast_level', 'Burnt'],
     ['origin', 'Colombia/Peru']
