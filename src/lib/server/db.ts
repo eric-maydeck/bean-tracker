@@ -10,6 +10,7 @@ import { PRODUCT_PAGE_BACKFILLS } from './productPageBackfill.ts';
 import { BEAN_DATA_BACKFILLS } from './beanDataBackfill.ts';
 import { BEAN_BASE_BACKFILLS } from './beanBaseBackfill.ts';
 import { COFFEE_CORRECTIONS } from './coffeeCorrections.ts';
+import { applyDataStandards } from './standards.ts';
 import { applySubscriptionUrls, SUBSCRIPTION_URLS_2026_10_08 } from './subscriptions.ts';
 import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConquerorLinks.ts';
 import { applySubscriptionLinks, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_2026_10_MARKER } from './subscriptionLinks.ts';
@@ -132,6 +133,7 @@ export function applySchema(db: DatabaseSync): void {
   for (const b of BEAN_DATA_BACKFILLS) applyCoffeeFixes(db, b); // reviewed origin/amount/cost fixes + unlinked deletes
   for (const b of BEAN_BASE_BACKFILLS) applyCoffeeFixes(db, b); // reviewed Bean Base fills (tasting notes, bean_base_id, origin detail)
   for (const b of COFFEE_CORRECTIONS) applyCoffeeFixes(db, b);
+  applyDataStandards(db, 'data_standards_2026_11'); // one-time conversion to docs/data-standards.md forms
   applyImageSources(db, IMAGE_SOURCES_2026_10);
   applySubscriptionUrls(db, SUBSCRIPTION_URLS_2026_10_08, 'subscription_urls_2026_10_08');
   applySubscriptionLinks(db, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_2026_10_MARKER);
