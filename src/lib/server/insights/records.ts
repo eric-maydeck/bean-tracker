@@ -269,7 +269,7 @@ const speeds = (c: RecCtx): Candidate[] => {
   const band = labFn('rpm');
   const solid = speedTab(rows, () => null).speeds.filter((s) => s.solid && s.delta !== null);
   return solid.length < 2 ? [] : solid.map((s) => ({
-    value: s.delta!,
+    value: s.delta!, mean: s.delta!,
     holder: { label: s.label, href: '/stats?tab=gear#gear-speeds', date: rows.filter((b) => band(b)?.label === s.label).map((b) => b.localDate).sort().pop()! }
   }));
 };

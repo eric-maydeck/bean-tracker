@@ -103,7 +103,7 @@
     <LabHead id="gear-speeds" title="Ratings by grind speed" help={SPEED_HELP} {placeTip} />
     {#if t.speeds.length}
       {#if t.speedPlot}<SpeedChart m={t.speedPlot} />{/if}
-      <div class="fit-body"><LabBoard rows={t.speeds} slots={0} noun="grind speed" vs="vs avg" {placeTip} /></div>
+      <div class="fit-body"><LabBoard rows={t.speeds} slots={0} noun="grind speed" vs="vs avg" paired={false} {placeTip} /></div>
     {:else}
       <p class="hl-empty">{emptyLine('No rated brews with a grind speed in this period.')}</p>
     {/if}

@@ -627,7 +627,9 @@ export function speedTab(rows: readonly BrewFact[], slice: (b: BrewFact) => stri
     return { label, order: s.order, delta: mean(s.means), brews: s.brews, bags: s.means.length, solid: isSolid(s), sample: pooled(s.means.length, s.brews), strength: null,
       adjusted: mean(rs), plainBrews: g.length, plainBags: s.means.length, se: null, z: null, spread: null, sd: rs.length >= 2 ? sampleSd(rs) : null };
   }).sort(byOrder);
-  const cols0 = bands.map((s) => ({ label: s.label, solid: s.solid, y: mean(raw.get(s.label)!.map(base)) + s.delta!, ratings: raw.get(s.label)!.map((b) => b.rating!) }));
+  // The trend point is the band's value as a rating: its bags' mean grinder baseline (bag-weighted, as the value is) + the value.
+  const bBase = bagBandMeans(adj.map((b) => ({ ...b, rating: base(b) })), rpmBand);
+  const cols0 = bands.map((s) => ({ label: s.label, solid: s.solid, y: mean(bBase.get(s.label)!.means) + s.delta!, ratings: raw.get(s.label)!.map((b) => b.rating!) }));
   // Heatmap: rows = coffee groups (≥ MIN_BAGS bags, ≥ 2 speeds); cell = the group's value at that speed less its value over all speeds.
   const cols = bands.map((s) => s.label);
   const groups = [...groupBy(scored, slice)].filter(([k, g]) => k && new Set(g.map((b) => b.coffeeId)).size >= MIN_BAGS)

@@ -9,10 +9,11 @@
 
   // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows with the numbers
   // in aligned columns under one header (ui-rules G4): brews · bags · avg rating · SD, then the Likely/Possible
-  // badge and the same-bag delta. The sub line keeps non-numeric context only (a recipe's months). Narrow
+  // badge (when the row has a test) and the delta (same-bag; `vs` names the baseline; Gear's speed board is vs the grinder
+  // average, with `paired` false so a thin row's tip counts plain bags, not same-bag pairs). The sub line keeps non-numeric context only (a recipe's months). Narrow
   // boards drop SD, then bags. Thin rows muted (global .small-sample). `slots`: a side-by-side partner's length; the
   // empty slots are faint placeholders (as on Leaderboards). `noun`: what a row is ("no match" tip).
-  let { rows, slots = 0, noun, vs = 'vs bag', placeTip }: { rows: LeaderRow[]; slots?: number; noun: string; vs?: string; placeTip: (e: ToggleEvent) => void } = $props();
+  let { rows, slots = 0, noun, vs = 'vs bag', paired = true, placeTip }: { rows: LeaderRow[]; slots?: number; noun: string; vs?: string; paired?: boolean; placeTip: (e: ToggleEvent) => void } = $props();
   const uid = $props.id();
   let ses = $derived(rows.filter((r) => r.delta !== null).map((r) => r.se));
 </script>
@@ -32,7 +33,7 @@
         <span class="rank">{i + 1}</span>
         <span class="who">
           <span class="name">{r.label}</span>
-          {#if r.months || r.sample.small}<span class="who-line">{#if r.months}<small>{r.months}</small>{/if}{#if r.sample.small}<SampleNote s={r.sample} paired={r.delta !== null} strength={r.strength === 'solid' || r.strength === 'hint' ? r.strength : undefined} />{/if}</span>{/if}
+          {#if r.months || r.sample.small}<span class="who-line">{#if r.months}<small>{r.months}</small>{/if}{#if r.sample.small}<SampleNote s={r.sample} paired={paired && r.delta !== null} strength={r.strength === 'solid' || r.strength === 'hint' ? r.strength : undefined} />{/if}</span>{/if}
         </span>
         <span class="num">{r.plainBrews}</span>
         <span class="num bags">{r.plainBags}</span>

@@ -747,6 +747,15 @@ describe('gearTab', () => {
       expect(p.cols[0].ratings).toHaveLength(30);
       expect(p.avg).toBeCloseTo(8, 1);
     });
+    it('plot trend: the baseline is bag-weighted like the value, so y = value as a rating (uneven bags)', () => {
+      // Bag 1 (A, 20 brews at 750, 6) and bag 2 (B, 2 brews at 750, 9); a big bag mustn't outweigh a small one.
+      const r = [...many(20, 1, 92, 6, { rpm: 750, grinder: 'A' }), ...many(20, 3, 92, 8, { rpm: 1250, grinder: 'A' }),
+        ...many(2, 2, 92, 9, { rpm: 750, grinder: 'B' }), ...many(2, 4, 92, 11, { rpm: 1250, grinder: 'B' })];
+      const p = run(r).speedPlot!, v = run(r).speeds.find((s) => s.label === '~750 RPM')!;
+      // baselines: A = 7, B = 10. 750 bag means of scores: -1 (A), -1 (B) -> value -1; bag-mean baseline (7+10)/2 = 8.5, not the brew-weighted 7.27.
+      expect(v.delta).toBeCloseTo(-1, 1);
+      expect(p.cols[0].y).toBeCloseTo(8.5 + v.delta!, 1);
+    });
     it('heatmap: rows = coffee groups, cell = group value at that speed less its value over all speeds', () => {
       const m = run(rows).speedByGroup!;
       expect(m.rows).toEqual(['Light']);

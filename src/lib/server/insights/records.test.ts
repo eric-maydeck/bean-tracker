@@ -51,6 +51,22 @@ describe('grind speed records', () => {
     expect(run('leastSpeed', speeds)).toMatchObject({ holder: { label: '~1,000 RPM', date: '2026-07-03' } });
     expect(run('leastSpeed', speeds)!.value).toBeLessThan(0);
   });
+  it('tile value is finite and the shown mean is the same band value (no +NaN)', () => {
+    for (const k of ['favoriteSpeed', 'leastSpeed']) {
+      const r = run(k, speeds)!;
+      expect(Number.isFinite(r.mean)).toBe(true);
+      expect(r.mean).toBe(r.value);
+    }
+  });
+  it('baseline is per grinder, and bags brewed at one speed only still count', () => {
+    const g = (id: number, rpm: number, r: number, grinder: string) => rated(id, Array(10).fill(r)).map((b) => ({ ...b, rpm, grinder }));
+    // Grinder A (average 7): bags 1-3 only at 1000 (6), bags 4-6 only at 1500 (8). Grinder B (average 3): bags 7-12 only at 1000 (3).
+    const rows = [1, 2, 3].flatMap((i) => g(i, 1000, 6, 'A')).concat([4, 5, 6].flatMap((i) => g(i, 1500, 8, 'A')), [7, 8, 9, 10, 11, 12].flatMap((i) => g(i, 1000, 3, 'B')));
+    expect(run('favoriteSpeed', rows)).toMatchObject({ holder: { label: '~1,500 RPM' } });
+    expect(run('favoriteSpeed', rows)!.value).toBeCloseTo(1);
+    expect(run('leastSpeed', rows)).toMatchObject({ holder: { label: '~1,000 RPM' } });
+    expect(run('leastSpeed', rows)!.value).toBeCloseTo(-1 / 3); // (3 bags at -1, 6 at 0) / 9 bags
+  });
   it('one solid row decides nothing; thin rows do not qualify', () => {
     const onlyOne = speeds.filter((b) => b.rpm === 1500);
     expect(run('favoriteSpeed', onlyOne)).toBeNull();
