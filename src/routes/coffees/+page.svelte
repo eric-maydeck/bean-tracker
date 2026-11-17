@@ -819,6 +819,7 @@
       <div id="add-coffee">
         <CoffeeForm
           prefill={addPrefill}
+          cloned={addPrefill != null}
           roastLevels={data.roastLevels}
           roasters={data.roasters}
           roasterImages={data.roasterImages}

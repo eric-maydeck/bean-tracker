@@ -1,11 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
-import { accentsFrom, applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, proposeStandards, type StdField } from './standards';
+import { accentsFrom, applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, proposeStandards, formatLocked, type StdField } from './standards';
 
 const OK: [StdField, string, string | null][] = [
   ['elevation', '1850 masl', '1,850 masl'],
   ['elevation', '1,700-1,900 masl', '1,700 - 1,900 masl'],
   ['elevation', '>2000', '2,000+ masl'],
+  ['elevation', 'above 2000m', '2,000+ masl'],
+  ['elevation', 'Over 1,800 meters', '1,800+ masl'],
+  ['variety', 'Geisha', 'Gesha'],
+  ['variety', 'Geisha & SL-28', 'Gesha, SL28'],
+  ['variety', 'Heirloom', 'Landrace'],
+  ['variety', 'Rosado/Pink Bourbon', 'Pink Bourbon'],
+  ['variety', 'Bourbon Aji', 'Ají'],
   ['elevation', '2,000+ masl', '2,000+ masl'],
   ['elevation', '2,300-2,500+ masl', '2,300 - 2,500+ masl'],
   ['processing', 'Sugarcane (EA) Decaffeinated, Thermal Shock Washed Anaerobic', 'EA Decaf Thermal Shock Anaerobic Washed'],
@@ -252,5 +259,12 @@ describe('accentsFrom', () => {
   it('matches multi-word values', () => {
     expect(accentsFrom('Finca La Esperanza', 'Finca La Esperanza')).toBe('Finca La Esperanza');
     expect(accentsFrom('Jose Perez', 'by José Pérez today')).toBe('José Pérez');
+  });
+});
+
+describe('formatLocked placeholders', () => {
+  it('proposes blank for n/a or a dash instead of blocking', () => {
+    expect(formatLocked('elevation', 'n/a')).toEqual({ value: null, ok: true });
+    expect(formatLocked('harvest_time', '-')).toEqual({ value: null, ok: true });
   });
 });

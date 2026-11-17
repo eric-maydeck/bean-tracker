@@ -742,7 +742,10 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
         const URL_ = 'https://example.test/products/std';
         const setup = async (page: Page) => {
           await page.route('**/api/coffees/fill-from-url', (route) =>
-            route.fulfill({ json: { fields: { producer: 'Hacienda Mock', image_url: PIXEL }, notes: ['Mock note'], beanBase: null, variants: [], selected: null } }));
+            route.fulfill({ json: {
+              fields: { producer: 'Hacienda Mock', image_url: PIXEL, rest_days_low: 7, rest_days_high: 14 }, notes: ['Mock note'], restNote: 'Mock rest note',
+              beanBase: { id: '9', url: 'https://www.loffeelabs.com', fields: ['producer'] },
+              variants: [{ label: '250g', grams: 250, costUsd: 20, originalPrice: null }], selected: 0 } }));
           await openAdd(page);
           await page.locator('#producer').fill('Finca Typed');
           await page.locator('#product_url').fill(URL_);
@@ -759,6 +762,12 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
           await expect(page.locator('img.image-preview')).toHaveCount(0);
           await expect(page.getByText('Mock note')).toHaveCount(0);
           await expect(page.locator('#product_url')).toHaveValue(URL_);
+          await expect(page.getByRole('link', { name: 'From Loffee Labs Bean Base' })).toHaveCount(0);
+          await expect(page.locator('input[name="bean_base_id"]')).toHaveValue('');
+          await expect(page.getByRole('group', { name: 'Bag size' })).toHaveCount(0);
+          await expect(page.locator('#rest_days_low')).toHaveValue('');
+          await expect(page.locator('#rest_days_high')).toHaveValue('');
+          await expect(page.getByText('Mock rest note')).toHaveCount(0);
         });
 
         test('Approve applies the fill', async ({ page }) => {
@@ -768,10 +777,27 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
           await expect(page.locator('#producer')).toHaveValue('Hacienda Mock');
           await expect(page.locator('img.image-preview')).toBeVisible();
           await expect(page.getByText('Mock note')).toBeVisible();
+          await expect(page.getByRole('link', { name: 'From Loffee Labs Bean Base' })).toBeVisible();
+          await expect(page.getByRole('group', { name: 'Bag size' })).toBeVisible();
+          await expect(page.locator('#rest_days_low')).toHaveValue('7');
         });
       });
     });
   }
+
+  test('bean triage Create checks every prefilled value (a plain add, not a clone)', async ({ page }) => {
+    const sent: string[][] = [];
+    await page.route('**/api/coffees/standardize', (route) => {
+      sent.push(route.request().postDataJSON().fields);
+      return route.fulfill({ json: { rows: [] } });
+    });
+    await page.route(/\?\/(create|createCoffee)$/, (route) => route.fulfill({ json: { type: 'failure', status: 400, data: '[{"error":1},"stubbed"]' } })); // nothing saves
+    await gotoReady(page, '/account');
+    await page.locator('.triage-row').filter({ hasText: 'Rwanda Gitega' }).first().getByRole('button', { name: 'Create', exact: true }).click();
+    await page.locator('.modal').getByRole('button', { name: 'Save', exact: true }).click();
+    await expect.poll(() => sent.length).toBe(1);
+    expect(sent[0]).toEqual(expect.arrayContaining(['roaster', 'coffee_name', 'cost']));
+  });
 
   test('open dialog passes checkLayout at phone and desktop sizes', async ({ page }) => {
     for (const v of ALL_VIEWPORTS.filter((v) => ['phone-portrait', 'phone-landscape', 'w1280'].includes(v.name))) {

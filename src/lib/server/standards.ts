@@ -21,7 +21,14 @@ const VARIETY_ALIAS: Record<string, string> = {
   'selectdion 9': 'Selection 9',
   landraces: 'Landrace', 'ethiopian landraces': 'Landrace', 'landrace varieties': 'Landrace',
   'jarc 74158': '74158', 'primarily jarc 74158': '74158', 'jarc 74158 (walega)': '74158',
-  'gesha inca': 'SL9 (Inca Gesha)', 'inca gesha': 'SL9 (Inca Gesha)' // one variety (user, 2026-11-16)
+  'gesha inca': 'SL9 (Inca Gesha)', 'inca gesha': 'SL9 (Inca Gesha)', // one variety (user, 2026-11-16)
+  // carried over from originFormat.ts WHOLE (the retired formatVariety)
+  heirloom: 'Landrace', 'ethiopian heirloom': 'Landrace', 'heirloom ethiopian varieties': 'Landrace',
+  'ethiopian landrace': 'Landrace', 'ethiopian landrace (heirloom)': 'Landrace',
+  'local bourbon cultivars': 'Bourbon', 'local bourbon varietals': 'Bourbon',
+  sl09: 'SL9', 'ruiru-11': 'Ruiru 11', ruiru: 'Ruiru 11', ruiri: 'Ruiru 11', 'mundo nuvo': 'Mundo Novo',
+  welicho: 'Wolisho', 'field blend': 'Field blend', 'mostly 74158': '74158', 'bourbon sidra': 'Sidra',
+  'bourbon aji': 'Ají', 'bourbon ají': 'Ají', 'typica mejorado': 'Mejorado'
 };
 const PROCESSING_ALIAS: Record<string, string> = {
   'fully washed': 'Washed',
@@ -47,7 +54,7 @@ export function roundCents(n: number): number {
 
 function elevation(v: string): Std {
   // `+` means "and above" (user, 2026-11-16: `2,000+ masl` over `>2,000 masl`); a leading `>` converts to it.
-  const m = /^(~?)(>?)\s*(\d[\d,]*)(\+?)\s*(?:[-–]\s*(~?)(>?)\s*(\d[\d,]*)(\+?))?\s*(?:m|masl|meters)?$/i.exec(v);
+  const m = /^(~?)((?:>|above\s+|over\s+)?)\s*(\d[\d,]*)(\+?)\s*(?:[-–]\s*(~?)((?:>|above\s+|over\s+)?)\s*(\d[\d,]*)(\+?))?\s*(?:masl|meters|metres|m)?$/i.exec(v);
   if (!m) return { value: v, review: 'elevation not a number or range' };
   const num = (s: string) => String(Number(s.replace(/,/g, ''))).replace(/\B(?=(\d{3})+$)/g, ',');
   const side = (t: string, gt: string, n: string, plus: string) => `${t}${num(n)}${gt || plus ? '+' : ''}`;
@@ -88,7 +95,14 @@ function processing(v: string): Std {
 }
 
 function variety(v: string): Std {
-  let items = splitList(v).map((s) => s.replace(/\bSL-(\d+)/gi, 'SL$1')).map((s) => VARIETY_ALIAS[s.toLowerCase()] ?? s);
+  // ponytail: ALL-CAPS items of 5+ letters are title-cased (short codes like JARC stay).
+  const item = (s: string) => {
+    const t = /^[A-Z ]{5,}$/.test(s) ? s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : s;
+    const alias = VARIETY_ALIAS[t.toLowerCase()];
+    return alias ?? t.replace(/\bgeisha\b/gi, 'Gesha').replace(/\baji\b/gi, 'Ají').replace(/^jarc\s+(\d+)$/i, '$1');
+  };
+  let items = splitList(v.replace(/rosado\/pink bourbon/gi, 'Pink Bourbon'))
+    .map((s) => s.replace(/\bSL-(\d+)/gi, 'SL$1')).map((s) => VARIETY_ALIAS[s.toLowerCase()] ?? item(s));
   if (items.includes('SL9 (Inca Gesha)')) items = items.filter((s) => s !== 'SL9');
   return { value: dedupe(items).sort(naturalCmp).join(', ') };
 }
@@ -267,7 +281,7 @@ export function formatLocked(field: string, value: string | number | null): { va
     return /^(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$/.test(n) ? { value: roundCents(Number(n.replace(/,/g, ''))), ok: true } : { value: t, ok: false };
   }
   const r = standardizeField(field as StdField, t);
-  return r.review ? { value: t, ok: false } : { value: r.value, ok: r.value !== null };
+  return r.review ? { value: t, ok: false } : { value: r.value, ok: true }; // a placeholder (n/a, -) is null here: proposed blank, not blocked
 }
 
 export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[] {

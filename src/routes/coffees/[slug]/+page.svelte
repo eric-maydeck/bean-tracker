@@ -605,6 +605,7 @@
       <h2>{adding ? 'Add Coffee' : 'Clone '}{#if !adding}<CoffeeName name={data.coffee.coffee_name} />{/if}</h2>
       <CoffeeForm
         prefill={clonePrefillData}
+        cloned
         roastLevels={data.roastLevels}
         roasters={data.roasters}
         roasterImages={data.roasterImages}

@@ -34,7 +34,8 @@
     onstage = null,
     onclone = null,
     showSubmit = true,
-    showClone = true
+    showClone = true,
+    cloned = false
   }: {
     coffee?: CoffeeRow | null;
     prefill?: Partial<CoffeeRow> | null;
@@ -63,6 +64,9 @@
     // clones whatever's currently typed, including unstaged edits) would be
     // a second, redundant Clone control there — hidden by passing false.
     showClone?: boolean;
+    // A clone's prefilled values count as already checked (only changes are asked about); a plain add, even one
+    // prefilled from BQ triage, checks every value it holds.
+    cloned?: boolean;
   } = $props();
 
   let formEl: HTMLFormElement;
@@ -252,8 +256,8 @@
       resolved = resolve(rows, decisions);
       for (const [k, v] of Object.entries(resolved)) setField(k, v);
     }
-    // What was actually checked and sent, not the form as it is after the awaits.
-    lastChecked = { ...values, ...resolved };
+    // What was actually checked and sent, not the form as it is after the awaits. A failed check leaves it alone.
+    if (rows) lastChecked = { ...values, ...resolved };
     return true;
   }
 
@@ -393,7 +397,7 @@
   onMount(() => {
     mounted = true;
     baselineFields = captureFields();
-    lastChecked = { ...baselineFields };
+    lastChecked = coffee || cloned ? { ...baselineFields } : {};
   });
 
   // Exposed so "Save changes" (list/detail pages) can apply THIS form's
@@ -465,6 +469,8 @@
     return async ({ result, update }) => {
       await update();
       if (result.type === 'success') {
+        // The form may stay open and reset: whatever it holds next is unchecked again.
+        lastChecked = cloned ? captureFields() : {};
         onsuccess?.();
       }
     };
