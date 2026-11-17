@@ -8,7 +8,7 @@
   // fields: body() reads the roaster and coffee name when a search starts, matching() describes them as typed,
   // onpick stages the picked card. Inline state, never in the URL.
   let { body, matching, disabled, onpick }: {
-    body: () => { roaster: string; coffee_name: string };
+    body: () => { roaster: string; coffee_name: string; roast_date?: string | null; product_url?: string | null };
     matching: () => string[];
     disabled: boolean;
     onpick: (card: BeanCard) => void;
@@ -110,12 +110,18 @@
               {#if c.image}
                 <span class="suggest-image">
                   <img src={c.image} alt="" />
-                  {#if c.soldout}<span class="badge">Sold out</span>{/if}
+                  {#if c.closest}<span class="badge">Closest to roast date</span>{/if}
+                  {#if c.soldout}<span class="badge badge-sold">Sold out</span>{/if}
                 </span>
               {/if}
               <span class="suggest-text">
                 <span class="suggest-title">{c.name}</span>
-                {#if !c.image && c.soldout}<span class="badge badge-inline">Sold out</span>{/if}
+                {#if !c.image && (c.closest || c.soldout)}
+                  <span class="badge-row">
+                    {#if c.closest}<span class="badge badge-inline">Closest to roast date</span>{/if}
+                    {#if c.soldout}<span class="badge badge-inline">Sold out</span>{/if}
+                  </span>
+                {/if}
                 {#each lines(c.fields) as line, i (i)}
                   {#if line}<span class={i === 2 ? 'text-muted suggest-excerpt' : 'text-muted suggest-meta'}>{line}</span>{/if}
                 {/each}
@@ -153,6 +159,15 @@
 </SuggestSheet>
 
 <style>
+  /* Badges over the image's top-left corner: Closest first, Sold out under it. */
+  .suggest-image :global(.badge-sold) {
+    top: calc(var(--space-1) + 1.5rem);
+  }
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
   /* The no-image card has no badge corner, so the badge sits in the text. */
   .badge-inline {
     padding: 0.1rem 0.4rem;

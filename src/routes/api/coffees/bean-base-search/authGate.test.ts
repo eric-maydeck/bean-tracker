@@ -25,6 +25,14 @@ describe('POST /api/coffees/bean-base-search', () => {
     }
   });
 
+  it('400s a roast date that is not YYYY-MM-DD', async () => {
+    for (const roast_date of ['11/16/2026', '2026-13-45', 'soon', 5]) {
+      const res = await call({ roaster: 'Lume', roast_date });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: 'Roast date must be YYYY-MM-DD' });
+    }
+  });
+
   it('400s an over-long roaster or name', async () => {
     expect((await call({ roaster: 'x'.repeat(201) })).status).toBe(400);
     expect((await call({ roaster: 'Lume', coffee_name: 'x'.repeat(201) })).status).toBe(400);

@@ -147,3 +147,39 @@ describe('searchBeanBase', () => {
     expect((r as { beans: { fields: unknown }[] }).beans[0].fields).toEqual(beanBaseFields(lume[4], ctx));
   });
 });
+
+describe('searchBeanBase ranking like image Suggest', () => {
+  const mk = (id: number, name: string, date: string, link: string | null = null): BeanBaseBean => ({
+    ...BEANS[0], id, roaster: 'Lume Coffee', 'roast-name': name, date, link
+  });
+  const beans = [
+    mk(1, 'Kenya Kiambu', '2025-01-01'),
+    mk(2, 'Huila Washed', '2025-06-01'),
+    mk(3, 'Ethiopia Huila Natural Lot', '2025-03-01'),
+    mk(4, 'Other', '2025-12-01', 'https://lume.test/collections/all/products/other-lot?v=1'),
+    mk(5, 'Huila Washed Decaf', '2025-09-01')
+  ];
+  const run = async (name: string, opts: { roastDate?: string | null; productUrl?: string | null } = {}) => {
+    const r = await searchBeanBase('Lume Coffee', name, ctx, { key: 'k', fetcher: ok(beans), ...opts });
+    const cards = (r as { beans: { id: string; closest: boolean }[] }).beans;
+    return { ids: cards.map((c) => c.id), closest: cards.filter((c) => c.closest).map((c) => c.id) };
+  };
+
+  it('no roast date (the usual case): link, then name words, then newest, and no closest flag', async () => {
+    expect((await run('Huila Washed', { productUrl: 'https://www.lume.test/products/other-lot' }))).toEqual({
+      ids: ['4', '2', '5', '3', '1'],
+      closest: []
+    });
+    // name words only: exact name first, then more shared words, then newest; unrelated by newest last
+    expect(await run('Huila Washed')).toEqual({ ids: ['2', '5', '3', '4', '1'], closest: [] });
+    expect(await run('')).toEqual({ ids: ['4', '5', '2', '3', '1'], closest: [] });
+  });
+  it('with a roast date, equal name matches go nearest the roast date, and one bean is closest', async () => {
+    const r = await run('Huila', { roastDate: '2025-03-10' });
+    expect(r.ids).toEqual(['3', '2', '5', '1', '4']);
+    expect(r.closest).toEqual(['3']);
+  });
+  it('closest is the nearest-dated bean even if it is not a name match', async () => {
+    expect((await run('Kenya', { roastDate: '2025-12-20' })).closest).toEqual(['4']);
+  });
+});

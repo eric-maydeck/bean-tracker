@@ -1,5 +1,6 @@
 import { formatOriginField } from '../originFormat.ts';
 import { conciseProcess } from '../processGroups';
+import { words } from './imageSuggest/rankImages';
 import { canonical, normalizeRoaster, type FillFields } from './productFill';
 
 const BASE_URL = 'https://api.loffeelabs.com/api/v2';
@@ -154,7 +155,7 @@ export async function lookupBeanBase(
 }
 
 export type BeanCard = {
-  id: string; name: string; image: string | null; soldout: boolean; date: string; link: string | null; fields: FillFields;
+  id: string; name: string; image: string | null; soldout: boolean; date: string; link: string | null; closest: boolean; fields: FillFields;
 };
 export type BeanSearch =
   | { status: 'no-key' | 'failed' }
@@ -189,25 +190,13 @@ function closestRoasters(typed: string, names: string[], n = 5): string[] {
     .map((x) => x.name);
 }
 
-// Name matches first (exact, then one contains the other, then shared words), then newest.
-function nameRank(typed: string, bean: string | null): number {
-  const t = nameKey(typed);
-  const b = nameKey(bean);
-  if (!t) return 0;
-  if (t === b) return 3;
-  if (b && (b.includes(t) || t.includes(b))) return 2;
-  const words = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  const bw = new Set(words(bean ?? ''));
-  return words(typed).some((w) => bw.has(w)) ? 1 : 0;
-}
-
 // ponytail: image/soldout types are undocumented; a truthy soldout counts as sold out. limit 1000 is the
 // Developer plan's cap, enough for one roaster's whole list; no paging.
 export async function searchBeanBase(
   roaster: string,
   coffeeName: string,
   ctx: Ctx,
-  opts: { key?: string | null; fetcher?: typeof fetch } = {}
+  opts: { key?: string | null; fetcher?: typeof fetch; roastDate?: string | null; productUrl?: string | null } = {}
 ): Promise<BeanSearch> {
   const key = opts.key === undefined ? beanBaseKey() : opts.key;
   if (!key) return { status: 'no-key' };
@@ -221,14 +210,36 @@ export async function searchBeanBase(
       if (!Array.isArray(names)) return { status: 'failed' };
       return { status: 'roaster', closest: closestRoasters(roaster, names.filter((x): x is string => typeof x === 'string')) };
     }
-    const cards = beans
+    // Order like image Suggest: product link, coffee-name words, nearest the roast date (undated last), newest.
+    const nameWords = [...new Set(words(coffeeName))];
+    const nameKeyTyped = nameKey(coffeeName);
+    const link = opts.productUrl ? normalizeLink(opts.productUrl) : null;
+    const roastMs = opts.roastDate ? Date.parse(opts.roastDate) : NaN;
+    const scored = beans
       .filter((b) => b.roaster === mapped)
-      .map((b) => ({ b, rank: nameRank(coffeeName, b['roast-name']) }))
-      .sort((x, y) => y.rank - x.rank || String(y.b.date).localeCompare(String(x.b.date)))
-      .map(({ b }): BeanCard => ({
-        id: String(b.id), name: b['roast-name']?.trim() || 'Unnamed', image: b.image?.trim() || null, soldout: !!b.soldout,
-        date: b.date, link: b.link, fields: beanBaseFields(b, ctx)
-      }));
+      .map((b) => {
+        const t = new Set(words(b['roast-name'] ?? ''));
+        const ms = Date.parse(b.date);
+        return {
+          b,
+          link: link && b.link && normalizeLink(b.link) === link ? 1 : 0,
+          exact: nameKeyTyped && nameKey(b['roast-name']) === nameKeyTyped ? 1 : 0,
+          match: nameWords.filter((w) => t.has(w)).length,
+          days: Number.isNaN(ms) || Number.isNaN(roastMs) ? Infinity : Math.abs(ms - roastMs),
+          ms: Number.isNaN(ms) ? 0 : ms
+        };
+      })
+      .sort((a, b) => b.link - a.link || b.exact - a.exact || b.match - a.match || (a.days === b.days ? 0 : a.days < b.days ? -1 : 1) || b.ms - a.ms);
+    // closest: the one bean dated nearest the roast date (ties: earlier in the list), as in image Suggest.
+    let best = -1;
+    let bestDays = Infinity;
+    scored.forEach((x, i) => {
+      if (x.days < bestDays) [best, bestDays] = [i, x.days];
+    });
+    const cards = scored.map(({ b }, i): BeanCard => ({
+      id: String(b.id), name: b['roast-name']?.trim() || 'Unnamed', image: b.image?.trim() || null, soldout: !!b.soldout,
+      date: b.date, link: b.link, closest: i === best, fields: beanBaseFields(b, ctx)
+    }));
     return { status: 'ok', roaster: mapped, beans: cards };
   } catch {
     return { status: 'failed' };
