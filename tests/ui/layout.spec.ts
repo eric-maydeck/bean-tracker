@@ -6693,6 +6693,43 @@ export const STATES: State[] = [
       expect(await lists.first().locator('.board-row.bar').count()).toBeGreaterThan(0);
       await expect(lists.first().locator('.board-row.bar a').first()).toHaveAttribute('href', /^\/coffees\//);
       await expectBarHover(page);
+      // Brew rows lead their sub line with the roaster.
+      const subs = await lists.first().locator('small').allTextContents();
+      for (const sub of subs) expect(sub).toMatch(/^(.+ · )?\d{4}-\d{2}-\d{2}$/);
+      expect(subs.some((sub) => sub.includes(' · '))).toBe(true);
+      const tip = page.locator('[popover]:popover-open');
+      const inView = async () => {
+        const r = await tip.evaluate((e) => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom, w: innerWidth, h: innerHeight, clipped: [...e.querySelectorAll('*')].filter((c) => getComputedStyle(c).display !== 'inline' && c.scrollWidth > c.clientWidth + 1).map((c) => `${c.outerHTML.slice(0, 120)} ${c.scrollWidth}>${c.clientWidth}`) }; });
+        expect(r.l).toBeGreaterThanOrEqual(-1); expect(r.r).toBeLessThanOrEqual(r.w + 1); expect(r.t).toBeGreaterThanOrEqual(-1); expect(r.b).toBeLessThanOrEqual(r.h + 1); expect(r.clipped).toEqual([]);
+      };
+      // Row tip (name and roaster): over the filled part of the bar only (mouse; a tap on a link opens the coffee).
+      if (await page.evaluate(() => matchMedia('(hover: hover)').matches)) {
+        const row = lists.first().locator('.board-row.bar').first();
+        const hit = (await row.locator('.hit').boundingBox())!;
+        const rb = (await row.boundingBox())!;
+        await page.mouse.move(hit.x + hit.width / 2, hit.y + hit.height / 2);
+        await expect(tip).toContainText('Roaster');
+        await inView();
+        await page.mouse.move(rb.x + 2, rb.y - 40);
+        await expect(tip).toHaveCount(0);
+        const val = (await row.locator('.val').boundingBox())!;
+        if (hit.x + hit.width + 12 < val.x) {
+          await page.mouse.move(hit.x + hit.width + 8, hit.y + hit.height / 2);
+          await page.waitForTimeout(150);
+          await expect(tip).toHaveCount(0);
+        }
+        await page.mouse.move(rb.x + 2, rb.y - 40);
+      }
+      // Rating tip: hover on desktop, tap on phones; brew details, then a finished coffee's.
+      for (const [i, want] of [[0, /Roaster[\s\S]*Brew/], [1, /Roaster[\s\S]*Brews/]] as const) {
+        const val = lists.nth(i).locator('.board-row.bar .val').first();
+        if (touch()) await val.tap(); else await val.hover();
+        await expect(tip).toContainText(want);
+        await inView();
+        await page.mouse.move(0, 0);
+        if (touch()) await page.mouse.click(5, 5);
+        await expect(tip).toHaveCount(0);
+      }
     }
   },
   {
