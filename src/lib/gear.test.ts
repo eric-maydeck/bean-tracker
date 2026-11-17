@@ -69,7 +69,7 @@ describe('grinder RPM', () => {
     expect(parseGearValues('grinder', conv)).toEqual({ values: conv });
   });
   it('requires every conversion field and a dial max above the min', () => {
-    expect(parseGearValues('grinder', { ...conv, rpmMax: '' })).toEqual({ error: 'RPM at dial max is required to convert the dial to RPM' });
+    expect(parseGearValues('grinder', { ...conv, rpmMax: '' })).toEqual({ error: 'Speed at dial max is required to convert the dial to RPM' });
     expect(parseGearValues('grinder', { ...conv, dialMin: 1, dialMax: 1 })).toEqual({ error: 'Dial max must be above dial min' });
   });
   it('drops the dial fields unless converting, and rpm on a hand grinder', () => {

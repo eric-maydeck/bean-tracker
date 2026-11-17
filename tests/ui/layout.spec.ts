@@ -9223,10 +9223,28 @@ export const STATES: State[] = [
     } },
   { name: 'insights-gear-speeds-empty', viewports: 'two', path: () => '/stats?tab=gear&range=1w',
     act: async (page) => {
+      // The board is empty here, so both say there are no speeds; with board rows but no 2-speed coffee the heatmap says so instead.
       for (const id of ['gear-speeds', 'gear-speed-coffee']) {
         const sec = page.locator(`[data-section="${id}"]`);
         await expect(sec.locator('.hl-empty')).toHaveText('No rated brews with a grind speed in this period.');
         await expect(sec.locator('.fit-body')).toHaveCount(0);
+      }
+    } },
+  // Adjustable grinder (A4Z in the seed) with the dial conversion on: the dial/RPM grid is laid out and every field fits.
+  { name: 'insights-trophy-edit-convert', path: () => '/stats?tab=gear&card=grinder-a4z-femobook',
+    act: async (page) => {
+      const dlg = page.locator('dialog.trophy-dialog');
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await dlg.getByLabel('Convert dial to RPM', { exact: true }).selectOption('Yes');
+      const names = ['Dial min', 'Dial max', 'Speed at dial min (RPM)', 'Speed at dial max (RPM)'];
+      for (const n of names) await expect(dlg.getByLabel(n, { exact: true })).toBeEnabled();
+      await expect(dlg.getByLabel('Motor speed (RPM)')).toHaveCount(0);
+      const box = async (n: string) => (await dlg.getByLabel(n, { exact: true }).boundingBox())!;
+      const dlgB = (await dlg.boundingBox())!;
+      for (const n of names) {
+        const b = await box(n);
+        expect(b.x, n).toBeGreaterThanOrEqual(dlgB.x);
+        expect(b.x + b.width, n).toBeLessThanOrEqual(dlgB.x + dlgB.width + 1);
       }
     } },
   { name: 'insights-trophy', path: () => '/stats?tab=gear',
@@ -9579,7 +9597,7 @@ export const STATES: State[] = [
       await input('Adjustment').selectOption('Stepped');
       await expect(input('Step size (µm)')).toBeEnabled();
       await input('Adjustment').selectOption('');
-      await check('Step size (µm)', 'RPM (RPM)', true);
+      await check('Step size (µm)', 'Motor speed (RPM)', true);
       // Filter: 8 fields, a full last row (Size, Flow): Save is below Flow.
       await page.goto('/stats?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();

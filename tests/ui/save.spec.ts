@@ -237,14 +237,14 @@ test('trophy card: adjustable grinder converts dial to RPM, Save names the missi
     const dlg = page.locator('dialog.trophy-dialog');
     await dlg.getByRole('button', { name: 'Edit' }).click();
     await expect(dlg.getByLabel('RPM', { exact: true })).toHaveCount(0);
-    for (const n of ['Dial min', 'Dial max', 'RPM at dial min (RPM)', 'RPM at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeDisabled();
+    for (const n of ['Dial min', 'Dial max', 'Speed at dial min (RPM)', 'Speed at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeDisabled();
     await dlg.getByLabel('Convert dial to RPM').selectOption('Yes');
-    for (const n of ['Dial min', 'Dial max', 'RPM at dial min (RPM)', 'RPM at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeEnabled();
+    for (const n of ['Dial min', 'Dial max', 'Speed at dial min (RPM)', 'Speed at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeEnabled();
     await dlg.getByLabel('Dial min', { exact: true }).fill('1');
     await dlg.getByLabel('Dial max', { exact: true }).fill('9');
-    await dlg.getByLabel('RPM at dial min (RPM)').fill('200');
+    await dlg.getByLabel('Speed at dial min (RPM)').fill('200');
     await dlg.getByRole('button', { name: 'Save' }).click();
-    await expect(dlg.getByRole('alert')).toHaveText('RPM at dial max is required to convert the dial to RPM');
+    await expect(dlg.getByRole('alert')).toHaveText('Speed at dial max is required to convert the dial to RPM');
   } finally { flag(0); }
 });
 

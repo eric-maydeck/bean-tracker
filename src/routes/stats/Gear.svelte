@@ -108,7 +108,7 @@
     {#if t.speedByCoffee}
       <div class="fit-body"><LabHeatmap by={t.speedByCoffee} noun="grind speed on this coffee" scale={['Worse than its other speeds', 'Better']} ariaLabel="Grind speed by coffee" /></div>
     {:else}
-      <p class="hl-empty">{emptyLine('No rated brews with a grind speed in this period.')}</p>
+      <p class="hl-empty">{emptyLine(t.speeds.length ? 'No coffee brewed at 2+ grind speeds in this period.' : 'No rated brews with a grind speed in this period.')}</p>
     {/if}
   </section>
 

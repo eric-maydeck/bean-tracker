@@ -1,6 +1,6 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
-  import { fieldsFor, isWebUrl } from '$lib/gear';
+  import { CONVERT_KEYS, fieldsFor, isWebUrl } from '$lib/gear';
   import ImageSuggest from '$lib/components/ImageSuggest.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
@@ -67,7 +67,7 @@
   // Fields that mean nothing for the current choices: a step needs Stepped, the dial range needs conversion on, rpm needs a motor.
   const off = (key: string) => key === 'stepSize' ? values.adjustment !== 'Stepped'
     : key === 'rpm' ? values.type === 'Hand'
-    : ['dialMin', 'dialMax', 'rpmMin', 'rpmMax'].includes(key) ? values.rpmConvert !== 'Yes' : false;
+    : CONVERT_KEYS.slice(1).includes(key) ? values.rpmConvert !== 'Yes' : false;
   // Unsaved changes, named for the leave panel: "Burr size: 64 → 54", "Image URL changed".
   // A field value as comparable text: trimmed, a number as its own digits (so "24" and 24.00 agree), empty for null.
   const norm = (f: { type: string }, v: unknown): string => {

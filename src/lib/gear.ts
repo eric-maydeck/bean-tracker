@@ -71,13 +71,13 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     num('stepSize', 'Step size', 'µm', 0.1, 1000, ['step size', 'step', 'micron per step'],
       'How far one click moves the burrs, in microns (µm): ~12–25µm on most hand grinders, smaller is finer control.'),
     // Speed: the plain `rpm` for fixed-speed grinders, the conversion set when BQ marks the grinder's speed adjustable.
-    num('rpm', 'RPM', 'RPM', 1, 20000, []),
+    num('rpm', 'Motor speed', 'RPM', 1, 20000, []),
     { ...text('rpmConvert', 'Convert dial to RPM', ['Yes', 'No'], [],
       "Yes: BQ's speed is a dial setting; enter the dial range and the RPM at each end (linear between). No: BQ's speed is already RPM."), type: 'select' },
     num('dialMin', 'Dial min', '', 0, 1000, []),
     num('dialMax', 'Dial max', '', 0, 1000, []),
-    num('rpmMin', 'RPM at dial min', 'RPM', 1, 20000, []),
-    num('rpmMax', 'RPM at dial max', 'RPM', 1, 20000, [])
+    num('rpmMin', 'Speed at dial min', 'RPM', 1, 20000, []),
+    num('rpmMax', 'Speed at dial max', 'RPM', 1, 20000, [])
   ],
   filter: [
     text('material', 'Material', ['Paper', 'Cloth', 'Metal'], ['material', 'materials'],
@@ -91,7 +91,7 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     ownData
   ]
 };
-const CONVERT_KEYS = ['rpmConvert', 'dialMin', 'dialMax', 'rpmMin', 'rpmMax'];
+export const CONVERT_KEYS = ['rpmConvert', 'dialMin', 'dialMax', 'rpmMin', 'rpmMax'];
 // A grinder shows `rpm` or the dial conversion set, by whether BQ marks its speed adjustable.
 export const fieldsFor = (kind: GearKind, opts: { adjustableSpeed?: boolean } = {}): GearField[] =>
   [...COMMON_FIELDS, ...KIND_FIELDS[kind]].filter((f) => f.key === 'rpm' ? !opts.adjustableSpeed : !CONVERT_KEYS.includes(f.key) || !!opts.adjustableSpeed);
