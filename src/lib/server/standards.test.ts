@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
-import { applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, proposeStandards, type StdField } from './standards';
+import { accentsFrom, applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, proposeStandards, type StdField } from './standards';
 
 const OK: [StdField, string, string | null][] = [
   ['elevation', '1850 masl', '1,850 masl'],
@@ -236,5 +236,18 @@ describe('proposeStandards', () => {
   });
   it('save: fields outside the standard set are ignored', () => {
     expect(save({ ...KEYS, image_url: 'x' }, ['image_url', 'amount_g'])).toEqual([]);
+  });
+});
+
+describe('accentsFrom', () => {
+  it('takes the page spelling for each item', () => {
+    expect(accentsFrom('Narino, Huila', 'grown in Nariño by…')).toBe('Nariño, Huila');
+  });
+  it('leaves a value the page does not spell with accents', () => {
+    expect(accentsFrom('Narino', 'grown in Narino')).toBe('Narino');
+  });
+  it('matches multi-word values', () => {
+    expect(accentsFrom('Finca La Esperanza', 'Finca La Esperanza')).toBe('Finca La Esperanza');
+    expect(accentsFrom('Jose Perez', 'by José Pérez today')).toBe('José Pérez');
   });
 });

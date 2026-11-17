@@ -170,6 +170,21 @@ export function useVocab(field: string, value: string | null, vocab?: Vocab): st
   return field === 'producer' || field === 'farm' ? one(value) : value.split(', ').map(one).join(', ');
 }
 
+// Bean Base drops accents ("Narino"); when the product page spells an item with more accents, take the page's spelling.
+export function accentsFrom(value: string, text: string): string {
+  const words = text.match(/[\p{L}\p{M}][\p{L}\p{M}'’-]*/gu) ?? [];
+  const one = (item: string) => {
+    const n = item.split(/\s+/).length, f = fold(item);
+    for (let i = 0; i + n <= words.length; i++) {
+      const run = words.slice(i, i + n).join(' ');
+      if (fold(run) === f && accents(run.normalize('NFD')) > accents(item.normalize('NFD'))) return run;
+    }
+    return item;
+  };
+  const whole = one(value);
+  return whole !== value ? whole : value.split(', ').map(one).join(', ');
+}
+
 const FIELDS: StdField[] = ['origin', 'roast_level', 'processing', 'variety', 'region', 'elevation', 'harvest_time', 'certification', 'tasting_notes', 'producer'];
 type Row = Record<string, unknown> & { id?: number };
 export type Change = { field: string; from: unknown; to: unknown };
