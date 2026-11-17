@@ -84,4 +84,11 @@ describe('grinder RPM', () => {
     expect(keys()).toContain('rpm');
     expect(keys()).not.toContain('rpmConvert');
   });
+  it('pairs each dial value with its RPM on one two-column form row', () => {
+    const keys = fieldsFor('grinder', { adjustableSpeed: true }).map((f) => f.key);
+    for (const [dial, rpm] of [['dialMin', 'rpmMin'], ['dialMax', 'rpmMax']]) {
+      expect(keys.indexOf(dial) % 2).toBe(0);
+      expect(keys.indexOf(rpm)).toBe(keys.indexOf(dial) + 1);
+    }
+  });
 });
