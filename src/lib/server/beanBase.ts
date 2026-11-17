@@ -20,6 +20,9 @@ export interface BeanBaseBean {
   'min-elev': number | null;
   'max-elev': number | null;
   date: string;
+  image?: string | null;
+  soldout?: boolean | number | string | null;
+  available?: boolean | number | string | null;
 }
 
 type Ctx = { roastLevels: string[]; origins: string[]; processing: string[] };
@@ -147,5 +150,87 @@ export async function lookupBeanBase(
     return 'bean' in m ? { id: String(m.bean.id), fields: beanBaseFields(m.bean, ctx) } : m;
   } catch {
     return { miss: 'error' };
+  }
+}
+
+export type BeanCard = {
+  id: string; name: string; image: string | null; soldout: boolean; date: string; link: string | null; fields: FillFields;
+};
+export type BeanSearch =
+  | { status: 'no-key' | 'failed' }
+  | { status: 'roaster'; closest: string[] }
+  | { status: 'ok'; roaster: string; beans: BeanCard[] };
+
+// ponytail: shared words, then containment/prefix, then edit distance. A one-word typo that shares no word
+// with the real name ranks by edit distance alone; upgrade to trigram similarity if misses show up.
+function closestRoasters(typed: string, names: string[], n = 5): string[] {
+  const t = normalizeRoaster(typed);
+  const tw = new Set(t.split(' ').filter(Boolean));
+  const edit = (a: string, b: string) => {
+    let row = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const next = [i];
+      for (let j = 1; j <= b.length; j++) next[j] = Math.min(row[j] + 1, next[j - 1] + 1, row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      row = next;
+    }
+    return row[b.length];
+  };
+  const score = (name: string) => {
+    const k = normalizeRoaster(name);
+    const shared = k.split(' ').filter((w) => tw.has(w)).length;
+    const near = t && k && (k.includes(t) || t.includes(k) || k.startsWith(t.slice(0, 3))) ? 1 : 0;
+    return [shared, near, -edit(t, k)];
+  };
+  return [...new Set(names)]
+    .map((name) => ({ name, s: score(name) }))
+    .filter((x) => x.s[0] > 0 || x.s[1] > 0 || -x.s[2] <= Math.max(2, Math.floor(t.length / 3)))
+    .sort((a, b) => b.s[0] - a.s[0] || b.s[1] - a.s[1] || b.s[2] - a.s[2] || a.name.localeCompare(b.name))
+    .slice(0, n)
+    .map((x) => x.name);
+}
+
+// Name matches first (exact, then one contains the other, then shared words), then newest.
+function nameRank(typed: string, bean: string | null): number {
+  const t = nameKey(typed);
+  const b = nameKey(bean);
+  if (!t) return 0;
+  if (t === b) return 3;
+  if (b && (b.includes(t) || t.includes(b))) return 2;
+  const words = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const bw = new Set(words(bean ?? ''));
+  return words(typed).some((w) => bw.has(w)) ? 1 : 0;
+}
+
+// ponytail: image/soldout types are undocumented; a truthy soldout counts as sold out. limit 1000 is the
+// Developer plan's cap, enough for one roaster's whole list; no paging.
+export async function searchBeanBase(
+  roaster: string,
+  coffeeName: string,
+  ctx: Ctx,
+  opts: { key?: string | null; fetcher?: typeof fetch } = {}
+): Promise<BeanSearch> {
+  const key = opts.key === undefined ? beanBaseKey() : opts.key;
+  if (!key) return { status: 'no-key' };
+  try {
+    const list = (body: unknown, k: string) => (Array.isArray(body) ? body : (body as Record<string, unknown> | null)?.[k]);
+    const beans = list(await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}&limit=1000`, key, opts.fetcher), 'beans') as BeanBaseBean[];
+    if (!Array.isArray(beans)) return { status: 'failed' };
+    const mapped = mapRoaster(roaster, null, beans);
+    if (!mapped) {
+      const names = list(await fetchBeanBase('/roasters?flat=true', key, opts.fetcher), 'roasters');
+      if (!Array.isArray(names)) return { status: 'failed' };
+      return { status: 'roaster', closest: closestRoasters(roaster, names.filter((x): x is string => typeof x === 'string')) };
+    }
+    const cards = beans
+      .filter((b) => b.roaster === mapped)
+      .map((b) => ({ b, rank: nameRank(coffeeName, b['roast-name']) }))
+      .sort((x, y) => y.rank - x.rank || String(y.b.date).localeCompare(String(x.b.date)))
+      .map(({ b }): BeanCard => ({
+        id: String(b.id), name: b['roast-name']?.trim() || 'Unnamed', image: b.image?.trim() || null, soldout: !!b.soldout,
+        date: b.date, link: b.link, fields: beanBaseFields(b, ctx)
+      }));
+    return { status: 'ok', roaster: mapped, beans: cards };
+  } catch {
+    return { status: 'failed' };
   }
 }

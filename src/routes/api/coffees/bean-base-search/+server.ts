@@ -1,0 +1,28 @@
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { getDb } from '$lib/server/db';
+import { requireAdmin } from '$lib/server/auth';
+import { getDistinctFieldValues } from '$lib/server/coffees';
+import { getRoastLevels } from '$lib/server/roastLevels';
+import { searchBeanBase } from '$lib/server/beanBase';
+
+// The coffee form's "Search Loffee Labs". POST like fill-from-url, so SvelteKit's CSRF check covers it.
+const MAX = 200;
+
+export const POST: RequestHandler = async ({ request, locals }) => {
+  requireAdmin(locals);
+  const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
+  const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const roaster = str(body?.roaster);
+  const coffeeName = str(body?.coffee_name);
+  if (!roaster) return json({ error: 'Roaster is required' }, { status: 400 });
+  if (roaster.length > MAX || coffeeName.length > MAX) return json({ error: 'Roaster or coffee name is too long' }, { status: 400 });
+  const db = getDb();
+  return json(
+    await searchBeanBase(roaster, coffeeName, {
+      roastLevels: getRoastLevels(db).map((r) => r.roast_level),
+      origins: getDistinctFieldValues(db, 'origin'),
+      processing: getDistinctFieldValues(db, 'processing')
+    })
+  );
+};
