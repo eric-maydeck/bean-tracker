@@ -29,6 +29,9 @@ const PROCESSING_ALIAS: Record<string, string> = {
   'sugarcane (ea) decaffeinated, thermal shock washed anaerobic': 'EA Decaf Thermal Shock Anaerobic Washed',
   'red fruits co-ferment decaf': 'EA Decaf Red Fruits Co-Ferment'
 };
+const NOTE_ALIAS: Record<string, string> = {
+  canteloupe: 'Cantaloupe', 'rooibus tea': 'Rooibos Tea', 'naval orange': 'Navel Orange', 'lemon-lime': 'Lemon Lime', 'sencha tea': 'Sencha'
+};
 const ROAST_RANK = ['hyperlight', 'ultralight', 'nordic', 'nordic light', 'light', 'medium', 'dark'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const month = (s: string) => {
@@ -97,6 +100,9 @@ function producer(v: string): Std {
     if (parts.length > 2) return { value: v, review: 'producer has more than two parts' };
     if (parts.length === 2) s = `${parts[0]} (${parts[1]})`;
   }
+  s = s.replace(/^(?:Mr|Mrs|Ms)\.?\s+/, '') // roaster marketing, not the name (user, 2026-11-16)
+    .replace(/\bFcs\b/g, 'FCS').replace(/\bAka\b/g, 'aka')
+    .replace(/(^|\s)(['"])(\p{Ll})/gu, (_, a, q, c) => a + q + c.toUpperCase()); // 'pikudo' -> 'Pikudo'
   return { value: s.replace(/\s+and\s+/gi, ' & ') };
 }
 
@@ -126,7 +132,7 @@ export function standardizeField(field: StdField, value: string | null, site?: s
     case 'producer': r = producer(v); break;
     case 'region': r = { value: dedupe(splitList(v)).join(', ') }; break;
     case 'certification': r = { value: dedupe(splitList(v)).join(', ') }; break;
-    case 'tasting_notes': r = { value: dedupe(v.split(/\s*[,;]\s*/).filter(Boolean).map(titleCase)).join(', ') }; break;
+    case 'tasting_notes': r = { value: dedupe(v.split(/\s*[,;]\s*/).filter(Boolean).map(titleCase).map((n) => NOTE_ALIAS[n.toLowerCase()] ?? n)).join(', ') }; break;
     case 'origin': r = v.includes('/') ? { value: v, review: 'origin lists more than one country' } : { value: v }; break;
   }
   if (site && !r.review) {
@@ -136,12 +142,34 @@ export function standardizeField(field: StdField, value: string | null, site?: s
   return r;
 }
 
+// G1 across the whole site: a value matching a site spelling ignoring case/accents takes that spelling,
+// and the accented spelling wins when the site has both (user, 2026-11-16).
+const VOCAB_FIELDS = ['producer', 'farm', 'variety', 'region'];
+export type Vocab = Map<string, string>;
+const accents = (s: string) => s.length - s.normalize('NFD').replace(/\p{M}/gu, '').length;
+export function buildVocab(rows: Record<string, unknown>[]): Vocab {
+  const v: Vocab = new Map();
+  for (const r of rows) for (const f of VOCAB_FIELDS) {
+    if (typeof r[f] !== 'string') continue;
+    for (const raw of (f === 'producer' || f === 'farm' ? [r[f] as string] : (r[f] as string).split(', '))) {
+      const item = raw.trim(), k = `${f}:${fold(item)}`, cur = v.get(k);
+      if (item && (!cur || accents(item.normalize('NFD')) > accents(cur.normalize('NFD')))) v.set(k, item);
+    }
+  }
+  return v;
+}
+export function useVocab(field: string, value: string | null, vocab?: Vocab): string | null {
+  if (!value || !vocab || !VOCAB_FIELDS.includes(field)) return value;
+  const one = (x: string) => vocab.get(`${field}:${fold(x)}`) ?? x;
+  return field === 'producer' || field === 'farm' ? one(value) : value.split(', ').map(one).join(', ');
+}
+
 const FIELDS: StdField[] = ['origin', 'roast_level', 'processing', 'variety', 'region', 'elevation', 'harvest_time', 'certification', 'tasting_notes', 'producer'];
 type Row = Record<string, unknown> & { id?: number };
 export type Change = { field: string; from: unknown; to: unknown };
 export type Review = { field: string; value: string; reason: string };
 
-export function standardizeCoffee(row: Row, knownFarms: string[]): { changes: Change[]; review: Review[] } {
+export function standardizeCoffee(row: Row, knownFarms: string[], vocab?: Vocab): { changes: Change[]; review: Review[] } {
   const changes: Change[] = [];
   const review: Review[] = [];
   const set = (field: string, to: unknown) => {
@@ -159,6 +187,7 @@ export function standardizeCoffee(row: Row, knownFarms: string[]): { changes: Ch
       if (sp) { set('farm', sp.farm); v = sp.producer; }
     }
     let r = standardizeField(f, v);
+    if (!r.review) r = { value: useVocab(f, r.value, vocab) };
     if (f === 'region' && r.value && str('origin')) { // no country in Region: Origin holds it
       const o = fold(standardizeField('origin', str('origin')).value ?? '');
       r = { value: r.value.split(', ').filter((x) => fold(x) !== o).join(', ') || null };
@@ -174,11 +203,12 @@ export function applyDataStandards(db: DatabaseSync, marker: string): { changes:
   if (db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(marker)) return null;
   const rows = db.prepare(`SELECT * FROM coffees`).all() as Row[];
   const farms = [...new Set(rows.map((r) => (typeof r.farm === 'string' ? r.farm.trim() : '')).filter(Boolean))];
+  const vocab = buildVocab(rows);
   let changes = 0, reviews = 0;
   db.exec('BEGIN');
   try {
     for (const row of rows) {
-      const r = standardizeCoffee(row, farms);
+      const r = standardizeCoffee(row, farms, vocab);
       for (const c of r.changes) { // c.field comes from the fixed FIELDS list or cost/farm, never user input
         db.prepare(`UPDATE coffees SET ${c.field} = ? WHERE id = ?`).run(c.to as string | number | null, row.id as number);
         changes++;

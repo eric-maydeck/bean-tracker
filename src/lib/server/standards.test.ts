@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
-import { applyDataStandards, roundCents, splitProducerFarm, standardizeCoffee, standardizeField, type StdField } from './standards';
+import { applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, type StdField } from './standards';
 
 const OK: [StdField, string, string | null][] = [
   ['elevation', '1850 masl', '1,850 masl'],
@@ -38,6 +38,11 @@ const OK: [StdField, string, string | null][] = [
   ['producer', 'Ana Example / Example Co', 'Ana Example (Example Co)'],
   ['producer', 'Example Co by Ana Example', 'Ana Example (Example Co)'],
   ['producer', 'Marcelo Assis And Flavio Silva // Bioma Cafe', 'Marcelo Assis & Flavio Silva (Bioma Cafe)'],
+  ['producer', 'Mr. Tadese Teko', 'Tadese Teko'],
+  ['producer', 'Gikirima Fcs', 'Gikirima FCS'],
+  ['producer', 'James Kariuki Aka Bob', 'James Kariuki aka Bob'],
+  ['producer', "Jorge 'pikudo' Andrade", "Jorge 'Pikudo' Andrade"],
+  ['tasting_notes', 'canteloupe, Naval Orange, lemon-lime', 'Cantaloupe, Navel Orange, Lemon Lime'],
   ['region', 'Huila, Colombia', 'Huila, Colombia'], // country stripping needs the row's origin: see standardizeCoffee
   ['region', 'Gedeb / Yirgacheffe', 'Gedeb, Yirgacheffe'],
   ['tasting_notes', 'peach, white tea', 'Peach, White Tea'],
@@ -143,5 +148,17 @@ describe('applyDataStandards', () => {
     const a = db.prepare(`SELECT processing, cost, elevation, harvest_time FROM coffees WHERE coffee_name = 'A'`).get();
     expect({ ...a }).toEqual({ processing: 'Washed', cost: 20.99, elevation: '1,700 - 1,900 masl', harvest_time: 'March - July' });
     expect(applyDataStandards(db, 'data_standards_test')).toBeNull();
+  });
+});
+
+describe('site vocabulary (G1 across the site)', () => {
+  const vocab = buildVocab([{ region: 'Narino, Colombia' }, { region: 'Nariño' }, { producer: 'Marlon Bolaños' }]);
+  it('takes the accented site spelling', () => {
+    expect(useVocab('region', 'La Union, Narino', vocab)).toBe('La Union, Nariño');
+    expect(useVocab('producer', 'marlon bolanos', vocab)).toBe('Marlon Bolaños');
+  });
+  it('leaves unknown values and other fields alone', () => {
+    expect(useVocab('region', 'Huila', vocab)).toBe('Huila');
+    expect(useVocab('processing', 'Narino', vocab)).toBe('Narino');
   });
 });
