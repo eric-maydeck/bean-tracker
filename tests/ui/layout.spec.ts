@@ -1606,7 +1606,7 @@ export const STATES: State[] = [
       expect(sections.slice(0, 3)).toEqual(['Origin', 'Bag', 'Timing']);
       expect(await pageLabels('origin')).toEqual(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification', 'Tasting notes']);
       expect(await pageLabels('bag')).toEqual(['Roast level', 'Amount', 'Cost', 'Cost/gram', 'Subscription', 'Urgency']);
-      await expect(page.locator('[data-section="origin"] .stat', { hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
+      await expect(page.locator('[data-section="origin"] .stat', { hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1,900 - 2,100 masl');
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       const box = (sel: string) => page.locator(sel).first().boundingBox().then((b) => b!);
       const groups = page.locator('.form-grid > .form-group');
@@ -1636,7 +1636,7 @@ export const STATES: State[] = [
       await page.evaluate(() => (document.activeElement as HTMLElement).blur());
       await expect(page.locator('#producer')).toHaveValue('Ana Maria Gutierrez');
       await expect(page.locator('#certification')).toHaveValue('Organic');
-      await expect(page.locator('#tasting_notes')).toHaveValue(/^Peach, jasmine/);
+      await expect(page.locator('#tasting_notes')).toHaveValue(/^Peach, Jasmine/);
       // Top to bottom: top group, Origin, Bag, Timing, then the slug.
       const ys = await Promise.all(['#product_url', '#origin', '#roast_level', '#roast_date', '#slug'].map((q) => box(q).then((b) => b.y)));
       expect(ys, 'groups run top to bottom').toEqual([...ys].sort((x, y) => x - y));
@@ -1647,7 +1647,7 @@ export const STATES: State[] = [
       const origin = page.locator('[data-section="origin"] .stat');
       await expect(origin.locator('.stat-label')).toHaveText(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification', 'Tasting notes']);
       await expect(page.locator('[data-section="origin"]').getByRole('link', { name: 'Loffee Labs Bean Base' })).toBeVisible();
-      await expect(origin.filter({ hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
+      await expect(origin.filter({ hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1,900 - 2,100 masl');
       // Directly under the header: no larger gap than between the later sections.
       const h = await page.locator('.detail-header').boundingBox();
       const sec = await page.locator('[data-section="origin"]').boundingBox();

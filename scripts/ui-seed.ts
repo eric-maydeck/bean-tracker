@@ -374,7 +374,7 @@ bnMark.run(bnBags[1].id, now, atLocal(1, 8, 0).slice(0, 16), bnSug('1.2.0', '92'
 const bnNew = coffee({ roaster: 'Nobody Brewed Roasters', coffee_name: 'Brew Seed Fresh Lot', origin: 'Kenya', processing: 'Washed', status: 'backlog' });
 // Origin details on this one bag (others have none); one long value must wrap inside its stat and field.
 db.prepare(`UPDATE coffees SET producer = ?, farm = ?, variety = ?, region = ?, elevation = ?, harvest_time = ?, certification = ?, tasting_notes = ?, bean_base_id = ? WHERE id = ?`).run(
-  'Ana Maria Gutierrez', 'Finca La Esperanza de los Altos de Huila, Cooperativa Norte', 'SL28, SL34', 'Nyeri', '1900-2100m', 'Nov 2025', 'Organic', 'Peach, jasmine, black tea, a long run of tasting notes that must wrap inside its stat', 'bb1', bnNew.id);
+  'Ana Maria Gutierrez', 'Finca La Esperanza de los Altos de Huila, Cooperativa Norte', 'SL28, SL34', 'Nyeri', '1,900 - 2,100 masl', 'Nov 2025', 'Organic', 'Peach, Jasmine, Black Tea, A Long Run Of Tasting Notes That Must Wrap Inside Its Stat', 'bb1', bnNew.id);
 // A stored roaster recipe (long unbroken title and snippet) for the never-brewed roaster.
 db.prepare(`INSERT INTO roaster_recipes (roaster, url, title, snippet, searched_at) VALUES (?, ?, ?, ?, ?)`).run(
   'Nobody Brewed Roasters', 'https://example.com/brew-guide', 'Brew guide: ' + 'Pour-over-recipe-with-a-very-long-title-'.repeat(3),
