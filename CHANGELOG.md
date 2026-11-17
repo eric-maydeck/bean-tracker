@@ -1,3 +1,10 @@
+## [1.113.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.113.0...v1.113.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* **gear:** pair dial min/max with their rpm on one form row ([efcaacb](https://github.com/eric-maydeck/bean-tracker/commit/efcaacb78ccf6c9f78272c42ff09b3281e82947f))
+
 # [1.113.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.112.0...v1.113.0) (2026-11-17)
 
 
