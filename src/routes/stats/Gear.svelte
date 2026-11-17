@@ -25,6 +25,7 @@
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
+  import TextTip from '$lib/components/TextTip.svelte';
   import SpeedChart from './SpeedChart.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import UsageChart, { ERA_VIEW_OPTIONS } from './UsageChart.svelte';
@@ -111,12 +112,15 @@
   </section>
   <section class="chart-panel" data-section="gear-speed-coffee">
     <LabHead id="gear-speed-coffee" title="Grind speed × coffee group" {placeTip}
-      help={['Rows: coffees grouped by roast, process or origin (3+ bags, 2+ speeds).', "A cell: the group's value at that speed vs its value over all speeds.", 'Values are scores vs the grinder average, averaged over bags.',
+      help={['Rows: coffees grouped by roast, process or origin (3+ bags, 2+ speeds); the 10 with the most brews, A–Z.', "A cell: the group's value at that speed vs its value over all speeds.", 'Values are scores vs the grinder average, averaged over bags.',
         SAMPLE_HELP, 'Blank: never brewed at that speed.']}>
       <ChartToggle label="Group by" options={SPEED_BY_OPTIONS} value={speedBy} pick={(v) => choose({ speedBy: v === 'process' || v === 'origin' ? v : undefined })} />
     </LabHead>
     {#if t.speedByGroup}
       <div class="fit-body"><LabHeatmap by={t.speedByGroup} noun="grind speed for this group" vs="group avg, all speeds" scale={['Worse than its other speeds', 'Better']} ariaLabel="Grind speed by coffee group" /></div>
+      {#if t.speedOmitted.length}
+        <p class="chart-note">{t.speedOmitted.length} more <TextTip label="groups not shown" tip={{ title: 'Not shown (fewer brews)', rows: t.speedOmitted.map((o) => [o.label, `${o.brews} brews`] as [string, string]) }}>not shown</TextTip>.</p>
+      {/if}
     {:else}
       <p class="hl-empty">{emptyLine(t.speeds.length ? 'No coffee group with 3+ bags brewed at 2+ grind speeds in this period.' : 'No rated brews with a grind speed in this period.')}</p>
     {/if}

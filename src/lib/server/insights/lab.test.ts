@@ -769,6 +769,15 @@ describe('gearTab', () => {
       expect(run(rows, 'process').speedByGroup!.rows).toEqual(['Washed']); // Group by switch
       expect(run(rows, 'origin').speedByGroup).toBeNull(); // no origin on these bags
     });
+    it('heatmap: the 10 groups with the most brews, A–Z; the rest listed A–Z with their brews', () => {
+      // Group i (L..A) has i+1 brews per bag: L the fewest, A the most.
+      const r = Array.from({ length: 12 }, (_, i) => String.fromCharCode(76 - i)).flatMap((g, i) => [0, 1, 2].flatMap((j) =>
+        many(i + 1, 100 + i * 3 + j, 92, 7 + j, { rpm: j ? 1250 : 750, grinder: 'A', roastLevel: g })));
+      const t = run(r);
+      expect(t.speedByGroup!.rows).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']);
+      expect(t.speedOmitted).toEqual([{ label: 'K', brews: 6 }, { label: 'L', brews: 3 }]);
+      expect(run(rows).speedOmitted).toEqual([]);
+    });
     it('one speed overall: no heatmap, no trend value problem', () => {
       expect(run(rows.filter((b) => b.rpm === 750)).speedByGroup).toBeNull();
       expect(run([]).speedPlot).toBeNull();

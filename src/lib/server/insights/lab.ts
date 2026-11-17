@@ -610,13 +610,14 @@ function waterPairs(rows: readonly BrewFact[], byId: Map<number, BagFact>): Wate
 // grinder's average rating over those rows; a band's value is the mean of its bags' mean scores (the bag is the unit),
 // so no brew has to be paired with another and a coffee brewed at one speed still counts.
 const rpmBand = labFn('rpm');
+export const SPEED_ROWS = 10; // the heatmap's row cap (user, 2026-11-16: origins get busy fast)
 export interface SpeedPlot {
   // One column per speed band, in RPM order: each brew's rating, and the band's value as a rating (grinder average + value).
   // Tips: `value` is the band's value (y less the grinder baseline), `dots` carry each brew's date and coffee (the bag's name).
   cols: { label: string; solid: boolean; y: number; value: number; brews: number; bags: number; sample: Sample; dots: { y: number; date: string; coffee: string | null }[] }[];
   avg: number; // the mean rating of these brews
 }
-export function speedTab(rows: readonly BrewFact[], slice: (b: BrewFact) => string | null, names: ReadonlyMap<number, string> = new Map()): Pick<GearTab, 'speeds' | 'speedPlot' | 'speedByGroup'> {
+export function speedTab(rows: readonly BrewFact[], slice: (b: BrewFact) => string | null, names: ReadonlyMap<number, string> = new Map()): Pick<GearTab, 'speeds' | 'speedPlot' | 'speedByGroup' | 'speedOmitted'> {
   const adj = rows.filter((b) => b.rpm != null && rpmBand(b));
   const avg = new Map([...groupBy(adj, (b) => b.grinder ?? '')].map(([g, bs]) => [g, mean(bs.map((b) => b.rating!))]));
   const base = (b: BrewFact) => avg.get(b.grinder ?? '')!;
@@ -638,16 +639,20 @@ export function speedTab(rows: readonly BrewFact[], slice: (b: BrewFact) => stri
     .sort((a, b) => b[1].length - a[1].length || a[0]!.localeCompare(b[0]!)).flatMap(([k, g]) => {
       const m = bagBandMeans(g, rpmBand), center = bagMeanAvg(g);
       const cells = cols.map((l) => { const x = m.get(l); return x ? cellOf({ delta: mean(x.means) - center, solid: isSolid(x), brews: x.brews, bags: x.means.length }) : null; });
-      return cells.filter(Boolean).length >= 2 ? [{ label: k!, cells }] : [];
+      return cells.filter(Boolean).length >= 2 && cells.some(live) ? [{ label: k!, cells, brews: g.length }] : [];
     });
+  // The SPEED_ROWS groups with the most brews, A–Z; the rest go in a "not shown" note (A–Z, with their brews).
+  const az = (a: { label: string }, b: { label: string }) => a.label.localeCompare(b.label);
+  const shown = groups.slice(0, SPEED_ROWS).sort(az), omitted = groups.slice(SPEED_ROWS).sort(az).map((r) => ({ label: r.label, brews: r.brews }));
   return {
     speeds: ranked(bands),
     speedPlot: adj.length ? { cols: cols0, avg: mean(adj.map((b) => b.rating!)) } : null,
-    speedByGroup: groups.length ? trimBlank({ rows: groups.map((r) => r.label), cols, cells: groups.map((r) => r.cells) }, true) : null
+    speedByGroup: shown.length ? trimBlank({ rows: shown.map((r) => r.label), cols, cells: shown.map((r) => r.cells) }, true) : null,
+    speedOmitted: omitted
   };
 }
 
-export interface GearTab { drippers: BandStat[]; filters: BandStat[]; matrix: Breakdown | null; byRoast: Breakdown | null; speeds: BandStat[]; speedPlot: SpeedPlot | null; speedByGroup: Breakdown | null; eras: Eras | null; grinderEras: Eras | null }
+export interface GearTab { drippers: BandStat[]; filters: BandStat[]; matrix: Breakdown | null; byRoast: Breakdown | null; speeds: BandStat[]; speedPlot: SpeedPlot | null; speedByGroup: Breakdown | null; speedOmitted: { label: string; brews: number }[]; eras: Eras | null; grinderEras: Eras | null }
 export function gearTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings; speedBy?: Slice }): GearTab {
   const rows = ratedIn(brews, c.period, c.ratings);
   const filter = labFn('filter');
