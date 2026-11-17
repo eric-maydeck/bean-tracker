@@ -57,7 +57,21 @@ jobs:
           cache: 'npm'
 
       # No --omit=dev: SvelteKit/Vite/etc. are devDependencies but get bundled into the server build.
-      - run: npm audit --audit-level=high
+      # Skips only the Kit remote-function form DoS advisory (no 2.x fix; the app has no remote functions).
+      # Remove ALLOW and go back to plain `npm audit --audit-level=high` with the Kit 3 migration (#68).
+      - env:
+          ALLOW: GHSA-3r8g-jcqq-3p5j
+        run: |
+          npm audit --json > audit.json || true
+          node -e '
+            const a = JSON.parse(require("fs").readFileSync("audit.json"));
+            const allow = process.env.ALLOW.split(" ");
+            const bad = Object.values(a.vulnerabilities).flatMap(v => v.via)
+              .filter(x => typeof x === "object" && ["high", "critical"].includes(x.severity))
+              .filter(x => !allow.some(id => x.url.endsWith(id)));
+            for (const x of bad) console.log(`${x.severity} ${x.name} ${x.title} ${x.url}`);
+            process.exit(bad.length ? 1 : 0);
+          '
 
   ui-full:
     concurrency:
