@@ -11013,7 +11013,7 @@ export const STATES: State[] = [
       expect(b.top).toBeGreaterThanOrEqual(a.bottom - 0.5);
       const noPhoto = d.locator('.suggest-pick').nth(1).locator('.suggest-image');
       await expect(noPhoto.locator('img')).toHaveCount(0);
-      await expect(noPhoto).toContainText('No photo');
+      await expect(noPhoto).toContainText('No photo available');
       const [ib, pb] = await Promise.all([first.locator('.suggest-image').boundingBox(), noPhoto.boundingBox()]);
       expect(Math.abs(ib!.height - pb!.height)).toBeLessThan(1);
       await expect(d.locator('.suggest-pick').nth(2).locator('.badge')).toHaveText(['Sold out']);

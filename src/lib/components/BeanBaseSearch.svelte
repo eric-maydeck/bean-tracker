@@ -115,7 +115,7 @@
                 {#if c.image}
                   <img src={c.image} alt="" />
                 {:else}
-                  <span class="no-photo"><Icon name="coffee" /><span>No photo</span></span>
+                  <span class="no-photo"><Icon name="coffee" /><span>No photo available</span></span>
                 {/if}
                 {#if c.closest}<span class="badge">Closest to roast date</span>{/if}
                 {#if c.soldout}<span class="badge badge-sold">Sold out</span>{/if}
@@ -174,7 +174,8 @@
     border-radius: var(--radius);
     background: var(--color-bg);
     color: var(--color-text-muted);
-    font-size: 0.85rem;
+    font-size: 1rem;
+    font-weight: 600;
   }
   .no-photo :global(svg) {
     width: 2.5rem;
