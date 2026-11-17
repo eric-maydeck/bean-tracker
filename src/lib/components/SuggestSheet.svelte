@@ -168,7 +168,6 @@
   :global(.suggest-list) {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    align-items: start; /* a text-only card beside an image card keeps its own height (no empty box) */
     gap: var(--space-2);
     margin-top: var(--space-2);
   }
