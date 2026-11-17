@@ -120,14 +120,22 @@ jobs:
             playwright-report/
             .ui-test/results/
 
-  # The UI tests this PR's diff reaches (scripts/test-changed.ts: unit tests, then the matching route tags).
+  # The UI tests this PR's diff reaches (scripts/test-changed.ts: the matching route tags), one job per viewport like ui-full.
   ui-changed:
     concurrency:
-      group: ui-changed-${{ github.ref }}
+      group: ui-changed-${{ github.ref }}-${{ matrix.viewport }}-${{ matrix.part }}
       cancel-in-progress: true
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        viewport: [w360, phone-portrait]
+        part: ['1/1']
+        include:
+          - { viewport: w1280, part: '1/2' }
+          - { viewport: w1280, part: '2/2' }
     permissions:
       contents: read
     steps:
@@ -146,7 +154,8 @@ jobs:
       - run: node scripts/test-changed.ts -- $(git diff --name-only origin/${{ github.base_ref }}...HEAD)
         env:
           TZ: America/Denver
-          UI_VIEWPORTS: w360,phone-portrait,w1280
+          UI_VIEWPORTS: ${{ matrix.viewport }}
+          UI_PART: ${{ matrix.part }}
           UI_BUILD: prod
           UI_SHOTS: off
           UI_PROFILE: balanced
@@ -154,7 +163,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report-changed
+          name: playwright-report-changed-${{ matrix.viewport }}-${{ strategy.job-index }}
           path: |
             playwright-report/
             .ui-test/results/
