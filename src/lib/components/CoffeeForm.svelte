@@ -3,6 +3,8 @@
   import { costAfterPlanChange, type CostMemo, type SubscriptionOption } from '$lib/planBagCost';
   import { onMount, tick } from 'svelte';
   import ImageSuggest from './ImageSuggest.svelte';
+  import BeanBaseSearch, { CREDIT_URL } from './BeanBaseSearch.svelte';
+  import type { BeanCard } from '$lib/server/beanBase';
   import { enhance } from '$app/forms';
   import type { CoffeeRow } from '$lib/types';
   import { COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '$lib/types';
@@ -172,6 +174,20 @@
     // A pick never clears a site already staged (e.g. by "change").
     roasterWebsite = p.roaster_website ?? roasterWebsite;
     showPreview(p.image_url);
+  }
+
+  // A picked Loffee Labs bean: the same check and dialog as Fill from URL, then (only if approved) its credit and
+  // id; with no product page typed, the bean's own link becomes it and that page is read like Fill from page.
+  async function pickBeanBase(card: BeanCard) {
+    const incoming = Object.fromEntries(Object.entries(card.fields).filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]));
+    if (!(await reviewIncoming(incoming))) return;
+    beanBaseId = card.id;
+    fillNotes = [`Filled ${Object.keys(incoming).length} fields`];
+    beanBaseCredit = Object.keys(incoming).length ? CREDIT_URL : null;
+    if (!fieldValue('product_url').trim() && card.link) {
+      setField('product_url', card.link);
+      await fillFromPage();
+    }
   }
 
   function syncImageFields() {
@@ -540,9 +556,22 @@
           }
         }}
       />
-      <button class="button" type="button" disabled={filling} onclick={fillFromPage}>
-        {filling ? 'Filling…' : 'Fill from page'}
-      </button>
+      <div class="inline-row-actions" data-button-row>
+        <button class="button" type="button" disabled={filling} onclick={fillFromPage}>
+          {filling ? 'Filling…' : 'Fill from page'}
+        </button>
+        <BeanBaseSearch
+          body={() => ({
+            roaster: fieldValue('roaster'),
+            coffee_name: fieldValue('coffee_name'),
+            roast_date: fieldValue('roast_date'),
+            product_url: fieldValue('product_url')
+          })}
+          matching={suggestMatching}
+          disabled={roasterValue.trim() === ''}
+          onpick={pickBeanBase}
+        />
+      </div>
     </div>
     {#if fillError}
       <p class="badge badge-urgent" role="alert">{fillError}</p>
@@ -618,6 +647,7 @@
               name: fieldValue('coffee_name'),
               origin: fieldValue('origin'),
               roastDate: fieldValue('roast_date'),
+              product_url: fieldValue('product_url'),
               site: roasterWebsite || undefined
             })}
             matching={suggestMatching}

@@ -5,9 +5,11 @@ import { requireAdmin } from '$lib/server/auth';
 import { getDistinctFieldValues } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { searchBeanBase } from '$lib/server/beanBase';
+import { standardizeBeanBase, type FillSuccess } from '$lib/server/productFill';
 
 // The coffee form's "Search Loffee Labs". POST like fill-from-url, so SvelteKit's CSRF check covers it.
 const MAX = 200;
+const EMPTY_FILL: FillSuccess = { fields: {}, variants: [], selected: null, notes: [], restNote: null, beanBase: null };
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);
@@ -23,11 +25,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
   const productUrl = str(body?.product_url).slice(0, 2000);
   const db = getDb();
-  return json(
-    await searchBeanBase(roaster, coffeeName, {
-      roastLevels: getRoastLevels(db).map((r) => r.roast_level),
-      origins: getDistinctFieldValues(db, 'origin'),
-      processing: getDistinctFieldValues(db, 'processing')
-    }, { roastDate: roastDate || null, productUrl: productUrl || null })
-  );
+  const found = await searchBeanBase(roaster, coffeeName, {
+    roastLevels: getRoastLevels(db).map((r) => r.roast_level),
+    origins: getDistinctFieldValues(db, 'origin'),
+    processing: getDistinctFieldValues(db, 'processing')
+  }, { roastDate: roastDate || null, productUrl: productUrl || null });
+  if (found.status !== 'ok') return json(found);
+  // A card shows (and a pick fills) the values in the data standards' form, the same as Fill from URL.
+  const beans = found.beans.map((c) => ({ ...c, fields: standardizeBeanBase(EMPTY_FILL, { id: c.id, fields: c.fields }, { db }).fields }));
+  return json({ ...found, beans });
 };

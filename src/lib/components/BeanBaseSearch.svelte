@@ -1,3 +1,8 @@
+<script lang="ts" module>
+  // Required by the API terms. ponytail: copy of beanBaseCreditUrl (server-only module); keep in step.
+  export const CREDIT_URL = 'https://www.loffeelabs.com';
+</script>
+
 <script lang="ts">
   import { tick } from 'svelte';
   import type { BeanCard, BeanSearch } from '$lib/server/beanBase';
@@ -13,9 +18,6 @@
     disabled: boolean;
     onpick: (card: BeanCard) => void;
   } = $props();
-
-  // Required by the API terms. ponytail: copy of beanBaseCreditUrl (server-only module); keep in step.
-  const CREDIT_URL = 'https://www.loffeelabs.com';
 
   let searching = $state(false);
   let result = $state<BeanSearch | null>(null);
