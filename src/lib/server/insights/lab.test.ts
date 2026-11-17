@@ -744,7 +744,11 @@ describe('gearTab', () => {
       const p = run(rows).speedPlot!;
       expect(p.cols.map((c) => c.label)).toEqual(['~750 RPM', '~1,250 RPM']);
       expect(p.cols.map((c) => c.y)).toEqual([expect.closeTo(7, 1), expect.closeTo(9, 1)]);
-      expect(p.cols[0].ratings).toHaveLength(30);
+      expect(p.cols[0].dots).toHaveLength(30);
+      expect(p.cols[0]).toMatchObject({ brews: 30, bags: 3, value: expect.closeTo(-1) });
+      expect(p.cols[0].dots[0]).toMatchObject({ date: '2026-09-15', coffee: null });
+      const named = gearTab(rows, [{ id: 1, roaster: 'R', name: 'One' } as BagFact], { period: P, ratings: 'all' }).speedPlot!;
+      expect(named.cols[0].dots.some((d) => d.coffee === 'R · One')).toBe(true);
       expect(p.avg).toBeCloseTo(8, 1);
     });
     it('plot trend: the baseline is bag-weighted like the value, so y = value as a rating (uneven bags)', () => {

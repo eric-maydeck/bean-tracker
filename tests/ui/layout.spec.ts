@@ -9226,6 +9226,25 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/speedBy=/);
       await expect(page.getByRole('navigation').getByRole('link', { name: 'Grind speed ratings' }).first()).toBeAttached();
     } },
+  // The speed chart's tip: the band marker (hover or tap), then the dot beside it; opening a tip moves nothing.
+  { name: 'insights-gear-speeds-tip', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      const chart = page.locator('[data-section="gear-speeds"] .speed-chart'), tip = page.locator('.cell-tip:popover-open');
+      await expect(chart.locator('svg.plot')).toBeVisible();
+      const before = await chart.boundingBox();
+      await chart.locator('circle.mark').first().click({ force: true });
+      await expect(tip).toBeVisible();
+      await expect(tip).toContainText('Value as a rating');
+      await expect(tip).toContainText('vs grinder average');
+      const after = (await chart.boundingBox())!; // the page may scroll to show the tip; the chart itself keeps its size
+      expect([Math.round(after.width), Math.round(after.height)]).toEqual([Math.round(before!.width), Math.round(before!.height)]);
+      const box = (await chart.locator('circle.dot').first().boundingBox())!;
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      await expect(tip).toContainText('Rating');
+      await expect(tip).toContainText('Date');
+      await page.keyboard.press('Escape');
+      await expect(tip).toHaveCount(0);
+    } },
   { name: 'insights-gear-speeds-empty', viewports: 'two', path: () => '/stats?tab=gear&range=1w',
     act: async (page) => {
       // The board is empty here, so both say there are no speeds; with board rows but no 2-speed coffee the heatmap says so instead.
