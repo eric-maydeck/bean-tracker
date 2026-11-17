@@ -1,11 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
-import { applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, type StdField } from './standards';
+import { accentsFrom, applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, proposeStandards, formatLocked, type StdField } from './standards';
 
 const OK: [StdField, string, string | null][] = [
   ['elevation', '1850 masl', '1,850 masl'],
   ['elevation', '1,700-1,900 masl', '1,700 - 1,900 masl'],
+  ['elevation', 'null', null],
   ['elevation', '>2000', '2,000+ masl'],
+  ['elevation', 'above 2000m', '2,000+ masl'],
+  ['elevation', 'Over 1,800 meters', '1,800+ masl'],
+  ['variety', 'Geisha', 'Gesha'],
+  ['variety', 'Geisha & SL-28', 'Gesha, SL28'],
+  ['variety', 'Heirloom', 'Landrace'],
+  ['variety', 'Rosado/Pink Bourbon', 'Pink Bourbon'],
+  ['variety', 'Bourbon Aji', 'Ají'],
   ['elevation', '2,000+ masl', '2,000+ masl'],
   ['elevation', '2,300-2,500+ masl', '2,300 - 2,500+ masl'],
   ['processing', 'Sugarcane (EA) Decaffeinated, Thermal Shock Washed Anaerobic', 'EA Decaf Thermal Shock Anaerobic Washed'],
@@ -49,6 +57,9 @@ const OK: [StdField, string, string | null][] = [
   ['tasting_notes', 'Peach, peach', 'Peach'],
   ['certification', 'Organic And Rainforest Alliance', 'Organic, Rainforest Alliance'],
   ['variety', 'SL-28', 'SL28'],
+  ['variety', 'Bourbon & Typica', 'Bourbon, Typica'],
+  ['region', 'Bench Maji – Oma', 'Bench Maji, Oma'],
+  ['region', 'Bench Maji - Oma', 'Bench Maji, Oma'],
   ['variety', 'SL34, SL28, Batian', 'Batian, SL28, SL34'],
   ['variety', 'SL28, SL34, Ruiru 11, Batian', 'Batian, Ruiru 11, SL28, SL34'],
   ['variety', '74112, 74110, 74158', '74110, 74112, 74158'],
@@ -161,5 +172,110 @@ describe('site vocabulary (G1 across the site)', () => {
     expect(useVocab('region', 'Huila', vocab)).toBe('Huila');
     expect(useVocab('producer', 'Ana aka Bob', buildVocab([{ producer: 'Ana Aka Bob' }]))).toBe('Ana aka Bob');
     expect(useVocab('processing', 'Narino', vocab)).toBe('Narino');
+  });
+});
+
+describe('proposeStandards', () => {
+  const dbWith = (...roasters: string[]) => {
+    const db = createDb(':memory:');
+    for (const r of roasters) db.prepare(`INSERT INTO coffees (roaster, coffee_name, created_at, updated_at) VALUES (?, 'x', 'x', 'x')`).run(r);
+    return db;
+  };
+  const save = (values: Record<string, string>, fields: string[], db = dbWith()) => proposeStandards(db, { mode: 'save', values, fields });
+  const fill = (values: Record<string, string>, incoming: Record<string, string>) => proposeStandards(dbWith(), { mode: 'fill', values, incoming });
+  const KEYS = { roast_date: 'x', cost: '1', amount_g: '1' };
+
+  it('save: a placeholder in a locked field is a Leave blank row, never the text "null"', () => {
+    expect(save({ ...KEYS, elevation: 'n/a' }, ['elevation'])).toEqual([
+      { field: 'elevation', label: 'Elevation', now: 'n/a', proposed: null, kind: 'missing' }]);
+  });
+  it('fill: a placeholder on either side never becomes the text "null"', () => {
+    for (const rows of [fill({ elevation: 'n/a' }, { elevation: '1800m' }), fill({ elevation: '1,800 masl' }, { elevation: 'n/a' }), fill({ elevation: '-' }, { elevation: '1,900 masl' })]) {
+      expect(JSON.stringify(rows)).not.toContain('"null"');
+    }
+  });
+
+  it('save: locked format change', () => {
+    expect(save({ ...KEYS, elevation: '1800m' }, ['elevation'])).toEqual([
+      { field: 'elevation', label: 'Elevation', now: '1800m', proposed: '1,800 masl', kind: 'locked' }]);
+  });
+  it('save: unformattable locked value blocks', () => {
+    expect(save({ ...KEYS, harvest_time: 'new crop' }, ['harvest_time'])).toMatchObject([{ field: 'harvest_time', proposed: null, kind: 'blocked' }]);
+  });
+  it('save: choice, unconverted, cost format', () => {
+    expect(save({ ...KEYS, variety: 'SL34 / SL28' }, ['variety'])).toMatchObject([{ kind: 'choice', proposed: 'SL28, SL34' }]);
+    expect(save({ ...KEYS, roast_level: 'Weird' }, ['roast_level'])).toMatchObject([{ kind: 'unconverted', proposed: null }]);
+    expect(save({ ...KEYS, cost: '$20.999' }, ['cost'])).toMatchObject([{ kind: 'locked', proposed: '21' }]);
+  });
+  it('save: blank key fields are missing rows regardless of fields; cost blank is missing only', () => {
+    const r = save({ roast_date: '', cost: '', amount_g: '', variety: 'A' }, ['variety', 'cost']);
+    expect(r.map((x) => [x.field, x.kind])).toEqual([['roast_date', 'missing'], ['cost', 'missing'], ['amount_g', 'missing']]);
+  });
+  it('save: fields not listed, coffee_name: no row', () => {
+    expect(save({ ...KEYS, elevation: '1800m' }, ['variety'])).toEqual([]);
+    expect(save({ ...KEYS, coffee_name: 'Whatever' }, ['coffee_name'])).toEqual([]);
+  });
+  it('save: roaster takes the site spelling and counts coffees', () => {
+    expect(save({ ...KEYS, roaster: 'STILL' }, ['roaster'], dbWith('Still'))).toEqual([
+      { field: 'roaster', label: 'Roaster', now: 'STILL', proposed: 'Still', kind: 'choice', roasterCount: 1 }]);
+    expect(save({ ...KEYS, roaster: 'New' }, ['roaster'], dbWith('Still'))).toEqual([]);
+  });
+  it('save: producer split shows producer and farm rows', () => {
+    const r = save({ ...KEYS, producer: 'Ana - Finca Rosa' }, ['producer']);
+    expect(r.map((x) => [x.field, x.proposed])).toEqual([['farm', 'Finca Rosa'], ['producer', 'Ana']]);
+  });
+  it('fill: locked sides compare formatted', () => {
+    expect(fill({ elevation: '1800m' }, { elevation: '1,800 - 2,200+ masl' })).toMatchObject([
+      { kind: 'choice', now: '1,800 masl', proposed: '1,800 - 2,200+ masl' }]);
+    expect(fill({ elevation: '1800m' }, { elevation: '1,800 masl' })).toMatchObject([{ kind: 'locked' }]);
+    expect(fill({ harvest_time: 'new crop' }, { harvest_time: '2025/26' })).toMatchObject([{ kind: 'forced', proposed: '2025/26' }]);
+  });
+  it('fill: blank current or equal gives no row; name differs is a choice', () => {
+    expect(fill({ variety: '' }, { variety: 'Gesha' })).toEqual([]);
+    expect(fill({ variety: 'Gesha' }, { variety: 'Gesha' })).toEqual([]);
+    expect(fill({ coffee_name: 'A' }, { coffee_name: 'B' })).toMatchObject([{ kind: 'choice', now: 'A', proposed: 'B' }]);
+  });
+  it('fill: roaster proposes the site spelling', () => {
+    expect(proposeStandards(dbWith('Still'), { mode: 'fill', values: { roaster: 'norml' }, incoming: { roaster: 'STILL' } }))
+      .toMatchObject([{ field: 'roaster', proposed: 'Still', roasterCount: 1 }]);
+  });
+  it('fill: only standard fields produce rows', () => {
+    expect(fill({ image_url: 'a', amount_g: '100' }, { image_url: 'b', amount_g: '200' })).toEqual([]);
+  });
+  it('fill: unformattable incoming locked value is never proposed', () => {
+    expect(fill({ harvest_time: '2025' }, { harvest_time: 'new crop' })).toEqual([]);
+  });
+  it('fill: cost compares both sides formatted', () => {
+    expect(fill({ cost: '20.989' }, { cost: '21' })).toMatchObject([{ kind: 'choice', now: '20.99', proposed: '21' }]);
+  });
+  it('save: a typed placeholder is a choice to blank (G3)', () => {
+    expect(save({ ...KEYS, variety: 'n/a' }, ['variety'])).toMatchObject([{ kind: 'choice', now: 'n/a', proposed: null }]);
+  });
+  it('save: malformed cost is blocked, proper thousands commas pass', () => {
+    for (const c of ['1,0', '12abc']) expect(save({ ...KEYS, cost: c }, ['cost'])).toMatchObject([{ kind: 'blocked', proposed: null }]);
+    expect(save({ ...KEYS, cost: '1,234.5' }, ['cost'])).toMatchObject([{ kind: 'locked', proposed: '1234.5' }]);
+  });
+  it('save: fields outside the standard set are ignored', () => {
+    expect(save({ ...KEYS, image_url: 'x' }, ['image_url', 'amount_g'])).toEqual([]);
+  });
+});
+
+describe('accentsFrom', () => {
+  it('takes the page spelling for each item', () => {
+    expect(accentsFrom('Narino, Huila', 'grown in Nariño by…')).toBe('Nariño, Huila');
+  });
+  it('leaves a value the page does not spell with accents', () => {
+    expect(accentsFrom('Narino', 'grown in Narino')).toBe('Narino');
+  });
+  it('matches multi-word values', () => {
+    expect(accentsFrom('Finca La Esperanza', 'Finca La Esperanza')).toBe('Finca La Esperanza');
+    expect(accentsFrom('Jose Perez', 'by José Pérez today')).toBe('José Pérez');
+  });
+});
+
+describe('formatLocked placeholders', () => {
+  it('proposes blank for n/a or a dash instead of blocking', () => {
+    expect(formatLocked('elevation', 'n/a')).toEqual({ value: null, ok: true });
+    expect(formatLocked('harvest_time', '-')).toEqual({ value: null, ok: true });
   });
 });

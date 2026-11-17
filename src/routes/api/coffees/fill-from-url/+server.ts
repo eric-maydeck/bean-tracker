@@ -5,7 +5,7 @@ import { requireAdmin } from '$lib/server/auth';
 import { getDistinctFieldValues, getFillHistory } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { fetchProductData, getUsdRates, FillError } from '$lib/server/productFetch';
-import { buildFill, mergeBeanBase, type FillContext } from '$lib/server/productFill';
+import { buildFill, standardizeBeanBase, type FillContext } from '$lib/server/productFill';
 import type { ProductData } from '$lib/server/productParse';
 import { lookupBeanBase } from '$lib/server/beanBase';
 
@@ -29,9 +29,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       processing: getDistinctFieldValues(db, 'processing')
     };
     let fill;
+    let product = NO_PAGE;
     let pageError: unknown = null;
     try {
-      const product = await fetchProductData(url);
+      product = await fetchProductData(url);
       const rates = product.currency && product.currency !== 'USD' ? await getUsdRates().catch(() => null) : null;
       fill = buildFill(product, { ...ctx, rates });
     } catch (err) {
@@ -44,7 +45,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       ? await lookupBeanBase(roaster, { coffee_name: fill.fields.coffee_name ?? '', product_url: url }, ctx)
       : null;
     if (pageError && !(hit && 'id' in hit)) throw pageError;
-    return json(mergeBeanBase(fill, hit && 'id' in hit ? hit : null));
+    // Bean Base drops accents; the page text (already fetched) may have them.
+    const pageText = [product.title, product.description, ...Object.values(product.attributes)].join('\n');
+    return json(standardizeBeanBase(fill, hit && 'id' in hit ? hit : null, { db, pageText }));
   } catch (err) {
     if (err instanceof FillError) return json({ error: err.message }, { status: 422 });
     const name = err instanceof Error ? err.name : '';

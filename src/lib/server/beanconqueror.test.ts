@@ -577,6 +577,27 @@ describe('fillBlankCoffeeFields origin format', () => {
   });
 });
 
+describe('fillBlankCoffeeFields standards', () => {
+  const run = (origin: Record<string, unknown>) => {
+    const db = createDb(':memory:');
+    const { id } = createCoffee(db, { roaster: 'R', coffee_name: 'C', origin: null, roast_level: null, processing: null, amount_g: null, cost: null, roast_date: null, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null });
+    importBeanConquerorData(db, {
+      beans: [{ id: 'b1', name: 'Bean', roaster: 'R', roastDate: null, roastType: null, degreeOfRoast: 2, customDegreeOfRoast: null, blend: 'Single Origin', weightG: 200, cost: 18, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: 7, bcCreatedAt: '2026-06-01T00:00:00.000Z', bcArchived: false }],
+      beanOrigins: [{ beanId: 'b1', componentNumber: 1, country: 'Kenya', region: null, farm: null, farmer: null, elevation: null, variety: null, processing: null, certification: null, harvested: null, percentage: null, ...origin }],
+      methods: [], grinders: [], brews: []
+    });
+    db.prepare('UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?').run(id, 'b1');
+    fillBlankCoffeeFields(db);
+    return db.prepare('SELECT variety, elevation FROM coffees WHERE id = ?').get(id);
+  };
+  it('standardizes what it fills', () => {
+    expect(run({ variety: 'SL-28, Batian' })).toMatchObject({ variety: 'Batian, SL28' });
+  });
+  it('does not write an unparseable elevation', () => {
+    expect(run({ elevation: 'high up' })).toMatchObject({ elevation: null });
+  });
+});
+
 describe('importBeanConquerorData changes', () => {
   const E = { beanOrigins: [], methods: [], grinders: [] };
   const bean = (id: string, over = {}) => ({ id, name: id, roaster: 'R', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: 200, cost: 18, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false, ...over });

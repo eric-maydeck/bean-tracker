@@ -97,6 +97,19 @@ describe('createCoffee', () => {
   });
 });
 
+describe('standards on write', () => {
+  it('formats locked fields on create and stores rejectable ones as submitted', () => {
+    const { id } = createCoffee(db, sampleInput({ elevation: '1800m', cost: 20.9900000001, variety: 'SL34 / SL28' }));
+    expect(getCoffeeById(db, id)).toMatchObject({ elevation: '1,800 masl', cost: 20.99, variety: 'SL34 / SL28' });
+  });
+
+  it('stores an unformattable locked value as given on update', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    updateCoffee(db, id, sampleInput({ harvest_time: 'new crop' }), slug);
+    expect(getCoffeeById(db, id)?.harvest_time).toBe('new crop');
+  });
+});
+
 describe('getCoffeeBySlug', () => {
   it('returns the coffee with that slug', () => {
     const { slug } = createCoffee(db, sampleInput());
@@ -746,7 +759,7 @@ describe('undo by state snapshot', () => {
 });
 
 describe('origin detail fields', () => {
-  const all = { producer: 'P', farm: 'F', variety: 'V', region: 'R', elevation: '1800m', harvest_time: 'Nov 2025', certification: 'Organic' };
+  const all = { producer: 'P', farm: 'F', variety: 'V', region: 'R', elevation: '1,800 masl', harvest_time: 'November 2025', certification: 'Organic' };
   const slugOf = (id: number) => getCoffeeById(db, id)!.slug;
   it('round trip', () => {
     const { id } = createCoffee(db, sampleInput(all));
@@ -773,7 +786,8 @@ describe('origin detail fields', () => {
 
 describe('applyCoffeeFix origin format', () => {
   it('stores the standard format for a rule field; a field with no rule is as before', () => {
-    const { id } = createCoffee(db, sampleInput({ elevation: '1500masl' }));
+    const { id } = createCoffee(db, sampleInput());
+    db.prepare(`UPDATE coffees SET elevation = '1500masl' WHERE id = ?`).run(id);
     expect(applyCoffeeFix(db, { coffee_id: id, field: 'elevation', from: '1500masl', to: '1500 meters' })).toBeNull();
     expect(getCoffeeById(db, id)!.elevation).toBe('1,500 masl');
     expect(applyCoffeeFix(db, { coffee_id: id, field: 'producer', from: null, to: 'A - B' })).toBeNull();

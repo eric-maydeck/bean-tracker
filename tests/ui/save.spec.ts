@@ -5,7 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { truncate, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { VIEWPORTS } from './viewports';
+import { ALL_VIEWPORTS, VIEWPORTS } from './viewports';
 import { checkLayout, expectStatRowsFull, expectTipInView } from './checkLayout';
 
 // Saves for real, so it runs last (playwright.config.ts: after perf, which runs
@@ -51,15 +51,15 @@ test('cards: two inline edits open, Save on A writes A and leaves B open', { tag
     const card = page.locator('.card').filter({ hasText: name });
     await card.evaluate((el, p) => (el.dataset.probe = p), probe); // the card element survives the form swap
     await card.getByRole('button', { name: 'Edit', exact: true }).click();
-    await page.locator(`[data-probe="${probe}"] #processing`).fill(`Typed ${probe}`);
+    await page.locator(`[data-probe="${probe}"] #processing`).fill(probe === 'a' ? 'Honey' : 'Natural');
   }
   await page.locator('[data-probe="a"]').getByRole('button', { name: 'Save', exact: true }).click();
-  await expect.poll(read(`SELECT processing FROM coffees WHERE coffee_name = ?`, A)).toEqual({ processing: 'Typed a' });
+  await expect.poll(read(`SELECT processing FROM coffees WHERE coffee_name = ?`, A)).toEqual({ processing: 'Honey' });
   await expect(page.locator('[data-probe="a"] form')).toHaveCount(0);
-  await expect(page.locator('[data-probe="b"] #processing')).toHaveValue('Typed b');
+  await expect(page.locator('[data-probe="b"] #processing')).toHaveValue('Natural');
   await page.locator('[data-probe="b"]').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.locator('form #processing')).toHaveCount(0);
-  await expect.poll(read(`SELECT processing FROM coffees WHERE coffee_name = ?`, B)).not.toEqual({ processing: 'Typed b' });
+  await expect.poll(read(`SELECT processing FROM coffees WHERE coffee_name = ?`, B)).not.toEqual({ processing: 'Natural' });
 });
 
 // The layout workers share the DB and never save, so a household of one is checked here:
@@ -118,6 +118,9 @@ test.describe('coffee added popup', { tag: '@coffees' }, () => {
   async function add(page: Page) {
     await page.locator('#roaster').fill('Popup Test Roaster');
     await page.locator('#coffee_name').fill(`Popup Test ${++n}`);
+    await page.locator('#cost').fill('20'); // cost, weight and roast date, so the standards dialog stays shut
+    await page.locator('#amount_g').fill('250');
+    await page.locator('#roast_date').fill('2026-02-01');
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     const toast = page.locator('.added-toast');
     await expect(toast).toBeVisible();
@@ -600,5 +603,233 @@ test.describe('settings', () => {
     const dlg = page.getByRole('dialog', { name: 'Filters' });
     await expect(dlg.getByLabel('Caffeine').locator('option').first()).toHaveText(/^Default( \(decaf\))?$/);
     await expect(dlg.locator('.coffees-note')).toHaveText('Caffeine, Default (decaf): only decaf brews and bags. Caffeinated vs. decaf still shows both.');
+  });
+});
+
+// The coffee form's data-standards check (#76): add, edit, clone and Fill from URL. Real saves; rows are removed afterwards.
+// Behavior runs at phone portrait and desktop (tag T in names keeps rows apart); the dialog's layout at three sizes.
+test.describe('coffee form data standards', { tag: '@coffees' }, () => {
+  const ROASTER = 'Std Test Roaster';
+  const STILL = 'Still'; // seeded so a typed "STILL" proposes the site's spelling
+  const EDIT = 'Std Edit Me';
+  const PIXEL = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#c2185b"/></svg>');
+  const CREATE = 'form[action="?/create"]';
+
+  const withDb = <T>(fn: (d: DatabaseSync) => T): T => {
+    const d = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
+    try { return fn(d); } finally { d.close(); }
+  };
+  const coffeeRow = (name: string) => () => withDb((d) => d.prepare(`SELECT * FROM coffees WHERE coffee_name = ?`).get(name) as Record<string, unknown> | undefined);
+  const wipe = () => withDb((d) => d.prepare(`DELETE FROM coffees WHERE roaster IN (?, ?)`).run(ROASTER, STILL));
+
+  test.beforeAll(() => {
+    wipe();
+    withDb((d) => {
+      const ins = d.prepare(`INSERT INTO coffees (roaster, coffee_name, slug, status, variety, elevation, cost, amount_g, roast_date, created_at, updated_at)
+        VALUES (?, ?, ?, 'backlog', ?, ?, 20, 250, '2026-01-01', '2026-01-01', '2026-01-01')`);
+      ins.run(STILL, 'Std Still Seed', 'std-still-seed', null, null);
+      ins.run(ROASTER, EDIT, 'std-edit-me', 'SL34 / SL28', '1800m'); // stored non-standard values: only a change prompts
+    });
+  });
+  test.afterAll(wipe);
+
+  const openAdd = async (page: Page) => {
+    await gotoReady(page, '/coffees');
+    await page.getByRole('button', { name: '+ Add Coffee' }).click();
+    await page.locator('#roaster').fill(ROASTER);
+  };
+  const fillBag = async (page: Page, name: string, { cost = '20', amount = '250', date = '2026-02-01' } = {}) => {
+    await page.locator('#coffee_name').fill(name);
+    await page.locator('#cost').fill(cost);
+    await page.locator('#amount_g').fill(amount);
+    await page.locator('#roast_date').fill(date);
+  };
+  const saveAdd = (page: Page) => page.locator(CREATE).getByRole('button', { name: 'Save', exact: true }).click();
+  const dialog = (page: Page) => page.locator('dialog.sd-dialog[open]');
+  const dsave = (page: Page) => dialog(page).getByRole('button', { name: 'Save', exact: true });
+  const openEdit = async (page: Page) => {
+    await gotoReady(page, '/coffees?status=all&view=cards');
+    await page.locator('.card').filter({ hasText: EDIT }).getByRole('button', { name: 'Edit', exact: true }).click();
+  };
+
+  for (const [T, viewport] of [['P', { width: 480, height: 909 }], ['D', { width: 1280, height: 800 }]] as const) {
+    test.describe(`standards ${T}`, () => {
+      test.use({ viewport });
+
+      test('add: variety row blocks Save until decided; Reject keeps the typed value', async ({ page }) => {
+        await openAdd(page);
+        await fillBag(page, `Std Variety ${T}`);
+        await page.locator('#variety').fill('SL34 / SL28');
+        await saveAdd(page);
+        await expect(dialog(page)).toBeVisible();
+        await expect(dsave(page)).toHaveAttribute('aria-disabled', 'true');
+        await expect(dsave(page)).toHaveAttribute('title', /Variety/);
+        await dialog(page).getByRole('group', { name: 'Variety' }).getByRole('button', { name: 'Reject' }).click();
+        await dsave(page).click();
+        await expect.poll(() => coffeeRow(`Std Variety ${T}`)()?.variety).toBe('SL34 / SL28');
+      });
+
+      test('add: a format-only elevation change never opens the dialog', async ({ page }) => {
+        await openAdd(page);
+        await fillBag(page, `Std Elevation ${T}`);
+        await page.locator('#elevation').fill('1800m');
+        await saveAdd(page);
+        await expect.poll(() => coffeeRow(`Std Elevation ${T}`)()?.elevation).toBe('1,800 masl');
+        await expect(dialog(page)).toHaveCount(0);
+      });
+
+      test('add: only Leave blank rows (n/a elevation, blank weight): bulk buttons disabled, Save enabled, saves empty', async ({ page }) => {
+        await openAdd(page);
+        await fillBag(page, `Std Blanks ${T}`, { amount: '' });
+        await page.locator('#elevation').fill('n/a');
+        await saveAdd(page);
+        await expect(dialog(page).getByRole('button', { name: 'Leave blank' })).toHaveCount(2);
+        for (const b of await dialog(page).getByRole('button', { name: 'Leave blank' }).all()) await expect(b).toHaveAttribute('aria-pressed', 'true');
+        await expect(dialog(page).getByRole('button', { name: 'Approve all' })).toHaveAttribute('aria-disabled', 'true');
+        await expect(dialog(page).getByRole('button', { name: 'Reject all' })).toHaveAttribute('aria-disabled', 'true');
+        await expect(dsave(page)).not.toHaveAttribute('aria-disabled', 'true');
+        await dsave(page).click();
+        await expect.poll(() => coffeeRow(`Std Blanks ${T}`)()?.coffee_name).toBe(`Std Blanks ${T}`);
+        expect(coffeeRow(`Std Blanks ${T}`)()?.elevation).toBeNull();
+        expect(coffeeRow(`Std Blanks ${T}`)()?.amount_g).toBeNull();
+      });
+
+      test('add: blank cost asks, Leave blank saves it blank', async ({ page }) => {
+        await openAdd(page);
+        await fillBag(page, `Std No Cost ${T}`, { cost: '' });
+        await page.locator('#variety').fill('SL34 / SL28'); // mixed rows: Leave blank starts undecided
+        await saveAdd(page);
+        await expect(dsave(page)).toHaveAttribute('aria-disabled', 'true');
+        await dialog(page).getByRole('group', { name: 'Variety' }).getByRole('button', { name: 'Reject' }).click();
+        await expect(dsave(page)).toHaveAttribute('aria-disabled', 'true'); // still needs the blank cost decided
+        await dialog(page).getByRole('button', { name: 'Leave blank' }).click();
+        await dsave(page).click();
+        await expect.poll(() => coffeeRow(`Std No Cost ${T}`)()?.coffee_name).toBe(`Std No Cost ${T}`);
+        expect(coffeeRow(`Std No Cost ${T}`)()?.cost).toBeNull();
+      });
+
+      test('add: an unconvertible harvest blocks Save; Cancel keeps the form', async ({ page }) => {
+        await openAdd(page);
+        await fillBag(page, `Std Harvest ${T}`);
+        await page.locator('#harvest_time').fill('new crop');
+        await saveAdd(page);
+        await expect(dialog(page)).toContainText(`can't be converted`);
+        await expect(dsave(page)).toHaveAttribute('aria-disabled', 'true');
+        await dsave(page).click({ force: true });
+        await expect(dialog(page)).toBeVisible();
+        await dialog(page).getByRole('button', { name: 'Cancel' }).click();
+        await expect(dialog(page)).toHaveCount(0);
+        await expect(page.locator('#harvest_time')).toHaveValue('new crop');
+        expect(coffeeRow(`Std Harvest ${T}`)()).toBeUndefined();
+      });
+
+      test('edit: changing only the name never prompts about stored values', async ({ page }) => {
+        await openEdit(page);
+        await page.locator('#coffee_name').fill(`Std Edited ${T}`);
+        await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+        await expect.poll(() => coffeeRow(`Std Edited ${T}`)()?.variety).toBe('SL34 / SL28');
+        await expect(dialog(page)).toHaveCount(0);
+        withDb((d) => d.prepare(`UPDATE coffees SET coffee_name = ? WHERE coffee_name = ?`).run(EDIT, `Std Edited ${T}`));
+      });
+
+      test('clone: only fields changed from the source are checked', async ({ page }) => {
+        await openEdit(page);
+        await expect(page.locator('#variety')).toHaveValue('SL34 / SL28');
+        await page.locator('#coffee_name').fill(`Std Clone ${T}`); // typed in the edit form, carried into the clone
+        await page.locator('form:has(#slug)').getByRole('button', { name: 'Clone', exact: true }).click();
+        await expect(page.locator(`${CREATE} #variety`)).toHaveValue('SL34 / SL28');
+        await page.locator(`${CREATE} #roaster`).fill(ROASTER);
+        await saveAdd(page);
+        await expect.poll(() => coffeeRow(`Std Clone ${T}`)()?.variety).toBe('SL34 / SL28');
+        await expect(dialog(page)).toHaveCount(0);
+      });
+
+      test('roaster: STILL proposes Still; Reject warns with a See coffees link', async ({ page }) => {
+        await openAdd(page);
+        await page.locator('#roaster').fill('STILL');
+        await fillBag(page, `Std Roaster ${T}`);
+        await saveAdd(page);
+        await dialog(page).getByRole('group', { name: 'Roaster' }).getByRole('button', { name: 'Reject' }).click();
+        const warn = dialog(page).getByText(/already saved as "Still"/);
+        await expect(warn).toBeVisible();
+        await expect(warn.getByRole('link', { name: 'See coffees' })).toHaveAttribute('href', /^\/coffees\?.*roaster=Still/);
+        await dialog(page).getByRole('button', { name: 'Cancel' }).click();
+        expect(coffeeRow(`Std Roaster ${T}`)()).toBeUndefined();
+      });
+
+      test.describe('fill from URL', () => {
+        const URL_ = 'https://example.test/products/std';
+        const setup = async (page: Page) => {
+          await page.route('**/api/coffees/fill-from-url', (route) =>
+            route.fulfill({ json: {
+              fields: { producer: 'Hacienda Mock', image_url: PIXEL, rest_days_low: 7, rest_days_high: 14 }, notes: ['Mock note'], restNote: 'Mock rest note',
+              beanBase: { id: '9', url: 'https://www.loffeelabs.com', fields: ['producer'] },
+              variants: [{ label: '250g', grams: 250, costUsd: 20, originalPrice: null }], selected: 0 } }));
+          await openAdd(page);
+          await page.locator('#producer').fill('Finca Typed');
+          await page.locator('#product_url').fill(URL_);
+          await page.getByRole('button', { name: 'Fill from page' }).click();
+          await expect(dialog(page)).toBeVisible();
+        };
+
+        test('Cancel discards the whole fill and keeps the URL', async ({ page }) => {
+          await setup(page);
+          await dialog(page).getByRole('button', { name: 'Cancel' }).click();
+          await expect(dialog(page)).toHaveCount(0);
+          await expect(page.locator('#producer')).toHaveValue('Finca Typed');
+          await expect(page.locator('#image_url')).toHaveValue('');
+          await expect(page.locator('img.image-preview')).toHaveCount(0);
+          await expect(page.getByText('Mock note')).toHaveCount(0);
+          await expect(page.locator('#product_url')).toHaveValue(URL_);
+          await expect(page.getByRole('link', { name: 'From Loffee Labs Bean Base' })).toHaveCount(0);
+          await expect(page.locator('input[name="bean_base_id"]')).toHaveValue('');
+          await expect(page.getByRole('group', { name: 'Bag size' })).toHaveCount(0);
+          await expect(page.locator('#rest_days_low')).toHaveValue('');
+          await expect(page.locator('#rest_days_high')).toHaveValue('');
+          await expect(page.getByText('Mock rest note')).toHaveCount(0);
+        });
+
+        test('Approve applies the fill', async ({ page }) => {
+          await setup(page);
+          await dialog(page).getByRole('button', { name: 'Approve all' }).click();
+          await dsave(page).click();
+          await expect(page.locator('#producer')).toHaveValue('Hacienda Mock');
+          await expect(page.locator('img.image-preview')).toBeVisible();
+          await expect(page.getByText('Mock note')).toBeVisible();
+          await expect(page.getByRole('link', { name: 'From Loffee Labs Bean Base' })).toBeVisible();
+          await expect(page.getByRole('group', { name: 'Bag size' })).toBeVisible();
+          await expect(page.locator('#rest_days_low')).toHaveValue('7');
+        });
+      });
+    });
+  }
+
+  test('bean triage Create checks every prefilled value (a plain add, not a clone)', async ({ page }) => {
+    const sent: string[][] = [];
+    await page.route('**/api/coffees/standardize', (route) => {
+      sent.push(route.request().postDataJSON().fields);
+      return route.fulfill({ json: { rows: [] } });
+    });
+    await page.route(/\?\/(create|createCoffee)$/, (route) => route.fulfill({ json: { type: 'failure', status: 400, data: '[{"error":1},"stubbed"]' } })); // nothing saves
+    await gotoReady(page, '/account');
+    await page.locator('.triage-row').filter({ hasText: 'Rwanda Gitega' }).first().getByRole('button', { name: 'Create', exact: true }).click();
+    await page.locator('.modal').getByRole('button', { name: 'Save', exact: true }).click();
+    await expect.poll(() => sent.length).toBe(1);
+    expect(sent[0]).toEqual(expect.arrayContaining(['roaster', 'coffee_name', 'cost']));
+  });
+
+  test('open dialog passes checkLayout at phone and desktop sizes', async ({ page }) => {
+    for (const v of ALL_VIEWPORTS.filter((v) => ['phone-portrait', 'phone-landscape', 'w1280'].includes(v.name))) {
+      await page.setViewportSize(v.viewport);
+      await openAdd(page);
+      await page.locator('#roaster').fill('STILL');
+      await fillBag(page, 'Std Layout', { cost: '' });
+      await page.locator('#variety').fill('SL34 / SL28');
+      await page.locator('#harvest_time').fill('new crop');
+      await saveAdd(page);
+      await expect(dialog(page)).toBeVisible();
+      await checkLayout(page);
+      await dialog(page).getByRole('button', { name: 'Cancel' }).click();
+    }
   });
 });

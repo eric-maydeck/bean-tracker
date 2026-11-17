@@ -2,11 +2,14 @@ import type { ProductData } from './productParse';
 import { COUNTRY_NAMES } from '../countryFlags';
 import type { FillHistoryRow } from './coffees';
 import type { CoffeeRow } from '../types';
-import { COFFEE_ORIGIN_FIELDS, type CoffeeOriginField } from '../types';
+import { COFFEE_ORIGIN_FIELDS, COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '../types';
+import { LOCKED_FIELDS } from '../standardsDialog.ts';
 import { conciseProcess } from '../processGroups';
 import { formatOriginField } from '../originFormat.ts';
 import { suggestRest } from '../coffeeFormFill';
 import { beanBaseCreditUrl } from './beanBase';
+import type { DatabaseSync } from 'node:sqlite';
+import { accentsFrom, buildVocab, standardizeField, useVocab, type StdField } from './standards';
 
 export interface UsdRates {
   date: string;
@@ -353,11 +356,52 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
   };
 }
 
-// The page wins: Bean Base only fills fields the page left blank.
-export function mergeBeanBase(fill: FillSuccess, bb: { id: string; fields: FillFields } | null): FillSuccess {
-  if (!bb) return { ...fill, beanBase: null };
-  const added = (Object.keys(bb.fields) as (keyof FillFields)[]).filter((k) => fill.fields[k] == null);
-  const fields = { ...fill.fields };
-  for (const k of added) Object.assign(fields, { [k]: bb.fields[k] });
-  return { ...fill, fields, beanBase: { id: bb.id, url: beanBaseCreditUrl(bb.id), fields: added } };
+// Rule 7d: per field, the first usable value wins, page then Bean Base. A locked field neither can convert is
+// dropped with a note; any other field keeps the page value as is.
+type StdFn = (field: string, v: string) => { value: string | null; review?: string };
+export function mergeBeanBase(fill: FillSuccess, bb: { id: string; fields: FillFields } | null, std: StdFn): FillSuccess {
+  const fields: Record<string, unknown> = { ...fill.fields };
+  const notes = [...fill.notes];
+  const added: (keyof FillFields)[] = [];
+  const check = (k: string, v: unknown) => {
+    if (v == null || v === '') return null;
+    if (typeof v !== 'string') return { value: v };
+    const r = std(k, v);
+    return r.value != null && !r.review ? { value: r.value } : null;
+  };
+  for (const k of new Set([...Object.keys(fill.fields), ...Object.keys(bb?.fields ?? {})])) {
+    const pv = fields[k], bv = (bb?.fields as Record<string, unknown> | undefined)?.[k];
+    const page = check(k, pv), theirs = check(k, bv);
+    if (page) fields[k] = page.value;
+    else if (theirs) { fields[k] = theirs.value; added.push(k as keyof FillFields); }
+    else if ((LOCKED_FIELDS as readonly string[]).includes(k)) {
+      delete fields[k];
+      const shown = pv ?? bv;
+      if (shown != null && shown !== '') notes.push(`${COFFEE_ORIGIN_LABELS[k as CoffeeOriginField] ?? k[0].toUpperCase() + k.slice(1)} "${shown}" couldn't be converted, not filled`);
+    }
+  }
+  if (notes[0]?.startsWith('Filled ')) notes[0] = `Filled ${Object.keys(fields).length} fields`;
+  if (!bb) return { ...fill, fields: fields as FillFields, notes, beanBase: null };
+  return { ...fill, fields: fields as FillFields, notes, beanBase: { id: bb.id, url: beanBaseCreditUrl(bb.id), fields: added } };
+}
+
+const STD_FIELDS = ['origin', 'roast_level', 'processing', 'variety', 'region', 'elevation', 'harvest_time', 'certification', 'tasting_notes', 'producer'];
+
+// The one standardizer for fill values, shared by Fill from URL and the Bean Base picker so they cannot drift.
+export function fillStandardizer(db: DatabaseSync): StdFn {
+  const vocab = buildVocab(db.prepare('SELECT producer, farm, variety, region FROM coffees').all());
+  return (field, v) => {
+    if (!STD_FIELDS.includes(field)) return { value: v };
+    const r = standardizeField(field as StdField, v);
+    return r.review ? r : { value: useVocab(field, r.value, vocab) };
+  };
+}
+
+// Bean Base drops accents; the page text (already fetched) may have them. Site spelling then wins inside std.
+export function standardizeBeanBase(fill: FillSuccess, hit: { id: string; fields: FillFields } | null, opts: { db: DatabaseSync; pageText?: string }): FillSuccess {
+  const { pageText } = opts;
+  const bb = hit && pageText != null
+    ? { ...hit, fields: Object.fromEntries(Object.entries(hit.fields).map(([k, v]) => [k, typeof v === 'string' ? accentsFrom(v, pageText) : v])) as FillFields }
+    : hit;
+  return mergeBeanBase(fill, bb, fillStandardizer(opts.db));
 }

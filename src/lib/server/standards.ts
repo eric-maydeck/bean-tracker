@@ -1,6 +1,8 @@
 // Coffee data standards (docs/data-standards.md, #21/#76): one stored form per field. Pure: no DB except applyDataStandards.
 // Rule G4: a value we can't parse confidently is returned unchanged with `review` set, never guessed.
 import type { DatabaseSync } from 'node:sqlite';
+import { COFFEE_ORIGIN_LABELS } from '../types.ts';
+import { CHECKED_FIELDS, LOCKED_FIELDS, MISSING_KEY_FIELDS, type StdRow } from '../standardsDialog.ts';
 
 export type StdField =
   | 'elevation' | 'producer' | 'variety' | 'processing' | 'region' | 'harvest_time'
@@ -8,10 +10,10 @@ export type StdField =
 type Std = { value: string | null; review?: string };
 
 const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
-const PLACEHOLDER = /^(n\/a|\?+|-)$/i;
+const PLACEHOLDER = /^(n\/a|\?+|-|null|undefined)$/i; // never store these words as a value
 const naturalCmp = new Intl.Collator('en', { numeric: true }).compare;
 const dedupe = (xs: string[]) => xs.filter((x, i) => xs.findIndex((y) => fold(y) === fold(x)) === i);
-const splitList = (v: string) => v.split(/\s*(?:,|;|\/)\s*|\s+and\s+/i).map((s) => s.trim()).filter(Boolean);
+const splitList = (v: string) => v.split(/\s*(?:,|;|\/)\s*|\s+(?:and|&|-|–)\s+/i).map((s) => s.trim()).filter(Boolean);
 const titleCase = (s: string) => s.replace(/(^|[\s-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
 
 // Alias tables: lowercase key -> canonical. Seeded from the prod tally (2026-11).
@@ -19,7 +21,14 @@ const VARIETY_ALIAS: Record<string, string> = {
   'selectdion 9': 'Selection 9',
   landraces: 'Landrace', 'ethiopian landraces': 'Landrace', 'landrace varieties': 'Landrace',
   'jarc 74158': '74158', 'primarily jarc 74158': '74158', 'jarc 74158 (walega)': '74158',
-  'gesha inca': 'SL9 (Inca Gesha)', 'inca gesha': 'SL9 (Inca Gesha)' // one variety (user, 2026-11-16)
+  'gesha inca': 'SL9 (Inca Gesha)', 'inca gesha': 'SL9 (Inca Gesha)', // one variety (user, 2026-11-16)
+  // carried over from originFormat.ts WHOLE (the retired formatVariety)
+  heirloom: 'Landrace', 'ethiopian heirloom': 'Landrace', 'heirloom ethiopian varieties': 'Landrace',
+  'ethiopian landrace': 'Landrace', 'ethiopian landrace (heirloom)': 'Landrace',
+  'local bourbon cultivars': 'Bourbon', 'local bourbon varietals': 'Bourbon',
+  sl09: 'SL9', 'ruiru-11': 'Ruiru 11', ruiru: 'Ruiru 11', ruiri: 'Ruiru 11', 'mundo nuvo': 'Mundo Novo',
+  welicho: 'Wolisho', 'field blend': 'Field blend', 'mostly 74158': '74158', 'bourbon sidra': 'Sidra',
+  'bourbon aji': 'Ají', 'bourbon ají': 'Ají', 'typica mejorado': 'Mejorado'
 };
 const PROCESSING_ALIAS: Record<string, string> = {
   'fully washed': 'Washed',
@@ -45,7 +54,7 @@ export function roundCents(n: number): number {
 
 function elevation(v: string): Std {
   // `+` means "and above" (user, 2026-11-16: `2,000+ masl` over `>2,000 masl`); a leading `>` converts to it.
-  const m = /^(~?)(>?)\s*(\d[\d,]*)(\+?)\s*(?:[-–]\s*(~?)(>?)\s*(\d[\d,]*)(\+?))?\s*(?:m|masl|meters)?$/i.exec(v);
+  const m = /^(~?)((?:>|above\s+|over\s+)?)\s*(\d[\d,]*)(\+?)\s*(?:[-–]\s*(~?)((?:>|above\s+|over\s+)?)\s*(\d[\d,]*)(\+?))?\s*(?:masl|meters|metres|m)?$/i.exec(v);
   if (!m) return { value: v, review: 'elevation not a number or range' };
   const num = (s: string) => String(Number(s.replace(/,/g, ''))).replace(/\B(?=(\d{3})+$)/g, ',');
   const side = (t: string, gt: string, n: string, plus: string) => `${t}${num(n)}${gt || plus ? '+' : ''}`;
@@ -86,7 +95,14 @@ function processing(v: string): Std {
 }
 
 function variety(v: string): Std {
-  let items = splitList(v).map((s) => s.replace(/\bSL-(\d+)/gi, 'SL$1')).map((s) => VARIETY_ALIAS[s.toLowerCase()] ?? s);
+  // ponytail: ALL-CAPS items of 5+ letters are title-cased (short codes like JARC stay).
+  const item = (s: string) => {
+    const t = /^[A-Z ]{5,}$/.test(s) ? s.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : s;
+    const alias = VARIETY_ALIAS[t.toLowerCase()];
+    return alias ?? t.replace(/\bgeisha\b/gi, 'Gesha').replace(/\baji\b/gi, 'Ají').replace(/^jarc\s+(\d+)$/i, '$1');
+  };
+  let items = splitList(v.replace(/rosado\/pink bourbon/gi, 'Pink Bourbon'))
+    .map((s) => s.replace(/\bSL-(\d+)/gi, 'SL$1')).map((s) => VARIETY_ALIAS[s.toLowerCase()] ?? item(s));
   if (items.includes('SL9 (Inca Gesha)')) items = items.filter((s) => s !== 'SL9');
   return { value: dedupe(items).sort(naturalCmp).join(', ') };
 }
@@ -168,6 +184,21 @@ export function useVocab(field: string, value: string | null, vocab?: Vocab): st
   return field === 'producer' || field === 'farm' ? one(value) : value.split(', ').map(one).join(', ');
 }
 
+// Bean Base drops accents ("Narino"); when the product page spells an item with more accents, take the page's spelling.
+export function accentsFrom(value: string, text: string): string {
+  const words = text.match(/[\p{L}\p{M}][\p{L}\p{M}'’-]*/gu) ?? [];
+  const one = (item: string) => {
+    const n = item.split(/\s+/).length, f = fold(item);
+    for (let i = 0; i + n <= words.length; i++) {
+      const run = words.slice(i, i + n).join(' ');
+      if (fold(run) === f && accents(run.normalize('NFD')) > accents(item.normalize('NFD'))) return run;
+    }
+    return item;
+  };
+  const whole = one(value);
+  return whole !== value ? whole : value.split(', ').map(one).join(', ');
+}
+
 const FIELDS: StdField[] = ['origin', 'roast_level', 'processing', 'variety', 'region', 'elevation', 'harvest_time', 'certification', 'tasting_notes', 'producer'];
 type Row = Record<string, unknown> & { id?: number };
 export type Change = { field: string; from: unknown; to: unknown };
@@ -227,4 +258,97 @@ export function applyDataStandards(db: DatabaseSync, marker: string): { changes:
   }
   console.log(`data standards ${marker}: ${changes} changes, ${reviews} for review`);
   return { changes, review: reviews };
+}
+
+// --- Entry-point check (#76): what would the dialog show for this form / fill? ---
+export type ProposeInput =
+  | { mode: 'save'; values: Record<string, string>; fields: string[] }
+  | { mode: 'fill'; values: Record<string, string>; incoming: Record<string, string> };
+
+const LABELS: Record<string, string> = {
+  ...COFFEE_ORIGIN_LABELS, roaster: 'Roaster', coffee_name: 'Coffee name', origin: 'Origin', roast_level: 'Roast level',
+  processing: 'Processing', cost: 'Cost', amount_g: 'Weight', roast_date: 'Roast date'
+};
+const REJECTABLE = ['producer', 'farm', 'variety', 'processing', 'roast_level', 'region', 'certification', 'tasting_notes'];
+// only these fields are checked; anything else a form or fill sends (image_url, amount_g, ...) is ignored
+const isLocked = (f: string) => (LOCKED_FIELDS as readonly string[]).includes(f);
+
+// A formatLocked result as text: blank for null, never the word "null".
+const text = (r: { value: string | number | null }) => (r.value === null ? '' : String(r.value));
+
+export function formatLocked(field: string, value: string | number | null): { value: string | number | null; ok: boolean } {
+  const t = value === null ? '' : String(value).trim();
+  if (!t) return { value: null, ok: true };
+  if (field === 'cost') {
+    const n = t.replace(/^\$/, '');
+    return /^(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$/.test(n) ? { value: roundCents(Number(n.replace(/,/g, ''))), ok: true } : { value: t, ok: false };
+  }
+  const r = standardizeField(field as StdField, t);
+  return r.review ? { value: t, ok: false } : { value: r.value, ok: true }; // a placeholder (n/a, -) is null here: proposed blank, not blocked
+}
+
+export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[] {
+  const coffees = db.prepare(`SELECT roaster, producer, farm, variety, region FROM coffees`).all() as Record<string, unknown>[];
+  const vocab = buildVocab(coffees);
+  const farms = [...new Set(coffees.map((c) => (typeof c.farm === 'string' ? c.farm.trim() : '')).filter(Boolean))];
+  const roasters = new Map<string, { name: string; n: number }>(); // fold -> spelling (accented wins) + count under that exact name
+  const perName = new Map<string, number>();
+  for (const c of coffees) perName.set(c.roaster as string, (perName.get(c.roaster as string) ?? 0) + 1);
+  for (const [name, n] of perName) {
+    const cur = roasters.get(fold(name));
+    if (!cur || accents(name.normalize('NFD')) > accents(cur.name.normalize('NFD'))) roasters.set(fold(name), { name, n });
+  }
+
+  const rows: StdRow[] = [];
+  const val = (f: string) => (input.values[f] ?? '').trim();
+  const add = (field: string, now: string | null, proposed: string | null, kind: StdRow['kind'], extra: Partial<StdRow> = {}) =>
+    rows.push({ field, label: LABELS[field] ?? field, now, proposed, kind, ...extra });
+  const roasterRow = (now: string | null, typed: string) => {
+    const site = roasters.get(fold(typed));
+    const proposed = site?.name ?? typed;
+    if (proposed !== now) add('roaster', now, proposed, 'choice', { roasterCount: perName.get(proposed) ?? 0 });
+  };
+
+  if (input.mode === 'save') {
+    for (const f of MISSING_KEY_FIELDS) if (!val(f)) add(f, null, null, 'missing');
+    for (const f of input.fields.filter((x) => CHECKED_FIELDS.includes(x))) {
+      const v = val(f);
+      if (!v) continue;
+      if (f === 'roaster') roasterRow(v, v);
+      else if (isLocked(f)) {
+        const r = formatLocked(f, v);
+        if (!r.ok) add(f, v, null, 'blocked', { note: `${LABELS[f]} can't be converted` });
+        else if (r.value === null) add(f, v, null, 'missing'); // a placeholder: leave it blank, same as an empty key field
+        else if (text(r) !== v) add(f, v, text(r), 'locked');
+      } else if (REJECTABLE.includes(f)) {
+        let pv = v;
+        if (f === 'producer') {
+          const sp = splitProducerFarm(v, val('farm') || null, farms);
+          if (sp && 'review' in sp) { add(f, v, null, 'unconverted', { note: sp.review }); continue; }
+          if (sp) { pv = sp.producer; add('farm', null, useVocab('farm', sp.farm, vocab), 'choice'); }
+        }
+        const r = f === 'farm' ? { value: pv } as Std : standardizeField(f as StdField, pv);
+        if (r.review) { add(f, v, null, 'unconverted', { note: r.review }); continue; }
+        const proposed = useVocab(f, r.value, vocab);
+        if (proposed !== v) add(f, v, proposed, 'choice');
+      }
+    }
+    return rows;
+  }
+
+  for (const [f, raw] of Object.entries(input.incoming).filter(([k]) => CHECKED_FIELDS.includes(k))) {
+    const inc = (raw ?? '').trim(), cur = val(f);
+    if (!inc || !cur) continue;
+    if (f === 'roaster') { roasterRow(cur, inc); continue; }
+    if (isLocked(f)) {
+      const a = formatLocked(f, cur), b = formatLocked(f, inc);
+      if (!b.ok) continue; // an unformattable source value is never filled
+      if (b.value === null) continue; // a placeholder source value is no value
+      const bs = text(b);
+      if (!a.ok) add(f, cur, bs, 'forced');
+      else if (text(a) === bs) { if (cur !== bs) add(f, cur, bs, 'locked'); }
+      else add(f, text(a), bs, 'choice');
+    } else if (inc !== cur) add(f, cur, inc, 'choice');
+  }
+  return rows;
 }
