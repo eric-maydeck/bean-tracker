@@ -9230,6 +9230,70 @@ export const STATES: State[] = [
       await page.locator('[data-section="water-gh"] .bar-row .bar-label').first().click();
       await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
     } },
+  // Grind speed: the seed's A4Z lab brews alternate 750 / 1250 RPM; the last week has none (the lab bags are older), so both sections show their one line.
+  { name: 'insights-gear-speeds', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      const board = page.locator('[data-section="gear-speeds"]'), map = page.locator('[data-section="gear-speed-coffee"]');
+      await expect(board.getByRole('heading', { name: 'Ratings by grind speed' })).toBeVisible();
+      await expect(board).toContainText('~750 RPM');
+      await expect(board).toContainText('~1,250 RPM');
+      await expect(board.locator('.speed-chart svg.plot')).toBeVisible();
+      await expect(map.getByRole('heading', { name: 'Grind speed × coffee group' })).toBeVisible();
+      await expect(map.locator('[aria-label="Grind speed by coffee group"]')).toBeVisible();
+      // Confined to the chart tile's height (from 768 px): the legend still sits inside the tile.
+      const [tile, legend] = [(await map.boundingBox())!, (await map.locator('.div-legend').boundingBox())!];
+      expect(legend.y + legend.height).toBeLessThanOrEqual(tile.y + tile.height + 0.5);
+      await map.getByRole('button', { name: 'Process' }).click();
+      await expect(page).toHaveURL(/speedBy=process/);
+      await map.getByRole('button', { name: 'Roast' }).click();
+      await expect(page).not.toHaveURL(/speedBy=/);
+      await expect(page.getByRole('navigation').getByRole('link', { name: 'Grind speed ratings' }).first()).toBeAttached();
+    } },
+  // The speed chart's tip: the band marker (hover or tap), then the dot beside it; opening a tip moves nothing.
+  { name: 'insights-gear-speeds-tip', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      const chart = page.locator('[data-section="gear-speeds"] .speed-chart'), tip = page.locator('.cell-tip:popover-open');
+      await expect(chart.locator('svg.plot')).toBeVisible();
+      const before = await chart.boundingBox();
+      await chart.locator('circle.mark').first().click({ force: true });
+      await expect(tip).toBeVisible();
+      await expect(tip).toContainText('Value as a rating');
+      await expect(tip).toContainText('vs grinder average');
+      const after = (await chart.boundingBox())!; // the page may scroll to show the tip; the chart itself keeps its size
+      expect([Math.round(after.width), Math.round(after.height)]).toEqual([Math.round(before!.width), Math.round(before!.height)]);
+      const box = (await chart.locator('circle.dot').first().boundingBox())!;
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      await expect(tip).toContainText('Rating');
+      await expect(tip).toContainText('Date');
+      await page.keyboard.press('Escape');
+      await expect(tip).toHaveCount(0);
+    } },
+  { name: 'insights-gear-speeds-empty', viewports: 'two', path: () => '/stats?tab=gear&range=1w',
+    act: async (page) => {
+      // The board is empty here, so both say there are no speeds; with board rows but no 2-speed coffee the heatmap says so instead.
+      for (const id of ['gear-speeds', 'gear-speed-coffee']) {
+        const sec = page.locator(`[data-section="${id}"]`);
+        await expect(sec.locator('.hl-empty')).toHaveText('No rated brews with a grind speed in this period.');
+        await expect(sec.locator('.fit-body')).toHaveCount(0);
+      }
+    } },
+  // Adjustable grinder (A4Z in the seed) with the dial conversion on: the dial/RPM grid is laid out and every field fits.
+  { name: 'insights-trophy-edit-convert', path: () => '/stats?tab=gear&card=grinder-a4z-femobook',
+    act: async (page) => {
+      const dlg = page.locator('dialog.trophy-dialog');
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await dlg.getByLabel('Convert dial to RPM', { exact: true }).selectOption('Yes');
+      const names = ['Dial min', 'Dial max', 'Speed at dial min (RPM)', 'Speed at dial max (RPM)'];
+      for (const n of names) await expect(dlg.getByLabel(n, { exact: true })).toBeEnabled();
+      await expect(dlg.getByLabel('Motor speed (RPM)')).toHaveCount(0);
+      const box = async (n: string) => (await dlg.getByLabel(n, { exact: true }).boundingBox())!;
+      const dlgB = (await dlg.boundingBox())!;
+      for (const n of names) {
+        const b = await box(n);
+        expect(b.x, n).toBeGreaterThanOrEqual(dlgB.x);
+        expect(b.x + b.width, n).toBeLessThanOrEqual(dlgB.x + dlgB.width + 1);
+      }
+    } },
   { name: 'insights-trophy', path: () => '/stats?tab=gear',
     act: async (page) => {
       const sec = page.locator('[data-section="gear-trophies"]');
@@ -9555,7 +9619,7 @@ export const STATES: State[] = [
           expect(Math.abs(cancelB.x + cancelB.width - (edgeB.x + edgeB.width)), 'Cancel right = last input right').toBeLessThan(1.5);
         }
       };
-      // Grinder: 11 fields, the last row holds one (Step size); Save is its neighbor cell.
+      // Grinder (fixed speed): 12 fields, a full last row (Step size, RPM): Save is below RPM.
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveText(['', '', '', '', '']);
       for (const n of ['Type', 'Burr type', 'Burr coating', 'Adjustment', 'Step size']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
@@ -9580,7 +9644,7 @@ export const STATES: State[] = [
       await input('Adjustment').selectOption('Stepped');
       await expect(input('Step size (µm)')).toBeEnabled();
       await input('Adjustment').selectOption('');
-      await check('Burr coating', 'Adjustment', false);
+      await check('Step size (µm)', 'Motor speed (RPM)', true);
       // Filter: 8 fields, a full last row (Size, Flow): Save is below Flow.
       await page.goto('/stats?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();

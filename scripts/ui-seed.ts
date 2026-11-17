@@ -245,6 +245,9 @@ for (let k = 0; k < 8; k++) {
 }
 for (let j = 32; j < 40; j++) // after the bag's 32 brews (the last four a month before: each new dripper has a gap), on the water it already uses
   labBrew.run(atLocal(132 - 70 - j + (j >= 36 ? 28 : 0), 9, 15), 'bean-lab-7', `m${7 + (j % 4)}`, 'g2', WATERS[j % 3], 15, 92, 240, '150', '30', '1.4.0', 6.4 + 0.5 * (j % 4), now);
+// Grind speed: g2 is adjustable; its lab brews alternate 750 / 1250 RPM, so every lab bag has both (Gear speeds board and heatmap).
+db.prepare(`UPDATE beanconqueror_grinders SET has_adjustable_speed = 1 WHERE id = 'g2'`).run();
+db.prepare(`UPDATE beanconqueror_brews SET grind_speed_rpm = CASE WHEN id % 2 THEN 750 ELSE 1250 END WHERE mill_id = 'g2' AND bean_id LIKE 'bean-lab-%'`).run();
 // Like-with-like dial-in (Part 4): 18 archived bags, 7 rated brews each, daily from `first` days ago. Two roasters
 // × two (roast, process) groups, 9 bags each. Only Light / Ultralight: the mixed-roast nudge needs exactly two levels. Ultralight / Washed bags are right on brew 1; Light / Natural bags (same average, so the mixed-roast nudge stays hidden) start
 // low (three 5s) and settle on brew 4, so dial-in by roast and by process both show a spread and some bags are

@@ -2922,7 +2922,7 @@ select.quick-filter-select {
   margin: 0;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  overflow-wrap: break-word; /* a long coffee name wraps inside the tip; short numbers keep one line (they fit first) */
 }
 /* Help popovers: one idea per line (T1), a little air between lines. */
 .tip-lines {

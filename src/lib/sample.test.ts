@@ -44,6 +44,10 @@ describe('small-sample rule', () => {
     });
     expect(sampleTip(pooled(5, 7), true).lines[0]).toContain('only 7 rated brews in bags brewed both this way and another way, so one brew can swing this');
   });
+  it('an unpaired row (grind speed) never says "brewed both ways"', () => {
+    const t = sampleTip(pooled(1, 5), false);
+    expect([...t.lines, ...t.rows.flat()].join(' ')).not.toContain('both ways');
+  });
   it('no brews is no data, never a small sample', () => {
     expect(pooled(0, 0).small).toBe(false);
     expect(single(0).small).toBe(false);

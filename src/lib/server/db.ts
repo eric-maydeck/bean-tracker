@@ -98,6 +98,7 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'beanconqueror_brews', 'vessel_name', 'TEXT');
   ensureColumn(db, 'beanconqueror_brews', 'has_flow_profile', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(db, 'beanconqueror_brews', 'bc_uuid', 'TEXT');
+  ensureColumn(db, 'beanconqueror_grinders', 'has_adjustable_speed', 'INTEGER NOT NULL DEFAULT 0');
   // Brews are identified by bc_uuid. The old (bc_created_at, bean) key only
   // identifies legacy xlsx rows (no UUID yet): two real brews share one
   // (same second, same bean), so it can't be unique once both are imported.

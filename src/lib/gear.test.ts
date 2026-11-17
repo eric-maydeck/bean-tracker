@@ -62,3 +62,26 @@ describe('ownData', () => {
     expect(parseGearValues('grinder', { ownData: OWN_DATA_ONLY })).toEqual({ values: {} });
   });
 });
+
+describe('grinder RPM', () => {
+  const conv = { rpmConvert: 'Yes', dialMin: 1, dialMax: 9, rpmMin: 200, rpmMax: 1700 };
+  it('keeps a full dial conversion', () => {
+    expect(parseGearValues('grinder', conv)).toEqual({ values: conv });
+  });
+  it('requires every conversion field and a dial max above the min', () => {
+    expect(parseGearValues('grinder', { ...conv, rpmMax: '' })).toEqual({ error: 'Speed at dial max is required to convert the dial to RPM' });
+    expect(parseGearValues('grinder', { ...conv, dialMin: 1, dialMax: 1 })).toEqual({ error: 'Dial max must be above dial min' });
+  });
+  it('drops the dial fields unless converting, and rpm on a hand grinder', () => {
+    expect(parseGearValues('grinder', { ...conv, rpmConvert: 'No' })).toEqual({ values: { rpmConvert: 'No' } });
+    expect(parseGearValues('grinder', { type: 'Hand', rpm: 60 })).toEqual({ values: { type: 'Hand' } });
+    expect(parseGearValues('grinder', { type: 'Electric', rpm: 60 })).toEqual({ values: { type: 'Electric', rpm: 60 } });
+  });
+  it('fieldsFor shows rpm or the conversion set by adjustable speed', () => {
+    const keys = (o?: { adjustableSpeed?: boolean }) => fieldsFor('grinder', o).map((f) => f.key);
+    expect(keys({ adjustableSpeed: true })).toContain('rpmConvert');
+    expect(keys({ adjustableSpeed: true })).not.toContain('rpm');
+    expect(keys()).toContain('rpm');
+    expect(keys()).not.toContain('rpmConvert');
+  });
+});
