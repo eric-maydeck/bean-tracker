@@ -1,3 +1,10 @@
+# [1.114.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.113.1...v1.114.0) (2026-11-17)
+
+
+### Features
+
+* bean base credit on its own footer line ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([9b3ea40](https://github.com/eric-maydeck/bean-tracker/commit/9b3ea4078b9d8fcdb52d1ae495b8b50def377d85))
+
 ## [1.113.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.113.0...v1.113.1) (2026-11-17)
 
 
