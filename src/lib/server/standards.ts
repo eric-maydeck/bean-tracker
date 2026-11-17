@@ -1,6 +1,8 @@
 // Coffee data standards (docs/data-standards.md, #21/#76): one stored form per field. Pure: no DB except applyDataStandards.
 // Rule G4: a value we can't parse confidently is returned unchanged with `review` set, never guessed.
 import type { DatabaseSync } from 'node:sqlite';
+import { COFFEE_ORIGIN_LABELS } from '../types.ts';
+import { LOCKED_FIELDS, MISSING_KEY_FIELDS, type StdRow } from '../standardsDialog.ts';
 
 export type StdField =
   | 'elevation' | 'producer' | 'variety' | 'processing' | 'region' | 'harvest_time'
@@ -227,4 +229,91 @@ export function applyDataStandards(db: DatabaseSync, marker: string): { changes:
   }
   console.log(`data standards ${marker}: ${changes} changes, ${reviews} for review`);
   return { changes, review: reviews };
+}
+
+// --- Entry-point check (#76): what would the dialog show for this form / fill? ---
+export type ProposeInput =
+  | { mode: 'save'; values: Record<string, string>; fields: string[] }
+  | { mode: 'fill'; values: Record<string, string>; incoming: Record<string, string> };
+
+const LABELS: Record<string, string> = {
+  ...COFFEE_ORIGIN_LABELS, roaster: 'Roaster', coffee_name: 'Coffee name', origin: 'Origin', roast_level: 'Roast level',
+  processing: 'Processing', cost: 'Cost', amount_g: 'Weight', roast_date: 'Roast date'
+};
+const REJECTABLE = ['producer', 'farm', 'variety', 'processing', 'roast_level', 'region', 'certification', 'tasting_notes'];
+const isLocked = (f: string) => (LOCKED_FIELDS as readonly string[]).includes(f);
+
+export function formatLocked(field: string, value: string | number | null): { value: string | number | null; ok: boolean } {
+  const t = value === null ? '' : String(value).trim();
+  if (!t) return { value: null, ok: true };
+  if (field === 'cost') {
+    const n = t.replace(/^\$/, '').replace(/,/g, '');
+    return /^\d+(\.\d+)?$/.test(n) ? { value: roundCents(Number(n)), ok: true } : { value: t, ok: false };
+  }
+  const r = standardizeField(field as StdField, t);
+  return r.review ? { value: t, ok: false } : { value: r.value, ok: r.value !== null };
+}
+
+export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[] {
+  const coffees = db.prepare(`SELECT roaster, producer, farm, variety, region FROM coffees`).all() as Record<string, unknown>[];
+  const vocab = buildVocab(coffees);
+  const farms = [...new Set(coffees.map((c) => (typeof c.farm === 'string' ? c.farm.trim() : '')).filter(Boolean))];
+  const roasters = new Map<string, { name: string; n: number }>(); // fold -> spelling (accented wins) + count under that exact name
+  const perName = new Map<string, number>();
+  for (const c of coffees) perName.set(c.roaster as string, (perName.get(c.roaster as string) ?? 0) + 1);
+  for (const [name, n] of perName) {
+    const cur = roasters.get(fold(name));
+    if (!cur || accents(name.normalize('NFD')) > accents(cur.name.normalize('NFD'))) roasters.set(fold(name), { name, n });
+  }
+
+  const rows: StdRow[] = [];
+  const val = (f: string) => (input.values[f] ?? '').trim();
+  const add = (field: string, now: string | null, proposed: string | null, kind: StdRow['kind'], extra: Partial<StdRow> = {}) =>
+    rows.push({ field, label: LABELS[field] ?? field, now, proposed, kind, ...extra });
+  const roasterRow = (now: string | null, typed: string) => {
+    const site = roasters.get(fold(typed));
+    const proposed = site?.name ?? typed;
+    if (proposed !== now) add('roaster', now, proposed, 'choice', { roasterCount: perName.get(proposed) ?? 0 });
+  };
+
+  if (input.mode === 'save') {
+    for (const f of MISSING_KEY_FIELDS) if (!val(f)) add(f, null, null, 'missing');
+    for (const f of input.fields) {
+      const v = val(f);
+      if (!v) continue;
+      if (f === 'roaster') roasterRow(v, v);
+      else if (isLocked(f)) {
+        const r = formatLocked(f, v);
+        if (!r.ok) add(f, v, null, 'blocked', { note: `${LABELS[f]} can't be converted` });
+        else if (String(r.value) !== v) add(f, v, String(r.value), 'locked');
+      } else if (REJECTABLE.includes(f)) {
+        let pv = v;
+        if (f === 'producer') {
+          const sp = splitProducerFarm(v, val('farm') || null, farms);
+          if (sp && 'review' in sp) { add(f, v, null, 'unconverted', { note: sp.review }); continue; }
+          if (sp) { pv = sp.producer; add('farm', null, useVocab('farm', sp.farm, vocab), 'choice'); }
+        }
+        const r = f === 'farm' ? { value: pv } as Std : standardizeField(f as StdField, pv);
+        if (r.review) { add(f, v, null, 'unconverted', { note: r.review }); continue; }
+        const proposed = useVocab(f, r.value, vocab);
+        if (proposed !== v) add(f, v, proposed, 'choice');
+      }
+    }
+    return rows;
+  }
+
+  for (const [f, raw] of Object.entries(input.incoming)) {
+    const inc = (raw ?? '').trim(), cur = val(f);
+    if (!inc || !cur) continue;
+    if (f === 'roaster') { roasterRow(cur, inc); continue; }
+    if (isLocked(f)) {
+      const a = formatLocked(f, cur), b = formatLocked(f, inc);
+      if (!b.ok) continue; // an unformattable source value is never filled
+      const bs = String(b.value);
+      if (!a.ok) add(f, cur, bs, 'forced');
+      else if (String(a.value) === bs) { if (cur !== bs) add(f, cur, bs, 'locked'); }
+      else add(f, String(a.value), bs, 'choice');
+    } else if (inc !== cur) add(f, cur, inc, 'choice');
+  }
+  return rows;
 }

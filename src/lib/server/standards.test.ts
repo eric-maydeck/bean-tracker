@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
-import { applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, type StdField } from './standards';
+import { applyDataStandards, buildVocab, useVocab,roundCents, splitProducerFarm, standardizeCoffee, standardizeField, proposeStandards, type StdField } from './standards';
 
 const OK: [StdField, string, string | null][] = [
   ['elevation', '1850 masl', '1,850 masl'],
@@ -161,5 +161,61 @@ describe('site vocabulary (G1 across the site)', () => {
     expect(useVocab('region', 'Huila', vocab)).toBe('Huila');
     expect(useVocab('producer', 'Ana aka Bob', buildVocab([{ producer: 'Ana Aka Bob' }]))).toBe('Ana aka Bob');
     expect(useVocab('processing', 'Narino', vocab)).toBe('Narino');
+  });
+});
+
+describe('proposeStandards', () => {
+  const dbWith = (...roasters: string[]) => {
+    const db = createDb(':memory:');
+    for (const r of roasters) db.prepare(`INSERT INTO coffees (roaster, coffee_name, created_at, updated_at) VALUES (?, 'x', 'x', 'x')`).run(r);
+    return db;
+  };
+  const save = (values: Record<string, string>, fields: string[], db = dbWith()) => proposeStandards(db, { mode: 'save', values, fields });
+  const fill = (values: Record<string, string>, incoming: Record<string, string>) => proposeStandards(dbWith(), { mode: 'fill', values, incoming });
+  const KEYS = { roast_date: 'x', cost: '1', amount_g: '1' };
+
+  it('save: locked format change', () => {
+    expect(save({ ...KEYS, elevation: '1800m' }, ['elevation'])).toEqual([
+      { field: 'elevation', label: 'Elevation', now: '1800m', proposed: '1,800 masl', kind: 'locked' }]);
+  });
+  it('save: unformattable locked value blocks', () => {
+    expect(save({ ...KEYS, harvest_time: 'new crop' }, ['harvest_time'])).toMatchObject([{ field: 'harvest_time', proposed: null, kind: 'blocked' }]);
+  });
+  it('save: choice, unconverted, cost format', () => {
+    expect(save({ ...KEYS, variety: 'SL34 / SL28' }, ['variety'])).toMatchObject([{ kind: 'choice', proposed: 'SL28, SL34' }]);
+    expect(save({ ...KEYS, roast_level: 'Weird' }, ['roast_level'])).toMatchObject([{ kind: 'unconverted', proposed: null }]);
+    expect(save({ ...KEYS, cost: '$20.999' }, ['cost'])).toMatchObject([{ kind: 'locked', proposed: '21' }]);
+  });
+  it('save: blank key fields are missing rows regardless of fields; cost blank is missing only', () => {
+    const r = save({ roast_date: '', cost: '', amount_g: '', variety: 'A' }, ['variety', 'cost']);
+    expect(r.map((x) => [x.field, x.kind])).toEqual([['roast_date', 'missing'], ['cost', 'missing'], ['amount_g', 'missing']]);
+  });
+  it('save: fields not listed, coffee_name: no row', () => {
+    expect(save({ ...KEYS, elevation: '1800m' }, ['variety'])).toEqual([]);
+    expect(save({ ...KEYS, coffee_name: 'Whatever' }, ['coffee_name'])).toEqual([]);
+  });
+  it('save: roaster takes the site spelling and counts coffees', () => {
+    expect(save({ ...KEYS, roaster: 'STILL' }, ['roaster'], dbWith('Still'))).toEqual([
+      { field: 'roaster', label: 'Roaster', now: 'STILL', proposed: 'Still', kind: 'choice', roasterCount: 1 }]);
+    expect(save({ ...KEYS, roaster: 'New' }, ['roaster'], dbWith('Still'))).toEqual([]);
+  });
+  it('save: producer split shows producer and farm rows', () => {
+    const r = save({ ...KEYS, producer: 'Ana - Finca Rosa' }, ['producer']);
+    expect(r.map((x) => [x.field, x.proposed])).toEqual([['farm', 'Finca Rosa'], ['producer', 'Ana']]);
+  });
+  it('fill: locked sides compare formatted', () => {
+    expect(fill({ elevation: '1800m' }, { elevation: '1,800 - 2,200+ masl' })).toMatchObject([
+      { kind: 'choice', now: '1,800 masl', proposed: '1,800 - 2,200+ masl' }]);
+    expect(fill({ elevation: '1800m' }, { elevation: '1,800 masl' })).toMatchObject([{ kind: 'locked' }]);
+    expect(fill({ harvest_time: 'new crop' }, { harvest_time: '2025/26' })).toMatchObject([{ kind: 'forced', proposed: '2025/26' }]);
+  });
+  it('fill: blank current or equal gives no row; name differs is a choice', () => {
+    expect(fill({ variety: '' }, { variety: 'Gesha' })).toEqual([]);
+    expect(fill({ variety: 'Gesha' }, { variety: 'Gesha' })).toEqual([]);
+    expect(fill({ coffee_name: 'A' }, { coffee_name: 'B' })).toMatchObject([{ kind: 'choice', now: 'A', proposed: 'B' }]);
+  });
+  it('fill: roaster proposes the site spelling', () => {
+    expect(proposeStandards(dbWith('Still'), { mode: 'fill', values: { roaster: 'norml' }, incoming: { roaster: 'STILL' } }))
+      .toMatchObject([{ field: 'roaster', proposed: 'Still', roasterCount: 1 }]);
   });
 });
