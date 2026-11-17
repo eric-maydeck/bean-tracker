@@ -199,6 +199,13 @@ export function accentsFrom(value: string, text: string): string {
   return whole !== value ? whole : value.split(', ').map(one).join(', ');
 }
 
+// No country in Region: Origin holds it.
+function noCountry(region: string | null, origin: string | null): string | null {
+  if (!region || !origin?.trim()) return region;
+  const o = fold(standardizeField('origin', origin).value ?? '');
+  return region.split(', ').filter((x) => fold(x) !== o).join(', ') || null;
+}
+
 const FIELDS: StdField[] = ['origin', 'roast_level', 'processing', 'variety', 'region', 'elevation', 'harvest_time', 'certification', 'tasting_notes', 'producer'];
 type Row = Record<string, unknown> & { id?: number };
 export type Change = { field: string; from: unknown; to: unknown };
@@ -223,10 +230,7 @@ export function standardizeCoffee(row: Row, knownFarms: string[], vocab?: Vocab)
     }
     let r = standardizeField(f, v);
     if (!r.review) r = { value: useVocab(f, r.value, vocab) };
-    if (f === 'region' && r.value && str('origin')) { // no country in Region: Origin holds it
-      const o = fold(standardizeField('origin', str('origin')).value ?? '');
-      r = { value: r.value.split(', ').filter((x) => fold(x) !== o).join(', ') || null };
-    }
+    if (f === 'region') r = { value: noCountry(r.value, str('origin')) };
     if (r.review) review.push({ field: f, value: v ?? '', reason: r.review });
     else set(f, r.value);
   }
@@ -329,10 +333,7 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
         }
         let r = f === 'farm' ? { value: pv } as Std : standardizeField(f as StdField, pv);
         if (r.review) { add(f, v, null, 'unconverted', { note: r.review }); continue; }
-        if (f === 'region' && r.value && val('origin')) { // no country in Region, as standardizeCoffee
-          const o = fold(standardizeField('origin', val('origin')).value ?? '');
-          r = { value: r.value.split(', ').filter((x) => fold(x) !== o).join(', ') || null };
-        }
+        if (f === 'region') r = { value: noCountry(r.value, val('origin')) };
         const proposed = useVocab(f, r.value, vocab);
         if (proposed !== v) add(f, v, proposed, 'choice');
       }
@@ -352,7 +353,10 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
       if (!a.ok) add(f, cur, bs, 'forced');
       else if (text(a) === bs) { if (cur !== bs) add(f, cur, bs, 'locked'); }
       else add(f, text(a), bs, 'choice');
-    } else if (inc !== cur) add(f, cur, inc, 'choice');
+    } else {
+      const p = f === 'region' ? noCountry(inc, input.incoming.origin || val('origin')) : inc;
+      if (p && p !== cur) add(f, cur, p, 'choice');
+    }
   }
   return rows;
 }

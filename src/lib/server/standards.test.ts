@@ -229,6 +229,12 @@ describe('proposeStandards', () => {
       { field: 'region', now: 'Huila, Colombia', proposed: 'Huila', kind: 'choice' }]);
     expect(save({ ...KEYS, origin: '', region: 'Huila, Colombia' }, ['region'])).toEqual([]);
   });
+  it('fill: a region choice drops the country, from the incoming or the form origin (#87)', () => {
+    expect(fill({ region: 'Cauca' }, { region: 'Huila, Colombia', origin: 'Colombia' })).toMatchObject([
+      { field: 'region', now: 'Cauca', proposed: 'Huila', kind: 'choice' }]);
+    expect(fill({ region: 'Cauca', origin: 'Colombia' }, { region: 'Huila, Colombia' })).toMatchObject([{ proposed: 'Huila' }]);
+    expect(fill({ region: 'Huila', origin: 'Colombia' }, { region: 'Huila, Colombia' })).toEqual([]);
+  });
   it('fill: locked sides compare formatted', () => {
     expect(fill({ elevation: '1800m' }, { elevation: '1,800 - 2,200+ masl' })).toMatchObject([
       { kind: 'choice', now: '1,800 masl', proposed: '1,800 - 2,200+ masl' }]);
