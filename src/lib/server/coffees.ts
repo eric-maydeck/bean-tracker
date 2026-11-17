@@ -6,6 +6,7 @@ import { getRoasterImage } from './roasterImages.ts';
 import { hostMatchesRoaster } from '../imageSuggest.ts';
 import { localToday } from './localToday.ts';
 import { formatOriginField } from '../originFormat.ts';
+import { formatLocked } from './standards.ts';
 
 export interface NewCoffeeInput extends CoffeeOriginFields {
   subscription_id?: number | null;
@@ -124,7 +125,17 @@ function sourceFor(db: DatabaseSync, input: NewCoffeeInput): string | null {
   return ownImageUrl(db, input.roaster, input.image_url) ? (input.image_source_url?.trim() || null) : null;
 }
 
-export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: number; slug: string } {
+// Locked fields are always written in the standard form; an unformattable value is stored as given.
+function lockedInput(input: NewCoffeeInput): NewCoffeeInput {
+  const out = { ...input } as Record<string, unknown>;
+  for (const f of ['elevation', 'origin', 'cost', 'harvest_time']) {
+    if (out[f] != null) out[f] = formatLocked(f, out[f] as string | number).value;
+  }
+  return out as unknown as NewCoffeeInput;
+}
+
+export function createCoffee(db: DatabaseSync, raw: NewCoffeeInput): { id: number; slug: string } {
+  const input = lockedInput(raw);
   const now = new Date().toISOString();
   const status = input.status ?? 'backlog';
   const drank = status === 'archive' ? 1 : 0;
@@ -182,7 +193,8 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
   return { id: Number(result.lastInsertRowid), slug };
 }
 
-export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput, slug: string): void {
+export function updateCoffee(db: DatabaseSync, id: number, raw: NewCoffeeInput, slug: string): void {
+  const input = lockedInput(raw);
   const oldSlug = (db.prepare(`SELECT slug FROM coffees WHERE id = ?`).get(id) as { slug: string } | undefined)?.slug;
   const now = new Date().toISOString();
   const decaf = input.decaf ? 1 : 0;

@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { conciseProcess } from '../processGroups';
-import { formatOriginField } from '../originFormat.ts';
+import { buildVocab, standardizeCoffee } from './standards.ts';
 import { autoLinkBeanConquerorBeans, getLinkableCoffees, linkDerivedBeans } from './beanConquerorLinks';
 
 export interface ParsedBean {
@@ -336,20 +336,28 @@ export function fillBlankCoffeeFields(db: DatabaseSync): number {
     .all() as Record<string, string | number | null>[];
   const blank = (v: unknown) => v == null || v === '';
   const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
-  const fmt = (field: string, v: unknown) => {
-    const t = text(v);
-    return t && formatOriginField(field, t);
-  };
   const cols = (r: Record<string, unknown>): Record<string, string | null> => ({
-    producer: text(r.farmer), farm: text(r.farm), variety: fmt('variety', r.variety), region: fmt('region', r.region),
-    elevation: fmt('elevation', r.elevation), harvest_time: fmt('harvest_time', r.harvested), certification: text(r.certification),
+    producer: text(r.farmer), farm: text(r.farm), variety: text(r.variety), region: text(r.region),
+    elevation: text(r.elevation), harvest_time: text(r.harvested), certification: text(r.certification),
     origin: text(r.country), processing: conciseProcess(text(r.processing)),
     product_url: /^https?:\/\//i.test(text(r.b_url) ?? '') ? text(r.b_url) : null
   });
+  const all = db.prepare(`SELECT * FROM coffees`).all() as Record<string, unknown>[];
+  const farms = [...new Set(all.map((c) => (typeof c.farm === 'string' ? c.farm.trim() : '')).filter(Boolean))];
+  const vocab = buildVocab(all);
   let filled = 0;
   for (const r of rows) {
     const current = db.prepare(`SELECT * FROM coffees WHERE id = ?`).get(r.coffee_id as number) as Record<string, unknown>;
-    for (const [col, val] of Object.entries(cols(r))) {
+    // Standardize what we'd fill; a value that needs review is skipped and logged, never guessed.
+    const raw = cols(r);
+    const std = standardizeCoffee({ ...raw }, farms, vocab);
+    const fill: Record<string, string | null> = { ...raw };
+    for (const c of std.changes) fill[c.field] = c.to as string | null;
+    for (const x of std.review) {
+      fill[x.field] = null;
+      console.log(`bean conqueror fill review: coffee ${r.coffee_id} ${x.field} "${x.value}": ${x.reason}`);
+    }
+    for (const [col, val] of Object.entries(fill)) {
       if (val === null || !blank(current[col])) continue;
       db.prepare(`UPDATE coffees SET ${col} = ? WHERE id = ?`).run(val, r.coffee_id as number);
       filled++;
