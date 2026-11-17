@@ -9,6 +9,8 @@
       t.filters.length && ['gear-filters', 'Filter ratings'],
       t.matrix && ['gear-matrix', 'Filters per dripper'],
       t.byRoast && ['gear-roast', 'Dripper × roast'],
+      t.speeds.length && ['gear-speeds', 'Grind speed ratings'],
+      t.speedByCoffee && ['gear-speed-coffee', 'Speed × coffee'],
       t.eras && ['gear-eras', 'Usage over time']
     ];
   }
@@ -32,7 +34,7 @@
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
-  let empty = $derived(!t.drippers.length && !t.filters.length && !t.matrix && !t.byRoast && !t.eras && !t.grinderEras);
+  let empty = $derived(!t.drippers.length && !t.filters.length && !t.matrix && !t.byRoast && !t.speeds.length && !t.speedByCoffee && !t.eras && !t.grinderEras);
   const ERA_BY_OPTIONS = [['dripper', 'Dripper'], ['grinder', 'Grinder']] as const;
   let gearBy = $derived(s.gearBy ?? 'dripper');
   let eras = $derived(gearBy === 'grinder' ? t.grinderEras : t.eras);
@@ -90,6 +92,25 @@
       <LabHeatmap by={t.byRoast} noun="dripper" ariaLabel="Dripper by roast level" />
     </section>
   {/if}
+
+  <!-- Grind speed (RPM): a full-width board and a heatmap, each one short line when there is nothing to show. -->
+  <section class="chart-panel" data-section="gear-speeds">
+    <LabHead id="gear-speeds" title="Ratings by grind speed" help={BOARD_HELP} {placeTip} />
+    {#if t.speeds.length}
+      <div class="fit-body"><LabBoard rows={t.speeds} slots={0} noun="grind speed" {placeTip} /></div>
+    {:else}
+      <p class="hl-empty">{emptyLine('No rated brews with a grind speed in this period.')}</p>
+    {/if}
+  </section>
+  <section class="chart-panel" data-section="gear-speed-coffee">
+    <LabHead id="gear-speed-coffee" title="Grind speed × coffee" {placeTip}
+      help={['Rows: coffees you brewed at 2+ grind speeds.', "A cell: that speed's same-bag delta vs the coffee's other speeds.", SAMPLE_HELP, 'Blank: never brewed at that speed.']} />
+    {#if t.speedByCoffee}
+      <div class="fit-body"><LabHeatmap by={t.speedByCoffee} noun="grind speed on this coffee" scale={['Worse than its other speeds', 'Better']} ariaLabel="Grind speed by coffee" /></div>
+    {:else}
+      <p class="hl-empty">{emptyLine('No rated brews with a grind speed in this period.')}</p>
+    {/if}
+  </section>
 
   {#if t.eras || t.grinderEras}
     <section class="chart-panel" data-section="gear-eras">

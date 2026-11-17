@@ -9210,6 +9210,25 @@ export const STATES: State[] = [
       await page.locator('[data-section="water-gh"] .bar-row .bar-label').first().click();
       await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
     } },
+  // Grind speed: the seed's A4Z lab brews alternate 750 / 1250 RPM; the last week has none (the lab bags are older), so both sections show their one line.
+  { name: 'insights-gear-speeds', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      const board = page.locator('[data-section="gear-speeds"]'), map = page.locator('[data-section="gear-speed-coffee"]');
+      await expect(board.getByRole('heading', { name: 'Ratings by grind speed' })).toBeVisible();
+      await expect(board).toContainText('~750 RPM');
+      await expect(board).toContainText('~1,250 RPM');
+      await expect(map.getByRole('heading', { name: 'Grind speed × coffee' })).toBeVisible();
+      await expect(map.locator('[aria-label="Grind speed by coffee"]')).toBeVisible();
+      await expect(page.getByRole('navigation').getByRole('link', { name: 'Grind speed ratings' }).first()).toBeAttached();
+    } },
+  { name: 'insights-gear-speeds-empty', viewports: 'two', path: () => '/stats?tab=gear&range=1w',
+    act: async (page) => {
+      for (const id of ['gear-speeds', 'gear-speed-coffee']) {
+        const sec = page.locator(`[data-section="${id}"]`);
+        await expect(sec.locator('.hl-empty')).toHaveText('No rated brews with a grind speed in this period.');
+        await expect(sec.locator('.fit-body')).toHaveCount(0);
+      }
+    } },
   { name: 'insights-trophy', path: () => '/stats?tab=gear',
     act: async (page) => {
       const sec = page.locator('[data-section="gear-trophies"]');

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { restZ, strengthOf } from './stats';
+import { single } from '$lib/sample';
 import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, matchesCoffee, labFn, labOptions, matchesBrew, exceptOwn, ladder, HEAD_FIT, MAYBE_FIT, TIE_MARGIN, mightBe, thinOf, tieHead, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import type { BandStat } from './lab';
@@ -695,7 +696,7 @@ describe('gearTab', () => {
   const rows = [1, 2, 3].flatMap((id) => [...many(10, id, 92, 8, { dripper: 'V60', filter: 'Abaca', roastLevel: 'Light' }),
     ...many(10, id, 92, 7, { dripper: 'Origami', filter: 'Abaca', roastLevel: 'Light' }),
     ...many(2, id, 92, 7, { dripper: 'Gabi Master A', filter: '155 (mixed)', roastLevel: 'Light' })]);
-  const g = gearTab(rows, { period: P, ratings: 'all' });
+  const g = gearTab(rows, [], { period: P, ratings: 'all' });
   it('drippers ranked by same-bag delta; spread = consistency', () => {
     expect(g.drippers.map((d) => d.label)).toEqual(['V60', 'Origami', 'Gabi Master A']);
     expect(g.drippers[0].spread).not.toBeNull();
@@ -709,16 +710,41 @@ describe('gearTab', () => {
       ...many(10, id, 92, 6, { dripper: 'Origami', filter: 'Abaca' }), ...many(10, id, 92, 6.5, { dripper: 'Origami', filter: 'T90' }),
       ...many(10, id, 92, 7, { dripper: 'Kalita', filter: 'Wave' }),
       ...many(2, id, 92, 7, { dripper: 'April', filter: id === 1 ? 'Paper' : 'Abaca' })]); // two filters, never on one bag
-    const m = gearTab(r, { period: P, ratings: 'all' }).matrix!;
+    const m = gearTab(r, [], { period: P, ratings: 'all' }).matrix!;
     expect(m.rows).toEqual(['V60', 'Origami']); // April's two filters never meet on a bag: an all-blank row, dropped
     expect(m.cols).toEqual(['Abaca', 'T90']);
     expect(m.cells.slice(0, 2).map((row) => row.slice(0, 2).map((c) => c!.delta))).toEqual([[0.5, -0.5], [-0.25, 0.25]].map((row) => row.map((x) => expect.closeTo(x))));
     expect(m.cells[0][0]).toMatchObject({ solid: true, brews: 30, bags: 3 });
   });
+  describe('grind speed', () => {
+    const bag = (id: number, name: string) => ({ id, roaster: 'R', name }) as BagFact;
+    const bags = [bag(1, 'One'), bag(2, 'Two'), bag(3, 'Three')];
+    const at = (id: number, rpm: number, r: number, k = 4) => many(k, id, 92, r, { rpm });
+    const rows = [...at(1, 750, 7), ...at(1, 1250, 8), ...at(2, 750, 8), ...at(2, 1250, 8.5), ...at(3, 750, 7)];
+    const t = gearTab(rows, bags, { period: P, ratings: 'all' });
+    it('speeds: banded RPM, one row per speed', () => expect(t.speeds.map((s) => s.label).sort()).toEqual(['~1,250 RPM', '~750 RPM']));
+    it('speedByCoffee: coffees at 2+ speeds as rows, speeds as columns, cell = delta within the bag', () => {
+      const m = t.speedByCoffee!;
+      expect(m.rows).toEqual(['R · One', 'R · Two']); // Three has one speed
+      expect(m.cols).toEqual(t.speeds.map((s) => s.label));
+      const i = m.cols.indexOf('~1,250 RPM');
+      expect(m.cells[0][i]!.delta).toBeCloseTo(0.5);
+      expect(m.cells[1][i]!.delta).toBeCloseTo(0.25);
+    });
+    it('a cell is one coffee: single() sample, solid from the one-bag rule', () => {
+      const m = gearTab([...at(1, 750, 7), ...at(1, 1250, 8, 2)], bags, { period: P, ratings: 'all' }).speedByCoffee!;
+      const cs = m.cells[0];
+      expect(cs.map((c) => c!.sample)).toEqual(cs.map((c) => single(c!.brews)));
+      expect(cs.map((c) => [c!.brews, c!.solid]).sort()).toEqual([[2, false], [4, true]]);
+    });
+    it('one speed overall: no heatmap', () => {
+      expect(gearTab(at(1, 750, 7), bags, { period: P, ratings: 'all' }).speedByCoffee).toBeNull();
+    });
+  });
   it('eras: each month\'s shares sum to 100', () => {
     const months = ['2026-07-10', '2026-08-10', '2026-09-10'];
     const r = months.flatMap((localDate) => ['X', 'Y', 'Z'].flatMap((dripper) => many(7, 1, 92, 8, { dripper, localDate })));
-    const e = gearTab(r, { period: { start: null, end: '2026-09-30' }, ratings: 'all' }).eras!;
+    const e = gearTab(r, [], { period: { start: null, end: '2026-09-30' }, ratings: 'all' }).eras!;
     expect(e.lines.map((l) => l.label)).toEqual(['X', 'Y', 'Z']);
     for (let i = 0; i < 3; i++) expect(e.lines.reduce((s, l) => s + l.values[i]!, 0)).toBe(100);
     expect(e.lines.map((l) => l.values[0])).toEqual([34, 33, 33]);
@@ -729,24 +755,24 @@ describe('gearTab', () => {
       ...many(10, 1, 92, 8, { dripper: 'V60', grinder: 'Comandante', localDate }),
       ...many(10, 1, 92, 8, { dripper: 'V60', grinder: 'Timemore', localDate }),
       ...many(10, 1, 92, 8, { dripper: 'V60', grinder: null, localDate })]);
-    const t = gearTab(r, { period: { start: null, end: '2026-09-30' }, ratings: 'all' });
+    const t = gearTab(r, [], { period: { start: null, end: '2026-09-30' }, ratings: 'all' });
     expect(t.grinderEras!.lines.map((l) => [l.label, l.values[0]])).toEqual([['Comandante', 50], ['Timemore', 50]]);
     expect(t.eras!.lines.map((l) => l.label)).toEqual(['V60']);
-    expect(gearTab(many(30, 1, 92, 8, { dripper: 'V60' }), { period: P, ratings: 'all' }).grinderEras).toBeNull();
+    expect(gearTab(many(30, 1, 92, 8, { dripper: 'V60' }), [], { period: P, ratings: 'all' }).grinderEras).toBeNull();
   });
   it('eras: "Other" lists what it holds each month, biggest share first', () => {
     const months = ['2026-07-10', '2026-08-10', '2026-09-10'];
     const r = months.flatMap((localDate) => [['A', 40], ['B', 40], ['C', 40], ['D', 40], ['E', 20], ['F', 5]].flatMap(([dripper, n]) =>
       many(n as number, 1, 92, 8, { dripper: dripper as string, localDate })));
-    const e = gearTab(r, { period: { start: null, end: '2026-09-30' }, ratings: 'all' }).eras!;
+    const e = gearTab(r, [], { period: { start: null, end: '2026-09-30' }, ratings: 'all' }).eras!;
     expect(e.lines.map((l) => l.label)).toEqual(['A', 'B', 'C', 'D', 'Other']);
     expect(e.other).toEqual(months.map(() => [['E', 11], ['F', 3]]));
-    const plain = gearTab(months.flatMap((localDate) => ['X', 'Y'].flatMap((dripper) => many(10, 1, 92, 8, { dripper, localDate }))), { period: { start: null, end: '2026-09-30' }, ratings: 'all' }).eras!;
+    const plain = gearTab(months.flatMap((localDate) => ['X', 'Y'].flatMap((dripper) => many(10, 1, 92, 8, { dripper, localDate }))), [], { period: { start: null, end: '2026-09-30' }, ratings: 'all' }).eras!;
     expect(plain.other).toEqual([[], [], []]); // nothing folded
   });
   it('no filters at all: no matrix', () => {
     const r = [1, 2, 3].flatMap((id) => [...many(4, id, 92, 8, { dripper: 'V60' }), ...many(4, id, 92, 7, { dripper: 'Origami' })]);
-    expect(gearTab(r, { period: P, ratings: 'all' }).matrix).toBeNull();
+    expect(gearTab(r, [], { period: P, ratings: 'all' }).matrix).toBeNull();
   });
 });
 
