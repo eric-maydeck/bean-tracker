@@ -224,6 +224,11 @@ describe('proposeStandards', () => {
     const r = save({ ...KEYS, producer: 'Ana - Finca Rosa' }, ['producer']);
     expect(r.map((x) => [x.field, x.proposed])).toEqual([['farm', 'Finca Rosa'], ['producer', 'Ana']]);
   });
+  it('save: region drops the country Origin holds (#87)', () => {
+    expect(save({ ...KEYS, origin: 'Colombia', region: 'Huila, Colombia' }, ['region'])).toMatchObject([
+      { field: 'region', now: 'Huila, Colombia', proposed: 'Huila', kind: 'choice' }]);
+    expect(save({ ...KEYS, origin: '', region: 'Huila, Colombia' }, ['region'])).toEqual([]);
+  });
   it('fill: locked sides compare formatted', () => {
     expect(fill({ elevation: '1800m' }, { elevation: '1,800 - 2,200+ masl' })).toMatchObject([
       { kind: 'choice', now: '1,800 masl', proposed: '1,800 - 2,200+ masl' }]);
