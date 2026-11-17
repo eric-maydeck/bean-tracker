@@ -144,7 +144,7 @@
 
   // The edit form's instance, when rendered (canEdit) — plain (not
   // $state): only ever read synchronously from within saveChanges.
-  let formRef: { applyPendingEdits: () => boolean } | null = null;
+  let formRef: { applyPendingEdits: () => Promise<boolean> } | null = null;
 
   // SvelteKit reuses this component when navigating from one coffee to
   // another (e.g. landing on a freshly saved clone), so per-coffee UI state
@@ -191,7 +191,7 @@
     // validation error block the delete or running a pointless update
     // right before it.
     const isDeleting = pending.get(data.coffee.id)?.statusAction === 'delete';
-    if (canEdit && !isDeleting && formRef && !formRef.applyPendingEdits()) return;
+    if (canEdit && !isDeleting && formRef && !(await formRef.applyPendingEdits())) return;
 
     saving = true;
     commitError = null;

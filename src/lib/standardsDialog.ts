@@ -1,3 +1,5 @@
+import { COFFEE_ORIGIN_LABELS } from './types';
+
 // Shared by the standards check endpoint (server) and the review dialog (browser). #76
 // choice: approve/reject. locked: format-only change, read-only, never opens the dialog alone.
 // forced: locked, Now unformattable, Proposed formatted, read-only. blocked: locked and unformattable, gates Save.
@@ -12,6 +14,9 @@ export interface StdRow {
 }
 export const LOCKED_FIELDS = ['elevation', 'origin', 'cost', 'harvest_time'] as const;
 export const MISSING_KEY_FIELDS = ['roast_date', 'cost', 'amount_g'] as const;
+
+// Fields the server checks (standards.ts CHECKED): a non-blank form value in one of these is never overwritten by a fill without a dialog row.
+export const CHECKED_FIELDS: readonly string[] = ['roaster', 'coffee_name', 'origin', 'roast_level', 'processing', 'cost', ...Object.keys(COFFEE_ORIGIN_LABELS)];
 
 export type Decision = 'approve' | 'reject' | 'leave';
 

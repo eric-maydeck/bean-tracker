@@ -69,6 +69,13 @@ export default defineConfig({
       testMatch: /save\.spec\.ts/,
       dependencies: ['perf'],
       use: { viewport: { width: 480, height: 909 }, deviceScaleFactor: 3, hasTouch: true, storageState: '.ui-test/admin.json' }
+    },
+    // The coffee form's data-standards dialog (tests/ui/standards.spec.ts): saves too, so after save.
+    {
+      name: 'standards',
+      testMatch: /standards\.spec\.ts/,
+      dependencies: ['save'],
+      use: { viewport: { width: 480, height: 909 }, deviceScaleFactor: 3, hasTouch: true, storageState: '.ui-test/admin.json' }
     }])
   ]
 });

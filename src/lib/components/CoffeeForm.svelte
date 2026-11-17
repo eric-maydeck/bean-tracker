@@ -13,6 +13,9 @@
   import { backdrop } from '$lib/imageBackdrop';
   import { formatDate } from '$lib/formatDate';
   import { afterFailedFill, suggestRest, canReplaceRest, fieldsChanged, type RestHistoryRow, type RestSuggestion } from '$lib/coffeeFormFill';
+  import StandardsDialog from './StandardsDialog.svelte';
+  import { CHECKED_FIELDS, needsDialog, resolve, type Decision, type StdRow } from '$lib/standardsDialog';
+  import { toParams } from '$lib/coffeeViewState';
 
   let {
     coffee = null,
@@ -63,6 +66,24 @@
   } = $props();
 
   let formEl: HTMLFormElement;
+  // The standards dialog (#76): one open at a time; `done` settles the awaiting check (null = Cancel).
+  type Answer = { values: Record<string, string>; decisions: Record<string, Decision> } | null;
+  let dialog = $state<{ rows: StdRow[]; done: (r: Answer) => void } | null>(null);
+  const ask = (rows: StdRow[]) => new Promise<Answer>((done) => (dialog = { rows, done }));
+  function finish(r: Answer) {
+    const d = dialog;
+    dialog = null;
+    d?.done(r);
+  }
+  const roasterLink = (name: string) => `/coffees?${toParams({ status: ['all'], filters: [{ column: 'roaster', mode: 'any', values: [name] }] })}`;
+  async function standardize(body: object): Promise<StdRow[] | null> {
+    try {
+      const res = await fetch('/api/coffees/standardize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      return res.ok ? ((await res.json()).rows as StdRow[]) : null;
+    } catch {
+      return null;
+    }
+  }
   let slugInput: HTMLInputElement;
 
   // Locked by default so a rename never happens by accident — the slug is
@@ -205,6 +226,54 @@
     return fieldsFrom(new FormData(formEl));
   }
 
+  // The values the standards check last covered (fill or save); starts as what the form held on mount.
+  // Save checks only fields that differ from this, so a stored value never prompts and an answer isn't asked twice.
+  let lastChecked: Record<string, string> = {};
+
+  // Checks the typed values before a save. Writes the approved/proposed values into the form and resolves true,
+  // or resolves false on Cancel (nothing was written). If the check itself fails the save goes ahead
+  // (the server still formats the locked fields on write).
+  async function checkForSave(): Promise<boolean> {
+    const values = captureFields();
+    const fields = Object.keys(values).filter((k) => values[k] !== lastChecked[k]);
+    const rows = await standardize({ mode: 'save', values, fields });
+    if (rows?.length) {
+      let decisions: Record<string, Decision> = {};
+      if (needsDialog(rows)) {
+        const r = await ask(rows);
+        if (!r) return false;
+        decisions = r.decisions;
+      }
+      for (const [k, v] of Object.entries(resolve(rows, decisions))) setField(k, v);
+    }
+    lastChecked = captureFields();
+    return true;
+  }
+
+  // Public entry point (also used by the pick-a-Loffee-Labs-bean flow, #85): runs the fill-mode check on
+  // `incoming` (field -> value, strings) and, after the dialog if any, writes the values into the form.
+  // Blank form fields take incoming values silently. Resolves false on Cancel or if the check fails (form untouched).
+  export async function reviewIncoming(incoming: Record<string, string>): Promise<boolean> {
+    const rows = await standardize({ mode: 'fill', values: captureFields(), incoming });
+    if (!rows) {
+      fillError = "Couldn't check the values against the data standards";
+      return false;
+    }
+    let decisions: Record<string, Decision> = {};
+    if (needsDialog(rows)) {
+      const r = await ask(rows);
+      if (!r) return false;
+      decisions = r.decisions;
+    }
+    const resolved = resolve(rows, decisions);
+    for (const [k, v] of Object.entries(incoming)) {
+      if (k in resolved) setField(k, resolved[k]);
+      else if (!CHECKED_FIELDS.includes(k) || !fieldValue(k).trim()) setField(k, v);
+      lastChecked[k] = fieldValue(k);
+    }
+    return true;
+  }
+
   // Writes rest days only onto empty fields or the previous untouched
   // suggestion; a null suggestion clears only that previous suggestion.
   function offerRest(s: RestSuggestion | null) {
@@ -260,7 +329,9 @@
         return;
       }
       const { rest_days_low, rest_days_high, ...found } = data.fields;
-      for (const [key, value] of Object.entries(found)) setField(key, value as string | number);
+      // Nothing below touches the form until the standards check (and its dialog) is approved; Cancel leaves it all as it was.
+      const incoming = Object.fromEntries(Object.entries(found).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]));
+      if (!(await reviewIncoming(incoming))) return;
       if (rest_days_low != null && rest_days_high != null) {
         offerRest({ low: rest_days_low, high: rest_days_high, note: data.restNote ?? '' });
       } else if (found.roast_level) {
@@ -315,54 +386,68 @@
   onMount(() => {
     mounted = true;
     baselineFields = captureFields();
+    lastChecked = { ...baselineFields };
   });
 
   // Exposed so "Save changes" (list/detail pages) can apply THIS form's
-  // pending edits first, exactly as clicking "Update" would — same
-  // use:enhance handler above (same stageFieldChange/onstage call via
-  // fieldsFrom), not a second copy of it. Two guards before that happens:
+  // pending edits first, exactly as clicking "Update" would (same check, same
+  // onstage call via stageChecked). Two guards before that happens:
   // - Nothing to apply: the form is untouched since it rendered/was last
-  //   staged, so skip the submit entirely rather than staging a no-op
-  //   "update" with unchanged values on every save.
-  // - Invalid: requestSubmit() runs the browser's own constraint
-  //   validation first — a blanked-out required field shows the same
-  //   native validation UI a real Update click would and never fires the
-  //   submit event, so onstage is never called; this returns false so the
-  //   caller can stop before saving.
-  export function applyPendingEdits(): boolean {
-    const current = captureFields();
-    if (baselineFields && !fieldsChanged(current, baselineFields)) return true;
-    const ok = formEl.checkValidity();
-    if (!ok) {
+  //   staged, so skip it entirely rather than staging a no-op "update"
+  //   with unchanged values on every save.
+  // - Invalid: the browser's own constraint validation shows its usual UI;
+  //   this returns false so the caller can stop before saving.
+  // Async because the standards check may open a dialog: nothing is staged
+  // until it is resolved, and this resolves false when it is cancelled. Callers must await it.
+  export async function applyPendingEdits(): Promise<boolean> {
+    if (baselineFields && !fieldsChanged(captureFields(), baselineFields)) return true;
+    if (!formEl.checkValidity()) {
       formEl.reportValidity();
       return false;
     }
-    // requestSubmit() synchronously runs the use:enhance handler above,
-    // which updates baselineFields itself (same as a manual Update click
-    // does) — nothing left to do here but report success.
-    formEl.requestSubmit();
+    return stageChecked();
+  }
+
+  // Staged mode's submit: check, then hand the (possibly rewritten) fields to the parent.
+  async function stageChecked(): Promise<boolean> {
+    if (!(await checkForSave())) return false;
+    const fields = captureFields();
+    baselineFields = fields;
+    onstage?.(fields);
     return true;
   }
+
+  // The second pass of a create submit: the check is done, let enhance post the form.
+  let checked = false;
+  let checking = false;
 </script>
 
 <form
   bind:this={formEl}
   method="POST"
   action={coffee ? '?/save' : '?/create'}
-  use:enhance={({ formData, cancel }) => {
-    if (onstage) {
-      // Staged mode: capture the form's current values and hand them to
-      // the parent instead of actually submitting. `cancel()` is
-      // use:enhance's own supported hook for aborting a submission
-      // before any request is sent — using it here (rather than a
-      // separate onsubmit handler) avoids any risk of both an onsubmit
-      // handler AND enhance's own fetch both firing for the same click.
+  use:enhance={({ cancel }) => {
+    if (!checked) {
+      // Every submit runs the standards check first (it may open a dialog), so cancel
+      // this one before any request is sent: use:enhance's own supported hook, which avoids
+      // enhance's fetch and an onsubmit handler both firing. Staged mode then stages the
+      // fields; create re-submits once the check is done (`checked` lets that one through).
       cancel();
-      const fields = fieldsFrom(formData);
-      baselineFields = fields;
-      onstage(fields);
+      if (!checking) {
+        checking = true;
+        (onstage
+          ? stageChecked()
+          : checkForSave().then((ok) => {
+              if (ok) {
+                checked = true;
+                formEl.requestSubmit();
+              }
+            })
+        ).finally(() => (checking = false));
+      }
       return;
     }
+    checked = false;
     return async ({ result, update }) => {
       await update();
       if (result.type === 'success') {
@@ -739,6 +824,10 @@
     <button class="button button-secondary" type="button" onclick={cloneCurrent}>Clone</button>
   {/if}
 </form>
+
+{#if dialog}
+  <StandardsDialog rows={dialog.rows} {roasterLink} onsave={(values, decisions) => finish({ values, decisions })} oncancel={() => finish(null)} />
+{/if}
 
 <style>
   /* The form follows the coffee page's order: a top group (like the page header), then the

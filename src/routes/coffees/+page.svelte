@@ -137,7 +137,7 @@
   // Each open row form's CoffeeForm instance by coffee id (null once
   // closed) — plain (not $state): only ever read synchronously from within
   // saveChanges, never rendered.
-  const formRefs: Record<number, { applyPendingEdits: () => boolean } | null> = {};
+  const formRefs: Record<number, { applyPendingEdits: () => Promise<boolean> } | null> = {};
 
   // A floating notice over the page, held a second after the reload lands.
   let refreshState = $state<'idle' | 'busy' | 'done'>('idle');
@@ -231,7 +231,7 @@
     // Copied: a successful apply stages via onstage, which closes that form.
     for (const id of [...openForms]) {
       if ((onlyId != null && id !== onlyId) || pending.get(id)?.statusAction === 'delete') continue;
-      if (formRefs[id] && !formRefs[id].applyPendingEdits()) return;
+      if (formRefs[id] && !(await formRefs[id].applyPendingEdits())) return;
     }
 
     saving = true;

@@ -40,7 +40,7 @@
     <ul class="sd-body">
       {#each rows as r (r.field)}
         <li class="sd-row">
-          <span class="sd-label">{r.label}{#if locked(r)} <span class="sd-lock"><Icon name="lock" /></span>{/if}</span>
+          <span class="sd-label">{r.label}{#if locked(r)} <span class="sd-lock" role="img" aria-label="Locked: standard format"><Icon name="lock" /></span>{/if}</span>
           {#if r.kind === 'blocked'}
             <span class="sd-bad sd-wide">{r.label} "{r.now}" can't be converted: Cancel and fix it in the form</span>
           {:else}
@@ -67,7 +67,7 @@
       {/each}
     </ul>
     <footer class="sd-footer">
-      <button type="button" class="button button-secondary" onclick={() => dlg.close()}>Cancel</button>
+      <button type="button" class="button button-ghost" onclick={() => dlg.close()}>Cancel</button>
       <button type="button" class="button" aria-disabled={block ? 'true' : undefined} aria-describedby={block ? 'sd-block' : undefined} title={block ?? undefined} onclick={save}>Save</button>
       {#if block}<span id="sd-block" class="sd-sr">{block}</span>{/if}
     </footer>
@@ -125,6 +125,7 @@
   .sd-dialog .button {
     margin: 0;
     min-height: 44px;
+    white-space: nowrap;
   }
   .sd-body {
     flex: 1;
@@ -153,7 +154,7 @@
   }
   .sd-tag {
     display: none;
-    color: var(--color-muted, inherit);
+    color: var(--color-text-muted);
     font-size: 0.75rem;
   }
   .sd-pair {
