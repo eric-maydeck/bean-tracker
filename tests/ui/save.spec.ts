@@ -238,7 +238,7 @@ test('trophy card: adjustable grinder converts dial to RPM, Save names the missi
     await dlg.getByRole('button', { name: 'Edit' }).click();
     await expect(dlg.getByLabel('RPM', { exact: true })).toHaveCount(0);
     for (const n of ['Dial min', 'Dial max', 'Speed at dial min (RPM)', 'Speed at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeDisabled();
-    await dlg.getByLabel('Convert dial to RPM').selectOption('Yes');
+    await dlg.getByLabel('Convert dial to RPM', { exact: true }).selectOption('Yes');
     for (const n of ['Dial min', 'Dial max', 'Speed at dial min (RPM)', 'Speed at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeEnabled();
     await dlg.getByLabel('Dial min', { exact: true }).fill('1');
     await dlg.getByLabel('Dial max', { exact: true }).fill('9');
