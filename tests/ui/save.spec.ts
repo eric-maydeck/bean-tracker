@@ -229,6 +229,25 @@ test('trophy card: Edit the grinder burr size, Save, the card shows it after rel
   } finally { restore(); }
 });
 
+test('trophy card: adjustable grinder converts dial to RPM, Save names the missing field', { tag: '@stats' }, async ({ page }) => {
+  const flag = (v: number) => { const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 }); db.prepare(`UPDATE beanconqueror_grinders SET has_adjustable_speed = ? WHERE name = 'ZP6 Special'`).run(v); db.close(); };
+  flag(1);
+  try {
+    await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
+    const dlg = page.locator('dialog.trophy-dialog');
+    await dlg.getByRole('button', { name: 'Edit' }).click();
+    await expect(dlg.getByLabel('RPM', { exact: true })).toHaveCount(0);
+    for (const n of ['Dial min', 'Dial max', 'RPM at dial min (RPM)', 'RPM at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeDisabled();
+    await dlg.getByLabel('Convert dial to RPM').selectOption('Yes');
+    for (const n of ['Dial min', 'Dial max', 'RPM at dial min (RPM)', 'RPM at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeEnabled();
+    await dlg.getByLabel('Dial min', { exact: true }).fill('1');
+    await dlg.getByLabel('Dial max', { exact: true }).fill('9');
+    await dlg.getByLabel('RPM at dial min (RPM)').fill('200');
+    await dlg.getByRole('button', { name: 'Save' }).click();
+    await expect(dlg.getByRole('alert')).toHaveText('RPM at dial max is required to convert the dial to RPM');
+  } finally { flag(0); }
+});
+
 test('trophy card: unreadable text in a number field blocks Save and saves nothing', { tag: '@stats' }, async ({ page }) => {
   await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
   const dlg = page.locator('dialog.trophy-dialog');

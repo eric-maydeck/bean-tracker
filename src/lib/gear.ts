@@ -69,7 +69,15 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     { ...text('adjustment', 'Adjustment', ['Stepped', 'Stepless'], ['adjustment', 'adjustment type'],
       'Stepped grinders click between fixed settings; stepless ones turn smoothly to any setting.'), type: 'select' },
     num('stepSize', 'Step size', 'µm', 0.1, 1000, ['step size', 'step', 'micron per step'],
-      'How far one click moves the burrs, in microns (µm): ~12–25µm on most hand grinders, smaller is finer control.')
+      'How far one click moves the burrs, in microns (µm): ~12–25µm on most hand grinders, smaller is finer control.'),
+    // Speed: the plain `rpm` for fixed-speed grinders, the conversion set when BQ marks the grinder's speed adjustable.
+    num('rpm', 'RPM', 'RPM', 1, 20000, []),
+    { ...text('rpmConvert', 'Convert dial to RPM', ['Yes', 'No'], [],
+      "Yes: BQ's speed is a dial setting; enter the dial range and the RPM at each end (linear between). No: BQ's speed is already RPM."), type: 'select' },
+    num('dialMin', 'Dial min', '', 0, 1000, []),
+    num('dialMax', 'Dial max', '', 0, 1000, []),
+    num('rpmMin', 'RPM at dial min', 'RPM', 1, 20000, []),
+    num('rpmMax', 'RPM at dial max', 'RPM', 1, 20000, [])
   ],
   filter: [
     text('material', 'Material', ['Paper', 'Cloth', 'Metal'], ['material', 'materials'],
@@ -83,7 +91,10 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     ownData
   ]
 };
-export const fieldsFor = (kind: GearKind): GearField[] => [...COMMON_FIELDS, ...KIND_FIELDS[kind]];
+const CONVERT_KEYS = ['rpmConvert', 'dialMin', 'dialMax', 'rpmMin', 'rpmMax'];
+// A grinder shows `rpm` or the dial conversion set, by whether BQ marks its speed adjustable.
+export const fieldsFor = (kind: GearKind, opts: { adjustableSpeed?: boolean } = {}): GearField[] =>
+  [...COMMON_FIELDS, ...KIND_FIELDS[kind]].filter((f) => f.key === 'rpm' ? !opts.adjustableSpeed : !CONVERT_KEYS.includes(f.key) || !!opts.adjustableSpeed);
 
 export type GearValues = Record<string, string | number>;
 const MAX_TEXT = 120;
@@ -92,7 +103,7 @@ const MAX_TEXT = 120;
 export function parseGearValues(kind: GearKind, raw: unknown): { values: GearValues } | { error: string } {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { error: 'Details must be an object' };
   const input = raw as Record<string, unknown>, values: GearValues = {};
-  for (const f of fieldsFor(kind)) {
+  for (const f of [...COMMON_FIELDS, ...KIND_FIELDS[kind]]) {
     const v = input[f.key];
     const s = typeof v === 'number' ? String(v) : typeof v === 'string' ? v.trim() : '';
     if (!s) continue;
@@ -113,5 +124,13 @@ export function parseGearValues(kind: GearKind, raw: unknown): { values: GearVal
     }
   }
   if (kind === 'grinder' && values.adjustment !== 'Stepped') delete values.stepSize; // a step only means something on a stepped grinder
+  if (kind === 'grinder') {
+    if (values.type === 'Hand') delete values.rpm; // a hand grinder has no motor speed
+    if (values.rpmConvert === 'Yes') {
+      const need = KIND_FIELDS.grinder.find((f) => CONVERT_KEYS.slice(1).includes(f.key) && values[f.key] === undefined);
+      if (need) return { error: `${need.label} is required to convert the dial to RPM` };
+      if (+values.dialMax <= +values.dialMin) return { error: 'Dial max must be above dial min' };
+    } else for (const k of CONVERT_KEYS.slice(1)) delete values[k]; // the dial range only means something when converting
+  }
   return { values };
 }
