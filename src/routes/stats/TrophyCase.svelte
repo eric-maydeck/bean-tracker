@@ -54,7 +54,7 @@
   }
   const reason = (t: Trophy) => (t.archived ? 'Archived in Bean Conqueror' : `No brew since ${formatDate(t.lastUsed)}`);
   // Stored specs that are filled in, in the standard's order; blanks never show.
-  const specs = (t: Trophy) => fieldsFor(t.kind).filter((f) => t.values[f.key] !== undefined);
+  const specs = (t: Trophy) => fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed }).filter((f) => t.values[f.key] !== undefined);
   const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? withUnit(v, f.unit) : String(v));
   const withLabel = (t: Trophy) => (t.kind === 'dripper' ? 'Favorite filter' : 'Favorite dripper');
 </script>

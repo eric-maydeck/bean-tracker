@@ -9535,7 +9535,7 @@ export const STATES: State[] = [
           expect(Math.abs(cancelB.x + cancelB.width - (edgeB.x + edgeB.width)), 'Cancel right = last input right').toBeLessThan(1.5);
         }
       };
-      // Grinder: 11 fields, the last row holds one (Step size); Save is its neighbor cell.
+      // Grinder (fixed speed): 12 fields, a full last row (Step size, RPM): Save is below RPM.
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveText(['', '', '', '', '']);
       for (const n of ['Type', 'Burr type', 'Burr coating', 'Adjustment', 'Step size']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
@@ -9560,7 +9560,7 @@ export const STATES: State[] = [
       await input('Adjustment').selectOption('Stepped');
       await expect(input('Step size (µm)')).toBeEnabled();
       await input('Adjustment').selectOption('');
-      await check('Burr coating', 'Adjustment', false);
+      await check('Step size (µm)', 'RPM (RPM)', true);
       // Filter: 8 fields, a full last row (Size, Flow): Save is below Flow.
       await page.goto('/stats?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();
