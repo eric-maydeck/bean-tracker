@@ -16,7 +16,7 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const titleCase = (s: string) => (s.length <= 3 ? s.toUpperCase() : s.replace(/\b\w/g, (c) => c.toUpperCase()));
 
 // Known values keep the user's spelling; otherwise the vocabulary entry is title-cased.
-function canonical(value: string, known: string[]): string {
+export function canonical(value: string, known: string[]): string {
   return known.find((k) => k.toLowerCase() === value.toLowerCase()) ?? titleCase(value);
 }
 
