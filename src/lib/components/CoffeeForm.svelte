@@ -69,7 +69,11 @@
   // The standards dialog (#76): one open at a time; `done` settles the awaiting check (null = Cancel).
   type Answer = { values: Record<string, string>; decisions: Record<string, Decision> } | null;
   let dialog = $state<{ rows: StdRow[]; done: (r: Answer) => void } | null>(null);
-  const ask = (rows: StdRow[]) => new Promise<Answer>((done) => (dialog = { rows, done }));
+  // Settles any dialog still open first, so no earlier check is left waiting forever.
+  const ask = (rows: StdRow[]) => {
+    finish(null);
+    return new Promise<Answer>((done) => (dialog = { rows, done }));
+  };
   function finish(r: Answer) {
     const d = dialog;
     dialog = null;
@@ -237,6 +241,7 @@
     const values = captureFields();
     const fields = Object.keys(values).filter((k) => values[k] !== lastChecked[k]);
     const rows = await standardize({ mode: 'save', values, fields });
+    let resolved: Record<string, string> = {};
     if (rows?.length) {
       let decisions: Record<string, Decision> = {};
       if (needsDialog(rows)) {
@@ -244,9 +249,11 @@
         if (!r) return false;
         decisions = r.decisions;
       }
-      for (const [k, v] of Object.entries(resolve(rows, decisions))) setField(k, v);
+      resolved = resolve(rows, decisions);
+      for (const [k, v] of Object.entries(resolved)) setField(k, v);
     }
-    lastChecked = captureFields();
+    // What was actually checked and sent, not the form as it is after the awaits.
+    lastChecked = { ...values, ...resolved };
     return true;
   }
 
@@ -409,17 +416,36 @@
   }
 
   // Staged mode's submit: check, then hand the (possibly rewritten) fields to the parent.
+  // One check at a time: a second call while one is running (or its dialog is open) resolves false.
+  let checking = false;
   async function stageChecked(): Promise<boolean> {
-    if (!(await checkForSave())) return false;
-    const fields = captureFields();
-    baselineFields = fields;
-    onstage?.(fields);
-    return true;
+    if (checking) return false;
+    checking = true;
+    try {
+      if (!(await checkForSave())) return false;
+      const fields = captureFields();
+      baselineFields = fields;
+      onstage?.(fields);
+      return true;
+    } finally {
+      checking = false;
+    }
   }
 
   // The second pass of a create submit: the check is done, let enhance post the form.
   let checked = false;
-  let checking = false;
+  async function submitChecked() {
+    if (checking) return;
+    checking = true;
+    try {
+      if (!(await checkForSave())) return;
+      checked = true;
+      formEl.requestSubmit(); // fires the submit event synchronously
+      checked = false;
+    } finally {
+      checking = false;
+    }
+  }
 </script>
 
 <form
@@ -433,21 +459,9 @@
       // enhance's fetch and an onsubmit handler both firing. Staged mode then stages the
       // fields; create re-submits once the check is done (`checked` lets that one through).
       cancel();
-      if (!checking) {
-        checking = true;
-        (onstage
-          ? stageChecked()
-          : checkForSave().then((ok) => {
-              if (ok) {
-                checked = true;
-                formEl.requestSubmit();
-              }
-            })
-        ).finally(() => (checking = false));
-      }
+      void (onstage ? stageChecked() : submitChecked());
       return;
     }
-    checked = false;
     return async ({ result, update }) => {
       await update();
       if (result.type === 'success') {

@@ -1,4 +1,4 @@
-import { COFFEE_ORIGIN_LABELS } from './types';
+import { COFFEE_ORIGIN_LABELS } from './types.ts';
 
 // Shared by the standards check endpoint (server) and the review dialog (browser). #76
 // choice: approve/reject. locked: format-only change, read-only, never opens the dialog alone.

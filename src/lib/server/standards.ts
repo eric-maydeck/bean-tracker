@@ -2,7 +2,7 @@
 // Rule G4: a value we can't parse confidently is returned unchanged with `review` set, never guessed.
 import type { DatabaseSync } from 'node:sqlite';
 import { COFFEE_ORIGIN_LABELS } from '../types.ts';
-import { LOCKED_FIELDS, MISSING_KEY_FIELDS, type StdRow } from '../standardsDialog.ts';
+import { CHECKED_FIELDS, LOCKED_FIELDS, MISSING_KEY_FIELDS, type StdRow } from '../standardsDialog.ts';
 
 export type StdField =
   | 'elevation' | 'producer' | 'variety' | 'processing' | 'region' | 'harvest_time'
@@ -257,7 +257,6 @@ const LABELS: Record<string, string> = {
 };
 const REJECTABLE = ['producer', 'farm', 'variety', 'processing', 'roast_level', 'region', 'certification', 'tasting_notes'];
 // only these fields are checked; anything else a form or fill sends (image_url, amount_g, ...) is ignored
-const CHECKED = ['roaster', 'coffee_name', 'origin', 'roast_level', 'processing', 'cost', ...Object.keys(COFFEE_ORIGIN_LABELS)];
 const isLocked = (f: string) => (LOCKED_FIELDS as readonly string[]).includes(f);
 
 export function formatLocked(field: string, value: string | number | null): { value: string | number | null; ok: boolean } {
@@ -295,7 +294,7 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
 
   if (input.mode === 'save') {
     for (const f of MISSING_KEY_FIELDS) if (!val(f)) add(f, null, null, 'missing');
-    for (const f of input.fields.filter((x) => CHECKED.includes(x))) {
+    for (const f of input.fields.filter((x) => CHECKED_FIELDS.includes(x))) {
       const v = val(f);
       if (!v) continue;
       if (f === 'roaster') roasterRow(v, v);
@@ -319,7 +318,7 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
     return rows;
   }
 
-  for (const [f, raw] of Object.entries(input.incoming).filter(([k]) => CHECKED.includes(k))) {
+  for (const [f, raw] of Object.entries(input.incoming).filter(([k]) => CHECKED_FIELDS.includes(k))) {
     const inc = (raw ?? '').trim(), cur = val(f);
     if (!inc || !cur) continue;
     if (f === 'roaster') { roasterRow(cur, inc); continue; }

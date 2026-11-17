@@ -595,11 +595,17 @@ async function expectDialogInViewport(page: Page) {
 
 // Answers the Add form's ?/create with a made-up success, so the "Coffee added!"
 // popup shows without saving (the workers share one DB); hovering keeps it up.
+async function fillBag(page: Page) {
+  await page.locator('#cost').fill('20');
+  await page.locator('#amount_g').fill('250');
+  await page.locator('#roast_date').fill('2026-02-01');
+}
 async function fakeAdd(page: Page, slug: string) {
   await page.route(/\?\/create$/, (route) =>
     route.fulfill({ json: { type: 'success', status: 200, data: JSON.stringify([{ success: 1, id: 2, slug: 3 }, true, 0, slug]) } }));
   await page.locator('#roaster').fill('Popup Roaster');
   await page.locator('#coffee_name').fill('Popup Coffee');
+  await fillBag(page); // cost, weight and roast date, so the standards dialog has nothing to ask
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   const toast = page.locator('.added-toast');
   await expect(toast).toContainText('Coffee added!');
@@ -11255,7 +11261,7 @@ export const STATES: State[] = [
     path: () => '/coffees?status=backlog&view=cards',
     act: async (page: Page, s: Seed) => {
       const posts: string[] = [];
-      page.on('request', (r) => r.method() === 'POST' && posts.push(r.url()));
+      page.on('request', (r) => r.method() === 'POST' && !r.url().endsWith('/api/coffees/standardize') && posts.push(r.url())); // the check reads only
       const a = page.locator('.card').filter({ hasText: s.names.everyAction });
       await a.evaluate((el) => (el.dataset.probe = 'a')); // the card element survives the form swap
       await page.locator('.search-row').getByRole('button', { name: 'Edit', exact: true }).click();
