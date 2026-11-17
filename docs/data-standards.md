@@ -38,7 +38,7 @@ Rules for any form or Fill from URL that writes coffee data. Other entry points 
 - E6. A blank roast date, cost or weight on Save adds a row that must be decided: Leave blank, or Cancel to fill it in. Fill from URL does not add these rows.
 - E7. Fill from URL lists only fields where the fill would replace a non-empty value. Blank fields fill silently with the standard form; fields the source lacks stay empty. Cancel restores the exact prior state and keeps the URL.
 - E8. Edit and clone check only fields changed since the last check (the source coffee for clone), so an answered value is not asked again. Add checks every non-blank field.
-- E9. Roaster: a name matching a roaster already on the site (ignoring case and accents) proposes the site's spelling, otherwise the source's. If the user rejects a proposal that matches saved coffees, the field shows `N coffees already saved as "<name>"` with a See coffees link to the filtered coffee list.
+- E9. Roaster: a name matching a roaster already on the site (ignoring case and accents) proposes the site's spelling, otherwise the source's. If the user rejects a proposal that matches saved coffees, the dialog row shows `N coffees already saved as "<name>"` with a See coffees link to the filtered coffee list.
 - E10. Coffee name has no format rules; a roaster's own style (for example all lowercase) is kept.
 - E11. Source order per field: the first usable value from the product page, then Loffee Labs. Accents: the site's spelling, then the product page's, then Loffee Labs'.
 - E12. Automatic paths with no person to ask (BQ import) standardize and skip values that can't be parsed.

@@ -18,6 +18,11 @@ export const MISSING_KEY_FIELDS = ['roast_date', 'cost', 'amount_g'] as const;
 // Fields the server checks (standards.ts CHECKED): a non-blank form value in one of these is never overwritten by a fill without a dialog row.
 export const CHECKED_FIELDS: readonly string[] = ['roaster', 'coffee_name', 'origin', 'roast_level', 'processing', 'cost', ...Object.keys(COFFEE_ORIGIN_LABELS)];
 
+// The dialog lists rows in the form's own field order.
+const FORM_ORDER = ['roaster', 'coffee_name', 'origin', 'region', 'producer', 'farm', 'variety', 'processing', 'elevation', 'harvest_time', 'certification', 'tasting_notes', 'roast_level', 'amount_g', 'cost', 'roast_date'];
+export const inFormOrder = (rows: StdRow[]): StdRow[] =>
+  [...rows].sort((a, b) => FORM_ORDER.indexOf(a.field) - FORM_ORDER.indexOf(b.field));
+
 export type Decision = 'approve' | 'reject' | 'leave';
 
 // Locked rows are format-only and never open the dialog on their own.

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
-  import { resolve, saveBlock, type Decision, type StdRow } from '$lib/standardsDialog';
+  import { inFormOrder, resolve, saveBlock, type Decision, type StdRow } from '$lib/standardsDialog';
 
   // Confirmation before saving / filling a coffee: lists the fields that would change (Now vs Proposed). #76
   let { rows, onsave, oncancel, roasterLink }: {
@@ -14,6 +14,7 @@
   let dlg: HTMLDialogElement;
   let decisions = $state<Record<string, Decision>>({});
   const block = $derived(saveBlock(rows, decisions));
+  const sorted = $derived(inFormOrder(rows));
   const locked = (r: StdRow) => r.kind === 'locked' || r.kind === 'forced';
 
   onMount(() => dlg.showModal());
@@ -37,15 +38,17 @@
         <button type="button" class="button button-secondary" onclick={() => setAll('reject')}>Reject all</button>
       </div>
     </header>
-    <ul class="sd-body">
-      {#each rows as r (r.field)}
+    <div class="sd-body">
+    <div class="sd-colhead" aria-hidden="true"><span></span><span>Now</span><span>Proposed</span><span></span></div>
+    <ul class="sd-list">
+      {#each sorted as r (r.field)}
         <li class="sd-row">
           <span class="sd-label">{r.label}{#if locked(r)} <span class="sd-lock" role="img" aria-label="Locked: standard format"><Icon name="lock" /></span>{/if}</span>
           {#if r.kind === 'blocked'}
             <span class="sd-bad sd-wide">{r.label} "{r.now}" can't be converted: Cancel and fix it in the form</span>
           {:else}
             <span class="sd-now"><span class="sd-tag">Now</span> {r.now || '—'}</span>
-            <span class="sd-prop"><span class="sd-tag">Proposed</span> {r.proposed ?? ''}</span>
+            <span class="sd-prop" class:sd-empty={r.proposed == null}><span class="sd-tag">Proposed</span> {r.proposed ?? ''}</span>
             <span class="sd-choice">
               {#if r.kind === 'choice'}
                 <span class="sd-pair" role="group" aria-label={r.label}>
@@ -56,16 +59,19 @@
                 <button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'leave'} onclick={() => (decisions[r.field] = 'leave')}>Leave blank</button>
               {:else if r.kind === 'unconverted'}
                 <span class="sd-note">can't convert, saved as typed</span>
+              {:else if r.kind === 'forced'}
+                <span class="sd-note">can't convert, replaced</span>
               {/if}
             </span>
             {#if r.kind === 'choice' && r.field === 'roaster' && r.roasterCount}
               <!-- Space is reserved while undecided/approved so rejecting doesn't shift the rows below. -->
-              <span class="sd-bad sd-wide" class:sd-hide={decisions[r.field] !== 'reject'}>{r.roasterCount} {r.roasterCount === 1 ? 'coffee' : 'coffees'} already saved as "{r.proposed}" <a href={roasterLink(r.proposed ?? '')} target="_blank" rel="noopener">See coffees</a></span>
+              <span class="sd-bad sd-wide sd-warn" class:sd-hide={decisions[r.field] !== 'reject'}>{r.roasterCount} {r.roasterCount === 1 ? 'coffee' : 'coffees'} already saved as "{r.proposed}" <a href={roasterLink(r.proposed ?? '')} target="_blank" rel="noopener">See coffees</a></span>
             {/if}
           {/if}
         </li>
       {/each}
     </ul>
+    </div>
     <footer class="sd-footer">
       <button type="button" class="button button-ghost" onclick={() => dlg.close()}>Cancel</button>
       <button type="button" class="button" aria-disabled={block ? 'true' : undefined} aria-describedby={block ? 'sd-block' : undefined} title={block ?? undefined} onclick={save}>Save</button>
@@ -128,16 +134,35 @@
     white-space: nowrap;
   }
   .sd-body {
+    --sd-cols: 7rem minmax(0, 1fr) minmax(0, 1fr) 12.5rem;
     flex: 1;
     min-height: 0;
-    margin: 0;
-    padding: var(--space-2) var(--space-4);
+    padding: 0 var(--space-4) var(--space-2);
     overflow-y: auto;
+  }
+  .sd-list {
+    margin: 0;
+    padding: 0;
     list-style: none;
+  }
+  /* Same columns as every row, so Now / Proposed line up (the phone shows inline tags instead). */
+  .sd-colhead {
+    position: sticky;
+    top: 0;
+    display: grid;
+    grid-template-columns: var(--sd-cols);
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-2) 0;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
   }
   .sd-row {
     display: grid;
-    grid-template-columns: 7rem 1fr 1fr auto;
+    grid-template-columns: var(--sd-cols);
     align-items: center;
     gap: var(--space-1) var(--space-2);
     padding: var(--space-2) 0;
@@ -150,7 +175,13 @@
   .sd-lock {
     display: inline-block;
     vertical-align: middle;
-    opacity: 0.7;
+    margin-inline-start: var(--space-1);
+    color: var(--color-text);
+  }
+  .sd-lock :global(.icon) {
+    width: 1.1em;
+    height: 1.1em;
+    display: block;
   }
   .sd-tag {
     display: none;
@@ -175,7 +206,16 @@
   .sd-bad {
     color: var(--color-urgent);
   }
+  /* The roaster warning keeps its space while hidden (no shift), but it is one small line. */
+  .sd-warn {
+    margin-top: calc(-1 * var(--space-1));
+    font-size: 0.8125rem;
+    line-height: 1.3;
+  }
   .sd-hide {
+    visibility: hidden;
+  }
+  .sd-empty {
     visibility: hidden;
   }
   .sd-note {
@@ -201,8 +241,14 @@
     .sd-sheet {
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
+    .sd-colhead {
+      display: none;
+    }
     .sd-row {
       grid-template-columns: 1fr;
+    }
+    .sd-empty {
+      display: none;
     }
     .sd-tag {
       display: inline;

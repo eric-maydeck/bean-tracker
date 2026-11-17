@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { needsDialog, resolve, saveBlock, type Decision, type StdRow } from './standardsDialog';
+import { inFormOrder, needsDialog, resolve, saveBlock, type Decision, type StdRow } from './standardsDialog';
 
 const row = (field: string, kind: StdRow['kind'], now: string | null = 'a', proposed: string | null = 'b'): StdRow => ({ field, label: field[0].toUpperCase() + field.slice(1), now, proposed, kind });
 
@@ -34,5 +34,12 @@ describe('resolve', () => {
     const rows = [row('a', 'choice', 'n1', 'p1'), row('b', 'choice', 'n2', 'p2'), row('c', 'locked', 'n3', 'p3'), row('d', 'forced', 'n4', 'p4'), row('e', 'unconverted', 'n5', 'p5'), row('f', 'missing', '', null)];
     const d: Record<string, Decision> = { a: 'approve', b: 'reject', f: 'leave' };
     expect(resolve(rows, d)).toEqual({ a: 'p1', b: 'n2', c: 'p3', d: 'p4', e: 'n5', f: '' });
+  });
+});
+
+describe('inFormOrder', () => {
+  it('lists rows as the form lays out its fields, missing rows included', () => {
+    const row = (field: string) => ({ field, label: field, now: null, proposed: null, kind: 'missing' as const });
+    expect(inFormOrder(['cost', 'variety', 'roast_date', 'roaster', 'elevation'].map(row)).map((r) => r.field)).toEqual(['roaster', 'variety', 'elevation', 'cost', 'roast_date']);
   });
 });
