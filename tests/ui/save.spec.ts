@@ -236,7 +236,7 @@ test('trophy card: adjustable grinder converts dial to RPM, Save names the missi
     await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
     const dlg = page.locator('dialog.trophy-dialog');
     await dlg.getByRole('button', { name: 'Edit' }).click();
-    await expect(dlg.getByLabel('RPM', { exact: true })).toHaveCount(0);
+    await expect(dlg.getByLabel('Motor speed (RPM)', { exact: true })).toHaveCount(0);
     for (const n of ['Dial min', 'Dial max', 'Speed at dial min (RPM)', 'Speed at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeDisabled();
     await dlg.getByLabel('Convert dial to RPM', { exact: true }).selectOption('Yes');
     for (const n of ['Dial min', 'Dial max', 'Speed at dial min (RPM)', 'Speed at dial max (RPM)']) await expect(dlg.getByLabel(n, { exact: true })).toBeEnabled();
