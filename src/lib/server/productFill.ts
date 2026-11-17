@@ -358,7 +358,6 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
 // dropped with a note; any other field keeps the page value as is.
 type StdFn = (field: string, v: string) => { value: string | null; review?: string };
 export function mergeBeanBase(fill: FillSuccess, bb: { id: string; fields: FillFields } | null, std: StdFn): FillSuccess {
-  if (!bb) return { ...fill, beanBase: null };
   const fields: Record<string, unknown> = { ...fill.fields };
   const notes = [...fill.notes];
   const added: (keyof FillFields)[] = [];
@@ -368,8 +367,8 @@ export function mergeBeanBase(fill: FillSuccess, bb: { id: string; fields: FillF
     const r = std(k, v);
     return r.value != null && !r.review ? { value: r.value } : null;
   };
-  for (const k of new Set([...Object.keys(fill.fields), ...Object.keys(bb.fields)])) {
-    const pv = fields[k], bv = (bb.fields as Record<string, unknown>)[k];
+  for (const k of new Set([...Object.keys(fill.fields), ...Object.keys(bb?.fields ?? {})])) {
+    const pv = fields[k], bv = (bb?.fields as Record<string, unknown> | undefined)?.[k];
     const page = check(k, pv), theirs = check(k, bv);
     if (page) fields[k] = page.value;
     else if (theirs) { fields[k] = theirs.value; added.push(k as keyof FillFields); }
@@ -379,5 +378,7 @@ export function mergeBeanBase(fill: FillSuccess, bb: { id: string; fields: FillF
       if (shown != null && shown !== '') notes.push(`${COFFEE_ORIGIN_LABELS[k as CoffeeOriginField] ?? k[0].toUpperCase() + k.slice(1)} "${shown}" couldn't be converted, not filled`);
     }
   }
+  if (notes[0]?.startsWith('Filled ')) notes[0] = `Filled ${Object.keys(fields).length} fields`;
+  if (!bb) return { ...fill, fields: fields as FillFields, notes, beanBase: null };
   return { ...fill, fields: fields as FillFields, notes, beanBase: { id: bb.id, url: beanBaseCreditUrl(bb.id), fields: added } };
 }

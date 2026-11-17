@@ -422,9 +422,10 @@ describe('mergeBeanBase', () => {
   it('keeps page tasting notes', () => {
     expect(mergeBeanBase(base({ tasting_notes: 'Mine' }), { id: '5', fields: { tasting_notes: 'Theirs' } }, std).fields.tasting_notes).toBe('Mine');
   });
-  it('null leaves the fill unchanged', () => {
-    const r = mergeBeanBase(base({ origin: 'Kenya' }), null, std);
-    expect(r.fields).toEqual({ origin: 'Kenya' });
+  it('a page-only fill is still standardized and unconvertible locked fields dropped', () => {
+    const r = mergeBeanBase({ ...base({ variety: 'SL34 / SL28', elevation: 'high up', origin: 'Kenya' }), notes: ['Filled 3 fields'] }, null, std);
+    expect(r.fields).toEqual({ variety: 'SL28, SL34', origin: 'Kenya' });
+    expect(r.notes).toEqual(['Filled 2 fields', 'Elevation "high up" couldn\'t be converted, not filled']);
     expect(r.beanBase).toBeNull();
   });
   it('a match that fills nothing still carries the id', () => {

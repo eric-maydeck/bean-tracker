@@ -13,7 +13,7 @@ const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCas
 const PLACEHOLDER = /^(n\/a|\?+|-)$/i;
 const naturalCmp = new Intl.Collator('en', { numeric: true }).compare;
 const dedupe = (xs: string[]) => xs.filter((x, i) => xs.findIndex((y) => fold(y) === fold(x)) === i);
-const splitList = (v: string) => v.split(/\s*(?:,|;|\/)\s*|\s+and\s+/i).map((s) => s.trim()).filter(Boolean);
+const splitList = (v: string) => v.split(/\s*(?:,|;|\/)\s*|\s+(?:and|&|-|–)\s+/i).map((s) => s.trim()).filter(Boolean);
 const titleCase = (s: string) => s.replace(/(^|[\s-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
 
 // Alias tables: lowercase key -> canonical. Seeded from the prod tally (2026-11).
