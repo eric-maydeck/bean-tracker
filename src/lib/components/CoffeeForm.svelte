@@ -295,7 +295,10 @@
     const resolved = resolve(rows, decisions);
     for (const [k, v] of Object.entries(incoming)) {
       if (k in resolved) setField(k, resolved[k]);
-      else if (!CHECKED_FIELDS.includes(k) || !fieldValue(k).trim()) setField(k, v);
+      // A checked field filled while blank had no row-level check (producer/farm split, region country):
+      // left unchecked so Save reviews it (#87).
+      else if (CHECKED_FIELDS.includes(k) && !fieldValue(k).trim()) { setField(k, v); continue; }
+      else if (!CHECKED_FIELDS.includes(k)) setField(k, v);
       lastChecked[k] = fieldValue(k);
     }
     return true;

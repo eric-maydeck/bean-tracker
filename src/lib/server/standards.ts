@@ -327,8 +327,12 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
           if (sp && 'review' in sp) { add(f, v, null, 'unconverted', { note: sp.review }); continue; }
           if (sp) { pv = sp.producer; add('farm', null, useVocab('farm', sp.farm, vocab), 'choice'); }
         }
-        const r = f === 'farm' ? { value: pv } as Std : standardizeField(f as StdField, pv);
+        let r = f === 'farm' ? { value: pv } as Std : standardizeField(f as StdField, pv);
         if (r.review) { add(f, v, null, 'unconverted', { note: r.review }); continue; }
+        if (f === 'region' && r.value && val('origin')) { // no country in Region, as standardizeCoffee
+          const o = fold(standardizeField('origin', val('origin')).value ?? '');
+          r = { value: r.value.split(', ').filter((x) => fold(x) !== o).join(', ') || null };
+        }
         const proposed = useVocab(f, r.value, vocab);
         if (proposed !== v) add(f, v, proposed, 'choice');
       }

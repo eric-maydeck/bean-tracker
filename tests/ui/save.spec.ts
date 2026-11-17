@@ -800,6 +800,26 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
           await expect(page.getByRole('group', { name: 'Bag size' })).toBeVisible();
           await expect(page.locator('#rest_days_low')).toHaveValue('7');
         });
+
+        test('edit: a value filled into a blank field is checked again on Save (#87)', async ({ page }) => {
+          const saved: string[][] = [];
+          await page.route('**/api/coffees/standardize', (route) => {
+            const b = route.request().postDataJSON();
+            if (b.mode !== 'save') return route.continue();
+            saved.push(b.fields);
+            return route.fulfill({ json: { rows: [{ field: 'producer', label: 'Producer', now: 'x', proposed: null, kind: 'blocked', note: 'stub' }] } });
+          });
+          await page.route('**/api/coffees/fill-from-url', (route) =>
+            route.fulfill({ json: { fields: { producer: 'Ana - Finca Rosa' }, notes: [], beanBase: null, variants: [], selected: null } }));
+          await openEdit(page);
+          await page.locator('#product_url').fill(URL_);
+          await page.getByRole('button', { name: 'Fill from page' }).click();
+          await expect(page.locator('#producer')).toHaveValue('Ana - Finca Rosa');
+          await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+          await expect.poll(() => saved.length).toBe(1);
+          expect(saved[0]).toContain('producer');
+          await dialog(page).getByRole('button', { name: 'Cancel' }).click(); // nothing saves
+        });
       });
     });
   }
