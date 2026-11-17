@@ -46,7 +46,7 @@
   function nearest(px: number, py: number): Hit | null {
     let best: Hit | null = null, d = NEAR;
     m.cols.forEach((c, i) => {
-      const mk = Math.hypot(at({ i, k: null }).x - px, at({ i, k: null }).y - py) - MARK_BIAS;
+      const q = at({ i, k: null }), mk = Math.hypot(q.x - px, q.y - py) - MARK_BIAS;
       if (mk < d) (best = { i, k: null }, (d = mk));
       c.dots.forEach((_, k) => {
         const p = at({ i, k }), dd = Math.hypot(p.x - px, p.y - py);
@@ -86,6 +86,8 @@
     const i = Math.min(n - 1, Math.max(0, (tip?.h.i ?? (d > 0 ? -1 : n)) + d));
     tip = { h: { i, k: null }, pinned: false, reveal: true };
   }
+  // The template reads `shown`, never `tip`: new data renders before the effect below clears a tip, so stale indices drop out here.
+  const shown = $derived(tip && m.cols[tip.h.i] && (tip.h.k === null || m.cols[tip.h.i].dots[tip.h.k]) ? tip : null);
   // The moved data (a Period or Group-by change) invalidates an open tip.
   $effect(() => {
     void m;
@@ -119,10 +121,10 @@
       {#each m.cols as c, i (c.label)}
         <circle class="mark" class:thin={!c.solid} cx={x(i)} cy={y(c.y)} r="5" />
       {/each}
-      {#if tip}<circle class="ring" bind:this={anchor} cx={at(tip.h).x} cy={at(tip.h).y} r={tip.h.k === null ? 8 : 6} />{/if}
+      {#if shown}<circle class="ring" bind:this={anchor} cx={at(shown.h).x} cy={at(shown.h).y} r={shown.h.k === null ? 8 : 6} />{/if}
     </svg>
-    {#if tip && anchor}
-      {#key `${tip.h.i},${tip.h.k}`}<FloatTip {anchor} reveal={!!tip.reveal} onclose={() => (tip = null)}><TipBody tip={tipOf(tip.h)} /></FloatTip>{/key}
+    {#if shown && anchor}
+      {#key `${shown.h.i},${shown.h.k}`}<FloatTip {anchor} reveal={!!shown.reveal} onclose={() => (tip = null)}><TipBody tip={tipOf(shown.h)} /></FloatTip>{/key}
     {/if}
   {/if}
   <ul class="legend">
