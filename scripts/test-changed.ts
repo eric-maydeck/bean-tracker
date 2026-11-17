@@ -34,10 +34,10 @@ const viewports = VIEWPORTS.map((v) => `--project=${v.name}`);
 const count = (args: string[]) => (spawnSync('npx', ['playwright', 'test', '--list', ...args], { encoding: 'utf8' }).stdout.match(/Total: (\d+) tests?/) ?? [])[1] ?? '0';
 const layoutTests = Number(count([...viewports, '--grep', grep])) - Number(count(['--project=setup']));
 const tail = ['--project=setup', '--project=perf', '--project=save', '--no-deps', '--workers=1', '--grep', `@setup|${grep}`];
-// UI_PART > 1 has no perf/save projects (playwright.config.ts): part 1 runs the tail.
-const tailTests = PART > 1 ? 0 : Number(count(tail)) - Number(count(['--project=setup']));
-// A CI slice (one part, or no @two viewport) can rightly match nothing; the full layout set still catches a dead tag.
-const slice = PARTS > 1 || !VIEWPORTS.some((v) => TWO_VIEWPORTS.includes(v.name));
+// A CI slice (one part, or no @two viewport) can rightly match nothing; the strict job (full layout set) catches a dead tag
+// and is the only one that runs the perf/save tail. UI_PART > 1 has no perf/save projects (playwright.config.ts).
+const slice = !!process.env.CI && (PARTS > 1 || !VIEWPORTS.some((v) => TWO_VIEWPORTS.includes(v.name)));
+const tailTests = PART > 1 || slice ? 0 : Number(count(tail)) - Number(count(['--project=setup']));
 if (layoutTests + tailTests <= 0 && slice) {
   console.log(`no UI tests matched ${grep} in this slice`);
   process.exit(0);
