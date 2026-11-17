@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS coffees (
   elevation TEXT,
   harvest_time TEXT,
   certification TEXT,
+  tasting_notes TEXT,
+  bean_base_id TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

@@ -27,7 +27,7 @@ export type BeanChange = { uuid: string; name: string; field: string; from: unkn
 
 export const PATCHABLE_FIELDS: readonly string[] = [
   'url', 'attachments', 'name', 'roastingDate', 'roast_range', 'weight', 'cost',
-  'decaffeinated', 'finished', 'frozenDate', 'unfrozenDate', 'beanMix'
+  'decaffeinated', 'finished', 'frozenDate', 'unfrozenDate', 'beanMix', 'aromatics'
 ];
 
 type Rec = Record<string, unknown>;
@@ -151,6 +151,7 @@ export type PatchCoffee = {
   elevation: string | null;
   harvest_time: string | null;
   certification: string | null;
+  tasting_notes: string | null;
   bean_uuid: string | null; // linked beanconqueror_beans.id
   photo: string | null; // local file of the coffee's own image, or null
 };
@@ -188,8 +189,9 @@ export function bqDateFromLocal(date: string): string {
 
 type Kind = 'str' | 'num' | 'bool' | 'date';
 // keep = site field name (keep.json uses these); key = BQ bean key.
+// fillOnly: only written into a blank BQ value, never over one.
 // settledFree: the site is authoritative, so overwriting a filled BQ value needs no settled/keep.
-const FIELDS: { keep: string; key: string; kind: Kind; get: (c: PatchCoffee) => unknown; settledFree?: true }[] = [
+const FIELDS: { keep: string; key: string; kind: Kind; get: (c: PatchCoffee) => unknown; settledFree?: true; fillOnly?: true }[] = [
   { keep: 'coffee_name', key: 'name', kind: 'str', get: (c) => c.coffee_name },
   { keep: 'product_url', key: 'url', kind: 'str', get: (c) => c.product_url },
   { keep: 'roast_date', key: 'roastingDate', kind: 'date', get: (c) => c.roast_date },
@@ -198,6 +200,8 @@ const FIELDS: { keep: string; key: string; kind: Kind; get: (c: PatchCoffee) => 
   { keep: 'cost', key: 'cost', kind: 'num', get: (c) => c.cost },
   { keep: 'decaf', key: 'decaffeinated', kind: 'bool', get: (c) => (c.decaf == null ? null : c.decaf === 1) },
   { keep: 'blend', key: 'beanMix', kind: 'str', settledFree: true, get: (c) => (c.blend === 1 ? 'BLEND' : 'SINGLE_ORIGIN') },
+  // BQ's Flavour profile; ponytail: plain comma string until BQ's hand-entered format is confirmed (change only here)
+  { keep: 'tasting_notes', key: 'aromatics', kind: 'str', fillOnly: true, get: (c) => c.tasting_notes },
   { keep: 'status', key: 'finished', kind: 'bool', get: (c) => c.status === 'archive' },
   { keep: 'frozen_start_date', key: 'frozenDate', kind: 'date', get: (c) => c.frozen_start_date },
   { keep: 'frozen_end_date', key: 'unfrozenDate', kind: 'date', get: (c) => c.frozen_end_date }
@@ -205,7 +209,7 @@ const FIELDS: { keep: string; key: string; kind: Kind; get: (c: PatchCoffee) => 
 // Site origin field -> bean_information[0] key.
 const ORIGIN: [string, keyof BeanOriginPatch][] = [
   ['origin', 'country'], ['processing', 'processing'], ['producer', 'farmer'],
-  ...COFFEE_ORIGIN_FIELDS.filter((f) => f !== 'producer').map((f): [string, keyof BeanOriginPatch] => [f, f])
+  ...COFFEE_ORIGIN_FIELDS.filter((f) => f !== 'producer' && f !== 'tasting_notes').map((f): [string, keyof BeanOriginPatch] => [f, f])
 ];
 
 // A BQ value that is only the Bean constructor's default counts as blank.
@@ -259,6 +263,7 @@ export function buildPatchPlan(
       for (const f of usable) {
         const v = f.get(c);
         if (same(f.kind, v, bean[f.key])) continue;
+        if (f.fillOnly && !bqBlank(bean[f.key])) continue;
         if (!f.settledFree) guard(f.keep, bean[f.key]);
         set[f.key] = fieldValue(f.kind, v);
       }

@@ -6,6 +6,7 @@ import { COFFEE_ORIGIN_FIELDS, type CoffeeOriginField } from '../types';
 import { conciseProcess } from '../processGroups';
 import { formatOriginField } from '../originFormat.ts';
 import { suggestRest } from '../coffeeFormFill';
+import { beanBaseCreditUrl } from './beanBase';
 
 export interface UsdRates {
   date: string;
@@ -16,7 +17,7 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const titleCase = (s: string) => (s.length <= 3 ? s.toUpperCase() : s.replace(/\b\w/g, (c) => c.toUpperCase()));
 
 // Known values keep the user's spelling; otherwise the vocabulary entry is title-cased.
-function canonical(value: string, known: string[]): string {
+export function canonical(value: string, known: string[]): string {
   return known.find((k) => k.toLowerCase() === value.toLowerCase()) ?? titleCase(value);
 }
 
@@ -115,7 +116,8 @@ const ORIGIN_LABELS: Record<CoffeeOriginField, string[]> = {
   region: ['region', 'growing region'],
   elevation: ['elevation', 'altitude'],
   harvest_time: ['harvest', 'harvest time', 'harvest date', 'harvested'],
-  certification: ['certification', 'certifications']
+  certification: ['certification', 'certifications'],
+  tasting_notes: ['tasting notes', 'flavor notes', 'flavour notes', 'notes']
 };
 
 // Labeled values only; a paragraph under the label (long, or with a sentence) is not a detail.
@@ -265,6 +267,8 @@ export interface FillSuccess {
   // once, directly below the rest-days fields, instead of duplicating it in
   // the top status note.
   restNote: string | null;
+  // Set when Bean Base matched: the id is saved with the coffee; `fields` are the ones it filled (credit shows only when non-empty).
+  beanBase: { id: string; url: string; fields: (keyof FillFields)[] } | null;
 }
 export type FillResult = FillSuccess | { error: string };
 export interface FillContext {
@@ -344,6 +348,16 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
     variants: variants.length > 1 ? variants : [],
     selected: variants.length > 1 ? selected : null,
     notes,
-    restNote: rest?.note ?? null
+    restNote: rest?.note ?? null,
+    beanBase: null
   };
+}
+
+// The page wins: Bean Base only fills fields the page left blank.
+export function mergeBeanBase(fill: FillSuccess, bb: { id: string; fields: FillFields } | null): FillSuccess {
+  if (!bb) return { ...fill, beanBase: null };
+  const added = (Object.keys(bb.fields) as (keyof FillFields)[]).filter((k) => fill.fields[k] == null);
+  const fields = { ...fill.fields };
+  for (const k of added) Object.assign(fields, { [k]: bb.fields[k] });
+  return { ...fill, fields, beanBase: { id: bb.id, url: beanBaseCreditUrl(bb.id), fields: added } };
 }

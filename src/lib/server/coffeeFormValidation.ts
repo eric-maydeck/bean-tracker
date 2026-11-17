@@ -133,6 +133,7 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     set_roaster_default: formData.get('set_roaster_default') === '1' && imageUrl != null,
     // Machine-set hidden field: an unusable value is dropped, not an error.
     roaster_website: toOrigin(textField(formData, 'roaster_website')),
+    ...(formData.has('bean_base_id') && { bean_base_id: textField(formData, 'bean_base_id') || null }),
     ...(subscriptionId !== undefined && { subscription_id: subscriptionId }),
     // Only the fields the form sent; absent ones stay untouched on update.
     ...Object.fromEntries(COFFEE_ORIGIN_FIELDS.filter((f) => formData.has(f)).map((f) => [f, formatOrNull(f, textField(formData, f))]))
