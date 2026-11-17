@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { stubConfig, unstubConfig } from '../testConfig';
 import { providers, suggest, UNCONFIGURED_NOTE } from './index';
+import { product } from './providers/product';
 import type { CandidatePage, FetchPage, Provider, SuggestQuery } from './types';
 
 const Q: SuggestQuery = { roaster: 'Lume', name: 'Kiambu', origin: 'Kenya', roastDate: '2026-09-01', site: null };
@@ -25,14 +26,14 @@ const pages = (n = 1): FetchPage =>
 afterEach(unstubConfig);
 
 describe('providers', () => {
-  const all = [fake('shopify', []), fake('tavily', [])];
+  const all = [fake('product', []), fake('shopify', []), fake('beanbase', []), fake('tavily', [])];
   it('keeps config order, ignores unknown names, case and duplicates', () => {
     expect(providers('tavily,shopify', all).map((p) => p.name)).toEqual(['tavily', 'shopify']);
     expect(providers(' Bing , SHOPIFY,shopify', all).map((p) => p.name)).toEqual(['shopify']);
   });
-  it('defaults to shopify,tavily', () => {
+  it('defaults to product,shopify,beanbase,tavily', () => {
     stubConfig('');
-    expect(providers(undefined, all).map((p) => p.name)).toEqual(['shopify', 'tavily']);
+    expect(providers(undefined, all).map((p) => p.name)).toEqual(['product', 'shopify', 'beanbase', 'tavily']);
   });
 });
 
@@ -187,5 +188,16 @@ describe('suggest', () => {
     expect(r.status).toBe('failed');
     expect(r.notes[0]).toMatch(/^hang unavailable/);
     log.mockRestore();
+  });
+});
+
+describe('product page first', () => {
+  it("the coffee's own page images come before a later provider's", async () => {
+    const r = await suggest({ ...Q, productUrl: 'https://shop.example/p/own' }, {
+      providers: [product, fake('b', [page(2)])],
+      fetchPage: pages(1)
+    });
+    expect(r.candidates.map((c) => c.pageUrl)).toEqual(['https://shop.example/p/own', 'https://shop.example/p/2']);
+    expect(r.candidates[0].provider).toBe('product');
   });
 });

@@ -30,7 +30,7 @@ export function scoreImage(img: PageImage, roastYear: string | null): number {
   return score;
 }
 
-const words = (s: string) =>
+export const words = (s: string) =>
   s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
 
 export function rankImages(

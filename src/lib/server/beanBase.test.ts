@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BEANS } from './beanBase.fixtures';
 import {
-  beanBaseCreditUrl, beanBaseFields, beanBaseKey, compareField, fetchBeanBase, lookupBeanBase, mapRoaster, matchBean, normalizeLink
+  type BeanBaseBean, beanBaseCreditUrl, beanBaseFields, searchBeanBase, beanBaseKey, compareField, fetchBeanBase, lookupBeanBase, mapRoaster, matchBean, normalizeLink
 } from './beanBase';
 
 const ctx = { roastLevels: ['Light'], origins: ['Colombia'], processing: ['Washed'] };
@@ -102,4 +102,90 @@ describe('misc', () => {
     await expect(fetchBeanBase('/x', 'k', vi.fn(async () => new Response('', { status: 429 })))).rejects.toThrow();
   });
   it('credit url', () => expect(beanBaseCreditUrl('101')).toBe('https://www.loffeelabs.com'));
+});
+
+describe('searchBeanBase', () => {
+  const mk = (id: number, name: string, date: string, extra: Partial<BeanBaseBean> = {}): BeanBaseBean => ({
+    ...BEANS[0], id, 'roast-name': name, date, link: null, ...extra
+  });
+  const lume = [
+    mk(1, 'Kenya Kiambu', '2025-01-01'),
+    mk(2, 'Huila Washed', '2025-06-01', { image: 'https://img.test/a.jpg', soldout: true }),
+    mk(3, 'Huila Washed Decaf', '2025-03-01'),
+    mk(4, 'Ethiopia Huila Blend', '2025-09-01'),
+    mk(5, 'Other', '2025-12-01')
+  ].map((b) => ({ ...b, roaster: 'Lume Coffee' }));
+  const router = (beans: unknown, roasters: unknown) =>
+    vi.fn(async (u: unknown) => new Response(JSON.stringify(String(u).includes('/roasters') ? roasters : beans), { status: 200 }));
+
+  it('no key and failures', async () => {
+    expect(await searchBeanBase('Lume', 'x', ctx, { key: null })).toEqual({ status: 'no-key' });
+    const bad = vi.fn(async () => new Response('', { status: 500 }));
+    expect(await searchBeanBase('Lume', 'x', ctx, { key: 'k', fetcher: bad })).toEqual({ status: 'failed' });
+    expect(await searchBeanBase('Lume', 'x', ctx, { key: 'k', fetcher: ok({ nope: 1 }) })).toEqual({ status: 'failed' });
+  });
+  it('reads the live API shape: lists wrapped in { data }', async () => {
+    const r = await searchBeanBase('Lume Coffee', 'Kenya Kiambu', ctx, { key: 'k', fetcher: router({ data: lume }, { data: [] }) });
+    expect(r).toMatchObject({ status: 'ok', roaster: 'Lume Coffee' });
+    const miss = await searchBeanBase('Big Sur', 'x', ctx, { key: 'k', fetcher: router({ data: [] }, { data: ['Big Sur Coffee'] }) });
+    expect(miss).toEqual({ status: 'roaster', closest: ['Big Sur Coffee'] });
+  });
+  it('roaster miss returns the closest names, best first, max 5', async () => {
+    const names = ['Lume Coffee', 'Zebra Roasters', 'Lumen Brew', 'Big Sur Coffee', 'Sur Roasters', 'Big Sun', 'Big Sur Roasters', 'Big Sir'];
+    const r = await searchBeanBase('Big Sur', 'x', ctx, { key: 'k', fetcher: router([], { roasters: names }) });
+    expect(r).toMatchObject({ status: 'roaster' });
+    const closest = (r as { closest: string[] }).closest;
+    expect(closest.length).toBeLessThanOrEqual(5);
+    expect(closest.slice(0, 2).sort()).toEqual(['Big Sur Coffee', 'Big Sur Roasters']);
+    expect(closest).not.toContain('Zebra Roasters');
+  });
+  it('orders name matches first (exact, containing, shared word), then newest', async () => {
+    const r = await searchBeanBase('lume coffee', 'Huila Washed', ctx, { key: 'k', fetcher: router(lume, []) });
+    expect(r).toMatchObject({ status: 'ok', roaster: 'Lume Coffee' });
+    const beans = (r as { beans: { id: string; image: string | null; soldout: boolean }[] }).beans;
+    expect(beans.map((b) => b.id)).toEqual(['2', '3', '4', '5', '1']);
+    expect(beans[0]).toMatchObject({ image: 'https://img.test/a.jpg', soldout: true });
+    expect(beans[1]).toMatchObject({ image: null, soldout: false });
+  });
+  it('blank name lists all, newest first, with the fill fields', async () => {
+    const r = await searchBeanBase('Lume Coffee', '  ', ctx, { key: 'k', fetcher: router(lume, []) });
+    expect((r as { beans: { id: string }[] }).beans.map((b) => b.id)).toEqual(['5', '4', '2', '3', '1']);
+    expect((r as { beans: { fields: unknown }[] }).beans[0].fields).toEqual(beanBaseFields(lume[4], ctx));
+  });
+});
+
+describe('searchBeanBase ranking like image Suggest', () => {
+  const mk = (id: number, name: string, date: string, link: string | null = null): BeanBaseBean => ({
+    ...BEANS[0], id, roaster: 'Lume Coffee', 'roast-name': name, date, link
+  });
+  const beans = [
+    mk(1, 'Kenya Kiambu', '2025-01-01'),
+    mk(2, 'Huila Washed', '2025-06-01'),
+    mk(3, 'Ethiopia Huila Natural Lot', '2025-03-01'),
+    mk(4, 'Other', '2025-12-01', 'https://lume.test/collections/all/products/other-lot?v=1'),
+    mk(5, 'Huila Washed Decaf', '2025-09-01')
+  ];
+  const run = async (name: string, opts: { roastDate?: string | null; productUrl?: string | null } = {}) => {
+    const r = await searchBeanBase('Lume Coffee', name, ctx, { key: 'k', fetcher: ok(beans), ...opts });
+    const cards = (r as { beans: { id: string; closest: boolean }[] }).beans;
+    return { ids: cards.map((c) => c.id), closest: cards.filter((c) => c.closest).map((c) => c.id) };
+  };
+
+  it('no roast date (the usual case): link, then name words, then newest, and no closest flag', async () => {
+    expect((await run('Huila Washed', { productUrl: 'https://www.lume.test/products/other-lot' }))).toEqual({
+      ids: ['4', '2', '5', '3', '1'],
+      closest: []
+    });
+    // name words only: exact name first, then more shared words, then newest; unrelated by newest last
+    expect(await run('Huila Washed')).toEqual({ ids: ['2', '5', '3', '4', '1'], closest: [] });
+    expect(await run('')).toEqual({ ids: ['4', '5', '2', '3', '1'], closest: [] });
+  });
+  it('with a roast date, equal name matches go nearest the roast date, and one bean is closest', async () => {
+    const r = await run('Huila', { roastDate: '2025-03-10' });
+    expect(r.ids).toEqual(['3', '2', '5', '1', '4']);
+    expect(r.closest).toEqual(['3']);
+  });
+  it('closest is the nearest-dated bean even if it is not a name match', async () => {
+    expect((await run('Kenya', { roastDate: '2025-12-20' })).closest).toEqual(['4']);
+  });
 });

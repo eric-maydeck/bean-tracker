@@ -1,8 +1,10 @@
 import { formatOriginField } from '../originFormat.ts';
 import { conciseProcess } from '../processGroups';
+import { words } from './imageSuggest/rankImages';
 import { canonical, normalizeRoaster, type FillFields } from './productFill';
 
-const BASE_URL = 'https://api.loffeelabs.com/api/v2';
+// The docs say api.loffeelabs.com, but that host doesn't resolve (checked 2026-11-17); the API is served from www.
+const BASE_URL = 'https://www.loffeelabs.com/api/v2';
 
 export interface BeanBaseBean {
   id: number;
@@ -20,6 +22,9 @@ export interface BeanBaseBean {
   'min-elev': number | null;
   'max-elev': number | null;
   date: string;
+  image?: string | null;
+  soldout?: boolean | number | string | null;
+  available?: boolean | number | string | null;
 }
 
 type Ctx = { roastLevels: string[]; origins: string[]; processing: string[] };
@@ -35,7 +40,7 @@ export async function fetchBeanBase(path: string, key: string | null, fetcher: t
     headers: { Authorization: `Bearer ${key}` },
     signal: AbortSignal.timeout(timeoutMs)
   });
-  if (!res.ok) throw new Error(`Bean Base ${res.status}`);
+  if (!res.ok) throw new Error(`Bean Base ${res.status} ${(await res.text().catch(() => '')).slice(0, 200)}`.trim());
   return res.json();
 }
 
@@ -138,8 +143,8 @@ export async function lookupBeanBase(
   const key = opts.key === undefined ? beanBaseKey() : opts.key;
   if (!key) return { miss: 'no-key' };
   try {
-    const body = (await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}`, key, opts.fetcher)) as BeanBaseBean[] | { beans: BeanBaseBean[] };
-    const beans = Array.isArray(body) ? body : body.beans;
+    const body = (await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}`, key, opts.fetcher)) as BeanBaseBean[] | { data?: BeanBaseBean[]; beans?: BeanBaseBean[] };
+    const beans = Array.isArray(body) ? body : (body.data ?? body.beans);
     if (!Array.isArray(beans)) return { miss: 'error' };
     const mapped = mapRoaster(roaster, coffee.product_url, beans);
     if (!mapped) return { miss: 'roaster' };
@@ -148,4 +153,115 @@ export async function lookupBeanBase(
   } catch {
     return { miss: 'error' };
   }
+}
+
+export type BeanCard = {
+  id: string; name: string; image: string | null; soldout: boolean; date: string; link: string | null; closest: boolean; fields: FillFields;
+};
+export type BeanSearch =
+  | { status: 'no-key' | 'failed' }
+  | { status: 'roaster'; closest: string[] }
+  | { status: 'ok'; roaster: string; beans: BeanCard[] };
+
+// ponytail: shared words, then containment/prefix, then edit distance. A one-word typo that shares no word
+// with the real name ranks by edit distance alone; upgrade to trigram similarity if misses show up.
+function closestRoasters(typed: string, names: string[], n = 5): string[] {
+  const t = normalizeRoaster(typed);
+  const tw = new Set(t.split(' ').filter(Boolean));
+  const edit = (a: string, b: string) => {
+    let row = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const next = [i];
+      for (let j = 1; j <= b.length; j++) next[j] = Math.min(row[j] + 1, next[j - 1] + 1, row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      row = next;
+    }
+    return row[b.length];
+  };
+  const score = (name: string) => {
+    const k = normalizeRoaster(name);
+    const shared = k.split(' ').filter((w) => tw.has(w)).length;
+    const near = t && k && (k.includes(t) || t.includes(k) || k.startsWith(t.slice(0, 3))) ? 1 : 0;
+    return [shared, near, -edit(t, k)];
+  };
+  return [...new Set(names)]
+    .map((name) => ({ name, s: score(name) }))
+    .filter((x) => x.s[0] > 0 || x.s[1] > 0 || -x.s[2] <= Math.max(2, Math.floor(t.length / 3)))
+    .sort((a, b) => b.s[0] - a.s[0] || b.s[1] - a.s[1] || b.s[2] - a.s[2] || a.name.localeCompare(b.name))
+    .slice(0, n)
+    .map((x) => x.name);
+}
+
+// ponytail: image/soldout types are undocumented; a truthy soldout counts as sold out. limit 1000 is the
+// Developer plan's cap, enough for one roaster's whole list; no paging.
+type SearchOpts = { key?: string | null; fetcher?: typeof fetch; roastDate?: string | null; productUrl?: string | null };
+type Ranked = { b: BeanBaseBean; match: number; days: number };
+
+// Logs only the response's top-level keys (never bean data or the key), so a changed API shape shows in the server log.
+function shapeFail(path: string, got: unknown): { status: 'failed' } {
+  console.error(`bean base search: unexpected ${path} response`, got && typeof got === 'object' ? Object.keys(got).slice(0, 10) : typeof got);
+  return { status: 'failed' };
+}
+
+// The roaster's beans in image Suggest's order: product link, exact name, coffee-name words,
+// nearest the roast date (undated last), newest. Shared by the search dialog and the image provider.
+export async function rankedBeans(
+  roaster: string,
+  coffeeName: string,
+  opts: SearchOpts = {}
+): Promise<{ status: 'no-key' | 'failed' } | { status: 'roaster'; closest: string[] } | { status: 'ok'; roaster: string; ranked: Ranked[] }> {
+  const key = opts.key === undefined ? beanBaseKey() : opts.key;
+  if (!key) return { status: 'no-key' };
+  try {
+    const list = (body: unknown, k: string) => (Array.isArray(body) ? body : (body as Record<string, unknown> | null)?.data ?? (body as Record<string, unknown> | null)?.[k]);
+    // ponytail: fetchBeanBase builds its own timeout signal, so a caller's abort signal isn't passed through.
+    const body = await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}&limit=1000`, key, opts.fetcher);
+    const beans = list(body, 'beans') as BeanBaseBean[];
+    if (!Array.isArray(beans)) return shapeFail('/beans', body);
+    const mapped = mapRoaster(roaster, null, beans);
+    if (!mapped) {
+      const rBody = await fetchBeanBase('/roasters?flat=true', key, opts.fetcher);
+      const names = list(rBody, 'roasters');
+      if (!Array.isArray(names)) return shapeFail('/roasters', rBody);
+      return { status: 'roaster', closest: closestRoasters(roaster, names.filter((x): x is string => typeof x === 'string')) };
+    }
+    const nameWords = [...new Set(words(coffeeName))];
+    const nameKeyTyped = nameKey(coffeeName);
+    const link = opts.productUrl ? normalizeLink(opts.productUrl) : null;
+    const roastMs = opts.roastDate ? Date.parse(opts.roastDate) : NaN;
+    const scored = beans
+      .filter((b) => b.roaster === mapped)
+      .map((b) => {
+        const t = new Set(words(b['roast-name'] ?? ''));
+        const ms = Date.parse(b.date);
+        return {
+          b,
+          link: link && b.link && normalizeLink(b.link) === link ? 1 : 0,
+          exact: nameKeyTyped && nameKey(b['roast-name']) === nameKeyTyped ? 1 : 0,
+          match: nameWords.filter((w) => t.has(w)).length,
+          days: Number.isNaN(ms) || Number.isNaN(roastMs) ? Infinity : Math.abs(ms - roastMs),
+          ms: Number.isNaN(ms) ? 0 : ms
+        };
+      })
+      .sort((a, b) => b.link - a.link || b.exact - a.exact || b.match - a.match || (a.days === b.days ? 0 : a.days < b.days ? -1 : 1) || b.ms - a.ms);
+    return { status: 'ok', roaster: mapped, ranked: scored };
+  } catch (err) {
+    console.error('bean base search failed:', err instanceof Error ? err.message : String(err));
+    return { status: 'failed' };
+  }
+}
+
+export async function searchBeanBase(roaster: string, coffeeName: string, ctx: Ctx, opts: SearchOpts = {}): Promise<BeanSearch> {
+  const r = await rankedBeans(roaster, coffeeName, opts);
+  if (r.status !== 'ok') return r;
+  // closest: the one bean dated nearest the roast date (ties: earlier in the list), as in image Suggest.
+  let best = -1;
+  let bestDays = Infinity;
+  r.ranked.forEach((x, i) => {
+    if (x.days < bestDays) [best, bestDays] = [i, x.days];
+  });
+  const beans = r.ranked.map(({ b }, i): BeanCard => ({
+    id: String(b.id), name: b['roast-name']?.trim() || 'Unnamed', image: b.image?.trim() || null, soldout: !!b.soldout,
+    date: b.date, link: b.link, closest: i === best, fields: beanBaseFields(b, ctx)
+  }));
+  return { status: 'ok', roaster: r.roaster, beans };
 }

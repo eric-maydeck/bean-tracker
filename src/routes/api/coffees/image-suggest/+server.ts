@@ -18,6 +18,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const override = typedSite ? toOrigin(typedSite) : null;
   if (typedSite && !override) return json({ error: "That site isn't a web address" }, { status: 400 });
   const storedSite = getRoasterWebsite(getDb(), roaster);
-  const result = await suggest({ roaster, name, origin: str(body?.origin), roastDate: str(body?.roastDate), site: override ?? storedSite });
+  const result = await suggest({ roaster, name, origin: str(body?.origin), roastDate: str(body?.roastDate), site: override ?? storedSite, productUrl: str(body?.product_url)?.slice(0, 2000) });
   return json({ ...result, storedSite });
 };
