@@ -1,3 +1,22 @@
+# [1.116.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.115.0...v1.116.0) (2026-11-17)
+
+
+### Bug Fixes
+
+* **bean-base:** log why a loffee labs search failed ([a71a8d3](https://github.com/eric-maydeck/bean-tracker/commit/a71a8d31ad027946382930b87c12256f4ff6ece2))
+* **bean-base:** use the api host that resolves and read lists wrapped in data ([3b0d941](https://github.com/eric-maydeck/bean-tracker/commit/3b0d941bbd68ffc88a77c526e19b498b4811f5ae))
+* **ui:** suggest cards keep their own height in a mixed row ([4a98631](https://github.com/eric-maydeck/bean-tracker/commit/4a986318e725b4531dd4e1b410a6f714da905fd3))
+* **ui:** suggest cards stretch to their row again (rows stay aligned) ([04df762](https://github.com/eric-maydeck/bean-tracker/commit/04df762eb09ab9009dc31e9b71220900750f365c))
+
+
+### Features
+
+* **bean-base:** rank results like image suggest, with a closest-to-roast-date card ([9add0e0](https://github.com/eric-maydeck/bean-tracker/commit/9add0e02123642c0f697895645e0151b535ed453))
+* **bean-base:** search a roaster's beans and an endpoint for it ([4128aea](https://github.com/eric-maydeck/bean-tracker/commit/4128aeaf0aac916cb2f164f05ab949f16d134f17))
+* **coffees:** add the search loffee labs button and results dialog ([4be7991](https://github.com/eric-maydeck/bean-tracker/commit/4be7991995349e955c9d66d9212d2e3954c7f6ec))
+* **coffees:** mount search loffee labs in the product page row ([38ddbe9](https://github.com/eric-maydeck/bean-tracker/commit/38ddbe92fbc93567365136c0ef6e393d9c505a1b))
+* **image-suggest:** offer the product page first and find pages through loffee labs ([bd298d7](https://github.com/eric-maydeck/bean-tracker/commit/bd298d7a499b08a3630fcafedb69583aaa30b001))
+
 # [1.115.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.114.1...v1.115.0) (2026-11-17)
 
 
