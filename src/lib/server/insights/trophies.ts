@@ -14,7 +14,8 @@ export const RETIRED_AFTER_DAYS = 90;
 
 // Archived names per kind (Bean Conqueror's archive flag), plus `added`: `${kind}\0${name}` -> the earliest Bean Conqueror
 // created date (a wall-time 'YYYY-MM-DD...') of the gear's rows, the day we added that gear (a brew can predate it).
-export type GearArchive = Record<GearKind, Set<string>> & { added?: Map<string, string> };
+export type GearArchive = Record<GearKind, Set<string>> & { added?: Map<string, string>; adjustable?: Set<string> };
+// adjustable: grinder names where any row has Bean Conqueror's adjustable-speed flag.
 
 // A grinder is archived when every row of that name is; a dripper/filter when every method parsing to it is.
 export function gearArchive(db: DatabaseSync): GearArchive {
@@ -26,14 +27,17 @@ export function gearArchive(db: DatabaseSync): GearArchive {
     all.set(k, (all.get(k) ?? true) && archived);
     if (created && (!added.has(k) || created < added.get(k)!)) added.set(k, created);
   };
-  for (const r of db.prepare(`SELECT name, bc_archived AS a, bc_created_at AS c FROM beanconqueror_grinders`).all() as { name: string; a: number; c: string | null }[])
+  const adjustable = new Set<string>();
+  for (const r of db.prepare(`SELECT name, bc_archived AS a, bc_created_at AS c, has_adjustable_speed AS s FROM beanconqueror_grinders`).all() as { name: string; a: number; c: string | null; s: number }[]) {
     note('grinder', r.name, !!r.a, r.c);
+    if (r.s && r.name) adjustable.add(r.name);
+  }
   for (const r of db.prepare(`SELECT name, preparation_tools AS tools, bc_archived AS a, bc_created_at AS c FROM beanconqueror_methods`).all() as { name: string; tools: string | null; a: number; c: string | null }[]) {
     const { dripper, filter } = parseMethod(r.name, r.tools);
     note('dripper', dripper, !!r.a, r.c);
     note('filter', filter, !!r.a, r.c);
   }
-  const out: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set(), added };
+  const out: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set(), added, adjustable };
   for (const [k, v] of all) if (v) { const [kind, name] = k.split('\0'); out[kind as GearKind].add(name); }
   return out;
 }
@@ -42,7 +46,7 @@ export interface Trophy {
   key: string; kind: GearKind; name: string; brews: number; grams: number;
   rating: number | null; best: number | null; sample: Sample; bags: number; days: number;
   firstUsed: string; lastUsed: string; favorite: { name: string; brews: number } | null;
-  archived: boolean; retired: boolean;
+  archived: boolean; retired: boolean; adjustableSpeed: boolean; // grinders only
   // Stored details (exact kind + name match); the picture is our copy, else the original URL, on its backdrop.
   values: GearValues; imageUrl: string | null; image: { src: string; fill: string } | null;
   // ISO instants (the page formats them in the browser's zone). Added: the earlier of Bean Conqueror's created time and the lifetime first brew
@@ -119,7 +123,7 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
       favorite: fav ? { name: fav[0], brews: fav[1] } : null,
       values: det?.values ?? {}, imageUrl: det?.imageUrl ?? null, image: src ? { src, fill: backdrop(det!.imageFill) } : null,
       added: [archive.added?.get(`${kind}\0${name}`), firstBrew].filter((d): d is string => !!d).map(wallToInstant).sort()[0], updatedAt: det?.updatedAt ?? null,
-      archived, retired: archived || daysBetween(lastUsed, today) > RETIRED_AFTER_DAYS
+      archived, adjustableSpeed: kind === 'grinder' && !!archive.adjustable?.has(name), retired: archived || daysBetween(lastUsed, today) > RETIRED_AFTER_DAYS
     };
   });
   const order = (k: GearKind) => GEAR_KINDS.indexOf(k);

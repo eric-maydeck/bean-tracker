@@ -108,6 +108,16 @@ describe('gearArchive', () => {
     expect([...a.grinder]).toEqual(['ZP6']);
   });
 
+  it('marks adjustable grinders on the archive and their trophies, no one else', () => {
+    const db = createDb(':memory:');
+    const g = db.prepare(`INSERT INTO beanconqueror_grinders (id, name, has_adjustable_speed, imported_at) VALUES (?, ?, ?, '2026-10-09')`);
+    g.run('g1', 'ZP6', 1); g.run('g2', 'C40', 0);
+    const a = gearArchive(db);
+    expect([...a.adjustable!]).toEqual(['ZP6']);
+    const t = trophyCase([brew({ dripper: 'V60', grinder: 'ZP6' }), brew({ dripper: 'V60', grinder: 'C40' })], a, T);
+    expect(Object.fromEntries(t.map((c) => [c.key, c.adjustableSpeed]))).toEqual({ 'dripper-v60': false, 'grinder-zp6': true, 'grinder-c40': false });
+  });
+
   describe('added', () => {
     const xs = () => [brew({ dripper: 'V60', grinder: 'ZP6', localDate: '2026-05-10', localTime: '2026-05-10T08:00' }),
       brew({ dripper: 'V60', grinder: 'ZP6', localDate: '2026-10-20', localTime: '2026-10-20T08:00' })];

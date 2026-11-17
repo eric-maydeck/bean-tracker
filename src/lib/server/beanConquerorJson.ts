@@ -106,7 +106,7 @@ export function parseBeanConquerorJson(files: BeanConquerorJsonFiles): ParsedBea
 
   const grinders: ParsedGrinder[] = list(main.MILL).flatMap((g) => {
     const id = uuid(g);
-    return id ? [{ id, name: text(g.name), notes: text(g.note), bcArchived: g.finished === true, bcCreatedAt: created(g) }] : [];
+    return id ? [{ id, name: text(g.name), notes: text(g.note), bcArchived: g.finished === true, bcCreatedAt: created(g), hasAdjustableSpeed: g.has_adjustable_speed === true }] : [];
   });
 
   // Minerals' *_type is MG_L or UNKNOWN in every real profile: stored as plain mg/L.

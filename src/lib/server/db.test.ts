@@ -119,6 +119,14 @@ describe('legacy data migration', () => {
     expect(db.prepare(`SELECT subscription_id FROM coffees`).get()).toEqual({ subscription_id: null });
   });
 
+  it('adds beanconqueror_grinders.has_adjustable_speed to an older DB, 0 by default', () => {
+    const db = new DatabaseSync(':memory:');
+    db.exec(schema.match(/CREATE TABLE IF NOT EXISTS beanconqueror_grinders \([\s\S]*?\n\);/)![0].replace(/,\n.*has_adjustable_speed.*/, ''));
+    db.exec(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'G', '2026-01-01')`);
+    applySchema(db);
+    expect(db.prepare(`SELECT has_adjustable_speed AS a FROM beanconqueror_grinders`).get()).toEqual({ a: 0 });
+  });
+
   it("nulls a coffee's subscription_id when its plan is deleted", () => {
     const db = createDb(':memory:');
     const planId = createSubscription(db, {
