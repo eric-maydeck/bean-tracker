@@ -40,7 +40,7 @@
     }
     return d;
   });
-  const NEAR = 28, MARK_BIAS = 8; // a band marker beats a dot that is no more than this much nearer
+  const NEAR = 28, MARK_BIAS = 10; // a band marker beats a dot that is no more than this much nearer
   type Hit = { i: number; k: number | null }; // k null = the band's marker
   const at = (h: Hit) => (h.k === null ? { x: x(h.i), y: y(m.cols[h.i].y) } : { x: x(h.i) + jitter(h.k), y: y(m.cols[h.i].dots[h.k].y) });
   function nearest(px: number, py: number): Hit | null {
@@ -119,9 +119,9 @@
       <line class="avg" x1={L} x2={width - R} y1={y(m.avg)} y2={y(m.avg)} />
       {#if curve}<path class="trend" d={curve} />{/if}
       {#each m.cols as c, i (c.label)}
-        <circle class="mark" class:thin={!c.solid} cx={x(i)} cy={y(c.y)} r="5" />
+        <circle class="mark" class:thin={!c.solid} cx={x(i)} cy={y(c.y)} r="7" />
       {/each}
-      {#if shown}<circle class="ring" bind:this={anchor} cx={at(shown.h).x} cy={at(shown.h).y} r={shown.h.k === null ? 8 : 6} />{/if}
+      {#if shown}<circle class="ring" bind:this={anchor} cx={at(shown.h).x} cy={at(shown.h).y} r={shown.h.k === null ? 10.5 : 6} />{/if}
     </svg>
     {#if shown && anchor}
       {#key `${shown.h.i},${shown.h.k}`}<FloatTip {anchor} reveal={!!shown.reveal} onclose={() => (tip = null)}><TipBody tip={tipOf(shown.h)} /></FloatTip>{/key}
@@ -129,7 +129,7 @@
   {/if}
   <ul class="legend">
     <li><svg width="12" height="12" aria-hidden="true"><circle class="dot" cx="6" cy="6" r="3.5" /></svg>Brew</li>
-    <li><svg width="22" height="12" aria-hidden="true"><path class="trend" d="M1 6H21" /><circle class="mark" cx="11" cy="6" r="4" /></svg>Speed's value</li>
+    <li><svg width="22" height="14" aria-hidden="true"><path class="trend" d="M1 7H21" /><circle class="mark" cx="11" cy="7" r="5" /></svg>Speed's value</li>
     <li><svg width="22" height="12" aria-hidden="true"><path class="avg" d="M1 6H21" /></svg>Average rating</li>
   </ul>
 </div>

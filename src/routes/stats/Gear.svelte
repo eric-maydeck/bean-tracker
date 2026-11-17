@@ -98,7 +98,8 @@
     </section>
   {/if}
 
-  <!-- Grind speed (RPM): a full-width board and a heatmap, each one short line when there is nothing to show. -->
+  <!-- Grind speed (RPM): the chart + board and the heatmap side by side from 768 px; the grid stretches the shorter tile to the taller one and the heatmap rows fill it (no fitPairs: its 2× cap would make the board scroll inside). Each one short line when there is nothing to show. -->
+  <div class="gear-pair">
   <section class="chart-panel" data-section="gear-speeds">
     <LabHead id="gear-speeds" title="Ratings by grind speed" help={SPEED_HELP} {placeTip} />
     {#if t.speeds.length}
@@ -120,6 +121,7 @@
       <p class="hl-empty">{emptyLine(t.speeds.length ? 'No coffee group with 3+ bags brewed at 2+ grind speeds in this period.' : 'No rated brews with a grind speed in this period.')}</p>
     {/if}
   </section>
+  </div>
 
   {#if t.eras || t.grinderEras}
     <section class="chart-panel" data-section="gear-eras">
