@@ -1,3 +1,44 @@
+# [1.113.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.112.0...v1.113.0) (2026-11-17)
+
+
+### Bug Fixes
+
+* **gear:** heatmap empty line, speed field labels, convert layout state ([e1a67a8](https://github.com/eric-maydeck/bean-tracker/commit/e1a67a830a7a59be79dd2ff738ea047067342a46))
+* **gear:** speed chart tip drops stale indices when the data shrinks ([7c97a29](https://github.com/eric-maydeck/bean-tracker/commit/7c97a29b059147fcba1d5e2e00ace0cdbd133f5b))
+* **gear:** speed heatmap fits the dot chart's height ([9f26aec](https://github.com/eric-maydeck/bean-tracker/commit/9f26aecd5358e13ee1bd2a23d5f591ed658d5a43))
+* **gear:** speed heatmap tip says vs group avg, all speeds ([bc735f0](https://github.com/eric-maydeck/bean-tracker/commit/bc735f0eb8e36c415ed0581b6c01e378a29af524))
+* **gear:** speed tile mean, unpaired low-confidence tip, bag-weighted trend baseline ([d4a598b](https://github.com/eric-maydeck/bean-tracker/commit/d4a598bcb71536d5376611dacf94ff9fa92c5501))
+* **gear:** tips wrap long names, larger speed markers, speed tiles side by side ([08189fe](https://github.com/eric-maydeck/bean-tracker/commit/08189fec0c5ec0235ae672e4c48de6117e3765b9))
+* inca gesha alone maps to sl9 (inca gesha) ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([6ecaf7e](https://github.com/eric-maydeck/bean-tracker/commit/6ecaf7e2d9bf858f950af4642f658a02d8c4f089))
+* norml subscription bags take the subscription size and price ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([998c062](https://github.com/eric-maydeck/bean-tracker/commit/998c0626de955120a634ab20af562102ac2c20f8))
+
+
+### Features
+
+* bean base backfill batch with standardized values ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([c0cd9de](https://github.com/eric-maydeck/bean-tracker/commit/c0cd9de71c7803bb307646bb0e2bd56900dcb36b))
+* bean base client and matcher ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([171b0d4](https://github.com/eric-maydeck/bean-tracker/commit/171b0d4fe4b4633d2069ff45751c0726554644c0))
+* bean base reconcile diff rules and backfill batches ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([eda110e](https://github.com/eric-maydeck/bean-tracker/commit/eda110eb237aa513c45ef04a3471c56c9a95c03c))
+* **bq-patch:** --speeds sets mill_speed on listed unset brews ([a0911ca](https://github.com/eric-maydeck/bean-tracker/commit/a0911ca8b3c1602f42531cbef118930663087188))
+* **bq-patch:** tasting notes to aromatics ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([b9001e6](https://github.com/eric-maydeck/bean-tracker/commit/b9001e6bd9468a047fe88d350f7709caa6dad3cf))
+* **bq:** import grinder has_adjustable_speed ([af1e793](https://github.com/eric-maydeck/bean-tracker/commit/af1e7938f88c75f53d549c40c9f445561eae9b97))
+* coffee data standards module, boot conversion and dry-run report ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([de2fd40](https://github.com/eric-maydeck/bean-tracker/commit/de2fd402a428e0281e093b30465931669dfbf52f))
+* fill from URL uses bean base ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([2088701](https://github.com/eric-maydeck/bean-tracker/commit/2088701d19b5f1bea694f40d0e5ee7479e3976c5))
+* **gear:** grinder RPM and dial conversion fields ([029283c](https://github.com/eric-maydeck/bean-tracker/commit/029283c2dbe31de1ce7ab2a03c0d3ab5b7e3302b))
+* **gear:** grinder-average speed method, dot-column chart, group-by heatmap, reordered speed fields ([74cbe79](https://github.com/eric-maydeck/bean-tracker/commit/74cbe7951188fca8766b2f955c92e0a2a82c8d06))
+* **gear:** nearest-point tooltip on the grind speed chart ([73816d0](https://github.com/eric-maydeck/bean-tracker/commit/73816d0c8edc81b65be73fba9e928bb046d111f2))
+* **gear:** speed heatmap caps at 10 groups, a–z, lists the rest ([b61a781](https://github.com/eric-maydeck/bean-tracker/commit/b61a78175eb237e5f848b787e4ea21b9d4b70add))
+* **insights:** brew RPM from grinder speed ([419c0c0](https://github.com/eric-maydeck/bean-tracker/commit/419c0c044ff7fac793a79b11f18824d31487d284))
+* plus-form elevation and two decaf processing aliases ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([b8056db](https://github.com/eric-maydeck/bean-tracker/commit/b8056dbfc56f40fbd53680080639a54f010e75f9))
+* **records:** favorite and least favorite grind speed ([672dcbf](https://github.com/eric-maydeck/bean-tracker/commit/672dcbfb4625f0490d69e364a26ad1d7236f2241))
+* site-wide accent spelling, producer casing and note aliases in data standards ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([6177910](https://github.com/eric-maydeck/bean-tracker/commit/617791026023c4faac03c144432ff7a7967e6c44))
+* **stats:** grind speed board and heatmap on the Gear tab ([80fdf7f](https://github.com/eric-maydeck/bean-tracker/commit/80fdf7f96ea89f9f9f3f06c222a6b28382011a3d))
+* tasting notes and Bean Base id on coffees ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([cbefcd3](https://github.com/eric-maydeck/bean-tracker/commit/cbefcd3d86b8654f1096a9397f659c644fab60b0))
+
+
+### Reverts
+
+* drop the norml correction, fixed on the live site ([#21](https://github.com/eric-maydeck/bean-tracker/issues/21)) ([84d05d1](https://github.com/eric-maydeck/bean-tracker/commit/84d05d1f10f9a66517a707b977a40a32028e2256))
+
 # [1.112.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.111.0...v1.112.0) (2026-11-16)
 
 
