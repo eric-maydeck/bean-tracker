@@ -192,16 +192,21 @@ function closestRoasters(typed: string, names: string[], n = 5): string[] {
 
 // ponytail: image/soldout types are undocumented; a truthy soldout counts as sold out. limit 1000 is the
 // Developer plan's cap, enough for one roaster's whole list; no paging.
-export async function searchBeanBase(
+type SearchOpts = { key?: string | null; fetcher?: typeof fetch; roastDate?: string | null; productUrl?: string | null };
+type Ranked = { b: BeanBaseBean; match: number; days: number };
+
+// The roaster's beans in image Suggest's order: product link, exact name, coffee-name words,
+// nearest the roast date (undated last), newest. Shared by the search dialog and the image provider.
+export async function rankedBeans(
   roaster: string,
   coffeeName: string,
-  ctx: Ctx,
-  opts: { key?: string | null; fetcher?: typeof fetch; roastDate?: string | null; productUrl?: string | null } = {}
-): Promise<BeanSearch> {
+  opts: SearchOpts = {}
+): Promise<{ status: 'no-key' | 'failed' } | { status: 'roaster'; closest: string[] } | { status: 'ok'; roaster: string; ranked: Ranked[] }> {
   const key = opts.key === undefined ? beanBaseKey() : opts.key;
   if (!key) return { status: 'no-key' };
   try {
     const list = (body: unknown, k: string) => (Array.isArray(body) ? body : (body as Record<string, unknown> | null)?.[k]);
+    // ponytail: fetchBeanBase builds its own timeout signal, so a caller's abort signal isn't passed through.
     const beans = list(await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}&limit=1000`, key, opts.fetcher), 'beans') as BeanBaseBean[];
     if (!Array.isArray(beans)) return { status: 'failed' };
     const mapped = mapRoaster(roaster, null, beans);
@@ -210,7 +215,6 @@ export async function searchBeanBase(
       if (!Array.isArray(names)) return { status: 'failed' };
       return { status: 'roaster', closest: closestRoasters(roaster, names.filter((x): x is string => typeof x === 'string')) };
     }
-    // Order like image Suggest: product link, coffee-name words, nearest the roast date (undated last), newest.
     const nameWords = [...new Set(words(coffeeName))];
     const nameKeyTyped = nameKey(coffeeName);
     const link = opts.productUrl ? normalizeLink(opts.productUrl) : null;
@@ -230,18 +234,24 @@ export async function searchBeanBase(
         };
       })
       .sort((a, b) => b.link - a.link || b.exact - a.exact || b.match - a.match || (a.days === b.days ? 0 : a.days < b.days ? -1 : 1) || b.ms - a.ms);
-    // closest: the one bean dated nearest the roast date (ties: earlier in the list), as in image Suggest.
-    let best = -1;
-    let bestDays = Infinity;
-    scored.forEach((x, i) => {
-      if (x.days < bestDays) [best, bestDays] = [i, x.days];
-    });
-    const cards = scored.map(({ b }, i): BeanCard => ({
-      id: String(b.id), name: b['roast-name']?.trim() || 'Unnamed', image: b.image?.trim() || null, soldout: !!b.soldout,
-      date: b.date, link: b.link, closest: i === best, fields: beanBaseFields(b, ctx)
-    }));
-    return { status: 'ok', roaster: mapped, beans: cards };
+    return { status: 'ok', roaster: mapped, ranked: scored };
   } catch {
     return { status: 'failed' };
   }
+}
+
+export async function searchBeanBase(roaster: string, coffeeName: string, ctx: Ctx, opts: SearchOpts = {}): Promise<BeanSearch> {
+  const r = await rankedBeans(roaster, coffeeName, opts);
+  if (r.status !== 'ok') return r;
+  // closest: the one bean dated nearest the roast date (ties: earlier in the list), as in image Suggest.
+  let best = -1;
+  let bestDays = Infinity;
+  r.ranked.forEach((x, i) => {
+    if (x.days < bestDays) [best, bestDays] = [i, x.days];
+  });
+  const beans = r.ranked.map(({ b }, i): BeanCard => ({
+    id: String(b.id), name: b['roast-name']?.trim() || 'Unnamed', image: b.image?.trim() || null, soldout: !!b.soldout,
+    date: b.date, link: b.link, closest: i === best, fields: beanBaseFields(b, ctx)
+  }));
+  return { status: 'ok', roaster: r.roaster, beans };
 }

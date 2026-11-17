@@ -141,7 +141,7 @@
                 </span>
                 <span class="suggest-text">
                   <span class="suggest-title">{c.pageTitle}</span>
-                  <span class="text-muted suggest-meta">{hostOf(c.pageUrl)}{c.published ? ` · ${formatDate(c.published)}` : ''}</span>
+                  <span class="text-muted suggest-meta">{hostOf(c.pageUrl)}{c.published ? ` · ${formatDate(c.published)}` : ''}{c.provider === 'beanbase' ? ' · via Loffee Labs' : ''}</span>
                   {#if c.excerpt}
                     <span class="text-muted suggest-excerpt">{c.excerpt}</span>
                   {/if}

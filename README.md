@@ -65,7 +65,7 @@ hosts:
     contactName: Jane Doe
     contactEmail: coffee@example.org
 imageSuggest:
-  providers: shopify,tavily   # provider order (default)
+  providers: product,shopify,beanbase,tavily   # provider order (default)
 tavily:
   monthlyLimit: 1400          # Tavily calls per rolling 31 days (default)
 ```
