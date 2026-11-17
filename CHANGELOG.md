@@ -1,3 +1,7 @@
+## [1.114.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.114.0...v1.114.1) (2026-11-17)
+
+Manual patch release.
+
 # [1.114.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.113.1...v1.114.0) (2026-11-17)
 
 
