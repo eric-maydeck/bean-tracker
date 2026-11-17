@@ -57,6 +57,7 @@ export interface ParsedGrinder {
   notes: string | null;
   bcArchived: boolean;
   bcCreatedAt: string | null;
+  hasAdjustableSpeed: boolean;
 }
 
 export interface ParsedBrew {
@@ -242,12 +243,13 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
 
     for (const g of parsed.grinders) {
       db.prepare(
-        `INSERT INTO beanconqueror_grinders (id, name, notes, bc_archived, bc_created_at, imported_at)
-         VALUES (?, ?, ?, ?, ?, ?)
+        `INSERT INTO beanconqueror_grinders (id, name, notes, bc_archived, bc_created_at, imported_at, has_adjustable_speed)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO UPDATE SET
            name = excluded.name, notes = excluded.notes, bc_archived = excluded.bc_archived,
-           bc_created_at = excluded.bc_created_at, imported_at = excluded.imported_at`
-      ).run(g.id, g.name, g.notes, g.bcArchived ? 1 : 0, g.bcCreatedAt, now);
+           bc_created_at = excluded.bc_created_at, imported_at = excluded.imported_at,
+           has_adjustable_speed = excluded.has_adjustable_speed`
+      ).run(g.id, g.name, g.notes, g.bcArchived ? 1 : 0, g.bcCreatedAt, now, g.hasAdjustableSpeed ? 1 : 0);
     }
 
     for (const w of parsed.waters ?? []) {

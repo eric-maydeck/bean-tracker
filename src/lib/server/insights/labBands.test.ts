@@ -59,6 +59,11 @@ describe('bandOf', () => {
     expect([1, 9, 10, 31].map((i) => label('brewNo', { brewIndex: i }))).toEqual(['#1', '#9', '#10+', '#10+']);
     expect(label('brewNo', { brewIndex: 0 })).toBeNull();
   });
+  it('rpm: nearest 250, thousands separator, order = rounded value', () => {
+    expect(bandOf('rpm', brew({ rpm: 762.5 }))).toEqual({ label: '~750 RPM', order: 750 });
+    expect(label('rpm', { rpm: 1138 })).toBe('~1,250 RPM');
+    expect(label('rpm', { rpm: null })).toBeNull();
+  });
   it('zeros / not entered are excluded', () => {
     const none = brew({});
     for (const v of ['temp', 'tempExact', 'ratio', 'ratioExact', 'dose', 'doseExact', 'time', 'timeExact', 'bloom', 'bloomExact', 'rest', 'water', 'dripper', 'filter', 'gh'] as const)

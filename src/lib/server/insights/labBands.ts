@@ -7,7 +7,7 @@ import { grindKey, grindValue, MIXED_FILTER, type BrewFact } from './facts';
 export interface Band { label: string; order: number; range?: string }
 // `<var>Exact`: the chart's Exact mode (preview round 1, G10); the bare name is its Bands mode.
 export type LabVar = 'temp' | 'tempExact' | 'ratio' | 'ratioExact' | 'dose' | 'doseExact' | 'time' | 'timeExact' | 'bloom' | 'bloomExact'
-  | 'grind' | 'grindExact' | 'rest' | 'water' | 'dripper' | 'filter' | 'gh' | 'brewNo';
+  | 'grind' | 'grindExact' | 'rpm' | 'rest' | 'water' | 'dripper' | 'filter' | 'gh' | 'brewNo';
 
 export const REST_LABELS = ['0–21 d', '22–30 d', '31–45 d', '46–60 d', '61–90 d', '91+ d'];
 export const BREW_NO_LABELS = [...Array.from({ length: 9 }, (_, i) => `#${i + 1}`), '#10+'];
@@ -84,6 +84,7 @@ export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): B
     case 'bloomExact': return b.bloomSeconds === null ? null : exact(bloomRound(b.bloomSeconds), 1, (v) => `${v}s`);
     case 'grind': case 'grindExact':
       return grinder && b.grinder === grinder && b.grind ? grindBand(b.grind, v === 'grind') : null;
+    case 'rpm': return exact(b.rpm, 250, (v) => `~${v.toLocaleString('en-US')} RPM`);
     case 'rest': return b.restDays === null || b.restDays < 0 ? null : cut(b.restDays, [22, 31, 46, 61, 91], REST_LABELS);
     case 'water': return cat(b.water);
     case 'dripper': return cat(b.dripper);

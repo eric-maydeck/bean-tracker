@@ -9,6 +9,8 @@
       t.filters.length && ['gear-filters', 'Filter ratings'],
       t.matrix && ['gear-matrix', 'Filters per dripper'],
       t.byRoast && ['gear-roast', 'Dripper × roast'],
+      t.speeds.length && ['gear-speeds', 'Grind speed ratings'],
+      t.speedByGroup && ['gear-speed-coffee', 'Speed × coffee group'],
       t.eras && ['gear-eras', 'Usage over time']
     ];
   }
@@ -23,6 +25,8 @@
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
+  import TextTip from '$lib/components/TextTip.svelte';
+  import SpeedChart from './SpeedChart.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import UsageChart, { ERA_VIEW_OPTIONS } from './UsageChart.svelte';
   import { fitPairs } from './fitPairs';
@@ -32,7 +36,7 @@
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
-  let empty = $derived(!t.drippers.length && !t.filters.length && !t.matrix && !t.byRoast && !t.eras && !t.grinderEras);
+  let empty = $derived(!t.drippers.length && !t.filters.length && !t.matrix && !t.byRoast && !t.speeds.length && !t.speedByGroup && !t.eras && !t.grinderEras);
   const ERA_BY_OPTIONS = [['dripper', 'Dripper'], ['grinder', 'Grinder']] as const;
   let gearBy = $derived(s.gearBy ?? 'dripper');
   let eras = $derived(gearBy === 'grinder' ? t.grinderEras : t.eras);
@@ -41,6 +45,10 @@
   let underDrippers = $derived(t.drippers.length < t.filters.length);
   const BOARD_HELP = [...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD (narrow screens drop SD, then bags).',
     'No match: never brewed on the same bag as anything else.'];
+  const SPEED_HELP = ["Each brew's score is its rating minus your average rating on that grinder in this period.", "A speed's value is the average of its bags' average scores (each bag counts once).",
+    'Columns: rated brews, bags, average rating, SD (narrow screens drop SD, then bags).', 'Speeds are rounded to the nearest 250 RPM.'];
+  const SPEED_BY_OPTIONS = [['roast', 'Roast'], ['process', 'Process'], ['origin', 'Origin']] as const;
+  let speedBy = $derived(s.speedBy ?? 'roast');
   const emptyLine = useEmptyLine();
 </script>
 
@@ -91,6 +99,34 @@
     </section>
   {/if}
 
+  <!-- Grind speed (RPM): the chart + board and the heatmap side by side from 768 px; the chart tile sets the row height and the heatmap's rows shrink to fit it (.confine, from 768 px; no fitPairs: its 2× cap would make the board scroll inside). Each one short line when there is nothing to show. -->
+  <div class="gear-pair">
+  <section class="chart-panel" data-section="gear-speeds">
+    <LabHead id="gear-speeds" title="Ratings by grind speed" help={SPEED_HELP} {placeTip} />
+    {#if t.speeds.length}
+      {#if t.speedPlot}<SpeedChart m={t.speedPlot} />{/if}
+      <div class="fit-body"><LabBoard rows={t.speeds} slots={0} noun="grind speed" vs="vs avg" paired={false} {placeTip} /></div>
+    {:else}
+      <p class="hl-empty">{emptyLine('No rated brews with a grind speed in this period.')}</p>
+    {/if}
+  </section>
+  <section class="chart-panel" class:confine={!!t.speedByGroup} data-section="gear-speed-coffee">
+    <LabHead id="gear-speed-coffee" title="Grind speed × coffee group" {placeTip}
+      help={['Rows: coffees grouped by roast, process or origin (3+ bags, 2+ speeds); the 10 with the most brews, A–Z.', "A cell: the group's value at that speed vs its value over all speeds.", 'Values are scores vs the grinder average, averaged over bags.',
+        SAMPLE_HELP, 'Blank: never brewed at that speed.']}>
+      <ChartToggle label="Group by" options={SPEED_BY_OPTIONS} value={speedBy} pick={(v) => choose({ speedBy: v === 'process' || v === 'origin' ? v : undefined })} />
+    </LabHead>
+    {#if t.speedByGroup}
+      <div class="fit-body"><LabHeatmap by={t.speedByGroup} noun="grind speed for this group" vs="group avg, all speeds" scale={['Worse than its other speeds', 'Better']} ariaLabel="Grind speed by coffee group" /></div>
+      {#if t.speedOmitted.length}
+        <p class="chart-note">{t.speedOmitted.length} more <TextTip label="groups not shown" tip={{ title: 'Not shown (fewer brews)', rows: t.speedOmitted.map((o) => [o.label, `${o.brews} brews`] as [string, string]) }}>not shown</TextTip>.</p>
+      {/if}
+    {:else}
+      <p class="hl-empty">{emptyLine(t.speeds.length ? 'No coffee group with 3+ bags brewed at 2+ grind speeds in this period.' : 'No rated brews with a grind speed in this period.')}</p>
+    {/if}
+  </section>
+  </div>
+
   {#if t.eras || t.grinderEras}
     <section class="chart-panel" data-section="gear-eras">
       <LabHead id="gear-eras" title="Gear usage over time" {placeTip}
@@ -135,6 +171,22 @@
   @media (min-width: 768px) {
     .gear-pair {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    /* The speed heatmap never stretches the pair: size containment drops its height from the row, so the chart tile sets it and the heatmap rows split what is left (10 rows max, lab.ts SPEED_ROWS). Only with a heatmap, so an empty tile's line and toggle can't clip. */
+    .confine {
+      contain: size;
+    }
+    .confine :global(:is(.fit-body, .heatmap, .frame)) {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .confine :global(.diverging .grid) {
+      flex: 1 1 0;
+      min-height: 0;
+      grid-template-rows: auto;
+      grid-auto-rows: minmax(0, 1fr);
     }
   }
 </style>

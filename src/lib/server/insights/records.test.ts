@@ -41,6 +41,51 @@ describe('pick', () => {
   });
 });
 
+describe('grind speed records', () => {
+  // Per bag: 10 brews at each speed (3 bags: 30 paired brews per band, solid).
+  const at = (id: number, rpm: number, r: number, date: string) => rated(id, Array(10).fill(r), date).map((b) => ({ ...b, rpm }));
+  const speeds = [1, 2, 3].flatMap((id) => [...at(id, 1000, 5, `2026-07-0${id}`), ...at(id, 1500, 9, `2026-08-0${id}`)]);
+  it('favorite is the higher delta, least the lower; holder links to the Gear section', () => {
+    expect(run('favoriteSpeed', speeds)).toMatchObject({ holder: { label: '~1,500 RPM', href: '/stats?tab=gear#gear-speeds', date: '2026-08-03' } });
+    expect(run('favoriteSpeed', speeds)!.value).toBeGreaterThan(0);
+    expect(run('leastSpeed', speeds)).toMatchObject({ holder: { label: '~1,000 RPM', date: '2026-07-03' } });
+    expect(run('leastSpeed', speeds)!.value).toBeLessThan(0);
+  });
+  it('tile value is finite and the shown mean is the same band value (no +NaN)', () => {
+    for (const k of ['favoriteSpeed', 'leastSpeed']) {
+      const r = run(k, speeds)!;
+      expect(Number.isFinite(r.mean)).toBe(true);
+      expect(r.mean).toBe(r.value);
+    }
+  });
+  it('baseline is per grinder, and bags brewed at one speed only still count', () => {
+    const g = (id: number, rpm: number, r: number, grinder: string) => rated(id, Array(10).fill(r)).map((b) => ({ ...b, rpm, grinder }));
+    // Grinder A (average 7): bags 1-3 only at 1000 (6), bags 4-6 only at 1500 (8). Grinder B (average 3): bags 7-12 only at 1000 (3).
+    const rows = [1, 2, 3].flatMap((i) => g(i, 1000, 6, 'A')).concat([4, 5, 6].flatMap((i) => g(i, 1500, 8, 'A')), [7, 8, 9, 10, 11, 12].flatMap((i) => g(i, 1000, 3, 'B')));
+    expect(run('favoriteSpeed', rows)).toMatchObject({ holder: { label: '~1,500 RPM' } });
+    expect(run('favoriteSpeed', rows)!.value).toBeCloseTo(1);
+    expect(run('leastSpeed', rows)).toMatchObject({ holder: { label: '~1,000 RPM' } });
+    expect(run('leastSpeed', rows)!.value).toBeCloseTo(-1 / 3); // (3 bags at -1, 6 at 0) / 9 bags
+  });
+  it('one solid row decides nothing; thin rows do not qualify', () => {
+    const onlyOne = speeds.filter((b) => b.rpm === 1500);
+    expect(run('favoriteSpeed', onlyOne)).toBeNull();
+    expect(run('leastSpeed', onlyOne)).toBeNull();
+    const thin = [...speeds, ...at(1, 2000, 10, '2026-09-01')]; // one bag: not solid
+    expect(run('favoriteSpeed', thin)!.holder.label).toBe('~1,500 RPM');
+    expect(run('leastSpeed', thin)!.holder.label).toBe('~1,000 RPM');
+    expect(run('favoriteSpeed', speeds.filter((b) => b.coffeeId! < 3))).toBeNull(); // 2 bags
+  });
+  it('follows Current/All ratings and the Period', () => {
+    const early = speeds.map((b) => ({ ...b, localDate: '2026-05-01' }));
+    expect(run('favoriteSpeed', early, BAGS, 'current')).toBeNull(); // pre-cutoff ratings don't count
+    expect(run('favoriteSpeed', early, BAGS, 'all')).not.toBeNull();
+    const tile = (start: string) => tileOf(recordsTab(speeds, BAGS, { ...CTX, period: { start, end: '2026-10-11' } }), 'favoriteSpeed');
+    expect(tile('2026-01-01')).toBeDefined();
+    expect(tile('2026-08-01')).toBeUndefined(); // only the 1,500 band left in the Period
+  });
+});
+
 describe('taste', () => {
   it('best bag needs ≥4 counted rated brews (one-bag rule)', () => {
     // Bag 1: three 9.5s. Bag 2: four 8s. Best bag goes to bag 2.

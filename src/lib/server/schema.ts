@@ -197,7 +197,8 @@ CREATE TABLE IF NOT EXISTS beanconqueror_grinders (
   notes TEXT,
   bc_archived INTEGER NOT NULL DEFAULT 0,
   bc_created_at TEXT,
-  imported_at TEXT NOT NULL
+  imported_at TEXT NOT NULL,
+  has_adjustable_speed INTEGER NOT NULL DEFAULT 0
 );
 
 -- Bean Conqueror water profiles (JSON import). Minerals in mg/L as Bean

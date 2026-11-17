@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { setBrewingZone } from '$lib/localDate';
-import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, brewerType, grindKey, grindValue, MIXED_FILTER, waitBucket, windowState } from './facts';
+import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, rpmOf, brewerType, grindKey, grindValue, MIXED_FILTER, waitBucket, windowState } from './facts';
 import { createDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
 import { createSubscription } from '$lib/server/subscriptions';
@@ -193,6 +193,18 @@ describe('loadFacts', () => {
     expect(b).toMatchObject({ waterG: null, ratio: null, grind: null });
   });
 
+  it('fills rpm per brew', () => {
+    const { db } = seed();
+    const now = '2026-10-09T00:00:00.000Z';
+    db.prepare(`UPDATE beanconqueror_grinders SET has_adjustable_speed = 1 WHERE id = 'g1'`).run();
+    db.prepare(`INSERT INTO gear_details (kind, name, fields, created_at, updated_at) VALUES ('grinder', 'ZP6 (1ZPresso)', ?, ?, ?)`).run(JSON.stringify({ rpmConvert: 'Yes', dialMin: 1, dialMax: 9, rpmMin: 200, rpmMax: 1700 }), now, now);
+    db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g2', 'Fixed', ?)`).run(now);
+    db.prepare(`UPDATE beanconqueror_brews SET grind_speed_rpm = 4 WHERE mill_id = 'g1'`).run();
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, mill_id, grind_speed_rpm, imported_at) VALUES ('2026-07-04T15:00:00.000Z', 'g2', 4, ?)`).run(now);
+    const rpms = loadFacts(db).brews.map((b) => b.rpm);
+    expect(rpms).toEqual([762.5, null, null, null]);
+  });
+
   it('keeps a brew with no linked coffee, with null coffee fields', () => {
     const { brews } = loadFacts(seed().db);
     expect(brews[1]).toMatchObject({
@@ -248,5 +260,22 @@ describe('waitBucket / windowState', () => {
   it('window state', () => {
     expect([3, 7, 21, 22].map((d) => windowState(d, 7, 21))).toEqual(['before', 'in', 'in', 'past']);
     expect([windowState(null, 7, 21), windowState(5, null, 21), windowState(5, 7, undefined)]).toEqual(['none', 'none', 'none']);
+  });
+});
+
+describe('rpmOf', () => {
+  const conv = { rpmConvert: 'Yes', dialMin: 1, dialMax: 9, rpmMin: 200, rpmMax: 1700 };
+  it('converts a dial speed, extrapolating past the dial', () => {
+    expect(rpmOf(4, true, conv)).toBe(762.5);
+    expect(rpmOf(10, true, conv)).toBe(1887.5);
+  });
+  it('uses the BQ value as-is without a conversion', () => {
+    expect(rpmOf(1200, true, null)).toBe(1200);
+    expect(rpmOf(1200, true, { ...conv, rpmConvert: 'No' })).toBe(1200);
+  });
+  it('is null for no or zero speed and fixed-speed grinders', () => {
+    expect(rpmOf(0, true, conv)).toBeNull();
+    expect(rpmOf(null, true, conv)).toBeNull();
+    expect(rpmOf(4, false, conv)).toBeNull();
   });
 });

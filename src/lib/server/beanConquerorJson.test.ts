@@ -72,7 +72,7 @@ describe('parseBeanConquerorJson', () => {
     });
     expect(parsed.grinders.find((g) => g.id === '61c23d36-8129-4642-adb7-a94757da0d57')).toEqual({
       id: '61c23d36-8129-4642-adb7-a94757da0d57', name: 'Hand Grinder A (Sample)', notes: null, bcArchived: false,
-      bcCreatedAt: '2024-08-12T23:50:10.000Z'
+      bcCreatedAt: '2024-08-12T23:50:10.000Z', hasAdjustableSpeed: false
     });
     expect(parsed.waters!.find((w) => w.id === '71073031-615b-4d58-a92e-b7469089d4fa')).toEqual({
       id: '71073031-615b-4d58-a92e-b7469089d4fa', name: 'Drop Mix A - bright',
@@ -80,6 +80,13 @@ describe('parseBeanConquerorJson', () => {
       storedGh: 55, storedGhType: 'PPM', storedKh: 12, storedKhType: 'PPM', type: 'CUSTOM_WATER',
       note: 'Mg 3, Ca 2, Na 1, K 1', bcArchived: false
     });
+  });
+
+  it('maps a mill\'s has_adjustable_speed, missing meaning false', () => {
+    const p = parseBeanConquerorJson({
+      main: { BEANS: [], BREWS: [], MILL: [{ config: { uuid: 'g1' }, name: 'A', has_adjustable_speed: true }, { config: { uuid: 'g2' }, name: 'B' }] }
+    , brewFiles: [] } as never);
+    expect(p.grinders.map((g) => g.hasAdjustableSpeed)).toEqual([true, false]);
   });
 
   it('maps a brew with every field the import keeps', () => {

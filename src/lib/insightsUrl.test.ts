@@ -390,6 +390,14 @@ describe('habits and consumption params', () => {
     expect(insightsParams(parse('')).toString()).toBe('');
     expect(withDefaults({}).trend).toBeUndefined();
   });
+  it('speedBy (Grind speed × coffee Group by): only process/origin, Roast is the bare URL, round-trip', () => {
+    expect(parse('speedBy=origin').speedBy).toBe('origin');
+    expect(parse('speedBy=Process').speedBy).toBe('process');
+    expect(parse('speedBy=roast').speedBy).toBeUndefined();
+    expect(parse('speedBy=junk').speedBy).toBeUndefined();
+    for (const q of ['tab=gear&speedBy=origin', 'tab=gear&speedBy=process']) expect(insightsParams(parse(q)).toString()).toBe(q);
+    expect(insightsParams(parse('speedBy=roast')).toString()).toBe('');
+  });
   it('defaults: brews, grams, by auto', () => {
     expect(withDefaults({})).toMatchObject({ measure: 'brews', unit: 'grams' });
     expect(withDefaults({}).by).toBeUndefined();

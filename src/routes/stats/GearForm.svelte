@@ -1,6 +1,6 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
-  import { fieldsFor, isWebUrl } from '$lib/gear';
+  import { CONVERT_KEYS, fieldsFor, isWebUrl } from '$lib/gear';
   import ImageSuggest from '$lib/components/ImageSuggest.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
@@ -17,7 +17,7 @@
 
   // Two to a row: Brand | Official website (under Fill from URL), then Model | Cost.
   const FIRST = ['brand', 'website', 'model', 'cost'];
-  const fields = $derived(fieldsFor(trophy.kind).sort((a, b) => (FIRST.indexOf(a.key) + 1 || 99) - (FIRST.indexOf(b.key) + 1 || 99)));
+  const fields = $derived(fieldsFor(trophy.kind, { adjustableSpeed: trophy.adjustableSpeed }).sort((a, b) => (FIRST.indexOf(a.key) + 1 || 99) - (FIRST.indexOf(b.key) + 1 || 99)));
   const last = $derived(Math.ceil(fields.length / 2)); // the last field row
   // The row Preview/Discard and Save/Cancel share (the one after a full last row); Image URL is the row above.
   const act = $derived(fields.length % 2 ? last : last + 1);
@@ -64,6 +64,10 @@
   // Suggest's brand · model line, else the card's name.
   const matching = () => [[values.brand, values.model].map((x) => String(x ?? '').trim()).filter(Boolean).join(' · ') || trophy.name];
 
+  // Fields that mean nothing for the current choices: a step needs Stepped, the dial range needs conversion on, rpm needs a motor.
+  const off = (key: string) => key === 'stepSize' ? values.adjustment !== 'Stepped'
+    : key === 'rpm' ? values.type === 'Hand'
+    : CONVERT_KEYS.slice(1).includes(key) ? values.rpmConvert !== 'Yes' : false;
   // Unsaved changes, named for the leave panel: "Burr size: 64 → 54", "Image URL changed".
   // A field value as comparable text: trimmed, a number as its own digits (so "24" and 24.00 agree), empty for null.
   const norm = (f: { type: string }, v: unknown): string => {
@@ -75,8 +79,11 @@
       const [was, now] = [norm(f, trophy.values[f.key]), norm(f, values[f.key])];
       return was === now ? [] : [`${f.label}: ${was || 'empty'} → ${now || 'empty'}`];
     }),
-    ...(values.adjustment !== 'Stepped' && norm({ type: 'number' }, trophy.values.stepSize) !== ''
-      ? [`Step size: ${norm({ type: 'number' }, trophy.values.stepSize)} → empty`] : []),
+    // A disabled field keeps its text but is dropped on save; the loop above already names one the user edited.
+    ...fields.flatMap((f) => {
+      const was = norm(f, trophy.values[f.key]);
+      return off(f.key) && was !== '' && was === norm(f, values[f.key]) ? [`${f.label}: ${was} → empty`] : [];
+    }),
     ...(imageUrl.trim() !== (trophy.imageUrl ?? '') ? ['Image URL changed'] : [])
   ]; }
   // The dialog's ✕ asks for these: the changes to leave behind, named (empty = nothing to lose).
@@ -143,7 +150,7 @@
             type={f.type === 'number' || f.type === 'money' ? 'number' : f.type === 'url' ? 'url' : 'text'}
             step={f.type === 'money' ? '0.01' : f.type === 'number' ? 'any' : undefined}
             inputmode={f.type === 'number' || f.type === 'money' ? 'decimal' : undefined} min={f.min} max={f.max}
-            disabled={f.key === 'stepSize' && values.adjustment !== 'Stepped'} />
+            disabled={off(f.key)} />
         {/if}
         {#if f.options && f.type !== 'select'}<datalist id="gear-opts-{f.key}">{#each f.options as o (o)}<option value={o}></option>{/each}</datalist>{/if}
       </div>
