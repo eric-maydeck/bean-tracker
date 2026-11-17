@@ -1,3 +1,28 @@
+# [1.115.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.114.1...v1.115.0) (2026-11-17)
+
+
+### Bug Fixes
+
+* limit standards check to standard fields and strict cost format ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([d251006](https://github.com/eric-maydeck/bean-tracker/commit/d251006491598959729ac64ef5f99ac6df16582c))
+* placeholders in locked fields propose blank, never the text null ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([028684f](https://github.com/eric-maydeck/bean-tracker/commit/028684fc3352197e8e4cbaa7be3f6b6fc1639098))
+* restore origin normalization, check bq triage prefill, lastChecked fixes ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([9333982](https://github.com/eric-maydeck/bean-tracker/commit/93339820d860b8ee2a3df09a098a620674eff4a5))
+* standardize page-only fills, recount filled note, split lists on dashes and ampersands ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([ec072f7](https://github.com/eric-maydeck/bean-tracker/commit/ec072f79d112488312cde480abb6a4e90a4bca76))
+* standards check review round 1, tests moved into save spec ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([b72f7ab](https://github.com/eric-maydeck/bean-tracker/commit/b72f7ab5635fdad1c72a12a678efba98c16496fc))
+* standards dialog grid, header, lock icon, form order, tighter roaster warning ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([fac50b0](https://github.com/eric-maydeck/bean-tracker/commit/fac50b0e3c210386eb56d3afda72eed3340daf64))
+* standards dialog uniform buttons, footer under its columns, dimmer disabled save ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([8c3e903](https://github.com/eric-maydeck/bean-tracker/commit/8c3e9034fdee0aac84adaf8b69895c20927691e6))
+
+
+### Features
+
+* coffee form checks values against the data standards ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([776bb02](https://github.com/eric-maydeck/bean-tracker/commit/776bb02a60582e15687618d31d1d3344a3d7b586))
+* color-coded approve/reject, outlined bulk buttons ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([ade6bc9](https://github.com/eric-maydeck/bean-tracker/commit/ade6bc991993f57baeea7296ba42d70a30a1b381))
+* fill from url stores standard values, page then bean base ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([960d095](https://github.com/eric-maydeck/bean-tracker/commit/960d095e5248a86e23c6d32b10862d5c08d811d2))
+* placeholder in a locked field is a leave blank row, all-leave-blank rows start selected ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([1e741c0](https://github.com/eric-maydeck/bean-tracker/commit/1e741c0641068c6630ff5a9d775705d2803f972b))
+* propose standard values for the coffee form check ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([b6a5050](https://github.com/eric-maydeck/bean-tracker/commit/b6a50507d8815c4a704370d355449d974d0fa621))
+* standardize endpoint for the coffee form check ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([50ab856](https://github.com/eric-maydeck/bean-tracker/commit/50ab85604ebc31a3bb0c3a1d48ebb6addaef2960))
+* standards confirmation dialog ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([b76170d](https://github.com/eric-maydeck/bean-tracker/commit/b76170d9bb820cb59a215f0e72af99a805496f5f))
+* store submitted values, format locked fields on write ([#76](https://github.com/eric-maydeck/bean-tracker/issues/76)) ([7817383](https://github.com/eric-maydeck/bean-tracker/commit/78173839f8923f0051ddb6ce982287c2875a1d11))
+
 ## [1.114.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.114.0...v1.114.1) (2026-11-17)
 
 Manual patch release.
