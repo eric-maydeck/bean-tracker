@@ -678,21 +678,30 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
         await expect(dialog(page)).toHaveCount(0);
       });
 
-      test('add: n/a in a locked field saves as empty, never the text "null"', async ({ page }) => {
+      test('add: only Leave blank rows (n/a elevation, blank weight): bulk buttons disabled, Save enabled, saves empty', async ({ page }) => {
         await openAdd(page);
-        await fillBag(page, `Std NA ${T}`);
+        await fillBag(page, `Std Blanks ${T}`, { amount: '' });
         await page.locator('#elevation').fill('n/a');
         await saveAdd(page);
-        await expect.poll(() => coffeeRow(`Std NA ${T}`)()?.coffee_name).toBe(`Std NA ${T}`);
-        expect(coffeeRow(`Std NA ${T}`)()?.elevation).toBeNull();
-        await expect(dialog(page)).toHaveCount(0);
+        await expect(dialog(page).getByRole('button', { name: 'Leave blank' })).toHaveCount(2);
+        for (const b of await dialog(page).getByRole('button', { name: 'Leave blank' }).all()) await expect(b).toHaveAttribute('aria-pressed', 'true');
+        await expect(dialog(page).getByRole('button', { name: 'Approve all' })).toHaveAttribute('aria-disabled', 'true');
+        await expect(dialog(page).getByRole('button', { name: 'Reject all' })).toHaveAttribute('aria-disabled', 'true');
+        await expect(dsave(page)).not.toHaveAttribute('aria-disabled', 'true');
+        await dsave(page).click();
+        await expect.poll(() => coffeeRow(`Std Blanks ${T}`)()?.coffee_name).toBe(`Std Blanks ${T}`);
+        expect(coffeeRow(`Std Blanks ${T}`)()?.elevation).toBeNull();
+        expect(coffeeRow(`Std Blanks ${T}`)()?.amount_g).toBeNull();
       });
 
       test('add: blank cost asks, Leave blank saves it blank', async ({ page }) => {
         await openAdd(page);
         await fillBag(page, `Std No Cost ${T}`, { cost: '' });
+        await page.locator('#variety').fill('SL34 / SL28'); // mixed rows: Leave blank starts undecided
         await saveAdd(page);
         await expect(dsave(page)).toHaveAttribute('aria-disabled', 'true');
+        await dialog(page).getByRole('group', { name: 'Variety' }).getByRole('button', { name: 'Reject' }).click();
+        await expect(dsave(page)).toHaveAttribute('aria-disabled', 'true'); // still needs the blank cost decided
         await dialog(page).getByRole('button', { name: 'Leave blank' }).click();
         await dsave(page).click();
         await expect.poll(() => coffeeRow(`Std No Cost ${T}`)()?.coffee_name).toBe(`Std No Cost ${T}`);

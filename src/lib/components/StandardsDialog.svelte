@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
-  import { inFormOrder, resolve, saveBlock, type Decision, type StdRow } from '$lib/standardsDialog';
+  import { allLeaveBlank, inFormOrder, initialDecisions, resolve, saveBlock, type Decision, type StdRow } from '$lib/standardsDialog';
 
   // Confirmation before saving / filling a coffee: lists the fields that would change (Now vs Proposed). #76
   let { rows, onsave, oncancel, roasterLink }: {
@@ -12,7 +12,9 @@
   } = $props();
 
   let dlg: HTMLDialogElement;
-  let decisions = $state<Record<string, Decision>>({});
+  let decisions = $state<Record<string, Decision>>(initialDecisions(rows));
+  // Only blank-field rows: nothing to approve or reject, and each starts on Leave blank.
+  const onlyLeaveBlank = allLeaveBlank(rows);
   const block = $derived(saveBlock(rows, decisions));
   const sorted = $derived(inFormOrder(rows));
   const locked = (r: StdRow) => r.kind === 'locked' || r.kind === 'forced';
@@ -20,6 +22,7 @@
   onMount(() => dlg.showModal());
 
   const setAll = (d: Decision) => {
+    if (onlyLeaveBlank) return;
     for (const r of rows) if (r.kind === 'choice') decisions[r.field] = d;
   };
   const save = () => {
@@ -49,8 +52,8 @@
             <span class="sd-prop" class:sd-empty={r.proposed == null}><span class="sd-tag">Proposed</span> {r.proposed ?? ''}</span>
             {#if r.kind === 'choice'}
               <span class="sd-pair" role="group" aria-label={r.label}>
-                <button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'approve'} onclick={() => (decisions[r.field] = 'approve')}>Approve</button>
-                <button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'reject'} onclick={() => (decisions[r.field] = 'reject')}>Reject</button>
+                <button type="button" class="button button-success" aria-pressed={decisions[r.field] === 'approve'} onclick={() => (decisions[r.field] = 'approve')}>Approve</button>
+                <button type="button" class="button button-danger" aria-pressed={decisions[r.field] === 'reject'} onclick={() => (decisions[r.field] = 'reject')}>Reject</button>
               </span>
             {:else if r.kind === 'missing'}
               <span class="sd-single"><button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'leave'} onclick={() => (decisions[r.field] = 'leave')}>Leave blank</button></span>
@@ -72,8 +75,8 @@
         <button type="button" class="button" aria-disabled={block ? 'true' : undefined} aria-describedby={block ? 'sd-block' : undefined} title={block ?? undefined} onclick={save}>Save</button>
         <button type="button" class="button button-ghost" onclick={() => dlg.close()}>Cancel</button>
       </span>
-      <button type="button" class="button button-secondary sd-all-approve" onclick={() => setAll('approve')}>Approve all</button>
-      <button type="button" class="button button-secondary sd-all-reject" onclick={() => setAll('reject')}>Reject all</button>
+      <button type="button" class="button button-success sd-all-approve" aria-disabled={onlyLeaveBlank ? 'true' : undefined} onclick={() => setAll('approve')}>Approve all</button>
+      <button type="button" class="button button-danger sd-all-reject" aria-disabled={onlyLeaveBlank ? 'true' : undefined} onclick={() => setAll('reject')}>Reject all</button>
       {#if block}<span id="sd-block" class="sd-sr">{block}</span>{/if}
     </footer>
     </div>
@@ -193,14 +196,28 @@
   .sd-footer .button {
     width: var(--sd-btn);
   }
+  /* Selected: the button's own color solid (green Approve, red Reject, accent Leave blank) with a ring. */
   .sd-dialog .button[aria-pressed='true'] {
-    background: var(--color-accent);
-    color: var(--color-surface);
+    background: var(--button-color, var(--color-accent));
+    color: var(--color-accent-contrast);
+    box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--button-color, var(--color-accent));
   }
   /* Clearly dimmed in both themes (the accent fill stayed bright on the dark surface at 0.5). */
   .sd-dialog .button[aria-disabled='true'] {
     opacity: 0.35;
     cursor: not-allowed;
+  }
+  /* Row buttons are tonal (soft tint); the bulk buttons are outlined, so the two read as different kinds. */
+  .sd-footer .sd-all-approve,
+  .sd-footer .sd-all-reject {
+    background: transparent;
+    border: 1px solid var(--button-color);
+    color: color-mix(in srgb, var(--button-color) 70%, var(--button-shade));
+  }
+  .sd-footer .sd-all-approve[aria-disabled='true']:hover,
+  .sd-footer .sd-all-reject[aria-disabled='true']:hover {
+    background: transparent;
+    color: color-mix(in srgb, var(--button-color) 70%, var(--button-shade));
   }
   .sd-wide {
     grid-column: 1 / -1;
@@ -302,6 +319,7 @@
     }
     .sd-footer {
       grid-template-columns: 1fr 1fr;
+      row-gap: var(--space-4);
     }
     .sd-all-approve {
       grid-column: 1;
