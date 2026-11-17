@@ -52,7 +52,8 @@ const OK: [StdField, string, string | null][] = [
   ['variety', 'Selectdion 9', 'Selection 9'],
   ['variety', 'SL9, Gesha Inca', 'SL9 (Inca Gesha)'],
   ['variety', 'Gesha Inca, SL9', 'SL9 (Inca Gesha)'],
-  ['variety', 'Inca Gesha', 'Inca Gesha'],
+  ['variety', 'Inca Gesha', 'SL9 (Inca Gesha)'],
+  ['variety', 'SL9 (Inca Gesha), SL9', 'SL9 (Inca Gesha)'],
   ['variety', 'H10 (Milenio)', 'H10 (Milenio)']
 ];
 

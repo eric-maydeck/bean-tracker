@@ -19,7 +19,7 @@ const VARIETY_ALIAS: Record<string, string> = {
   'selectdion 9': 'Selection 9',
   landraces: 'Landrace', 'ethiopian landraces': 'Landrace', 'landrace varieties': 'Landrace',
   'jarc 74158': '74158', 'primarily jarc 74158': '74158', 'jarc 74158 (walega)': '74158',
-  'gesha inca': 'Inca Gesha'
+  'gesha inca': 'SL9 (Inca Gesha)', 'inca gesha': 'SL9 (Inca Gesha)' // one variety (user, 2026-11-16)
 };
 const PROCESSING_ALIAS: Record<string, string> = {
   'fully washed': 'Washed',
@@ -77,7 +77,7 @@ function processing(v: string): Std {
 
 function variety(v: string): Std {
   let items = splitList(v).map((s) => s.replace(/\bSL-(\d+)/gi, 'SL$1')).map((s) => VARIETY_ALIAS[s.toLowerCase()] ?? s);
-  if (items.includes('SL9') && items.includes('Inca Gesha')) items = [...items.filter((s) => s !== 'SL9' && s !== 'Inca Gesha'), 'SL9 (Inca Gesha)'];
+  if (items.includes('SL9 (Inca Gesha)')) items = items.filter((s) => s !== 'SL9');
   return { value: dedupe(items).sort(naturalCmp).join(', ') };
 }
 
