@@ -4,6 +4,7 @@ import { generalHardness, carbonateHardness } from '$lib/water';
 import type { BrewerType } from '$lib/insightsUrl';
 import { bcLocalTime, daysBetween } from './time';
 import { localDate as toLocalDate } from '$lib/localDate';
+import type { GearValues } from '$lib/gear';
 
 // Method names are "Dripper - Filter". Gabi Master A brews used Kalita,
 // xBloom or Timemore 155 filters interchangeably (user, 2026-10-09), so its
@@ -24,6 +25,15 @@ export function parseMethod(name: string | null, tools: string | null): { drippe
 const STYLE: Record<string, BrewerType> = { 'POUR OVER': 'pourover', ESPRESSO: 'espresso', 'FULL IMMERSION': 'immersion' };
 export const brewerType = (name: string | null, style: string | null): BrewerType =>
   name && /oxo rapid brewer|\borb\b/i.test(name) ? 'soup' : (style && STYLE[style.toUpperCase()]) || 'other';
+
+// Grinder RPM from BQ's grind speed. A grinder whose dial is converted (gear details: rpmConvert Yes)
+// maps linearly dial -> RPM, extrapolating past the ends; otherwise the BQ value is the RPM.
+export function rpmOf(speed: number | null, adjustable: boolean, fields: GearValues | null): number | null {
+  if (!adjustable || !speed || speed <= 0) return null;
+  if (fields?.rpmConvert !== 'Yes') return speed;
+  const { dialMin, dialMax, rpmMin, rpmMax } = fields as Record<string, number>;
+  return rpmMin + ((speed - dialMin) * (rpmMax - rpmMin)) / (dialMax - dialMin);
+}
 
 // A grind setting as numbers, for ordering within one grinder; malformed strings are skipped.
 export function grindKey(grind: string | null): number[] | null {
@@ -101,6 +111,7 @@ export interface BrewFact {
   waterG: number | null; // water_amount_g; null when not entered
   ratio: number | null; // waterG / dose
   grind: string | null; // grind_setting, trimmed
+  rpm?: number | null; // grinder RPM (adjustable grinders only); optional so test factories compile
   dripper: string | null;
   filter: string | null;
   grinder: string | null;
@@ -149,7 +160,7 @@ interface BrewRow {
   coffee_id: number | null; roaster: string | null; origin: string | null; producer: string | null; variety: string | null; region: string | null; processing: string | null; roast_level: string | null;
   decaf: number | null; roast_date: string | null; frozen_start_date: string | null; frozen_end_date: string | null;
   cost: number | null; amount_g: number | null; water_amount_g: number | null; grind_setting: string | null; style: string | null;
-  brew_temperature: number | null;
+  brew_temperature: number | null; grind_speed_rpm: number | null; has_adjustable_speed: number | null; gear_fields: string | null;
 }
 
 interface BagRow {
@@ -170,12 +181,14 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
               w.calcium, w.magnesium, w.sodium, w.potassium, w.chloride, w.sulfate,
               c.id AS coffee_id, c.roaster, c.origin, c.producer, c.variety, c.region, c.processing, c.roast_level, c.decaf, c.roast_date,
               c.frozen_start_date, c.frozen_end_date, c.cost, c.amount_g,
-              b.water_amount_g, b.grind_setting, b.notes, m.preparation_style AS style
+              b.water_amount_g, b.grind_setting, b.notes, m.preparation_style AS style,
+              b.grind_speed_rpm, g.has_adjustable_speed, gd.fields AS gear_fields
        FROM beanconqueror_brews b
        LEFT JOIN beanconqueror_beans bean ON bean.id = b.bean_id
        LEFT JOIN coffees c ON c.id = bean.coffee_id
        LEFT JOIN beanconqueror_methods m ON m.id = b.preparation_id
        LEFT JOIN beanconqueror_grinders g ON g.id = b.mill_id
+       LEFT JOIN gear_details gd ON gd.kind = 'grinder' AND gd.name = g.name
        LEFT JOIN beanconqueror_waters w ON w.id = b.water_id
        ORDER BY b.bc_created_at, b.id`
     )
@@ -207,6 +220,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
       waterG,
       ratio: waterG && r.dose && r.dose > 0 ? waterG / r.dose : null,
       grind: r.grind_setting?.trim() || null,
+      rpm: rpmOf(r.grind_speed_rpm, r.has_adjustable_speed === 1, r.gear_fields ? JSON.parse(r.gear_fields) : null),
       ...parseMethod(r.method, r.tools),
       grinder: r.grinder,
       water: r.water,
