@@ -41,6 +41,30 @@ describe('pick', () => {
   });
 });
 
+describe('grind speed records', () => {
+  // Per bag: 10 brews at each speed (3 bags: 30 paired brews per band, solid).
+  const at = (id: number, rpm: number, r: number, date: string) => rated(id, Array(10).fill(r), date).map((b) => ({ ...b, rpm }));
+  const speeds = [1, 2, 3].flatMap((id) => [...at(id, 1000, 5, `2026-07-0${id}`), ...at(id, 1500, 9, `2026-08-0${id}`)]);
+  it('favorite is the higher delta, least the lower; holder links to the Gear section', () => {
+    expect(run('favoriteSpeed', speeds)).toMatchObject({ holder: { label: '~1,500 RPM', href: '/stats?tab=gear#gear-speeds', date: '2026-08-03' } });
+    expect(run('favoriteSpeed', speeds)!.value).toBeGreaterThan(0);
+    expect(run('leastSpeed', speeds)).toMatchObject({ holder: { label: '~1,000 RPM', date: '2026-07-03' } });
+    expect(run('leastSpeed', speeds)!.value).toBeLessThan(0);
+  });
+  it('one solid row decides nothing; thin rows do not qualify', () => {
+    const onlyOne = speeds.filter((b) => b.rpm === 1500);
+    expect(run('favoriteSpeed', onlyOne)).toBeNull();
+    expect(run('leastSpeed', onlyOne)).toBeNull();
+    const thin = [...speeds, ...at(1, 2000, 10, '2026-09-01')]; // one bag: not solid
+    expect(run('favoriteSpeed', thin)!.holder.label).toBe('~1,500 RPM');
+    expect(run('leastSpeed', thin)!.holder.label).toBe('~1,000 RPM');
+    expect(run('favoriteSpeed', speeds.filter((b) => b.coffeeId! < 3))).toBeNull(); // 2 bags
+  });
+  it('follows Current/All ratings', () => {
+    expect(RECORDS.find((r) => r.key === 'favoriteSpeed')!.rating).toBe(true);
+  });
+});
+
 describe('taste', () => {
   it('best bag needs ≥4 counted rated brews (one-bag rule)', () => {
     // Bag 1: three 9.5s. Bag 2: four 8s. Best bag goes to bag 2.

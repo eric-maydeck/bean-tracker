@@ -2,6 +2,7 @@ import { usd } from '$lib/money';
 import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
 import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, boardBrews, leaderboard } from './leaderboards';
+import { labFn, pairedDeltas } from './lab';
 import { likeGaps, twinKeys, type Like } from './likeGroup';
 import { isFinished } from './overview';
 import { bagSizes, countsForRating, ratedGroups } from './ratings';
@@ -262,6 +263,15 @@ const least = (board: Board, href?: string, by: Avg = 'adjusted') => (c: RecCtx)
       }
     }));
 };
+// Grind speed bands (same-bag paired deltas, solid rows only); one row is the average itself. Holder date = the band's latest brew.
+const speeds = (c: RecCtx): Candidate[] => {
+  const rows = c.brews.filter((b) => countsForRating(b, c.ratings) && b.rating! > 0);
+  const solid = pairedDeltas(rows, labFn('rpm')).filter((s) => s.solid && s.delta !== null);
+  return solid.length < 2 ? [] : solid.map((s) => ({
+    value: s.delta!,
+    holder: { label: s.label, href: '/stats?tab=gear#gear-speeds', date: rows.filter((b) => labFn('rpm')(b)?.label === s.label).map((b) => b.localDate).sort().pop()! }
+  }));
+};
 // Most or fewest grams brewed per board group (groups with ≥ minBags bags); a lone group decides nothing.
 const byGrams = (board: Board, minBags: 1 | 2, href: string) => (c: RecCtx): Candidate[] => {
   const rows = leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'grams', c.ratings, 'raw', false).filter((r) => r.bags >= minBags);
@@ -302,6 +312,8 @@ export const RECORDS: RecordDef[] = [
   taste('bestDay', 'Best day', 'max', 'rating', dayMean),
   taste('mostTens', 'Most perfect ratings', 'max', 'count', (c) => tens(c)),
   taste('favoriteVariety', 'Favorite variety', 'max', 'delta', least('varieties', boardHref('varieties', 'rating'), 'min3')),
+  taste('favoriteSpeed', 'Favorite grind speed', 'max', 'delta', speeds),
+  taste('leastSpeed', 'Least favorite grind speed', 'min', 'delta', speeds),
   taste('favoriteProducer', 'Favorite producer', 'max', 'delta', least('producers', boardHref('producers', 'rating'), 'min3')),
 
   volume('mostBrewedBag', 'Most-brewed bag', 'max', 'count', (c) => bagCount(c, (s) => s.brews.length)),
