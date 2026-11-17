@@ -115,7 +115,8 @@ const ORIGIN_LABELS: Record<CoffeeOriginField, string[]> = {
   region: ['region', 'growing region'],
   elevation: ['elevation', 'altitude'],
   harvest_time: ['harvest', 'harvest time', 'harvest date', 'harvested'],
-  certification: ['certification', 'certifications']
+  certification: ['certification', 'certifications'],
+  tasting_notes: ['tasting notes', 'flavor notes', 'flavour notes', 'notes']
 };
 
 // Labeled values only; a paragraph under the label (long, or with a sentence) is not a detail.

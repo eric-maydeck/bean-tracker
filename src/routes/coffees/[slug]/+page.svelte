@@ -470,10 +470,13 @@
             <span class="stat-label">Processing</span>
             <span class="stat-value">{data.coffee.processing ?? '—'}</span>
           </div>
-          {#each ['elevation', 'harvest_time', 'certification'] as const as name (name)}
+          {#each ['elevation', 'harvest_time', 'certification', 'tasting_notes'] as const as name (name)}
             {@render detail(name)}
           {/each}
         </div>
+        {#if data.coffee.bean_base_id}
+          <p class="text-muted"><small>From <a href="https://www.loffeelabs.com" target="_blank" rel="noopener noreferrer">Loffee Labs Bean Base</a></small></p>
+        {/if}
       </section>
 
       <section class="detail-section" data-section="bag">

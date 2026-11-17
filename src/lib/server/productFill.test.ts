@@ -225,6 +225,16 @@ const ctx = (o: Partial<FillContext> = {}): FillContext => ({
   url: 'https://example.coffee/products/x', history: [], roastLevels: LEVELS, origins: [], processing: [], rates: RATES, ...o
 });
 
+describe('buildFill tasting notes', () => {
+  it('fills tasting notes from a labelled line', () => {
+    for (const label of ['tasting notes', 'notes', 'flavor notes']) {
+      const r = buildFill(product({ title: 'Lot', attributes: { [label]: 'Peach, jasmine' } }), ctx());
+      expect(r.fields.tasting_notes).toBe('Peach, jasmine');
+    }
+    expect(buildFill(product({ title: 'Lot' }), ctx()).fields).not.toHaveProperty('tasting_notes');
+  });
+});
+
 describe('buildFill', () => {
   it('only returns found, non-empty fields (never blanks what the user typed)', () => {
     const r = buildFill(product({ title: 'Mystery Lot', currency: 'USD' }), ctx());

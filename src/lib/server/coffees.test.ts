@@ -116,6 +116,15 @@ describe('createCoffee subscription_id', () => {
   });
 });
 
+describe('tasting_notes and bean_base_id', () => {
+  it('saves and reads tasting_notes and bean_base_id; an update omitting bean_base_id keeps it', () => {
+    const { id, slug } = createCoffee(db, sampleInput({ tasting_notes: 'Peach, jasmine', bean_base_id: 'bb1' }));
+    expect(getCoffeeById(db, id)).toMatchObject({ tasting_notes: 'Peach, jasmine', bean_base_id: 'bb1' });
+    updateCoffee(db, id, sampleInput({ tasting_notes: 'Plum' }), slug);
+    expect(getCoffeeById(db, id)).toMatchObject({ tasting_notes: 'Plum', bean_base_id: 'bb1' });
+  });
+});
+
 describe('updateCoffee subscription_id', () => {
   it('sets it, keeps it when not sent, and clears it with null', () => {
     const sub = createSubscription(db, { roaster_service: 'Sey', subscription_name: null, price: 30, bag_count: 1, amount_per_bag_g: 250, renewal_day: 1 });

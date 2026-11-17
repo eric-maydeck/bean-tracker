@@ -84,6 +84,7 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'image_source_url', 'TEXT');
   ensureColumn(db, 'coffees', 'subscription_id', 'INTEGER REFERENCES subscriptions(id) ON DELETE SET NULL');
   for (const f of COFFEE_ORIGIN_FIELDS) ensureColumn(db, 'coffees', f, 'TEXT');
+  ensureColumn(db, 'coffees', 'bean_base_id', 'TEXT');
   ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
   ensureColumn(db, 'subscriptions', 'subscription_url', 'TEXT');

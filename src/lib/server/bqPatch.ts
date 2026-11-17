@@ -205,7 +205,7 @@ const FIELDS: { keep: string; key: string; kind: Kind; get: (c: PatchCoffee) => 
 // Site origin field -> bean_information[0] key.
 const ORIGIN: [string, keyof BeanOriginPatch][] = [
   ['origin', 'country'], ['processing', 'processing'], ['producer', 'farmer'],
-  ...COFFEE_ORIGIN_FIELDS.filter((f) => f !== 'producer').map((f): [string, keyof BeanOriginPatch] => [f, f])
+  ...COFFEE_ORIGIN_FIELDS.filter((f) => f !== 'producer' && f !== 'tasting_notes').map((f): [string, keyof BeanOriginPatch] => [f, f])
 ];
 
 // A BQ value that is only the Bean constructor's default counts as blank.

@@ -1586,15 +1586,15 @@ export const STATES: State[] = [
       const sections = await texts(page.locator('.detail-section[data-section] > h2'));
       const pageLabels = (id: string) => texts(page.locator(`[data-section="${id}"] .stat-label`));
       expect(sections.slice(0, 3)).toEqual(['Origin', 'Bag', 'Timing']);
-      expect(await pageLabels('origin')).toEqual(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
+      expect(await pageLabels('origin')).toEqual(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification', 'Tasting notes']);
       expect(await pageLabels('bag')).toEqual(['Roast level', 'Amount', 'Cost', 'Cost/gram', 'Subscription', 'Urgency']);
       await expect(page.locator('[data-section="origin"] .stat', { hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       const box = (sel: string) => page.locator(sel).first().boundingBox().then((b) => b!);
       const groups = page.locator('.form-grid > .form-group');
       await expect(groups.locator('> legend')).toHaveText(['Origin', 'Bag', 'Timing']);
-      // Origin: the page's ten, in its order (Amount (g) is the form's own label for the Bag's Amount).
-      await expect(groups.nth(1).locator('label')).toHaveText(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
+      // Origin: the page's eleven, in its order (Amount (g) is the form's own label for the Bag's Amount).
+      await expect(groups.nth(1).locator('label')).toHaveText(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification', 'Tasting notes']);
       await expect(groups.nth(2).locator('label')).toHaveText(['Roast level', 'Amount (g)', 'Cost', 'Subscription']);
       await expect(groups.nth(3).locator('label')).toHaveText(['Roast date', 'Min rest', 'Max rest', 'Frozen start date', 'Frozen end date']);
       await expect(groups.nth(0).locator('label')).toHaveText(['Product page URL', 'Roaster', 'Coffee', 'Decaf', 'Image URL']);
@@ -1618,6 +1618,7 @@ export const STATES: State[] = [
       await page.evaluate(() => (document.activeElement as HTMLElement).blur());
       await expect(page.locator('#producer')).toHaveValue('Ana Maria Gutierrez');
       await expect(page.locator('#certification')).toHaveValue('Organic');
+      await expect(page.locator('#tasting_notes')).toHaveValue(/^Peach, jasmine/);
       // Top to bottom: top group, Origin, Bag, Timing, then the slug.
       const ys = await Promise.all(['#product_url', '#origin', '#roast_level', '#roast_date', '#slug'].map((q) => box(q).then((b) => b.y)));
       expect(ys, 'groups run top to bottom').toEqual([...ys].sort((x, y) => x - y));
@@ -1626,7 +1627,8 @@ export const STATES: State[] = [
   { name: 'coffee page with origin details', path: (s) => `/coffees/${s.slugs.brewNew}`,
     act: async (page) => {
       const origin = page.locator('[data-section="origin"] .stat');
-      await expect(origin.locator('.stat-label')).toHaveText(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification']);
+      await expect(origin.locator('.stat-label')).toHaveText(['Type', 'Origin', 'Region', 'Producer', 'Farm', 'Variety', 'Processing', 'Elevation', 'Harvest', 'Certification', 'Tasting notes']);
+      await expect(page.locator('[data-section="origin"]').getByRole('link', { name: 'Loffee Labs Bean Base' })).toBeVisible();
       await expect(origin.filter({ hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
       // Directly under the header: no larger gap than between the later sections.
       const h = await page.locator('.detail-header').boundingBox();
@@ -4107,7 +4109,7 @@ export const STATES: State[] = [
       const stacked = page.viewportSize()!.width <= 640;
       // Phones stack one item per line with no separators (the links share a line, joined by one dot); wider screens run the items together.
       expect(lines[0]).toBe(stacked ? 'Built with help from Claude Code, an AI coding assistant How AI was used · Contact' : 'Built with help from Claude Code, an AI coding assistant · How AI was used · Contact');
-      expect(lines[1]).toMatch(stacked ? /^v[\d.]+ Last updated: [^·]+ Last deployed: [^·]+$/ : /^v[\d.]+ · Last updated: .+ · Last deployed: [^·]+$/);
+      expect(lines[1]).toMatch(stacked ? /^v[\d.]+ Last updated: [^·]+ Last deployed: [^·]+ Coffee data from Loffee Labs Bean Base$/ : /^v[\d.]+ · Last updated: .+ · Last deployed: .+ · Coffee data from Loffee Labs Bean Base$/);
       const spans = foot.locator(':scope > div > span');
       const sizes = await foot.locator(':scope > div').evaluateAll((ds) => ds.map((d) => getComputedStyle(d).fontSize + getComputedStyle(d).color));
       expect(sizes[0], 'same size and colour on both lines').toBe(sizes[1]);
@@ -4128,7 +4130,7 @@ export const STATES: State[] = [
       for (const c of lineStarts) expect(c, 'a line never starts with a separator').not.toBe('·');
       if (page.viewportSize()!.width >= 1200) expect(lineStarts.length, 'one line each on a wide screen').toBe(2);
       if (stacked) {
-        expect(lineStarts, 'sentence, links, version, updated, deployed').toHaveLength(5);
+        expect(lineStarts, 'sentence, links, version, updated, deployed, credit').toHaveLength(6);
         const shown = await foot.locator('.d').evaluateAll((ds) => ds.filter((d) => getComputedStyle(d).display !== 'none').length);
         expect(shown, 'only the dot between the two links shows').toBe(1);
         const xs = await spans.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().x)));

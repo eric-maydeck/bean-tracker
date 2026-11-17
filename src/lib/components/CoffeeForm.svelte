@@ -540,6 +540,7 @@
       {/if}
       <!-- Always sent: empty means cleared, so a staged merge never brings back the stored source. -->
       <input type="hidden" name="image_source_url" value={imageSource} />
+      <input type="hidden" name="bean_base_id" value={(coffee?.bean_base_id ?? prefill?.bean_base_id) ?? ''} />
       {#if roasterWebsite}
         <input type="hidden" name="roaster_website" value={roasterWebsite} />
       {/if}
@@ -603,6 +604,7 @@
     {@render detail('elevation')}
     {@render detail('harvest_time')}
     {@render detail('certification')}
+    {@render detail('tasting_notes')}
   </fieldset>
 
   <fieldset class="form-group">
