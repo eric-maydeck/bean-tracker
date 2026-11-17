@@ -28,6 +28,11 @@ export type Decision = 'approve' | 'reject' | 'leave';
 // Locked rows are format-only and never open the dialog on their own.
 export const needsDialog = (rows: StdRow[]) => rows.some((r) => r.kind !== 'locked');
 
+// Only blank-field rows: Approve all / Reject all have nothing to act on, and each Leave blank starts selected.
+export const allLeaveBlank = (rows: StdRow[]) => rows.length > 0 && rows.every((r) => r.kind === 'missing');
+export const initialDecisions = (rows: StdRow[]): Record<string, Decision> =>
+  allLeaveBlank(rows) ? Object.fromEntries(rows.map((r) => [r.field, 'leave' as Decision])) : {};
+
 // Tooltip text for a blocked Save, or null when Save is allowed.
 export function saveBlock(rows: StdRow[], d: Record<string, Decision>): string | null {
   const blocked = rows.filter((r) => r.kind === 'blocked');

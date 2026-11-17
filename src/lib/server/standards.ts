@@ -318,7 +318,8 @@ export function proposeStandards(db: DatabaseSync, input: ProposeInput): StdRow[
       else if (isLocked(f)) {
         const r = formatLocked(f, v);
         if (!r.ok) add(f, v, null, 'blocked', { note: `${LABELS[f]} can't be converted` });
-        else if (text(r) !== v) add(f, v, r.value === null ? null : text(r), 'locked');
+        else if (r.value === null) add(f, v, null, 'missing'); // a placeholder: leave it blank, same as an empty key field
+        else if (text(r) !== v) add(f, v, text(r), 'locked');
       } else if (REJECTABLE.includes(f)) {
         let pv = v;
         if (f === 'producer') {

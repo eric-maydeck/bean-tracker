@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inFormOrder, needsDialog, resolve, saveBlock, type Decision, type StdRow } from './standardsDialog';
+import { allLeaveBlank, initialDecisions, inFormOrder, needsDialog, resolve, saveBlock, type Decision, type StdRow } from './standardsDialog';
 
 const row = (field: string, kind: StdRow['kind'], now: string | null = 'a', proposed: string | null = 'b'): StdRow => ({ field, label: field[0].toUpperCase() + field.slice(1), now, proposed, kind });
 
@@ -41,5 +41,24 @@ describe('inFormOrder', () => {
   it('lists rows as the form lays out its fields, missing rows included', () => {
     const row = (field: string) => ({ field, label: field, now: null, proposed: null, kind: 'missing' as const });
     expect(inFormOrder(['cost', 'variety', 'roast_date', 'roaster', 'elevation'].map(row)).map((r) => r.field)).toEqual(['roaster', 'variety', 'elevation', 'cost', 'roast_date']);
+  });
+});
+
+describe('all Leave blank rows', () => {
+  const row = (field: string, kind: 'missing' | 'choice') => ({ field, label: field, now: null, proposed: kind === 'choice' ? 'x' : null, kind });
+  const only = [row('elevation', 'missing'), row('amount_g', 'missing')];
+  it('starts every row on Leave blank, so Save is allowed at once', () => {
+    expect(allLeaveBlank(only)).toBe(true);
+    expect(needsDialog(only)).toBe(true);
+    const d = initialDecisions(only);
+    expect(d).toEqual({ elevation: 'leave', amount_g: 'leave' });
+    expect(saveBlock(only, d)).toBeNull();
+    expect(resolve(only, d)).toEqual({ elevation: '', amount_g: '' });
+  });
+  it('mixed rows start undecided', () => {
+    const mixed = [...only, row('variety', 'choice')];
+    expect(allLeaveBlank(mixed)).toBe(false);
+    expect(initialDecisions(mixed)).toEqual({});
+    expect(saveBlock(mixed, {})).toMatch(/Leave blank/);
   });
 });
