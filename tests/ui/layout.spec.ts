@@ -1540,6 +1540,8 @@ export const STATES: State[] = [
       await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'Sey · 1x250g' }); // restore for other states
       await page.locator('#cost').fill('22');
       await page.getByRole('button', { name: 'Save changes' }).click();
+      // The standards check runs before the POST, so wait for the save to land before navigating away.
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible({ timeout: 15000 });
       await page.goto('/coffees?view=list&status=all');
       await page.getByRole('row', { name: /Kenya Kiambu/ }).first().getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('#coffee_name')).toBeVisible();
@@ -9432,11 +9434,12 @@ export const STATES: State[] = [
       await expect(dlg.locator('.media-meta')).not.toContainText('Updated');
       await expect(dlg.locator('.media-meta b')).toHaveText(/^\d{4}-\d\d-\d\d \d{1,2}:\d\d:\d\d [AP]M$/);
       await expect(dlg.locator('.trophy-img img')).toHaveCount(0);
-      // A few fields: ZP6 shows its two and no empty rows.
+      // A few fields: ZP6 shows every field of the edit form (since #84), the two filled ones with values and the rest a dash.
       await page.goto('/stats?tab=gear&card=grinder-zp6-special');
-      await expect(dlg.locator('.specs .stat')).toHaveCount(2);
+      await expect(dlg.locator('.specs .stat')).toHaveCount(12);
       await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('64mm');
-      await expect(dlg.locator('.specs')).not.toContainText('Cone angle');
+      await expect(dlg.locator('.specs .stat', { hasText: 'Brand' }).locator('.stat-value')).toHaveText('Timemore');
+      await expect(dlg.locator('.specs .stat', { hasText: 'Burr coating' }).locator('.stat-value')).toHaveText('—');
     } },
   { name: 'insights-trophy-edit', path: () => '/stats?tab=gear&card=dripper-v60',
     act: async (page) => {
