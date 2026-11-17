@@ -33,13 +33,11 @@
   <div class="sd-sheet">
     <header class="sd-header">
       <h2 id="sd-title">Review changes</h2>
-      <div class="sd-bulk">
-        <button type="button" class="button button-secondary" onclick={() => setAll('approve')}>Approve all</button>
-        <button type="button" class="button button-secondary" onclick={() => setAll('reject')}>Reject all</button>
-      </div>
     </header>
+    <!-- The row buttons, the column header and the footer share one grid (--sd-cols), so Approve all sits under the
+         Approve column and Reject all under Reject. The footer scrolls with the list (sticky) to keep that alignment. -->
     <div class="sd-body">
-    <div class="sd-colhead" aria-hidden="true"><span></span><span>Now</span><span>Proposed</span><span></span></div>
+    <div class="sd-colhead" aria-hidden="true"><span></span><span>Now</span><span>Proposed</span><span></span><span></span></div>
     <ul class="sd-list">
       {#each sorted as r (r.field)}
         <li class="sd-row">
@@ -49,20 +47,18 @@
           {:else}
             <span class="sd-now"><span class="sd-tag">Now</span> {r.now || '—'}</span>
             <span class="sd-prop" class:sd-empty={r.proposed == null}><span class="sd-tag">Proposed</span> {r.proposed ?? ''}</span>
-            <span class="sd-choice">
-              {#if r.kind === 'choice'}
-                <span class="sd-pair" role="group" aria-label={r.label}>
-                  <button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'approve'} onclick={() => (decisions[r.field] = 'approve')}>Approve</button>
-                  <button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'reject'} onclick={() => (decisions[r.field] = 'reject')}>Reject</button>
-                </span>
-              {:else if r.kind === 'missing'}
-                <button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'leave'} onclick={() => (decisions[r.field] = 'leave')}>Leave blank</button>
-              {:else if r.kind === 'unconverted'}
-                <span class="sd-note">can't convert, saved as typed</span>
-              {:else if r.kind === 'forced'}
-                <span class="sd-note">can't convert, replaced</span>
-              {/if}
-            </span>
+            {#if r.kind === 'choice'}
+              <span class="sd-pair" role="group" aria-label={r.label}>
+                <button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'approve'} onclick={() => (decisions[r.field] = 'approve')}>Approve</button>
+                <button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'reject'} onclick={() => (decisions[r.field] = 'reject')}>Reject</button>
+              </span>
+            {:else if r.kind === 'missing'}
+              <span class="sd-single"><button type="button" class="button button-secondary" aria-pressed={decisions[r.field] === 'leave'} onclick={() => (decisions[r.field] = 'leave')}>Leave blank</button></span>
+            {:else if r.kind === 'unconverted'}
+              <span class="sd-note">can't convert, saved as typed</span>
+            {:else if r.kind === 'forced'}
+              <span class="sd-note">can't convert, replaced</span>
+            {/if}
             {#if r.kind === 'choice' && r.field === 'roaster' && r.roasterCount}
               <!-- Space is reserved while undecided/approved so rejecting doesn't shift the rows below. -->
               <span class="sd-bad sd-wide sd-warn" class:sd-hide={decisions[r.field] !== 'reject'}>{r.roasterCount} {r.roasterCount === 1 ? 'coffee' : 'coffees'} already saved as "{r.proposed}" <a href={roasterLink(r.proposed ?? '')} target="_blank" rel="noopener">See coffees</a></span>
@@ -71,18 +67,25 @@
         </li>
       {/each}
     </ul>
-    </div>
     <footer class="sd-footer">
-      <button type="button" class="button button-ghost" onclick={() => dlg.close()}>Cancel</button>
-      <button type="button" class="button" aria-disabled={block ? 'true' : undefined} aria-describedby={block ? 'sd-block' : undefined} title={block ?? undefined} onclick={save}>Save</button>
+      <span class="sd-actions">
+        <button type="button" class="button" aria-disabled={block ? 'true' : undefined} aria-describedby={block ? 'sd-block' : undefined} title={block ?? undefined} onclick={save}>Save</button>
+        <button type="button" class="button button-ghost" onclick={() => dlg.close()}>Cancel</button>
+      </span>
+      <button type="button" class="button button-secondary sd-all-approve" onclick={() => setAll('approve')}>Approve all</button>
+      <button type="button" class="button button-secondary sd-all-reject" onclick={() => setAll('reject')}>Reject all</button>
       {#if block}<span id="sd-block" class="sd-sr">{block}</span>{/if}
     </footer>
+    </div>
   </div>
 </dialog>
 
 <style>
   .sd-dialog {
-    width: min(44rem, 100% - 2rem);
+    /* Label | Now | Proposed | Approve | Reject; every button is --sd-btn wide. */
+    --sd-btn: 8rem;
+    --sd-cols: 7rem minmax(0, 1fr) minmax(0, 1fr) var(--sd-btn) var(--sd-btn);
+    width: min(50rem, 100% - 2rem);
     max-height: 85dvh;
     padding: 0;
     border: 1px solid var(--color-border);
@@ -104,29 +107,13 @@
     min-width: 0;
     min-height: 0;
   }
-  .sd-header,
-  .sd-footer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-4);
-  }
   .sd-header {
+    padding: var(--space-2) var(--space-4);
     border-bottom: 1px solid var(--color-border);
-  }
-  .sd-footer {
-    justify-content: flex-end;
-    border-top: 1px solid var(--color-border);
   }
   .sd-header h2 {
     margin: 0;
     font-size: 1rem;
-  }
-  .sd-bulk {
-    display: flex;
-    gap: var(--space-2);
   }
   .sd-dialog .button {
     margin: 0;
@@ -134,10 +121,9 @@
     white-space: nowrap;
   }
   .sd-body {
-    --sd-cols: 7rem minmax(0, 1fr) minmax(0, 1fr) 12.5rem;
     flex: 1;
     min-height: 0;
-    padding: 0 var(--space-4) var(--space-2);
+    padding: 0 var(--space-4);
     overflow-y: auto;
   }
   .sd-list {
@@ -149,6 +135,7 @@
   .sd-colhead {
     position: sticky;
     top: 0;
+    z-index: 1;
     display: grid;
     grid-template-columns: var(--sd-cols);
     gap: var(--space-1) var(--space-2);
@@ -169,6 +156,20 @@
     border-bottom: 1px solid var(--color-border);
     overflow-wrap: anywhere;
   }
+  /* Approve and Reject are direct grid cells of the row (columns 4 and 5). */
+  .sd-pair {
+    display: contents;
+  }
+  /* The one Leave blank button: centered across the two button columns, same width. */
+  .sd-single {
+    grid-column: 4 / 6;
+    display: flex;
+    justify-content: center;
+  }
+  .sd-note {
+    grid-column: 4 / 6;
+    font-style: italic;
+  }
   .sd-label {
     font-weight: 600;
   }
@@ -188,16 +189,17 @@
     color: var(--color-text-muted);
     font-size: 0.75rem;
   }
-  .sd-pair {
-    display: flex;
-    gap: var(--space-1);
+  .sd-dialog .sd-row .button,
+  .sd-footer .button {
+    width: var(--sd-btn);
   }
   .sd-dialog .button[aria-pressed='true'] {
     background: var(--color-accent);
     color: var(--color-surface);
   }
+  /* Clearly dimmed in both themes (the accent fill stayed bright on the dark surface at 0.5). */
   .sd-dialog .button[aria-disabled='true'] {
-    opacity: 0.5;
+    opacity: 0.35;
     cursor: not-allowed;
   }
   .sd-wide {
@@ -218,8 +220,28 @@
   .sd-empty {
     visibility: hidden;
   }
-  .sd-note {
-    font-style: italic;
+  /* Bottom of the list: Save and Cancel left, Approve all / Reject all under their own columns. */
+  .sd-footer {
+    position: sticky;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: var(--sd-cols);
+    gap: var(--space-1) var(--space-2);
+    align-items: center;
+    padding: var(--space-2) 0;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+  }
+  .sd-actions {
+    grid-column: 1 / 4;
+    display: flex;
+    gap: var(--space-2);
+  }
+  .sd-all-approve {
+    grid-column: 4;
+  }
+  .sd-all-reject {
+    grid-column: 5;
   }
   .sd-sr {
     position: absolute;
@@ -247,18 +269,51 @@
     .sd-row {
       grid-template-columns: 1fr;
     }
-    .sd-empty {
-      display: none;
-    }
     .sd-tag {
       display: inline;
     }
-    .sd-header .button,
+    .sd-empty {
+      display: none;
+    }
+    /* Buttons share the row in halves: Approve | Reject, and the footer's Approve all | Reject all sit under them. */
+    .sd-pair {
+      display: flex;
+      gap: var(--space-2);
+    }
+    .sd-dialog .sd-row .button,
+    .sd-footer .button {
+      width: auto;
+    }
     .sd-pair .button {
       flex: 1;
     }
-    .sd-pair {
-      width: 100%;
+    .sd-single {
+      grid-column: 1;
+    }
+    .sd-single {
+      justify-content: center;
+    }
+    /* One half-width button, as wide as Approve and Reject, centered across them. */
+    .sd-dialog .sd-single .button {
+      width: calc(50% - var(--space-1));
+    }
+    .sd-note {
+      grid-column: 1;
+    }
+    .sd-footer {
+      grid-template-columns: 1fr 1fr;
+    }
+    .sd-all-approve {
+      grid-column: 1;
+    }
+    .sd-all-reject {
+      grid-column: 2;
+    }
+    .sd-actions {
+      grid-column: 1 / -1;
+      order: 2;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
     }
   }
 </style>

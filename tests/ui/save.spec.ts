@@ -678,6 +678,16 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
         await expect(dialog(page)).toHaveCount(0);
       });
 
+      test('add: n/a in a locked field saves as empty, never the text "null"', async ({ page }) => {
+        await openAdd(page);
+        await fillBag(page, `Std NA ${T}`);
+        await page.locator('#elevation').fill('n/a');
+        await saveAdd(page);
+        await expect.poll(() => coffeeRow(`Std NA ${T}`)()?.coffee_name).toBe(`Std NA ${T}`);
+        expect(coffeeRow(`Std NA ${T}`)()?.elevation).toBeNull();
+        await expect(dialog(page)).toHaveCount(0);
+      });
+
       test('add: blank cost asks, Leave blank saves it blank', async ({ page }) => {
         await openAdd(page);
         await fillBag(page, `Std No Cost ${T}`, { cost: '' });
