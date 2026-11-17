@@ -266,10 +266,11 @@ const least = (board: Board, href?: string, by: Avg = 'adjusted') => (c: RecCtx)
 // Grind speed bands (same-bag paired deltas, solid rows only); one row is the average itself. Holder date = the band's latest brew.
 const speeds = (c: RecCtx): Candidate[] => {
   const rows = c.brews.filter((b) => countsForRating(b, c.ratings) && b.rating! > 0);
-  const solid = pairedDeltas(rows, labFn('rpm')).filter((s) => s.solid && s.delta !== null);
+  const band = labFn('rpm');
+  const solid = pairedDeltas(rows, band).filter((s) => s.solid && s.delta !== null);
   return solid.length < 2 ? [] : solid.map((s) => ({
     value: s.delta!,
-    holder: { label: s.label, href: '/stats?tab=gear#gear-speeds', date: rows.filter((b) => labFn('rpm')(b)?.label === s.label).map((b) => b.localDate).sort().pop()! }
+    holder: { label: s.label, href: '/stats?tab=gear#gear-speeds', date: rows.filter((b) => band(b)?.label === s.label).map((b) => b.localDate).sort().pop()! }
   }));
 };
 // Most or fewest grams brewed per board group (groups with ≥ minBags bags); a lone group decides nothing.

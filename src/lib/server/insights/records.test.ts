@@ -60,8 +60,13 @@ describe('grind speed records', () => {
     expect(run('leastSpeed', thin)!.holder.label).toBe('~1,000 RPM');
     expect(run('favoriteSpeed', speeds.filter((b) => b.coffeeId! < 3))).toBeNull(); // 2 bags
   });
-  it('follows Current/All ratings', () => {
-    expect(RECORDS.find((r) => r.key === 'favoriteSpeed')!.rating).toBe(true);
+  it('follows Current/All ratings and the Period', () => {
+    const early = speeds.map((b) => ({ ...b, localDate: '2026-05-01' }));
+    expect(run('favoriteSpeed', early, BAGS, 'current')).toBeNull(); // pre-cutoff ratings don't count
+    expect(run('favoriteSpeed', early, BAGS, 'all')).not.toBeNull();
+    const tile = (start: string) => tileOf(recordsTab(speeds, BAGS, { ...CTX, period: { start, end: '2026-10-11' } }), 'favoriteSpeed');
+    expect(tile('2026-01-01')).toBeDefined();
+    expect(tile('2026-08-01')).toBeUndefined(); // only the 1,500 band left in the Period
   });
 });
 
