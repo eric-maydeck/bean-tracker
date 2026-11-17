@@ -4,12 +4,14 @@ import { shopifyImages, htmlImages, shopifyDetails, htmlDetails, type PageDetail
 import { loadSiteConfig } from '../siteConfig';
 import { rankImages } from './rankImages';
 import { shopify } from './providers/shopify';
+import { beanBase } from './providers/beanBase';
+import { product } from './providers/product';
 import { tavily } from './providers/tavily';
 import type { Candidate, CandidatePage, FetchPage, Provider, SuggestQuery, SuggestResult } from './types';
 
-export const DEFAULT_PROVIDERS = 'shopify,tavily';
+export const DEFAULT_PROVIDERS = 'product,shopify,beanbase,tavily';
 export const UNCONFIGURED_NOTE = 'No roaster site to search and no web search key (TAVILY_API_KEY)';
-const ALL: Provider[] = [shopify, tavily];
+const ALL: Provider[] = [product, shopify, beanBase, tavily];
 const MAX_PAGES = 5;
 const MAX_CANDIDATES = 6;
 const PAGE_MS = 10_000;

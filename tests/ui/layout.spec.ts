@@ -593,6 +593,40 @@ async function expectDialogInViewport(page: Page) {
   expect(problems).toEqual([]);
 }
 
+// Search Loffee Labs: the endpoint is stubbed with invented beans (nothing is fetched or saved).
+const BB_OK = {
+  status: 'ok', roaster: 'Moonwake Coffee Roasters',
+  beans: [
+    { id: '9001', name: 'Ethiopia Bensa Bombe', image: svg(64, 64, '#6b4f3a'), soldout: true, closest: true, date: '2026-09-20', link: 'https://moonwake.example/products/bensa-bombe',
+      fields: { origin: 'Ethiopia', region: 'Bensa, Sidama', processing: 'Anaerobic Natural', variety: 'Heirloom', tasting_notes: 'Peach, Jasmine, Bergamot, a long honeyed finish with a little cacao and more words to make the notes clamp', elevation: '2,100 masl', harvest_time: 'March 2026' } },
+    { id: '9002', name: 'Colombia Huila Washed', image: null, soldout: false, closest: false, date: '2026-05-02', link: null,
+      fields: { origin: 'Colombia', processing: 'Washed', tasting_notes: 'Red apple, panela' } },
+    { id: '9003', name: 'Kenya Kiambu AB', image: null, soldout: true, closest: false, date: '2026-01-15', link: null, fields: {} }
+  ]
+};
+const BB_ROASTER = { status: 'roaster', closest: ['Moonwake Coffee Roasters', 'Moon Roasters', 'Moonrise Coffee'] };
+// Opens Edit on the Moonwake coffee and presses Search Loffee Labs (a null handler leaves it hanging).
+async function openBeanBase(page: Page, handler: ((route: Route) => Promise<void>) | null) {
+  await page.route('**/api/coffees/bean-base-search', (route) => (handler ? handler(route) : undefined));
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Search Loffee Labs', exact: true }).click();
+  await expect(page.locator('dialog[open]')).toBeVisible();
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+}
+// The URL row: input, then Fill from page, then Search Loffee Labs to its right; no overflow, buttons keep their size.
+async function expectUrlRow(page: Page) {
+  const box = async (loc: ReturnType<Page['locator']>) => (await loc.boundingBox())!;
+  const input = await box(page.locator('#product_url'));
+  const fill = await box(page.getByRole('button', { name: /Fill from page|Filling…/ }));
+  const search = await box(page.getByRole('button', { name: 'Search Loffee Labs', exact: true }));
+  expect(input.width).toBeGreaterThan(100);
+  // Fill before Search: on one line Search is to the right; wrapped, it is on the same line or below.
+  expect(search.x > fill.x || search.y > fill.y).toBe(true);
+  const vw = await page.evaluate(() => innerWidth);
+  for (const b of [input, fill, search]) expect(b.x + b.width).toBeLessThanOrEqual(vw + 0.5);
+  expect(fill.width).toBeGreaterThan(60);
+}
+
 // Answers the Add form's ?/create with a made-up success, so the "Coffee added!"
 // popup shows without saving (the workers share one DB); hovering keeps it up.
 async function fillBag(page: Page) {
@@ -10930,6 +10964,91 @@ export const STATES: State[] = [
       await expect(dlg(page).getByRole('status').filter({ hasText: 'Searching…' })).toBeVisible();
       await expectDialogInViewport(page);
       await expect(page.getByRole('button', { name: 'Suggest', exact: true })).toBeDisabled();
+    }
+  },
+  {
+    name: 'coffee-edit-loffee-url-row',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expectUrlRow(page);
+      // Filling… keeps the Fill button's size and the row's layout.
+      const fill = page.getByRole('button', { name: 'Fill from page' });
+      const before = await fill.boundingBox();
+      await page.route('**/api/coffees/fill-from-url', () => undefined);
+      await page.locator('#product_url').fill('https://moonwake.example/products/bensa-bombe');
+      await fill.click();
+      const filling = page.getByRole('button', { name: 'Filling…' });
+      await expect(filling).toBeVisible();
+      const after = await filling.boundingBox();
+      expect(Math.abs(after!.x - before!.x)).toBeLessThan(1);
+      expect(Math.abs(after!.y - before!.y)).toBeLessThan(1);
+      await expectUrlRow(page);
+    }
+  },
+  {
+    name: 'coffee-edit-loffee-searching',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openBeanBase(page, null);
+      await expect(dlg(page).getByText('Searching…')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Search Loffee Labs', exact: true })).toBeDisabled();
+      await expectDialogInViewport(page);
+    }
+  },
+  {
+    name: 'coffee-edit-loffee-list',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openBeanBase(page, reply(BB_OK));
+      const d = dlg(page);
+      await expect(d.getByRole('heading', { name: 'Loffee Labs matches' })).toBeVisible();
+      await expect(d.locator('.suggest-pick')).toHaveCount(3);
+      await expect(d.getByText('Loffee Labs roaster: Moonwake Coffee Roasters ·')).toBeVisible();
+      // The first card has an image with both badges, Closest before Sold out; text-only cards have no image box.
+      const first = d.locator('.suggest-pick').first();
+      await expect(first.locator('.suggest-image img')).toHaveCount(1);
+      await expect(first.locator('.badge')).toHaveText(['Closest to roast date', 'Sold out']);
+      const [a, b] = await first.locator('.badge').evaluateAll((els) => els.map((el) => el.getBoundingClientRect()));
+      expect(b.top).toBeGreaterThanOrEqual(a.bottom - 0.5);
+      await expect(d.locator('.suggest-pick').nth(1).locator('.suggest-image')).toHaveCount(0);
+      await expect(d.locator('.suggest-pick').nth(2).locator('.badge')).toHaveText(['Sold out']);
+      await expect(first).toContainText('Ethiopia · Bensa, Sidama');
+      await expect(first).toContainText('2,100 masl · March 2026');
+      await expect(first).toContainText('Added ');
+      await expect(d.getByRole('link', { name: 'From Loffee Labs Bean Base' })).toHaveAttribute('href', 'https://www.loffeelabs.com');
+      await expect(d.getByRole('button', { name: 'None of these' })).toBeVisible();
+      await expectDialogInViewport(page);
+    }
+  },
+  {
+    name: 'coffee-edit-loffee-roaster-miss', viewports: 'two',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openBeanBase(page, reply(BB_ROASTER));
+      const d = dlg(page);
+      await expect(d.getByText('No Loffee Labs roaster matches "Moonwake"')).toBeVisible();
+      await expect(d.locator('.inline-row .button')).toHaveText(BB_ROASTER.closest);
+      await expectDialogInViewport(page);
+    }
+  },
+  {
+    name: 'coffee-edit-loffee-no-key', viewports: 'two',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openBeanBase(page, reply({ status: 'no-key' }));
+      await expect(dlg(page).getByText("Loffee Labs search isn't set up")).toBeVisible();
+      await expectDialogInViewport(page);
+    }
+  },
+  {
+    name: 'coffee-edit-loffee-failed', viewports: 'two',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openBeanBase(page, reply({ status: 'failed' }));
+      await expect(dlg(page).getByText('Search failed')).toBeVisible();
+      await expect(dlg(page).getByRole('button', { name: 'Retry' })).toBeVisible();
+      await expectDialogInViewport(page);
     }
   },
   {
