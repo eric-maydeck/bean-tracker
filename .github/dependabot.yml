@@ -11,6 +11,10 @@ updates:
       # Majors need a migration; security updates still arrive. Revisit in the upgrade backlog item.
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # 1.65's Firefox build 1572 crashes pages ("Page crashed", microsoft/playwright#43967); fixed upstream, unreleased.
+      # Drop this once a release past 1.65.1 ships a newer Firefox build.
+      - dependency-name: "@playwright/test"
+        versions: ["1.65.x"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
