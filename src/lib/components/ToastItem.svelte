@@ -12,6 +12,7 @@
   let paused = false;
 
   function run() {
+    if (t.reload) return; // stays until Reload
     startedAt = Date.now();
     timer = setTimeout(() => {
       fading = true;
@@ -60,6 +61,7 @@
 <div class="toast" class:fading role="status" onmouseenter={pause} onmouseleave={resume} onfocusin={pause} onfocusout={resume}>
   <span>{t.text}</span>
   {#if t.undo}<button class="undo" type="button" onclick={() => undoToast(t)}>Undo</button>{/if}
+  {#if t.reload}<button class="undo" type="button" onclick={() => location.reload()}>Reload</button>{/if}
 </div>
 
 <style>

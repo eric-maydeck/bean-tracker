@@ -1,6 +1,6 @@
 <script lang="ts">
   import '../app.css';
-  import { page } from '$app/state';
+  import { page, updated } from '$app/state';
   import { browser } from '$app/env';
   import { enhance } from '$app/forms';
   import { refreshTracked } from '#lib/urlState.ts';
@@ -8,10 +8,11 @@
   import AiNote from '#lib/components/AiNote.svelte';
   import RecapBanner from '#lib/components/RecapBanner.svelte';
   import Toast from '#lib/components/Toast.svelte';
+  import { showToast } from '#lib/toast.svelte.ts';
   import Icon, { type IconName } from '#lib/components/Icon.svelte';
   import Stamp from '#lib/components/Stamp.svelte';
   import { setBrewingZone } from '#lib/localDate.ts';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { captionItems } from '#lib/capItems.ts';
   import { tipOver, tipOut, tipClick } from '#lib/components/modeTip.ts';
   import { scrollBehavior } from '#lib/scrollToBottom.ts';
@@ -26,6 +27,11 @@
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (!document.cookie.split('; ').includes(`tz=${tz}`)) document.cookie = `tz=${tz}; Path=/; Max-Age=31536000; SameSite=Lax`;
     document.documentElement.dataset.hydrated = ''; return captionItems(); });
+
+  // A deploy while this tab is open (Kit polls _app/version.json, see version.pollInterval): offer a reload.
+  $effect(() => {
+    if (updated.current) untrack(() => showToast('A new version is available.', { reload: true })); // push reads toasts
+  });
 
   const links = [
     { href: '/coffees', label: 'Coffees' },
