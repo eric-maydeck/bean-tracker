@@ -17,7 +17,7 @@
   const toasting = (say: (v: string) => string, reverse: string): import('$app/forms').SubmitFunction => ({ formData }) => {
     const v = String(formData.get('value') ?? '').trim();
     return async ({ result, update }) => {
-      await update();
+      await update({ navigate: false });
       if (result.type !== 'success') return;
       showToast(say(v), {
         undo: async () => {
@@ -51,7 +51,7 @@
         return;
       }
       settingError = null;
-      await update({ reset: false });
+      await update({ reset: false, navigate: false });
       if (result.type !== 'success') return;
       showToast(`${SETTING_LABEL[name]} set to ${shown(name, v)}.`, {
         undo: async () => {
@@ -97,7 +97,7 @@
         return;
       }
       householdError = null;
-      await update();
+      await update({ navigate: false });
       if (result.type !== 'success') return;
       showToast(`Household size set to ${n}.`, {
         undo: async () => {
@@ -149,7 +149,7 @@
     use:enhance={() => {
       submitting = true;
       return async ({ result, update }) => {
-        await update();
+        await update({ navigate: false });
         submitting = false;
         // update() resets the form (and its file input) only on success; after an error the file is still there to retry.
         if (result.type === 'success') picked = null;

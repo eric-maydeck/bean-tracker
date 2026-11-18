@@ -11,6 +11,7 @@
   import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '#lib/coffeeToast.ts';
   import { showToast } from '#lib/toast.svelte.ts';
   import { enhance } from '$app/forms';
+  import { stay } from '#lib/stay.ts';
   import { goto, refreshAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { browser } from '$app/env';
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
@@ -433,7 +434,7 @@
                 {'Bean Conqueror: '}<CoffeeName name={data.beanConqueror.name} />{` · ${data.beanConqueror.brewCount} ${data.beanConqueror.brewCount === 1 ? 'brew' : 'brews'}`}
               </span>
               {#if data.isAdmin}
-                <form method="POST" action="?/unlinkBeanConqueror" use:enhance>
+                <form method="POST" action="?/unlinkBeanConqueror" use:enhance={stay}>
                   <button class="button button-ghost" type="submit">Unlink</button>
                 </form>
               {/if}

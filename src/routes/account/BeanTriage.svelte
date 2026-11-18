@@ -3,6 +3,7 @@
   import { asDateFormat } from '#lib/localDate.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
+  import { stay } from '#lib/stay.ts';
   import { goto, refreshAll } from '$app/navigation';
   import { UNTRACKED_CAP, accountQuery } from '#lib/accountUrl.ts';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
@@ -89,7 +90,7 @@
                 return;
               }
               linkError = null;
-              await update();
+              await update({ navigate: false });
               if (result.type === 'success') linkingId = null;
             }}
           >
@@ -105,7 +106,7 @@
           <div class="action-buttons candidate-actions">
             <button class="button button-secondary" type="button" onclick={() => (createBean = bean)}>Create</button>
             <button class="button button-secondary" type="button" onclick={() => { linkingId = bean.id; linkCoffeeId = null; linkError = null; }}>Link</button>
-            <form method="POST" action="?/dismissBeanConqueror" use:enhance>
+            <form method="POST" action="?/dismissBeanConqueror" use:enhance={stay}>
               <input type="hidden" name="id" value={bean.id} />
               <button class="button button-danger" type="submit">Dismiss</button>
             </form>

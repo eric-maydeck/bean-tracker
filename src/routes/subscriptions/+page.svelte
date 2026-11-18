@@ -748,7 +748,7 @@
     bind:this={addFormEl}
     use:enhance={() =>
       async ({ result, update }) => {
-        await update();
+        await update({ navigate: false });
         if (result.type === 'success') {
           addUrl = '';
           addRoaster = '';

@@ -160,7 +160,7 @@
         <p class="rr-meta"><span>Searched {formatDate(rr.searchedAt)}</span></p>
       {/if}
       {#if data.isAdmin}
-        <form method="POST" action="?/findRecipe" use:enhance={() => async ({ update }) => { await update({ reset: false }); }}>
+        <form method="POST" action="?/findRecipe" use:enhance={() => async ({ update }) => { await update({ reset: false, navigate: false }); }}>
           <button type="submit" class="button">{rr ? 'Search again' : 'Find roaster recipe'}</button>
           {#if recipeError}<span role="alert">{recipeError}</span>{/if}
         </form>
@@ -313,7 +313,7 @@
       </FloatTip>
     {/if}
     {#if data.isAdmin}
-      <form class="mark" method="POST" action="?/brewThis" bind:this={brewForm} use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false }); if (result.type === 'success') { const id = (result.data as { markId?: number } | undefined)?.markId; showToast('Marked. Your next BQ brew of this coffee will be compared.', id === undefined ? {} : { undo: () => post('deleteMark', { id: String(id) }) }); } } finally { submitting = false; } }; }}>
+      <form class="mark" method="POST" action="?/brewThis" bind:this={brewForm} use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false, navigate: false }); if (result.type === 'success') { const id = (result.data as { markId?: number } | undefined)?.markId; showToast('Marked. Your next BQ brew of this coffee will be compared.', id === undefined ? {} : { undo: () => post('deleteMark', { id: String(id) }) }); } } finally { submitting = false; } }; }}>
         {#each ['grinder', 'dripper', 'filter'] as const as k (k)}{#if data.gear[k]}<input type="hidden" name={k} value={data.gear[k]} />{/if}{/each}
         {#if data.suggestion.dose !== null}<input type="hidden" name="dose" value={data.suggestion.dose} />{/if}
         {#if data.suggestion.ratio !== null}<input type="hidden" name="ratio" value={data.suggestion.ratio} />{/if}
@@ -332,7 +332,7 @@
             <span class="date">{formatDate(m.markedLocal)}</span>
             {#if m.status === 'pending'}<span class="badge badge-neutral">Waiting for your next BQ brew</span>
               {#if data.isAdmin}
-                <form method="POST" action="?/deleteMark" use:enhance={() => async ({ result, update }) => { await update({ reset: false }); if (result.type === 'success') showToast('Brew mark canceled.'); }}>
+                <form method="POST" action="?/deleteMark" use:enhance={() => async ({ result, update }) => { await update({ reset: false, navigate: false }); if (result.type === 'success') showToast('Brew mark canceled.'); }}>
                   <input type="hidden" name="id" value={m.id} /><button type="submit" class="button button-ghost">Cancel</button>
                 </form>
               {/if}

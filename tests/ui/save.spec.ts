@@ -541,6 +541,37 @@ test('account household: save toasts, Undo restores', { tag: '@stats' }, async (
   await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: size });
 });
 
+// Kit 3's enhance navigates to the action URL minus `?/name`, which drops the page's own query: every form passes navigate: false.
+test('enhanced form on a URL with a query stays put: same URL, no history entry', { tag: '@stats' }, async ({ page }) => {
+  await gotoReady(page, '/account?untracked=all');
+  const panel = page.locator('#household');
+  const input = panel.getByLabel('Household size');
+  const size = await input.inputValue();
+  const entries = await page.evaluate(() => history.length);
+  await input.fill(size === '4' ? '5' : '4');
+  await panel.getByRole('button', { name: 'Save' }).click();
+  const toast = page.getByRole('status').filter({ hasText: /Household size set to/ });
+  await expect(toast).toBeVisible();
+  await toast.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Undone.' })).toBeVisible();
+  await expect(page).toHaveURL(/\/account\?untracked=all$/);
+  expect(await page.evaluate(() => history.length)).toBe(entries);
+});
+
+test.describe('signed out', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test('a wrong password keeps redirectTo, so the right one lands on /account', { tag: '@account' }, async ({ page }) => {
+    await gotoReady(page, '/login?redirectTo=%2Faccount');
+    await page.locator('#password').fill('wrong');
+    await page.locator('#password').press('Enter');
+    await expect(page.getByText('Incorrect password')).toBeVisible();
+    await expect(page).toHaveURL(/redirectTo=%2Faccount/);
+    await page.locator('#password').fill('test');
+    await page.locator('#password').press('Enter');
+    await page.waitForURL('**/account');
+  });
+});
+
 // Last (it adds a water): after the over-20 MB message, the next good file really imports on the first try.
 test('account upload: a good file imports on the first try after a too-big one', { tag: '@stats' }, async ({ page }) => {
   await gotoReady(page, '/account');

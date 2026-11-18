@@ -486,7 +486,7 @@
       return;
     }
     return async ({ result, update }) => {
-      await update();
+      await update({ navigate: false });
       if (result.type === 'success') {
         // The form may stay open and reset: whatever it holds next is unchecked again.
         lastChecked = cloned ? captureFields() : {};

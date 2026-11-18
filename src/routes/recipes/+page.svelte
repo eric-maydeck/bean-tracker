@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
+  import { stay } from '#lib/stay.ts';
   import { page } from '$app/state';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { recipePreview, recipesPreview } from '#lib/linkPreview.ts';
@@ -153,7 +154,7 @@
             <div class="text-muted">
               {n(h.count, 'brew', 'brews')}{#if h.matchedBy.length} · Now matched by {h.matchedBy.length === 1 ? h.matchedBy[0].name : h.matchedBy.map((m: { name: string; count: number }) => `${m.name} (${m.count})`).join(', ')}{/if}
             </div>
-            <form method="POST" action="?/undismiss" use:enhance data-button-row class="row-actions">
+            <form method="POST" action="?/undismiss" use:enhance={stay} data-button-row class="row-actions">
               <input type="hidden" name="key" value={h.key} />
               <button class="button button-secondary" type="submit">Show again</button>
             </form>
@@ -199,7 +200,7 @@
               <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} drippers={data.drippers} locked={data.locked} error={formError} focusId={data.focusId} ondone={closeEditor} />
             {/if}
             {#if deleting === r.recipe.id}
-              <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ result, update }) => { deleting = null; const to = recipeFollow(result, data.focusId); if (to) await goto(to, { refreshAll: true }); else await update(); }} class="panel">
+              <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ result, update }) => { deleting = null; const to = recipeFollow(result, data.focusId); if (to) await goto(to, { refreshAll: true }); else await update({ navigate: false }); }} class="panel">
                 <p>Delete {r.recipe.name}? Its brews stay; they just lose the label.</p>
                 <input type="hidden" name="id" value={r.recipe.id} />
                 <div class="row-actions" data-button-row>
@@ -248,7 +249,7 @@
               <button class="button" type="button" onclick={() => (naming = g.key)}>Name &amp; save</button>
               <a class="button button-secondary" href={brewsHref({ key: g.key })} data-sveltekit-reset="false">See brews</a>
               <button class="button button-secondary" type="button" onclick={() => (editing = 's' + g.key)}>Edit</button>
-              <form method="POST" action="?/dismiss" use:enhance class="inline">
+              <form method="POST" action="?/dismiss" use:enhance={stay} class="inline">
                 <input type="hidden" name="key" value={g.key} />
                 <button class="button button-ghost" type="submit">Not a recipe</button>
               </form>
@@ -265,7 +266,7 @@
                   if (result.type === 'success') naming = null;
                   const to = recipeFollow(result, data.focusId);
                   if (to) { await goto(to, { refreshAll: true }); return; }
-                  await update();
+                  await update({ navigate: false });
                 }}
               >
                 <input type="hidden" name="definition" value={JSON.stringify(g.draft)} />
@@ -298,7 +299,7 @@
   <section class="chart-panel">
     <h2>Words in your notes</h2>
     <p class="text-muted">A brew whose note contains one of these as a word gets that agitation, unless its recipe sets one.</p>
-    <form method="POST" action="?/saveNoteWords" use:enhance={() => async ({ result, update }) => { await update({ reset: false }); if (result.type === 'success') resetWords(); }} class="panel">
+    <form method="POST" action="?/saveNoteWords" use:enhance={() => async ({ result, update }) => { await update({ reset: false, navigate: false }); if (result.type === 'success') resetWords(); }} class="panel">
       {#if words.length}
         {#each words as w, i (i)}
           <div class="word-row">

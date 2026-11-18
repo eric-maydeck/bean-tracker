@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { stay } from '#lib/stay.ts';
   import { page } from '$app/state';
   let { form } = $props();
 </script>
@@ -14,7 +15,7 @@
   <p class="badge badge-urgent">{form.error}</p>
 {/if}
 
-<form method="POST" action="?/login" use:enhance>
+<form method="POST" action="?/login" use:enhance={stay}>
   <input type="hidden" name="redirectTo" value={page.url.searchParams.get('redirectTo') ?? ''} />
   <div class="form-field">
     <label for="password">Password</label>

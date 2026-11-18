@@ -159,7 +159,7 @@
     if (result.type === 'success') ondone();
     const to = recipeFollow(result, focusId);
     if (to) { await goto(to, { refreshAll: true, reset: false }); return; } // reset: false: a goto resets to the page top; the closed editor already put its card there
-    await update({ reset: false });
+    await update({ reset: false, navigate: false });
   };
   }}
 >
