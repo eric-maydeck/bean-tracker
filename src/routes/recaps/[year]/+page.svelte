@@ -2,6 +2,7 @@
   import { mirrorUrl } from '#lib/urlState.ts';
   import { onMount } from 'svelte';
   import { afterNavigate } from '$app/navigation';
+  import { page } from '$app/state';
   import { POSTER_ID, recapHref } from '#lib/recapsUrl.ts';
   import type { Slide as SlideT } from '#lib/server/recaps/types.ts';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
@@ -49,7 +50,7 @@
       const q = new URLSearchParams(location.search);
       q.delete('slide');
       const qs = q.size ? `?${q}` : '';
-      mirrorUrl(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`);
+      if (location.pathname === page.url.pathname) mirrorUrl(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`);
     }), { root: reel, rootMargin: '-50% 0px -50% 0px' });
     for (const s of reel.children) io.observe(s);
     return () => io.disconnect();

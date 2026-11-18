@@ -11,7 +11,7 @@ vi.mock('$app/state', () => ({ page: { state: {} }, navigating }));
 import { refreshTracked, writeUrlParams } from './urlState.ts';
 
 function at(search: string, hash = '') {
-  vi.stubGlobal('location', { pathname: '/coffees', search, hash });
+  vi.stubGlobal('location', { pathname: '/coffees', search, hash, href: `http://x/coffees${search}${hash}` });
 }
 
 describe('writeUrlParams', () => {
@@ -66,14 +66,40 @@ describe('writeUrlParams', () => {
     expect(goto.mock.calls[0][0]).toBe('/coffees?q=ab');
   });
 
-  it('drops a deferred write once the page has changed', async () => {
+  it('drops a deferred write once another page has landed', async () => {
     let done!: () => void;
     navigating.to = {};
     navigating.complete = new Promise<void>((r) => (done = r));
     writeUrlParams(new URLSearchParams({ q: 'a' }));
-    vi.stubGlobal('location', { pathname: '/stats', search: '', hash: '' });
+    vi.stubGlobal('location', { pathname: '/stats', search: '', hash: '', href: 'http://x/stats' });
     navigating.to = navigating.complete = null;
     done();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(goto).not.toHaveBeenCalled();
+  });
+
+  it('drops a deferred write when a navigation lands on the same path with another query', async () => {
+    let done!: () => void;
+    at('?tab=spend');
+    navigating.to = {};
+    navigating.complete = new Promise<void>((r) => (done = r));
+    writeUrlParams(new URLSearchParams({ tab: 'spend', low: 'x' }));
+    at('?tab=records');
+    navigating.to = navigating.complete = null;
+    done();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(goto).not.toHaveBeenCalled();
+  });
+
+  it('a write back to the address bar clears a queued one', async () => {
+    let finish!: () => void;
+    at('?q=a');
+    refreshAll.mockReturnValueOnce(new Promise<void>((r) => (finish = r)));
+    const refreshing = refreshTracked();
+    writeUrlParams(new URLSearchParams({ q: 'a', on: '1' }));
+    writeUrlParams(new URLSearchParams({ q: 'a' }));
+    finish();
+    await refreshing;
     await new Promise((r) => setTimeout(r, 5));
     expect(goto).not.toHaveBeenCalled();
   });

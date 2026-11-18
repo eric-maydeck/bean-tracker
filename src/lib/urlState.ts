@@ -4,7 +4,7 @@ import { navigating, page } from '$app/state';
 // Kit 3's shallow goto takes the navigation and invalidation tokens: it would drop a pending link tap, Back or
 // refreshAll (Kit 2's replaceState did neither). So a mirror write waits for both, keeping only the latest.
 let refreshing = 0;
-let queued: { next: string; path: string } | null = null;
+let queued: { next: string; href: string } | null = null;
 
 // refreshAll, tracked so a mirror write waits for it. Pages that mirror their state call this, not Kit's.
 export async function refreshTracked(): Promise<void> {
@@ -15,13 +15,14 @@ export async function refreshTracked(): Promise<void> {
 function flush() {
   const q = queued;
   queued = null;
-  if (q && q.path === location.pathname) mirrorUrl(q.next); // another page by now: the write no longer applies
+  if (q && q.href === location.href) mirrorUrl(q.next); // a navigation landed meanwhile: the write no longer applies
 }
 
 // Replace the address bar with `next` (no navigation, no history entry), once nothing else is pending.
 export function mirrorUrl(next: string): void {
+  if (new URL(next, location.href).href === location.href) { queued = null; return; } // already there; also drops a stale queued write
   if (refreshing || navigating.to) {
-    queued = { next, path: location.pathname };
+    queued = { next, href: location.href };
     navigating.complete?.catch(() => {}).then(() => setTimeout(flush));
     return;
   }
@@ -41,6 +42,5 @@ export function writeUrlParams(params: URLSearchParams, carryAbout = true): void
   if (about) (params = new URLSearchParams(params)).set('about', about);
   const qs = params.toString();
   const next = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
-  if (next === `${location.pathname}${location.search}${location.hash}`) return;
   mirrorUrl(next);
 }
