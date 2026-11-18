@@ -63,13 +63,13 @@
   // Undo for the add/clone prompt: delete the new coffee (only when its id came back).
   let addedId = $state<number | null>(null);
   const undoAdded = $derived(addedId ? async () => {
-      try {
-        await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
-        await refreshAll();
-        showToast('Undone.');
+    try {
+      await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
+      await refreshAll();
+      showToast('Undone.');
     } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not undo that.');
-      }
+      showToast(e instanceof Error ? e.message : 'Could not undo that.');
+    }
   } : undefined);
 
   // Add and Clone both stay here and show the Open/Close popup.
@@ -115,10 +115,8 @@
   onMount(() => {
     if (bqImportRequested(page.url.searchParams)) void shareToBeanConqueror();
   });
-
   afterNavigate(({ shallow, type }) => {
     if (shallow && type === 'goto') return;
-
     const q = new URLSearchParams(location.search);
     const edit = editRequested(q), clone = cloneRequested(q);
     if (!edit && !clone) return;
@@ -194,7 +192,7 @@
     // validation error block the delete or running a pointless update
     // right before it.
     const isDeleting = pending.get(data.coffee.id)?.statusAction === 'delete';
-    if (canEdit && !isDeleting && formRef && !await formRef.applyPendingEdits()) return;
+    if (canEdit && !isDeleting && formRef && !(await formRef.applyPendingEdits())) return;
 
     saving = true;
     commitError = null;
@@ -209,7 +207,7 @@
         body: JSON.stringify({ changes })
       });
       if (!validateRes.ok) throw new Error('Validation request failed');
-      const { errors } = await validateRes.json() as { errors: { id: number; error: string }[] };
+      const { errors } = (await validateRes.json()) as { errors: { id: number; error: string }[] };
       if (errors.length > 0) {
         commitError = errors[0].error;
         saving = false;
@@ -273,7 +271,6 @@
 
   beforeNavigate(({ cancel, shallow, type }) => {
     if (shallow && type === 'goto') return;
-
     if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
       cancel();
     }
@@ -283,10 +280,8 @@
   // page we left returns with its scroll position and its URL state. Otherwise (direct link, reload, new tab) it stays a
   // plain link to /coffees. `from` is SvelteKit's navigation info: null on the first load, never document.referrer.
   let cameFromApp = $state(false);
-
   afterNavigate(({ from, shallow, type }) => {
     if (shallow && type === 'goto') return;
-
     cameFromApp = !!from;
   });
 
@@ -314,23 +309,11 @@
 <PreviewMeta preview={coffeePreview(data.coffee, detailImage)} />
 
 <div class="detail-actions">
-  <a
-    class="button button-ghost detail-back"
-    href="/coffees"
-    onclick={back}
-  >← Back</a>
-
-  <button
-    class="button button-secondary detail-import"
-    type="button"
-    onclick={shareToBeanConqueror}
-  >Import into Bean Conqueror</button>
-
-  <a
-    class="button button-secondary detail-brew"
-    href="/coffees/{data.coffee.slug}/brew"
-  >Brew now</a>
-
+  <a class="button button-ghost detail-back" href="/coffees" onclick={back}>&larr; Back</a>
+  <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
+    Import into Bean Conqueror
+  </button>
+  <a class="button button-secondary detail-brew" href="/coffees/{data.coffee.slug}/brew">Brew now</a>
   {#if data.isAdmin}
     <button class="button button-secondary detail-add" type="button" onclick={() => openModal({}, true)}>+ Add Coffee</button>
     <button class="button button-secondary detail-clone" type="button" onclick={() => openModal(clonePrefill(formCoffee))}>
@@ -338,11 +321,7 @@
     </button>
   {/if}
   {#if data.isAdmin && !editMode}
-    <button
-      class="button button-secondary detail-edit"
-      type="button"
-      onclick={() => editMode = true}
-    >Edit</button>
+    <button class="button button-secondary detail-edit" type="button" onclick={() => (editMode = true)}>Edit</button>
   {/if}
   <ShareButton />
 </div>
@@ -539,12 +518,8 @@
 
       <section class="detail-section timing" data-section="timing">
         <h2>Timing</h2>
-
-        <div
-          class="stat-grid timing-grid"
-          class:has-fave={data.favoriteGrind.length}
-          class:has-extra={data.coffee.frozen_start_date || data.coffee.frozen_end_date || data.coffee.opened_date || data.coffee.status === 'archive' && data.coffee.moved_date}
-        >
+        <div class="stat-grid timing-grid" class:has-fave={data.favoriteGrind.length}
+          class:has-extra={data.coffee.frozen_start_date || data.coffee.frozen_end_date || data.coffee.opened_date || (data.coffee.status === 'archive' && data.coffee.moved_date)}>
           <div class="stat">
             <span class="stat-label">Roast date</span>
             <span class="stat-value">{formatDate(data.coffee.roast_date ?? '—')}</span>
@@ -642,7 +617,7 @@
         restHistory={data.restHistory}
         subscriptions={data.subscriptions}
         formError={form?.error ?? null}
-        oncancel={() => clonePrefillData = null}
+        oncancel={() => (clonePrefillData = null)}
         onsuccess={cloneCreated}
       />
     </div>
@@ -702,7 +677,7 @@
     line-height: 1.25;
   }
 
-  [data-section="like"] .stat-grid {
+  [data-section='like'] .stat-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
   .like-none {

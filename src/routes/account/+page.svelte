@@ -23,15 +23,8 @@
         undo: async () => {
           const body = new FormData();
           body.set('value', v);
-
-          const res = await fetch(`?/${reverse}`, {
-            method: 'POST',
-            body,
-            headers: { 'x-sveltekit-action': 'true' }
-          });
-
-          const out = await res.json().catch(() => null) as { type?: string } | null;
-
+          const res = await fetch(`?/${reverse}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
+          const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
           await refreshAll();
         }
@@ -64,15 +57,8 @@
         undo: async () => {
           const body = new FormData();
           body.set('value', before);
-
-          const res = await fetch(`?/${SETTING_ACTION[name]}`, {
-            method: 'POST',
-            body,
-            headers: { 'x-sveltekit-action': 'true' }
-          });
-
-          const out = await res.json().catch(() => null) as { type?: string } | null;
-
+          const res = await fetch(`?/${SETTING_ACTION[name]}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
+          const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
           await refreshAll();
         }
@@ -117,15 +103,8 @@
         undo: async () => {
           const body = new FormData();
           body.set('householdSize', String(before));
-
-          const res = await fetch('?/updateHouseholdSize', {
-            method: 'POST',
-            body,
-            headers: { 'x-sveltekit-action': 'true' }
-          });
-
-          const out = await res.json().catch(() => null) as { type?: string } | null;
-
+          const res = await fetch('?/updateHouseholdSize', { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
+          const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
           await refreshAll();
         }
@@ -156,192 +135,192 @@
 <h1>Account</h1>
 
 <div class="acct">
-  <div>
-    <section data-row-scope class="chart-panel">
-      <h2>Bean Conqueror</h2>
+<div>
+<section data-row-scope class="chart-panel">
+  <h2>Bean Conqueror</h2>
 
-      <h3>Brew data (zip)</h3>
-      <p class="text-muted">Last updated: <Stamp iso={data.lastImportedAt} /></p>
-      <form
-        class="bq-upload"
-        method="POST"
-        action="?/importBeanConqueror"
-        enctype="multipart/form-data"
-        use:enhance={() => {
-          submitting = true;
-          return async ({ result, update }) => {
-            await update();
-            submitting = false;
-            // update() resets the form (and its file input) only on success; after an error the file is still there to retry.
-            if (result.type === 'success') picked = null;
-          };
-        }}
-      >
-        <div class="bq-pick">
-          <label class="button button-secondary bq-choose">
-            Choose export 
-            <!-- The server drops bodies over 20 MB (BODY_SIZE_LIMIT) with a bare error: stop them here.
+  <h3>Brew data (zip)</h3>
+  <p class="text-muted">Last updated: <Stamp iso={data.lastImportedAt} /></p>
+  <form
+    class="bq-upload"
+    method="POST"
+    action="?/importBeanConqueror"
+    enctype="multipart/form-data"
+    use:enhance={() => {
+      submitting = true;
+      return async ({ result, update }) => {
+        await update();
+        submitting = false;
+        // update() resets the form (and its file input) only on success; after an error the file is still there to retry.
+        if (result.type === 'success') picked = null;
+      };
+    }}
+  >
+    <div class="bq-pick">
+      <label class="button button-secondary bq-choose">
+        Choose export
+        <!-- The server drops bodies over 20 MB (BODY_SIZE_LIMIT) with a bare error: stop them here.
              Must match MAX_UPLOAD_BYTES in src/lib/server/beanConquerorJson.ts. -->
-            <input
-              class="sr-only"
-              type="file"
-              name="file"
-              accept=".zip"
-              required
-              onchange={(e) => {
-                const input = e.currentTarget;
-                const f = input.files?.[0] ?? null;
-                const big = (f?.size ?? 0) > 20 * 1024 * 1024;
+        <input
+          class="sr-only"
+          type="file"
+          name="file"
+          accept=".zip"
+          required
+          onchange={(e) => {
+            const input = e.currentTarget;
+            const f = input.files?.[0] ?? null;
+            const big = (f?.size ?? 0) > 20 * 1024 * 1024;
             input.setCustomValidity(big ? 'Over 20 MB: upload Beanconqueror.zip (the regular export, not the one with photos)' : '');
-                picked = f && !big ? f.name : null;
-                tooBig = big;
-              }}
-            />
-          </label>
+            picked = f && !big ? f.name : null;
+            tooBig = big;
+          }}
+        />
+      </label>
       <span class="bq-file" class:text-muted={!picked} use:labelTip={picked ?? undefined}>{picked ?? 'No file chosen'}</span>
-        </div>
+    </div>
     <button class="button bq-go" type="submit" disabled={!picked || submitting}>
-          <span class:bq-hide={submitting}>Import</span>
+      <span class:bq-hide={submitting}>Import</span>
       <span class="bq-busy" class:bq-hide={!submitting} aria-hidden={!submitting}>Importing…</span>
-        </button>
-      </form>
-      {#if tooBig}
-        <p class="badge badge-urgent">Over 20 MB: upload Beanconqueror.zip (the regular export, not the one with photos)</p>
-      {/if}
-      {#if form && 'importError' in form && form.importError}
-        <p class="badge badge-urgent"><CoffeeName text={form.importError} /></p>
-      {:else if summary}
-        <div class="bq-result" role="status">
+    </button>
+  </form>
+  {#if tooBig}
+    <p class="badge badge-urgent">Over 20 MB: upload Beanconqueror.zip (the regular export, not the one with photos)</p>
+  {/if}
+  {#if form && 'importError' in form && form.importError}
+    <p class="badge badge-urgent"><CoffeeName text={form.importError} /></p>
+  {:else if summary}
+    <div class="bq-result" role="status">
       {#if summary.headline}<p class="bq-nothing">{summary.headline}</p>{/if}
-          {#if summary.lines.length}
-            <ul>
+      {#if summary.lines.length}
+        <ul>
           {#each summary.lines as line (line)}<li>{line}</li>{/each}
-            </ul>
-          {/if}
-          <p class="bq-links">
-            <a class="button button-secondary" href="/stats">See your stats</a>
-            {#if form && 'changes' in form && form.changes && form.changes.untracked.total > 0}
-              <a class="button button-ghost" href="#not-tracked">Review untracked beans</a>
-            {/if}
-          </p>
-        </div>
+        </ul>
       {/if}
-      <p class="text-muted">
+      <p class="bq-links">
+        <a class="button button-secondary" href="/stats">See your stats</a>
+        {#if form && 'changes' in form && form.changes && form.changes.untracked.total > 0}
+          <a class="button button-ghost" href="#not-tracked">Review untracked beans</a>
+        {/if}
+      </p>
+    </div>
+  {/if}
+  <p class="text-muted">
     In Bean Conqueror: Settings → Export, then pick Beanconqueror.zip here. Do this before or after the flow upload;
     brews and flows join up either way.
-      </p>
+  </p>
 
-      <BeanTriage
-        unmatched={data.unmatchedBeans}
-        showAll={parseAccount(page.url.searchParams).untracked === 'all'}
-        linkable={data.linkableCoffees}
-        roastLevels={data.roastLevels}
-        roasters={data.roasters}
-        roasterImages={data.roasterImages}
-        origins={data.origins}
-        processingMethods={data.processingMethods}
-        restHistory={data.restHistory}
-        subscriptions={data.subscriptions}
-        formError={form && 'error' in form && form.error ? String(form.error) : null}
-      />
+  <BeanTriage
+    unmatched={data.unmatchedBeans}
+    showAll={parseAccount(page.url.searchParams).untracked === 'all'}
+    linkable={data.linkableCoffees}
+    roastLevels={data.roastLevels}
+    roasters={data.roasters}
+    roasterImages={data.roasterImages}
+    origins={data.origins}
+    processingMethods={data.processingMethods}
+    restHistory={data.restHistory}
+    subscriptions={data.subscriptions}
+    formError={form && 'error' in form && form.error ? String(form.error) : null}
+  />
 
-      <h3>Flow data (automatic upload)</h3>
-      <p>
+  <h3>Flow data (automatic upload)</h3>
+  <p>
     Flow data for {s.joined} of {s.brewsWithFlow} brews · last upload <Stamp iso={s.lastUploadAt} />{#if s.waiting > 0}<br />
       {s.waiting} {s.waiting === 1 ? 'brew' : 'brews'} not on the site yet: import the Bean Conqueror .zip above to
       add {s.waiting === 1 ? 'it and its coffee' : 'them and their coffees'}{/if}
-      </p>
-      <ol>
-        <li>In Bean Conqueror, open Settings → Visualizer.</li>
+  </p>
+  <ol>
+    <li>In Bean Conqueror, open Settings → Visualizer.</li>
     <li>Choose a custom server and enter the URL <code>{data.uploadUrl}</code>.</li>
     <li>Username: <code>{data.username}</code>. Password: your Bean Tracker sign-in password.</li>
-        <li>Turn on "Upload each brewing automatically".</li>
-        <li>Tap "Upload all brews" once to send your past brews.</li>
-      </ol>
-      <p class="text-muted">
+    <li>Turn on "Upload each brewing automatically".</li>
+    <li>Tap "Upload all brews" once to send your past brews.</li>
+  </ol>
+  <p class="text-muted">
     "Upload all" sends only brews Bean Conqueror hasn't uploaded before. If you tried another server first, those brews
     won't be sent again; edit and save a brew to resend it.
-      </p>
-      <p class="text-muted">If you change your sign-in password, update it in Bean Conqueror too.</p>
-    </section>
+  </p>
+  <p class="text-muted">If you change your sign-in password, update it in Bean Conqueror too.</p>
+</section>
 
-    <section data-row-scope class="chart-panel" id="household">
-      <h2>Household</h2>
-      <p class="text-muted">Per-person stats divide your totals by this number: an even split, since Bean Conqueror doesn't record who brewed.</p>
+<section data-row-scope class="chart-panel" id="household">
+  <h2>Household</h2>
+  <p class="text-muted">Per-person stats divide your totals by this number: an even split, since Bean Conqueror doesn't record who brewed.</p>
   <form class="bn-add" method="POST" action="?/updateHouseholdSize" use:enhance={saveHousehold}>
-        <label for="household-size">Household size</label>
+    <label for="household-size">Household size</label>
     <input id="household-size" name="householdSize" type="number" min="1" max="20" step="1" inputmode="numeric" value={data.householdSize} required />
-        <button class="button button-secondary" type="submit">Save</button>
-      </form>
+    <button class="button button-secondary" type="submit">Save</button>
+  </form>
   {#if householdError}<p class="badge badge-urgent" role="alert">{householdError}</p>{/if}
 </section>
 
-  </div>
-  <div>
-    <section data-row-scope class="chart-panel">
-      <h2>Recipes</h2>
-      <p>{data.recipes.saved} saved · {data.recipes.groups} found in your brews.</p>
-      <p><a class="button button-secondary" href="/recipes">Open recipes</a></p>
-    </section>
+</div>
+<div>
+<section data-row-scope class="chart-panel">
+  <h2>Recipes</h2>
+  <p>{data.recipes.saved} saved · {data.recipes.groups} found in your brews.</p>
+  <p><a class="button button-secondary" href="/recipes">Open recipes</a></p>
+</section>
 
-    <section data-row-scope class="chart-panel" id="brew-now">
-      <h2>Brew now</h2>
-      <p class="text-muted">The dose and ratio choices on each coffee's Brew now page, up to 6 of each.</p>
+<section data-row-scope class="chart-panel" id="brew-now">
+  <h2>Brew now</h2>
+  <p class="text-muted">The dose and ratio choices on each coffee's Brew now page, up to 6 of each.</p>
 
-      <h3>Doses (g)</h3>
-      <ul class="bn-list">
-        {#each data.doses as d (d)}
-          <li>
+  <h3>Doses (g)</h3>
+  <ul class="bn-list">
+    {#each data.doses as d (d)}
+      <li>
         <form method="POST" action="?/removeDose" use:enhance={toasting((v) => `Removed ${v}g.`, 'addDose')}>
-              <input type="hidden" name="value" value={d} />
-              <strong class="bn-dose">{d}g</strong>
-              <span class="bn-cells">
-                {#each data.ratios.ratios as r (r)}
+          <input type="hidden" name="value" value={d} />
+          <strong class="bn-dose">{d}g</strong>
+          <span class="bn-cells">
+            {#each data.ratios.ratios as r (r)}
               <span class="bn-cell"><span class="text-muted">1:{fmt(r)}</span><span>{Math.round(d * r)}g</span></span>
-                {/each}
-              </span>
+            {/each}
+          </span>
           <button class="button button-ghost button-icon" type="submit" aria-label="Remove {d}g" onclick={(e) => ask(e, `${d}g`)}><Icon name="x" /></button>
-            </form>
-          </li>
-        {/each}
-      </ul>
+        </form>
+      </li>
+    {/each}
+  </ul>
   <form class="bn-add" method="POST" action="?/addDose" use:enhance={toasting((v) => `Added ${v}g.`, 'removeDose')}>
     <input name="value" type="text" inputmode="decimal" aria-label="New dose in grams" placeholder="18" /><span>g</span>
-        <button class="button button-secondary" type="submit">Add</button>
-      </form>
+    <button class="button button-secondary" type="submit">Add</button>
+  </form>
   {#if form && 'listError' in form && form.list === 'doses'}<p class="badge badge-urgent" role="alert">{form.listError}</p>{/if}
 
-      <h3>Ratios</h3>
-      <ul class="bn-list">
-        {#each data.ratios.ratios as r (r)}
-          <li>
+  <h3>Ratios</h3>
+  <ul class="bn-list">
+    {#each data.ratios.ratios as r (r)}
+      <li>
         <form method="POST" action="?/removeRatio" use:enhance={toasting((v) => `Removed 1:${fmt(Number(v))}.`, 'addRatio')}>
-              <input type="hidden" name="value" value={r} />
-              <strong class="bn-dose">1:{fmt(r)}</strong>
+          <input type="hidden" name="value" value={r} />
+          <strong class="bn-dose">1:{fmt(r)}</strong>
           <button class="button button-ghost button-icon" type="submit" aria-label="Remove 1:{fmt(r)}" onclick={(e) => ask(e, `1:${fmt(r)}`)}><Icon name="x" /></button>
-            </form>
-          </li>
-        {/each}
-      </ul>
+        </form>
+      </li>
+    {/each}
+  </ul>
   <form class="bn-add" method="POST" action="?/addRatio" use:enhance={toasting((v) => `Added 1:${fmt(Number(v))}.`, 'removeRatio')}>
-        <span aria-hidden="true">1:</span>
+    <span aria-hidden="true">1:</span>
     <input name="value" type="text" inputmode="decimal" aria-label="New ratio, water per 1 of coffee" placeholder="16" />
-        <button class="button button-secondary" type="submit">Add</button>
-      </form>
+    <button class="button button-secondary" type="submit">Add</button>
+  </form>
   {#if form && 'listError' in form && form.list === 'ratios'}<p class="badge badge-urgent" role="alert">{form.listError}</p>{/if}
   {#if data.ratios.derived}<p class="text-muted">From your brews: your most common ratios over the last year. Editing the list makes it yours.</p>{/if}
-    </section>
-    <section data-row-scope class="chart-panel" id="time">
-      <h2>Time</h2>
-      {@render setting('brewingZone', 'Where day and hour lines are drawn in your stats', data.zones.map((z) => [z, z] as const))}
+</section>
+<section data-row-scope class="chart-panel" id="time">
+  <h2>Time</h2>
+  {@render setting('brewingZone', 'Where day and hour lines are drawn in your stats', data.zones.map((z) => [z, z] as const))}
   {@render setting('displayZone', 'How update and upload times are shown', [['browser', 'Browser time'], ...data.zones.map((z) => [z, z] as const)])}
-      {@render setting('dateFormat', 'How dates and times are written', FORMAT_OPTIONS)}
-    </section>
+  {@render setting('dateFormat', 'How dates and times are written', FORMAT_OPTIONS)}
+</section>
 <section data-row-scope class="chart-panel" id="stats-settings">
-      <h2>Stats</h2>
-      {@render setting('defaultCaffeine', 'What the Stats Caffeine filter shows when it is on Default', CAFFEINE_OPTIONS)}
-    </section>
-  </div>
+  <h2>Stats</h2>
+  {@render setting('defaultCaffeine', 'What the Stats Caffeine filter shows when it is on Default', CAFFEINE_OPTIONS)}
+</section>
+</div>
 </div>
 
 {#if pending}
@@ -352,17 +331,8 @@
         <label><input type="checkbox" bind:checked={dontAsk} /> Don't ask again</label>
       </div>
       <div class="action-buttons">
-        <button
-          class="button button-danger"
-          type="button"
-          onclick={confirmRemove}
-        >Remove</button>
-
-        <button
-          class="button button-secondary"
-          type="button"
-          onclick={() => pending = null}
-        >Cancel</button>
+        <button class="button button-danger" type="button" onclick={confirmRemove}>Remove</button>
+        <button class="button button-secondary" type="button" onclick={() => (pending = null)}>Cancel</button>
       </div>
     </div>
   </div>

@@ -42,7 +42,6 @@
 
   afterNavigate(({ shallow, type }) => {
     if (shallow && type === 'goto') return;
-
     const fromUrl = pickOne(currentParams(page.url), 'show', SHOW_VALUES);
     try {
       explicit = fromUrl ?? loadChoice(localStorage.getItem(STORAGE_KEY), SHOW_VALUES, Date.now());
@@ -87,27 +86,21 @@
   }
 </script>
 
-<svelte:head><title>Bean Tracker - On Deck</title></svelte:head>
+<svelte:head>
+  <title>Bean Tracker - On Deck</title>
+</svelte:head>
+<PreviewMeta preview={onDeckPreview(view, filter, view === 'open' ? current.open : current.nextUp)} />
 
-<PreviewMeta
-  preview={onDeckPreview(view, filter, view === 'open' ? current.open : current.nextUp)}
-/>
-
-<div class="toolbar"><h1>On Deck</h1> <ShareButton /></div>
+<div class="toolbar">
+  <h1>On Deck</h1>
+  <ShareButton />
+</div>
 
 <div class="search-row">
   <label class="form-field group-field">
     <span>View</span>
-
-    <select
-      class="ctl-select"
-      aria-label="View"
-      value={view}
-      onchange={(e) => explicitView = e.currentTarget.value === 'next' ? 'next' : undefined}
-    >
-      {#each VIEWS as v (v)}
-        <option value={v}>{VIEW_LABEL[v]}</option>
-      {/each}
+    <select class="ctl-select" aria-label="View" value={view} onchange={(e) => (explicitView = e.currentTarget.value === 'next' ? 'next' : undefined)}>
+      {#each VIEWS as v (v)}<option value={v}>{VIEW_LABEL[v]}</option>{/each}
     </select>
   </label>
   <div class="form-field group-field">
@@ -149,35 +142,35 @@
         {#each current.open as coffee (coffee.id)}
           {@const img = coffeeImage(coffee, '')}
           <div class="card-wrap">
-            <a class="card" href={`/coffees/${coffee.slug}`}>
-              {#if img}
+          <a class="card" href={`/coffees/${coffee.slug}`}>
+            {#if img}
               <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
-              {/if}
+            {/if}
             <h2><CoffeeName name={coffee.coffee_name} /></h2>
 
-              <p class="text-muted">{coffee.roaster}</p>
-              {#if coffee.amount_g != null && coffee.grams_left != null}
-                <p class="text-muted">{formatBag(coffee.amount_g, coffee.grams_left)}</p>
-              {/if}
-              <p class="text-muted">
+            <p class="text-muted">{coffee.roaster}</p>
+            {#if coffee.amount_g != null && coffee.grams_left != null}
+              <p class="text-muted">{formatBag(coffee.amount_g, coffee.grams_left)}</p>
+            {/if}
+            <p class="text-muted">
               Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
                 >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
               >
-              </p>
-              {#if coffee.processing}
-                <p class="text-muted">{coffee.processing}</p>
-              {/if}
-              {#if coffee.roast_date}
-                <p class="text-muted">
+            </p>
+            {#if coffee.processing}
+              <p class="text-muted">{coffee.processing}</p>
+            {/if}
+            {#if coffee.roast_date}
+              <p class="text-muted">
                 Roasted {formatDate(coffee.roast_date)}
                 {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
-                </p>
-              {/if}
-              {#if coffee.drink_before}
-                <p class="text-muted">Drink before {formatDate(coffee.drink_before)}</p>
-              {/if}
-            </a>
-            {@render tileActions(coffee)}
+              </p>
+            {/if}
+            {#if coffee.drink_before}
+              <p class="text-muted">Drink before {formatDate(coffee.drink_before)}</p>
+            {/if}
+          </a>
+          {@render tileActions(coffee)}
           </div>
         {/each}
       </section>
@@ -193,29 +186,29 @@
         {#each current.nextUp as coffee (coffee.id)}
           {@const img = coffeeImage(coffee, '')}
           <div class="card-wrap">
-            <a class="card" href={`/coffees/${coffee.slug}`}>
-              {#if img}
+          <a class="card" href={`/coffees/${coffee.slug}`}>
+            {#if img}
               <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
-              {/if}
+            {/if}
             <h2><CoffeeName name={coffee.coffee_name} /></h2>
 
-              <p class="text-muted">{coffee.roaster}</p>
-              <p class="text-muted">
+            <p class="text-muted">{coffee.roaster}</p>
+            <p class="text-muted">
               Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
                 >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
               >
-              </p>
-              {#if coffee.processing}
-                <p class="text-muted">{coffee.processing}</p>
-              {/if}
-              {#if coffee.roast_date}
-                <p class="text-muted">
+            </p>
+            {#if coffee.processing}
+              <p class="text-muted">{coffee.processing}</p>
+            {/if}
+            {#if coffee.roast_date}
+              <p class="text-muted">
                 Roasted {formatDate(coffee.roast_date)}
                 {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
-                </p>
-              {/if}
-            </a>
-            {@render tileActions(coffee)}
+              </p>
+            {/if}
+          </a>
+          {@render tileActions(coffee)}
           </div>
         {/each}
       </section>

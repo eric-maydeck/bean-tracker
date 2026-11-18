@@ -117,7 +117,7 @@
   // row the user opened it from, so it's clear where they were.
   snapshot<number | null>({
     id: 'coffees-expanded-row', // explicit: the default id comes from the call-site stack and changes every build
-    capture: () => view === 'compact' && !editMode && typeof expandedId === 'number' ? expandedId : null,
+    capture: () => (view === 'compact' && !editMode && typeof expandedId === 'number' ? expandedId : null),
     restore: (id) => {
       if (id != null) expandedId = id;
     }
@@ -148,7 +148,7 @@
     try {
       await refreshAll();
       refreshState = 'done';
-      refreshTimer = setTimeout(() => refreshState = 'idle', 1000);
+      refreshTimer = setTimeout(() => (refreshState = 'idle'), 1000);
     } catch {
       refreshState = 'idle';
     }
@@ -195,13 +195,13 @@
   // Undo for the add/clone prompt: delete the new coffee (only when its id came back).
   let addedId = $state<number | null>(null);
   const undoAdded = $derived(addedId ? async () => {
-      try {
-        await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
-        await refreshAll();
-        showToast('Undone.');
+    try {
+      await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
+      await refreshAll();
+      showToast('Undone.');
     } catch (e) {
-        showToast(e instanceof Error ? e.message : 'Could not undo that.');
-      }
+      showToast(e instanceof Error ? e.message : 'Could not undo that.');
+    }
   } : undefined);
   function added() {
     addedSlug = (form && 'slug' in form ? form.slug : null) ?? null;
@@ -230,8 +230,8 @@
     // right before it.
     // Copied: a successful apply stages via onstage, which closes that form.
     for (const id of [...openForms]) {
-      if (onlyId != null && id !== onlyId || pending.get(id)?.statusAction === 'delete') continue;
-      if (formRefs[id] && !await formRefs[id].applyPendingEdits()) return;
+      if ((onlyId != null && id !== onlyId) || pending.get(id)?.statusAction === 'delete') continue;
+      if (formRefs[id] && !(await formRefs[id].applyPendingEdits())) return;
     }
 
     saving = true;
@@ -252,7 +252,7 @@
         body: JSON.stringify({ changes })
       });
       if (!validateRes.ok) throw new Error('Validation request failed');
-      const { errors } = await validateRes.json() as { errors: { id: number; error: string }[] };
+      const { errors } = (await validateRes.json()) as { errors: { id: number; error: string }[] };
       if (errors.length > 0) {
         const newErrors = new Map<number, string>();
         for (const e of errors) newErrors.set(e.id, e.error);
@@ -354,7 +354,6 @@
 
   beforeNavigate(({ cancel, shallow, type }) => {
     if (shallow && type === 'goto') return;
-
     if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
       cancel();
       return;
@@ -381,7 +380,6 @@
   // remembered state, which the effect below then writes into the URL.
   afterNavigate(({ shallow, type }) => {
     if (shallow && type === 'goto') return;
-
     widthView = defaultViewForWidth(window.innerWidth);
     const fromUrl = withoutStalePlans(fromParams(currentParams(page.url), knownValues()), data.plans);
     try {
@@ -535,17 +533,10 @@
   let visibleTotalGrams = $derived(sortedCoffees.reduce((sum, c) => sum + (c.amount_g ?? 0), 0));
 </script>
 
-<svelte:head><title>Bean Tracker - Coffees</title></svelte:head>
-
-<PreviewMeta
-  preview={coffeesPreview({
-    count: sortedCoffees.length,
-    grams: visibleTotalGrams,
-    status: lit,
-    query,
-    chips: explicit.filters.map((f) => previewChip(f, data.plans))
-  })}
-/>
+<svelte:head>
+  <title>Bean Tracker - Coffees</title>
+</svelte:head>
+<PreviewMeta preview={coffeesPreview({ count: sortedCoffees.length, grams: visibleTotalGrams, status: lit, query, chips: explicit.filters.map((f) => previewChip(f, data.plans)) })} />
 
 {#snippet brewButton(coffee: CoffeeRow)}
   {#if coffee.status === 'backlog' && data.isAdmin}
@@ -575,14 +566,8 @@
       editMode = true;
       editIds.add(coffee.id);
       openForms.add(coffee.id);
-    }}
+    }}>{#if icons}<Icon name="edit" />{:else}Edit{/if}</button
   >
-    {#if icons}
-      <Icon name="edit" />
-    {:else}
-      Edit
-    {/if}
-  </button>
 {/snippet}
 
 {#snippet adminActions(coffee: CoffeeRow, icons = false)}
@@ -596,22 +581,9 @@
           {#if icons}<Icon name="save" />{:else}{saving ? 'Saving…' : 'Save'}{/if}
         </button>
       {/if}
-
-      <button
-        class="button button-secondary"
-        class:button-icon={icons}
-        class:button-danger={icons && showCancel(coffee.id)}
-        type="button"
-        disabled={saving}
-        onclick={() => soloEdit(coffee.id) ? discardRow(coffee.id) : toggleEdit(coffee.id)}
-        use:labelTip={icons ? showCancel(coffee.id) ? 'Cancel' : 'Edit' : undefined}
-        aria-label={icons ? showCancel(coffee.id) ? 'Cancel' : 'Edit' : undefined}
-      >
-        {#if icons}
-          <Icon name={showCancel(coffee.id) ? 'cancel' : 'edit'} />
-        {:else}
-          {showCancel(coffee.id) ? 'Cancel' : 'Edit'}
-        {/if}
+      <button class="button button-secondary" class:button-icon={icons} class:button-danger={icons && showCancel(coffee.id)} type="button" disabled={saving} onclick={() => (soloEdit(coffee.id) ? discardRow(coffee.id) : toggleEdit(coffee.id))}
+        use:labelTip={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined} aria-label={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined}>
+        {#if icons}<Icon name={showCancel(coffee.id) ? 'cancel' : 'edit'} />{:else}{showCancel(coffee.id) ? 'Cancel' : 'Edit'}{/if}
       </button>
       {#if coffee.status !== 'archive'}
         <button
@@ -772,11 +744,11 @@
 <AddedToast bind:slug={addedSlug} undo={undoAdded} />
 
 <CollapsibleBar>
-  {#snippet children()}
-    <div class="toolbar coffees-toolbar">
-      <div class="form-field group-field show-field">
-        <span>Show</span>
-        <div class="tab-group" role="group" aria-label="Show">
+{#snippet children()}
+<div class="toolbar coffees-toolbar">
+  <div class="form-field group-field show-field">
+    <span>Show</span>
+    <div class="tab-group" role="group" aria-label="Show">
       <button aria-pressed={lit.includes('backlog')} onclick={() => tapStatus('backlog')}>
         Backlog ({data.backlog.length})
       </button>
@@ -787,55 +759,55 @@
         Archive ({data.archive.length})
       </button>
       <button aria-pressed={lit[0] === 'all'} onclick={() => tapStatus('all')}>All</button>
-        </div>
-      </div>
+    </div>
+  </div>
 
-      <div class="form-field group-field view-field">
-        <span>View</span>
-        <div class="tab-group" role="group" aria-label="View">
+  <div class="form-field group-field view-field">
+    <span>View</span>
+    <div class="tab-group" role="group" aria-label="View">
       <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
       <button aria-pressed={view === 'list'} onclick={() => setView('list')}>List</button>
       <button aria-pressed={view === 'cards'} onclick={() => setView('cards')}>Cards</button>
-        </div>
-      </div>
-
-      <!-- Phones: Sort by sits right of View; desktop shows it in the Add Coffee row below. -->
-      {@render sortControl('toolbar')}
     </div>
+  </div>
+
+  <!-- Phones: Sort by sits right of View; desktop shows it in the Add Coffee row below. -->
+  {@render sortControl('toolbar')}
+</div>
 
 <div class="search-row coffees-search-row" class:editing={editAll}>
   <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={explicit.query} />
   <FilterBar bind:filters={explicit.filters} coffees={source} plans={data.plans} />
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
   <button class="button button-secondary" type="button" onclick={reset}>Reset</button>
-      {#if data.isAdmin}
-        {#if editAll}
+  {#if data.isAdmin}
+    {#if editAll}
       <button class="button button-success button-solid" type="button" aria-label="Save changes" disabled={saving} onclick={() => saveChanges()}>
         {#if saving}Saving…{:else}Save <span class="more">changes</span>{/if}
-          </button>
+      </button>
       <button class="button button-danger" type="button" disabled={saving} aria-label="Discard changes" onclick={discardChanges}>
         Discard <span class="more">changes</span>
       </button>
-        {:else}
+    {:else}
       <button class="button button-secondary" type="button" onclick={enterEditMode}>Edit</button>
-        {/if}
-      {/if}
-      <ShareButton />
-      {#if commitErrors.get(-1)}
-        <p class="badge badge-urgent">{commitErrors.get(-1)}</p>
-      {/if}
-    </div>
+    {/if}
+  {/if}
+  <ShareButton />
+  {#if commitErrors.get(-1)}
+    <p class="badge badge-urgent">{commitErrors.get(-1)}</p>
+  {/if}
+</div>
 
-    <div class="search-row add-sort-row">
-      <span class="text-muted results">
-        {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {formatGrams(visibleTotalGrams)}
-      </span>
-      {#if data.isAdmin && expandedId !== 'new'}
+<div class="search-row add-sort-row">
+  <span class="text-muted results">
+    {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {formatGrams(visibleTotalGrams)}
+  </span>
+  {#if data.isAdmin && expandedId !== 'new'}
     <button class="button add-coffee-button" type="button" onclick={openAdd}>+ Add Coffee</button>
-      {/if}
-      {@render sortControl('row')}
-    </div>
-  {/snippet}
+  {/if}
+  {@render sortControl('row')}
+</div>
+{/snippet}
 
 {#snippet summary()}
   {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {SORT_LABELS[sortKey]} {sortDir === 'asc' ? '↑' : '↓'}
@@ -942,47 +914,47 @@
       {:else}
         {@const img = coffeeImage(coffee, '')}
         <div class="card-wrap">
-          <a class="card" href={`/coffees/${coffee.slug}`}>
-            {#if img}
+        <a class="card" href={`/coffees/${coffee.slug}`}>
+          {#if img}
             <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
-            {/if}
-            <h2><CoffeeName name={coffee.coffee_name} /></h2>
-            <p class="text-muted">{coffee.roaster}</p>
-            <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
-            <p class="roast-row">
-              <RoastBeans degrees={degreesFor(coffee.roast_level)} />
-              <span class="text-muted">{coffee.roast_level ?? 'Roast level unknown'}</span>
-            </p>
-            {#if coffee.processing}
-              <p class="text-muted">{coffee.processing}</p>
-            {/if}
-            <p class="text-muted">
+          {/if}
+          <h2><CoffeeName name={coffee.coffee_name} /></h2>
+          <p class="text-muted">{coffee.roaster}</p>
+          <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
+          <p class="roast-row">
+            <RoastBeans degrees={degreesFor(coffee.roast_level)} />
+            <span class="text-muted">{coffee.roast_level ?? 'Roast level unknown'}</span>
+          </p>
+          {#if coffee.processing}
+            <p class="text-muted">{coffee.processing}</p>
+          {/if}
+          <p class="text-muted">
             {coffee.cost_per_gram != null ? `${usd(coffee.cost_per_gram)}/g` : 'Cost unknown'}
             {coffee.amount_g != null ? ` · ${formatBag(coffee.amount_g, coffee.grams_left)}` : ''}
-            </p>
-            {#if coffee.roast_date}
-              <p class="text-muted">
+          </p>
+          {#if coffee.roast_date}
+            <p class="text-muted">
               Roasted {formatDate(coffee.roast_date)}
               {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
-              </p>
-            {/if}
-            {#if coffee.drink_after && coffee.drink_before}
-              <p class="text-muted">Rest window: {formatDate(coffee.drink_after)} – {formatDate(coffee.drink_before)}</p>
-            {/if}
-            {#if coffee.status === 'archive'}
-              <span class="badge badge-fresh">Archive</span>
-            {:else if coffee.status === 'open'}
-              <span class="badge badge-warm">Open</span>
-            {:else}
-              <span class="badge badge-neutral">Backlog</span>
-            {/if}
-            {#if coffee.decaf}
-              <span class="badge badge-decaf">Decaf</span>
-            {/if}
-            {#if isFrozen(coffee)}
-              <span class="badge badge-frozen">Frozen</span>
-            {/if}
-          </a>
+            </p>
+          {/if}
+          {#if coffee.drink_after && coffee.drink_before}
+            <p class="text-muted">Rest window: {formatDate(coffee.drink_after)} – {formatDate(coffee.drink_before)}</p>
+          {/if}
+          {#if coffee.status === 'archive'}
+            <span class="badge badge-fresh">Archive</span>
+          {:else if coffee.status === 'open'}
+            <span class="badge badge-warm">Open</span>
+          {:else}
+            <span class="badge badge-neutral">Backlog</span>
+          {/if}
+          {#if coffee.decaf}
+            <span class="badge badge-decaf">Decaf</span>
+          {/if}
+          {#if isFrozen(coffee)}
+            <span class="badge badge-frozen">Frozen</span>
+          {/if}
+        </a>
         {#if coffee.status === 'open'}<a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>{/if}
         </div>
       {/if}
@@ -1018,7 +990,7 @@
             type="button"
             class="compact-row"
             aria-expanded={expandedId === coffee.id}
-            onclick={() => expandedId = expandedId === coffee.id ? null : coffee.id}
+            onclick={() => (expandedId = expandedId === coffee.id ? null : coffee.id)}
           >
             <span class="compact-row-main">
               <span class="compact-row-title">
@@ -1037,16 +1009,8 @@
           {#if expandedId === coffee.id}
             <div class="compact-row-detail">
               <div class="compact-detail-grid">
-                <div>
-                  <span class="eyebrow">Roast</span>
-                  {coffee.roast_level ?? '—'}
-                </div>
-
-                <div>
-                  <span class="eyebrow">Processing</span>
-                  {coffee.processing ?? '—'}
-                </div>
-
+                <div><span class="eyebrow">Roast</span>{coffee.roast_level ?? '—'}</div>
+                <div><span class="eyebrow">Processing</span>{coffee.processing ?? '—'}</div>
                 <div>
                   <span class="eyebrow">Cost/g · amount</span>
                   {#if coffee.cost_per_gram != null}<Usd n={coffee.cost_per_gram} suffix="/g" />{:else}—{/if}{#if coffee.amount_g != null}
@@ -1111,120 +1075,107 @@
       <thead>
         <tr>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('roaster')}
-            >
-              Roaster 
-              <span class="sort-indicator">{sortKey === 'roaster' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('roaster')}>
+              Roaster
+              <span class="sort-indicator"
+                >{sortKey === 'roaster' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('coffee_name')}
-            >
-              Coffee 
-              <span class="sort-indicator">{sortKey === 'coffee_name' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('coffee_name')}>
+              Coffee
+              <span class="sort-indicator"
+                >{sortKey === 'coffee_name' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('origin')}
-            >
-              Origin 
-              <span class="sort-indicator">{sortKey === 'origin' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('origin')}>
+              Origin
+              <span class="sort-indicator"
+                >{sortKey === 'origin' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('roast_level')}
-            >
-              Roast 
-              <span class="sort-indicator">{sortKey === 'roast_level' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('roast_level')}>
+              Roast
+              <span class="sort-indicator"
+                >{sortKey === 'roast_level' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('decaf')}
-            >
-              Decaf 
-              <span class="sort-indicator">{sortKey === 'decaf' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('decaf')}>
+              Decaf
+              <span class="sort-indicator"
+                >{sortKey === 'decaf' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('processing')}
-            >
-              Processing 
-              <span class="sort-indicator">{sortKey === 'processing' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('processing')}>
+              Processing
+              <span class="sort-indicator"
+                >{sortKey === 'processing' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('cost_per_gram')}
-            >
-              Cost/g 
-              <span class="sort-indicator">{sortKey === 'cost_per_gram' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('cost_per_gram')}>
+              Cost/g
+              <span class="sort-indicator"
+                >{sortKey === 'cost_per_gram' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('amount_g')}
-            >
-              Amount 
-              <span class="sort-indicator">{sortKey === 'amount_g' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('amount_g')}>
+              Amount
+              <span class="sort-indicator"
+                >{sortKey === 'amount_g' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('roast_date')}
-            >
-              Roasted 
-              <span class="sort-indicator">{sortKey === 'roast_date' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('roast_date')}>
+              Roasted
+              <span class="sort-indicator"
+                >{sortKey === 'roast_date' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('frozen_start_date')}
-            >
-              Frozen 
-              <span class="sort-indicator">{sortKey === 'frozen_start_date' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('frozen_start_date')}>
+              Frozen
+              <span class="sort-indicator"
+                >{sortKey === 'frozen_start_date' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('frozen_end_date')}
-            >
-              Unfrozen 
-              <span class="sort-indicator">{sortKey === 'frozen_end_date' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('frozen_end_date')}>
+              Unfrozen
+              <span class="sort-indicator"
+                >{sortKey === 'frozen_end_date' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('rest_window')}
-            >
-              Rest window 
-              <span class="sort-indicator">{sortKey === 'rest_window' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('rest_window')}>
+              Rest window
+              <span class="sort-indicator"
+                >{sortKey === 'rest_window' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <th>
-            <button
-              class="sort-button"
-              onclick={() => toggleSort('urgency')}
-            >
-              Urgency 
-              <span class="sort-indicator">{sortKey === 'urgency' ? sortDir === 'asc' ? '▲' : '▼' : ''}</span>
+            <button class="sort-button" onclick={() => toggleSort('urgency')}>
+              Urgency
+              <span class="sort-indicator"
+                >{sortKey === 'urgency' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
             </button>
           </th>
           <!-- Signed out the column holds only Brew now, so it skips the admin width (col-actions). -->

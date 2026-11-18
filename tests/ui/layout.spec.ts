@@ -7102,7 +7102,8 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
       await page.waitForTimeout(300);
-      expect(requests.filter((u) => /__data\.json/.test(u))).toEqual([]);
+      // Only this page's data: kit 3 preloads the /coffees link the scrolled-in row ends up under the pointer.
+      expect(requests.filter((u) => /\/stats\/__data\.json/.test(u))).toEqual([]);
       expect(await href('leaderboard-roasters')).toContain('chart=leaderboard-roasters');
       // A reload, and a load with no hash (Share and short links drop it), land the heading under the bar.
       const url = page.url();
