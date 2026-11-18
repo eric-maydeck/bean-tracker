@@ -108,11 +108,11 @@
     {@const r = result}
     {#if r.status === 'ok'}
       <p class="text-muted fill-note">
-        Roaster: <strong>{r.roaster}</strong> ·
+        <strong class="search-label">Roaster:</strong> <span class="search-value">{r.roaster}</span> ·
         <button type="button" class="suggest-change" onclick={() => { roasterEditing = true; termEditing = false; roasterInput = r.roaster; }}>change</button>
       </p>
       <p class="text-muted fill-note">
-        Coffee: <strong>{typedTerm || 'any'}</strong> ·
+        <strong class="search-label">Coffee:</strong> <span class="search-value">{typedTerm || 'any'}</span> ·
         <button type="button" class="suggest-change" onclick={() => { termEditing = true; roasterEditing = false; termInput = typedTerm; }}>change</button>
       </p>
       {#if r.fallback}
@@ -186,6 +186,13 @@
 </SuggestSheet>
 
 <style>
+  /* The search lines: bold label, full-strength value on the muted line; "change" stays the accent link. */
+  .search-label {
+    color: var(--color-label);
+  }
+  .search-value {
+    color: var(--color-text);
+  }
   /* Badges over the image's top-left corner: Closest first, Sold out under it. */
   .suggest-image :global(.badge-sold) {
     top: calc(var(--space-1) + 1.5rem);
