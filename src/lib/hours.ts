@@ -10,3 +10,13 @@ export function clock12(min: number): string {
   const m = Math.round(min) % 1440;
   return hour12(Math.floor(m / 60)).replace(' ', `:${String(m % 60).padStart(2, '0')} `);
 }
+
+// A span of days: "12 days", "1 day"; a year or more in years ("1.4 years", "23 years"),
+// since thousands of days don't fit a phone tile (a slow coffee's time to clear).
+export function formatDays(n: number): string {
+  const d = Math.round(n);
+  if (d < 365) return `${d.toLocaleString('en-US')} ${d === 1 ? 'day' : 'days'}`;
+  const y = n / 365;
+  const t = y < 10 ? String(+y.toFixed(1)) : Math.round(y).toLocaleString('en-US');
+  return `${t} ${t === '1' ? 'year' : 'years'}`;
+}

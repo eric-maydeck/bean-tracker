@@ -2,6 +2,7 @@ import { usd } from '#lib/money.ts';
 import { MON, type BrewFilters, type Ratings, type Theme } from '#lib/insightsUrl.ts';
 import { likeGap as gapText } from '#lib/components/deltaColor.ts'; // like gaps read the same as on Leaderboards ("−0.1")
 import { formatGrams } from '#lib/grams.ts';
+import { formatDays } from '#lib/hours.ts';
 import type { WhatIf } from '#lib/insightsWhatIf.ts';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { bagSizes, countsForRating, fullBags } from './ratings';
@@ -387,8 +388,8 @@ const backlogRunway: Generator = (c) => {
   const bought = c.bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, p)).reduce((s, b) => s + (b.amountG ?? 0), 0);
   const held = c.bags.filter((b) => b.status !== 'archive').map((b) => ({ b, g: remaining(b, c.logged) })).filter((x) => x.g > 0);
   return {
-    key: 'backlogRunway', whole: true, theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${daysToClear} days`,
-    value: `${daysToClear} days`,
+    key: 'backlogRunway', whole: true, theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${formatDays(daysToClear)}`,
+    value: formatDays(daysToClear),
     body: `At ${Math.round(perDay)}g a day. Bought ${formatGrams(bought)}, brewed ${formatGrams(brewed)}.`,
     sample: `${days} days`, href: '/stats?tab=consumption', z: null, strength: null,
     ...details(
