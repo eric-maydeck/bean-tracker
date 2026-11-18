@@ -6727,7 +6727,9 @@ export const STATES: State[] = [
         const wraps = await tip.evaluate((e) => [...e.querySelectorAll('.tip-rows dd')].filter((dd) => dd.getBoundingClientRect().height > (dd.previousElementSibling as Element).getBoundingClientRect().height + 2).map((dd) => dd.textContent));
         if (page.viewportSize()!.width >= 1280) expect(wraps).toEqual([]);
         expect(await tip.locator('.tip-group').count()).toBeGreaterThanOrEqual(2);
-        expect(await tip.locator('.tip-group + .tip-rows').count()).toBe(await tip.locator('.tip-group').count());
+        expect(await tip.locator('.tip-group').first().evaluate((e) => getComputedStyle(e).textTransform)).toBe('uppercase');
+        // A note comes under its own Notes header; no note, no header.
+        expect(await tip.locator('.tip-group', { hasText: 'Notes' }).count()).toBe(await tip.locator('.tip-note').count());
         await page.mouse.move(0, 0);
         if (touch()) await page.mouse.click(5, 5);
         await expect(tip).toHaveCount(0);

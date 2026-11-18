@@ -31,7 +31,7 @@ describe('recent tips', () => {
     expect(r.roaster).toBe('Onyx');
     expect(rows(r.tip)).toMatchObject({
       Roaster: 'Onyx', 'Age off roast': '12 days', 'Water temp': '91°C', Grinder: 'Fellow Ode', 'Grind setting': '5.2', 'Grinder RPM': '1100', Dripper: 'V60',
-      Filter: 'Cafec', Coffee: '18g', Water: '300g', Ratio: '1:16.7', 'Brew time': '3:05', Brew: '3 of 3', Rank: '2nd best of 3', Recipe: 'Hoffmann (modified)'
+      Filter: 'Cafec', 'Coffee dose': '18g', Water: '300g', Ratio: '1:16.7', 'Brew time': '3:05', Brew: '3 of 3', Rank: '2nd best of 3', Recipe: 'Hoffmann (modified)'
     });
   });
   it('groups the rows under titles and leaves out an empty group', () => {
@@ -61,6 +61,7 @@ describe('recent tips', () => {
       'Age at first brew': '5 days', 'Age when finished': '12 days', 'Best brew': '9.0 on 2026-09-02', 'Coffee rating': '8.5', 'Average brew': '8.0',
       'Average once dialed in': '8.5', Drippers: 'V60'
     });
+    expect(t.groups!.map((g) => g.title)).toEqual(['Coffee', 'Usage', 'Ratings']);
     expect(t.note).toBe('good');
   });
 });

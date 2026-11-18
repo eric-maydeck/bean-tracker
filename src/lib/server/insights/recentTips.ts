@@ -80,7 +80,7 @@ export function brewTip(b: BrewFact, name: string | null, bag: BagFact | undefin
       ]],
       ['Recipe', [
         row('Recipe', x?.recipe),
-        b.dose ? ['Coffee', g1(b.dose)] : null,
+        b.dose ? ['Coffee dose', g1(b.dose)] : null,
         b.waterG ? ['Water', g1(b.waterG)] : null,
         b.ratio ? ['Ratio', `1:${r1(b.ratio)}`] : null,
         b.tempC !== null ? ['Water temp', `${+b.tempC.toFixed(1)}°C`] : null,
@@ -109,17 +109,17 @@ export function bagTip(g: BagFact, ctx: RecentCtx, x: { farm?: string; notes?: s
     wide: true,
     title: g.name,
     groups: groups(
-      ['Coffee', [row('Roaster', g.roaster), row('Origin', g.origin), row('Farm', x?.farm), row('Producer', g.producer), row('Roast date', g.purchaseDate && day(g.purchaseDate))]],
+      ['Coffee', [
+        row('Roaster', g.roaster), row('Origin', g.origin), row('Farm', x?.farm), row('Producer', g.producer), row('Roast date', g.purchaseDate && day(g.purchaseDate)),
+        g.cost ? ['Cost', usd(g.cost)] : null,
+        g.cost && g.amountG ? ['Cost per gram', `$${(g.cost / g.amountG).toFixed(4)}/g`] : null
+      ]],
       ['Usage', [
         mine.length ? ['Brews', String(mine.length)] : null,
         consumed ? ['Consumed', g1(consumed)] : null,
         row('Age at first brew', rest(mine[0])),
         row('Age when finished', rest(mine.at(-1))),
         drippers.length ? ['Drippers', drippers.join(', ')] : null
-      ]],
-      ['Cost', [
-        g.cost ? ['Cost', usd(g.cost)] : null,
-        g.cost && g.amountG ? ['Cost per gram', `$${(g.cost / g.amountG).toFixed(4)}/g`] : null
       ]],
       ['Ratings', [
         g.bagRating ? ['Coffee rating', r1(g.bagRating)] : null,
