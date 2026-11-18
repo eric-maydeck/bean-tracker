@@ -43,11 +43,13 @@ describe('scopeFor', () => {
   });
   it('runs everything for root files, untagged routes, orphans and non-src files', () => {
     for (const f of ['src/routes/+layout.svelte', 'src/app.css', 'src/lib/components/Icon.svelte', 'src/lib/inner.ts',
-      'src/lib/orphan.ts', 'src/lib/gone.ts', 'tests/ui/checkLayout.ts', 'playwright.config.ts', 'package.json'])
+      'src/lib/orphan.ts', 'src/lib/gone.ts', 'tests/ui/checkLayout.ts', 'playwright.config.ts', 'package.json',
+      '.github/workflows/ci.yml'])
       expect(scopeFor([f], SRC).kind, f).toBe('full');
   });
-  it('skips UI tests for docs, unit tests and fixtures only', () => {
-    expect(scopeFor(['docs/notes.md', 'src/lib/x.test.ts', 'src/lib/server/fixtures/a.json'], SRC)).toEqual({ kind: 'none' });
+  it('skips UI tests for docs, unit tests, fixtures and non-CI workflows only', () => {
+    expect(scopeFor(['docs/notes.md', 'src/lib/x.test.ts', 'src/lib/server/fixtures/a.json',
+      '.github/workflows/release.yml', '.github/back-merge-release.sh'], SRC)).toEqual({ kind: 'none' });
     expect(scopeFor([], SRC)).toEqual({ kind: 'none' });
   });
   it('reads the real src/ tree', () => {
