@@ -50,7 +50,7 @@
         q.delete('slide');
         const qs = q.size ? `?${q}` : '';
 
-        goto(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`, { shallow: true, replace: true });
+        goto(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`, { shallow: true, replace: true }).catch(() => {}); // flooded history calls throw SecurityError
       }),
       { root: reel, rootMargin: '-50% 0px -50% 0px' }
     );

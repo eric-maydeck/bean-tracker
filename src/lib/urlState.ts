@@ -13,10 +13,7 @@ export function writeUrlParams(params: URLSearchParams, carryAbout = true): void
   const qs = params.toString();
   const next = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
   if (next === `${location.pathname}${location.search}${location.hash}`) return;
-  try {
-    goto(next, { shallow: true, replace: true, state: page.state });
-  } catch {
-    // Best-effort mirror -- browsers throw SecurityError when history calls
-    // are flooded (e.g. fast typing triggering this on every keystroke).
-  }
+  // Best-effort mirror -- browsers throw SecurityError when history calls are flooded (e.g. fast typing
+  // triggering this on every keystroke). goto is async now, so that surfaces as a rejection.
+  goto(next, { shallow: true, replace: true, state: page.state }).catch(() => {});
 }

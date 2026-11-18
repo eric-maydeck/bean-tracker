@@ -32,7 +32,7 @@
   function go(patch: Patch) {
     const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why,
       dose: data.suggestion.dose, ratio: data.suggestion.ratio, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
-    goto(page.url.pathname + (q ? `?${q}` : ''), { replaceState: true, reset: false });
+    goto(page.url.pathname + (q ? `?${q}` : ''), { replace: true, reset: false });
   }
   const dripperFirst = (key: string): Patch => (key === 'dripper' ? { filter: null } : {});
   // Up to three chips (names that fit one line); the rest sit behind an "Other" dropdown button, whose label becomes

@@ -159,7 +159,7 @@
     if (Object.keys(change).every((k) => (LOCAL_KEYS as readonly string[]).includes(k)) && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
       local = Object.fromEntries(LOCAL_KEYS.map((k) => [k, next[k]]));
       const qs = insightsParams(next).toString();
-      goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { shallow: true, replace: true });
+      goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { shallow: true, replace: true }).catch(() => {}); // flooded history calls throw SecurityError
       remember(qs);
       return Promise.resolve();
     }
@@ -170,7 +170,7 @@
     // A by the new range doesn't offer is dropped, like the compare.
     if (menu && next.by && !data.byMenus[change.range!].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
-    return goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { replaceState: true, reset: false }).then(keep);
+    return goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { replace: true, reset: false }).then(keep);
   }
 
   // Remembered view state (spec Part 3): a fresh entry to a bare /stats restores the saved query into the URL
@@ -209,7 +209,7 @@
     try {
       if (!qs && !location.search && (!from || from.url.pathname !== location.pathname)) {
         const saved = loadInsightsState(localStorage.getItem(INSIGHTS_STORAGE_KEY), Date.now());
-        if (saved) return void goto(`?${saved}${location.hash}`, { replaceState: true, reset: false });
+        if (saved) return void goto(`?${saved}${location.hash}`, { replace: true, reset: false });
       }
     } catch {
       // localStorage unavailable (private window): the page works, it just isn't remembered.
@@ -223,7 +223,7 @@
     draft = null;
     try { localStorage.removeItem(INSIGHTS_STORAGE_KEY); } catch { /* nothing remembered to clear */ }
     const qs = insightsParams(resetInsights(explicit)).toString();
-    goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replaceState: true, reset: false });
+    goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replace: true, reset: false });
   }
 
   // Custom range draft: the From/To being edited, not yet applied. Never in the URL

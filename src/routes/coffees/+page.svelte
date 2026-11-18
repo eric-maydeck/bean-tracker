@@ -12,7 +12,7 @@
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
   import { coffeeImage } from '#lib/coffeeImage.ts';
   import RoastBeans from '#lib/components/RoastBeans.svelte';
-  import { refreshAll, beforeNavigate, afterNavigate } from '$app/navigation';
+  import { refreshAll, beforeNavigate, afterNavigate, snapshot } from '$app/navigation';
   import { page } from '$app/state';
   import CoffeeForm from '#lib/components/CoffeeForm.svelte';
   import AddedToast from '#lib/components/AddedToast.svelte';
@@ -30,7 +30,6 @@
   } from '#lib/pendingChanges.ts';
   import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import type { CoffeeRow } from '#lib/types.ts';
-  import type { Snapshot } from './$types';
   import FilterBar from '#lib/components/FilterBar.svelte';
   import ShareButton from '#lib/components/ShareButton.svelte';
   import { currentParams } from '#lib/pageUrlState.ts';
@@ -116,12 +115,12 @@
 
   // Back from a coffee page (a real history back) re-expands the compact
   // row the user opened it from, so it's clear where they were.
-  export const snapshot: Snapshot<number | null> = {
+  snapshot<number | null>({
     capture: () => view === 'compact' && !editMode && typeof expandedId === 'number' ? expandedId : null,
     restore: (id) => {
       if (id != null) expandedId = id;
     }
-  };
+  });
 
   // Plain `Map` wrapped in `$state()` is NOT deeply reactive in Svelte 5 —
   // `$state()`'s proxy only wraps plain objects/arrays, so in-place
