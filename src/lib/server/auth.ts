@@ -82,7 +82,7 @@ export function safeRedirectTarget(target: string | null | undefined): string {
   if (target?.startsWith('/')) {
     try {
       const url = new URL(target, 'http://self');
-      if (url.origin === 'http://self' && url.pathname !== '/login') {
+      if (url.origin === 'http://self' && url.pathname !== '/login' && !url.pathname.startsWith('//')) { // /.//evil.com keeps its // path
         return url.pathname + url.search + url.hash;
       }
     } catch {
