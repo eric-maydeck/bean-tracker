@@ -1,4 +1,4 @@
-import { DOSE_BANDS } from '$lib/insightsUrl';
+import { DOSE_BANDS } from '#lib/insightsUrl.ts';
 import { grindKey, grindValue, MIXED_FILTER, type BrewFact } from './facts';
 
 // Brewing lab bands (spec "Bands"): a brew's band for one variable, or null when the value isn't

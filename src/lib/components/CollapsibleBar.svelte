@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick, untrack, type Snippet } from 'svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { pinnedBar } from '$lib/components/pinnedBar.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import { pinnedBar } from '#lib/components/pinnedBar.svelte.ts';
 
   // A page's control block pinned to the top while scrolling (ui-rules 30). Desktop: the full bar sticks. Phones
   // (width <= 640 or height <= 450, so landscape too): the bar scrolls away normally; once it is off screen a short

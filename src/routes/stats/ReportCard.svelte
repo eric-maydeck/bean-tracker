@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import type { InsightsUrlState, RcCol, Top } from '$lib/insightsUrl';
-  import { RC_COLS } from '$lib/insightsUrl';
-  import { usd, wholeUsd } from '$lib/money';
-  import { likeGap, deltaInk } from '$lib/components/deltaColor';
-  import { countText } from '$lib/sample';
-  import SampleNote from '$lib/components/SampleNote.svelte';
+  import { formatDate } from '#lib/formatDate.ts';
+  import type { InsightsUrlState, RcCol, Top } from '#lib/insightsUrl.ts';
+  import { RC_COLS } from '#lib/insightsUrl.ts';
+  import { usd, wholeUsd } from '#lib/money.ts';
+  import { likeGap, deltaInk } from '#lib/components/deltaColor.ts';
+  import { countText } from '#lib/sample.ts';
+  import SampleNote from '#lib/components/SampleNote.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import ShowMore from './ShowMore.svelte';
   import { NATURAL_DIR, sortRc, type RcRow } from './reportCard';

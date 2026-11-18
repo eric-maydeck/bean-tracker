@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { Slide, Tone } from '$lib/server/recaps/types';
-  import { recapHref } from '$lib/recapsUrl';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import ShareButton from '$lib/components/ShareButton.svelte';
+  import type { Slide, Tone } from '#lib/server/recaps/types.ts';
+  import { recapHref } from '#lib/recapsUrl.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import ShareButton from '#lib/components/ShareButton.svelte';
   import RecapViz from './RecapViz.svelte';
-  import { unitGap, glue } from '$lib/unitGap';
+  import { unitGap, glue } from '#lib/unitGap.ts';
 
   // One fact: a full-screen story slide (`section`), or a tile on the poster (`tile`).
   let { slide, year, preview, index, total, tile = false, spans = [1, 1, 1], cover = false, shareHref }: {

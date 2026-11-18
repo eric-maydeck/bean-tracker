@@ -1,4 +1,4 @@
-import type { Ratings } from '$lib/insightsUrl';
+import type { Ratings } from '#lib/insightsUrl.ts';
 import type { BrewFact, BagFact } from './facts';
 import { inPeriod, trackedDays, addDays, daysBetween, type Period } from './time';
 import { countsForRating } from './ratings';

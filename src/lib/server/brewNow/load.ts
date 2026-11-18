@@ -1,11 +1,11 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { processGroup, type ProcessGroup } from '$lib/processGroups';
+import { processGroup, type ProcessGroup } from '#lib/processGroups.ts';
 import { parseMethod, grindValue, restDays, normalizeRoastLevel } from '../insights/facts';
 import { bcLocalTime, addDays } from '../insights/time';
 import { localToday } from '../localToday';
 import { getGearDetails } from '../gearDetails';
-import { OWN_DATA_ONLY } from '$lib/gear';
-import { recipeSlugs } from '$lib/recipeSlug';
+import { OWN_DATA_ONLY } from '#lib/gear.ts';
+import { recipeSlugs } from '#lib/recipeSlug.ts';
 import { listRecipes } from '../recipes';
 
 // recipeSlug: the /recipes/<slug> path part, from the one server-side slug source (recipeSlugs).

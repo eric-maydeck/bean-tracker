@@ -1,4 +1,4 @@
-import { KIND_FIELDS, parseGearValues, type GearKind, type GearValues } from '$lib/gear';
+import { KIND_FIELDS, parseGearValues, type GearKind, type GearValues } from '#lib/gear.ts';
 import type { ProductData } from './productParse';
 import { stripSiteSuffix, toUsd, formatMoney, type UsdRates } from './productFill';
 

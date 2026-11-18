@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { BrewingTab, BrewVar } from '$lib/server/insights/lab';
+  import type { BrewingTab, BrewVar } from '#lib/server/insights/lab.ts';
   import type { JumpLink } from './JumpNav.svelte';
   // Brews until dialed in, by roast level and by process (gate P4): a pair under Dial-in; a lone one spans the row.
   const SETTLE = [['roast', 'roast level'], ['process', 'process'], ['dripper', 'dripper'], ['water', 'water']] as const;
@@ -21,12 +21,12 @@
 
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
-  import Chart from '$lib/components/Chart.svelte';
-  import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Slice } from '$lib/insightsUrl';
-  import type { LabOptions } from '$lib/server/insights/lab';
-  import { SAMPLE_HELP, sampleField } from '$lib/sample';
+  import Chart from '#lib/components/Chart.svelte';
+  import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Slice } from '#lib/insightsUrl.ts';
+  import type { LabOptions } from '#lib/server/insights/lab.ts';
+  import { SAMPLE_HELP, sampleField } from '#lib/sample.ts';
   import DeltaBars, { bandRows, SAME_BAG_HELP } from './DeltaBars.svelte';
-  import { signed } from '$lib/components/deltaColor';
+  import { signed } from '#lib/components/deltaColor.ts';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
@@ -34,8 +34,8 @@
   import { fitPairs } from './fitPairs';
   import BarLabels from './BarLabels.svelte';
   import { settleTip } from './settleTip';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import TipBody, { tipText } from '$lib/components/TipBody.svelte';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import TipBody, { tipText } from '#lib/components/TipBody.svelte';
 
   let { t, lab, s, placeTip, choose }: {
     t: BrewingTab; lab: LabOptions; s: InsightsView;

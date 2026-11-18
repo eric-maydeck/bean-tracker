@@ -1,12 +1,12 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { localToday } from '$lib/server/localToday';
-import { parseRecapUrl, parseYear, POSTER_ID, SLIDE_ID } from '$lib/recapsUrl';
-import { isKnownSlide, recap } from '$lib/server/recaps/recap';
-import { cachedCard, cardPng, cardSvg } from '$lib/server/recaps/card';
-import { THEME_VERSION } from '$lib/server/recaps/select';
-import { dataStamp } from '$lib/server/recaps/year';
+import { getDb } from '#lib/server/db.ts';
+import { localToday } from '#lib/server/localToday.ts';
+import { parseRecapUrl, parseYear, POSTER_ID, SLIDE_ID } from '#lib/recapsUrl.ts';
+import { isKnownSlide, recap } from '#lib/server/recaps/recap.ts';
+import { cachedCard, cardPng, cardSvg } from '#lib/server/recaps/card.ts';
+import { THEME_VERSION } from '#lib/server/recaps/select.ts';
+import { dataStamp } from '#lib/server/recaps/year.ts';
 
 // Same availability as the page; never freezes a year's ids.
 export const GET: RequestHandler = async ({ params, url, locals }) => {

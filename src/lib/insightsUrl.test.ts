@@ -5,8 +5,8 @@ import {
   BREW_FILTERS_ON, activeBrewFilters, wholeNote, brewSelectsOn,
   parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
 } from './insightsUrl';
-import type { Filter } from '$lib/coffeeFilters';
-import { compareFits } from '$lib/server/insights/time';
+import type { Filter } from '#lib/coffeeFilters.ts';
+import { compareFits } from '#lib/server/insights/time.ts';
 
 const YEARS = [2026];
 const parse = (q: string) => parseInsightsUrl(new URLSearchParams(q), YEARS);

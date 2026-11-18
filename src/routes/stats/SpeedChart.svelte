@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { SpeedPlot } from '$lib/server/insights/lab';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
-  import { labDelta } from '$lib/components/deltaColor';
-  import { formatDate } from '$lib/formatDate';
-  import { sampleField } from '$lib/sample';
+  import type { SpeedPlot } from '#lib/server/insights/lab.ts';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import TipBody, { type Tip } from '#lib/components/TipBody.svelte';
+  import { labDelta } from '#lib/components/deltaColor.ts';
+  import { formatDate } from '#lib/formatDate.ts';
+  import { sampleField } from '#lib/sample.ts';
 
   // Rating by grind speed: one column per speed band, a dot per brew (spread sideways by a fixed rule, so it never
   // moves between renders), a smooth line through each band's value as a rating, a dashed line for the overall average.

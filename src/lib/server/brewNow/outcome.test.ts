@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 process.env.DB_PATH = ':memory:';
 
-import { getDb } from '$lib/server/db';
-import { createCoffee } from '$lib/server/coffees';
+import { getDb } from '#lib/server/db.ts';
+import { createCoffee } from '#lib/server/coffees.ts';
 import { addMark, deleteMark, linkMarks, marksFor, biasLine, type MarkView } from './outcome';
 import type { Suggestion } from './suggest';
 

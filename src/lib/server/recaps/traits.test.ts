@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addDays } from '$lib/server/insights/time';
+import { addDays } from '#lib/server/insights/time.ts';
 import { personality } from './traits';
 import { brew, ctx } from './testFixtures';
 

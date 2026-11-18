@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { localDateTime } from '$lib/localDate';
+import { localDateTime } from '#lib/localDate.ts';
 import { bcLocalTime } from '../insights/time';
 import { loadBrewRows, type BrewRow } from './load';
 import { lin, fmtRatio, type Gear, type Setting, type Suggestion } from './suggest';

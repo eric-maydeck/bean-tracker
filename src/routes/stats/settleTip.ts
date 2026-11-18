@@ -1,4 +1,4 @@
-import { countText, sampleField, type Sample } from '$lib/sample';
+import { countText, sampleField, type Sample } from '#lib/sample.ts';
 
 // A settle column's tip (ui-rules 29, 36): the group, its median settle brew and counts, the Low confidence caveat
 // last (TipBody; a small group's counts are in the caveat). The measure reads each bag's first 6 brews (SETTLE_WINDOW,

@@ -1,30 +1,30 @@
 import type { PageServerLoad } from './$types';
-import { hasRecaps, recapTiles } from '$lib/server/recaps/recap';
-import { getDb, getDateFormat, getHouseholdSize, getDefaultCaffeine, lastImportedAt } from '$lib/server/db';
-import { loadFacts } from '$lib/server/insights/facts';
+import { hasRecaps, recapTiles } from '#lib/server/recaps/recap.ts';
+import { getDb, getDateFormat, getHouseholdSize, getDefaultCaffeine, lastImportedAt } from '#lib/server/db.ts';
+import { loadFacts } from '#lib/server/insights/facts.ts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
-} from '$lib/server/insights/time';
-import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
-import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
-import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboards, pageFilters, smallHidden } from '$lib/server/insights/leaderboards';
-import { habits } from '$lib/server/insights/habits';
-import { consumptionTab } from '$lib/server/insights/consumption';
-import { spendTab } from '$lib/server/insights/spend';
-import { onHandTab } from '$lib/server/insights/onHand';
-import { getSubscriptions } from '$lib/server/subscriptions';
-import { recordsTab } from '$lib/server/insights/records';
-import { milestonesTab } from '$lib/server/insights/milestones';
-import { recentExtra } from '$lib/server/insights/recentTips';
-import { formatDay, DEFAULT_DATE_FORMAT } from '$lib/localDate';
-import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
-import { getGearDetails } from '$lib/server/gearDetails';
-import { trophyCase, gearArchive } from '$lib/server/insights/trophies';
-import { insightsTab } from '$lib/server/insights/insightGenerators';
-import { getRoastLevels } from '$lib/server/roastLevels';
-import { loadPourFacts, poursTab } from '$lib/server/insights/pours';
-import { labOptions, matchesBrew, matchesCoffee, ratedIn, bothCaffeineKinds, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
-import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, VIEW_BOARDS, boardAvg, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn, activeBrewFilters } from '$lib/insightsUrl';
+} from '#lib/server/insights/time.ts';
+import { RATINGS_SETTLED_FROM, roastMix } from '#lib/server/insights/ratings.ts';
+import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '#lib/server/insights/overview.ts';
+import { boardSeries, cutBoards, fieldCoverage, hiddenRows, leaderboards, pageFilters, smallHidden } from '#lib/server/insights/leaderboards.ts';
+import { habits } from '#lib/server/insights/habits.ts';
+import { consumptionTab } from '#lib/server/insights/consumption.ts';
+import { spendTab } from '#lib/server/insights/spend.ts';
+import { onHandTab } from '#lib/server/insights/onHand.ts';
+import { getSubscriptions } from '#lib/server/subscriptions.ts';
+import { recordsTab } from '#lib/server/insights/records.ts';
+import { milestonesTab } from '#lib/server/insights/milestones.ts';
+import { recentExtra } from '#lib/server/insights/recentTips.ts';
+import { formatDay, DEFAULT_DATE_FORMAT } from '#lib/localDate.ts';
+import { dialInIds, onceDialed } from '#lib/server/insights/dialed.ts';
+import { getGearDetails } from '#lib/server/gearDetails.ts';
+import { trophyCase, gearArchive } from '#lib/server/insights/trophies.ts';
+import { insightsTab } from '#lib/server/insights/insightGenerators.ts';
+import { getRoastLevels } from '#lib/server/roastLevels.ts';
+import { loadPourFacts, poursTab } from '#lib/server/insights/pours.ts';
+import { labOptions, matchesBrew, matchesCoffee, ratedIn, bothCaffeineKinds, sweetSpotsTab, brewingTab, waterTab, gearTab } from '#lib/server/insights/lab.ts';
+import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, VIEW_BOARDS, boardAvg, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn, activeBrewFilters } from '#lib/insightsUrl.ts';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).

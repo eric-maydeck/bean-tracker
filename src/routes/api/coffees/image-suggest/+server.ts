@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { getRoasterWebsite, toOrigin } from '$lib/server/roasterWebsites';
-import { suggest } from '$lib/server/imageSuggest';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { getRoasterWebsite, toOrigin } from '#lib/server/roasterWebsites.ts';
+import { suggest } from '#lib/server/imageSuggest/index.ts';
 
 // The coffee form's Suggest. POST like fill-from-url, so SvelteKit's CSRF
 // check covers it: the server fetches pages it found for this coffee.

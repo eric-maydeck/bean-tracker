@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { deltaInk, likeGap } from '$lib/components/deltaColor';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
+  import { deltaInk, likeGap } from '#lib/components/deltaColor.ts';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
   let { like }: { like: { gap: number; label: string } } = $props();
   let anchor: HTMLElement | undefined = $state();
   let open = $state(false);

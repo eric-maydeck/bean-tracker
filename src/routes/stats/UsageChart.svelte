@@ -1,11 +1,11 @@
 <script lang="ts" module>
-  import type { EraView } from '$lib/insightsUrl';
+  import type { EraView } from '#lib/insightsUrl.ts';
   export const ERA_VIEW_OPTIONS = [['bars', 'Bars'], ['lines', 'Lines']] as const satisfies readonly (readonly [EraView, string])[];
 </script>
 
 <script lang="ts">
-  import Chart from '$lib/components/Chart.svelte';
-  import type { Eras } from '$lib/server/insights/lab';
+  import Chart from '#lib/components/Chart.svelte';
+  import type { Eras } from '#lib/server/insights/lab.ts';
   import StackedBars from './StackedBars.svelte';
   import { seriesColors } from './multiLine';
 

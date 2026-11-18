@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
   import { useChartLink } from './chartLink';
-  import { truncTip } from '$lib/components/labelTip';
-  import CapItem from '$lib/components/CapItem.svelte';
-  import { plainClick } from '$lib/copyLink';
+  import { truncTip } from '#lib/components/labelTip.ts';
+  import CapItem from '#lib/components/CapItem.svelte';
+  import { plainClick } from '#lib/copyLink.ts';
 
   // A Records / Milestones tile's name at its foot: bold in the label color, linking to the tile's
   // own #anchor. `children` follows the name on the same line (Records' "· Current" mode words).

@@ -3,9 +3,9 @@ import { describe, it, expect, vi } from 'vitest';
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
 process.env.DB_PATH = ':memory:';
 
-import { setBrewingZone } from '$lib/localDate';
-import { getDb } from '$lib/server/db';
-import { createSubscription } from '$lib/server/subscriptions';
+import { setBrewingZone } from '#lib/localDate.ts';
+import { getDb } from '#lib/server/db.ts';
+import { createSubscription } from '#lib/server/subscriptions.ts';
 import { load } from './+page.server';
 
 describe("subscriptions load: next renewal counts from the local date", () => {

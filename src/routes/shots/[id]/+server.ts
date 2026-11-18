@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb } from '#lib/server/db.ts';
 
 // Bean Conqueror opens this link after an upload; send it to the (public) coffee page of that brew.
 export const GET: RequestHandler = ({ params }) => {

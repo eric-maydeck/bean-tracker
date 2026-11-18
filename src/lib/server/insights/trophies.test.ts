@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createDb } from '$lib/server/db';
+import { createDb } from '#lib/server/db.ts';
 import { MIXED_FILTER, type BrewFact } from './facts';
-import type { GearDetail } from '$lib/server/gearDetails';
+import type { GearDetail } from '#lib/server/gearDetails.ts';
 import { gearArchive, trophyCase, type GearArchive } from './trophies';
 
 let n = 0;

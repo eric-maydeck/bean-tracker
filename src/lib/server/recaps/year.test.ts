@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { setBrewingZone } from '$lib/localDate';
-import { createDb, setHouseholdSize } from '$lib/server/db';
-import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
+import { setBrewingZone } from '#lib/localDate.ts';
+import { createDb, setHouseholdSize } from '#lib/server/db.ts';
+import { dialInIds, onceDialed } from '#lib/server/insights/dialed.ts';
 import { loadYear, toGenCtx, dataStamp } from './year';
 
 function seed() {

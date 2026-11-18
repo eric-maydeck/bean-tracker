@@ -1,4 +1,4 @@
-import { showToast } from '$lib/toast.svelte';
+import { showToast } from '#lib/toast.svelte.ts';
 
 // Copies text to the clipboard; where the clipboard API is unavailable or refuses (plain-http LAN testing),
 // a prompt shows it to copy by hand. 'copied' / 'prompted' says which happened.

@@ -1,10 +1,10 @@
 <script lang="ts">
-  import Chart from '$lib/components/Chart.svelte';
-  import SampleNote from '$lib/components/SampleNote.svelte';
-  import { SAMPLE_HELP } from '$lib/sample';
+  import Chart from '#lib/components/Chart.svelte';
+  import SampleNote from '#lib/components/SampleNote.svelte';
+  import { SAMPLE_HELP } from '#lib/sample.ts';
   import { useEmptyLine } from './coffeeNote';
   import LabHead from './LabHead.svelte';
-  import type { WaitWindow } from '$lib/server/insights/freshness';
+  import type { WaitWindow } from '#lib/server/insights/freshness.ts';
 
   let { w, placeTip }: { w: WaitWindow; placeTip: (e: ToggleEvent) => void } = $props();
   const emptyLine = useEmptyLine();

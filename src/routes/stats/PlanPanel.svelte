@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { usd, wholeUsd } from '$lib/money';
-  import { signed, deltaInk } from '$lib/components/deltaColor';
-  import { countText } from '$lib/sample';
-  import SampleNote from '$lib/components/SampleNote.svelte';
-  import type { PlanPanel } from '$lib/server/insights/spend';
+  import { usd, wholeUsd } from '#lib/money.ts';
+  import { signed, deltaInk } from '#lib/components/deltaColor.ts';
+  import { countText } from '#lib/sample.ts';
+  import SampleNote from '#lib/components/SampleNote.svelte';
+  import type { PlanPanel } from '#lib/server/insights/spend.ts';
 
   let { p, link }: { p: PlanPanel; link: (href: string) => string } = $props();
 
@@ -19,7 +19,7 @@
   const ppgGap = (v: number, one: number) => `${v < one ? '−' : '+'}${usd(Math.abs(v - one))}`;
 </script>
 
-{#snippet vs(r: { ppg: number | null; rating: number | null; sample?: import('$lib/sample').Sample })}
+{#snippet vs(r: { ppg: number | null; rating: number | null; sample?: import('#lib/sample.ts').Sample })}
   <!-- The short form ("Cost: $0.12/g vs $0.17/g one-off (−$0.05)") on a portrait phone, so each line fits one line. -->
   <span class="vs">
     {#if r.ppg !== null}

@@ -1,13 +1,13 @@
 import type { LayoutServerLoad } from './$types';
-import { getDb, getLastDeployed, getDisplayZone, getDateFormat } from '$lib/server/db';
-import { getActiveAlerts } from '$lib/server/alerts';
-import { nameColor } from '$lib/nameColor';
-import { siteFor } from '$lib/server/siteConfig';
-import { DEFAULT_DATE_FORMAT, brewingZone } from '$lib/localDate';
-import { resolveDisplayZone } from '$lib/displayZone';
-import { localToday } from '$lib/server/localToday';
-import { ensureRecapAlerts, recapReadyYear } from '$lib/server/recaps/store';
-import { coverTone } from '$lib/server/recaps/select';
+import { getDb, getLastDeployed, getDisplayZone, getDateFormat } from '#lib/server/db.ts';
+import { getActiveAlerts } from '#lib/server/alerts.ts';
+import { nameColor } from '#lib/nameColor.ts';
+import { siteFor } from '#lib/server/siteConfig.ts';
+import { DEFAULT_DATE_FORMAT, brewingZone } from '#lib/localDate.ts';
+import { resolveDisplayZone } from '#lib/displayZone.ts';
+import { localToday } from '#lib/server/localToday.ts';
+import { ensureRecapAlerts, recapReadyYear } from '#lib/server/recaps/store.ts';
+import { coverTone } from '#lib/server/recaps/select.ts';
 import { version } from '../../package.json';
 
 export const load: LayoutServerLoad = ({ locals, url, cookies }) => {

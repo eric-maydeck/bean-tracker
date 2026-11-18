@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireAdmin } from '$lib/server/auth';
-import { toOrigin } from '$lib/server/roasterWebsites';
-import { suggest } from '$lib/server/imageSuggest';
-import { GEAR_KINDS, type GearKind } from '$lib/gear';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { toOrigin } from '#lib/server/roasterWebsites.ts';
+import { suggest } from '#lib/server/imageSuggest/index.ts';
+import { GEAR_KINDS, type GearKind } from '#lib/gear.ts';
 
 const TERM: Record<GearKind, string> = { dripper: 'dripper', grinder: 'coffee grinder', filter: 'coffee filter' };
 

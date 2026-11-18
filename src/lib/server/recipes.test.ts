@@ -9,9 +9,9 @@ import {
   MIN_GROUP, RecipeError, brewsFor, deleteRecipe, discoverGroups, dismissStructure, listRecipes,
   rematchBrews, saveRecipe, getNoteWords, setNoteWords, smallGroupCount, undismissStructure
 } from './recipes';
-import { draftFromReadings } from '$lib/recipes';
-import type { PourReading } from '$lib/pours';
-import { DEFAULT_NOTE_WORDS } from '$lib/agitation';
+import { draftFromReadings } from '#lib/recipes.ts';
+import type { PourReading } from '#lib/pours.ts';
+import { DEFAULT_NOTE_WORDS } from '#lib/agitation.ts';
 
 const load = (n: string) =>
   compactFlow(JSON.parse(readFileSync(new URL(`./fixtures/bcflow/${n}.json`, import.meta.url), 'utf8')))!;

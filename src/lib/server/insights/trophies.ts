@@ -1,14 +1,14 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { GEAR_KINDS, type GearKind, type GearValues } from '$lib/gear';
-import { backdrop } from '$lib/imageBackdrop';
-import { wallToInstant } from '$lib/localDate';
-import type { GearDetail } from '$lib/server/gearDetails';
-import { pooled, type Sample } from '$lib/sample';
-import { slugify } from '$lib/server/slug';
+import { GEAR_KINDS, type GearKind, type GearValues } from '#lib/gear.ts';
+import { backdrop } from '#lib/imageBackdrop.ts';
+import { wallToInstant } from '#lib/localDate.ts';
+import type { GearDetail } from '#lib/server/gearDetails.ts';
+import { pooled, type Sample } from '#lib/sample.ts';
+import { slugify } from '#lib/server/slug.ts';
 import { MIXED_FILTER, parseMethod, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { daysBetween, inPeriod, type Period } from './time';
-import type { Ratings } from '$lib/insightsUrl';
+import type { Ratings } from '#lib/insightsUrl.ts';
 
 export const RETIRED_AFTER_DAYS = 90;
 

@@ -2,8 +2,8 @@
   import FloatTip from './FloatTip.svelte';
   import Icon from './Icon.svelte';
   import TipBody, { tipText, type Tip } from './TipBody.svelte';
-  import { chipLabel, type Sample } from '$lib/sample';
-  import type { Badge } from '$lib/strength';
+  import { chipLabel, type Sample } from '#lib/sample.ts';
+  import type { Badge } from '#lib/strength.ts';
 
   // The one small-sample marker: an amber "Low confidence" chip; the reason and exact
   // counts on hover, tap and keyboard focus, in the shared top-layer tip (ui-rules 36, 39). `paired`: the counts

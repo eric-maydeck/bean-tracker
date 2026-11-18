@@ -1,4 +1,4 @@
-import type { Agg, By, Ratings, Trend, Unit } from '$lib/insightsUrl';
+import type { Agg, By, Ratings, Trend, Unit } from '#lib/insightsUrl.ts';
 import type { BrewFact, BagFact } from './facts';
 import { addDays, addMonths, autoBy, daysBetween, inPeriod, trackedBounds, weekday, type Period } from './time';
 import { countsForRating, RATINGS_SETTLED_FROM } from './ratings';

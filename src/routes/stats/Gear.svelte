@@ -1,6 +1,6 @@
 <script lang="ts" module>
-  import type { GearTab } from '$lib/server/insights/lab';
-  import type { Trophy } from '$lib/server/insights/trophies';
+  import type { GearTab } from '#lib/server/insights/lab.ts';
+  import type { Trophy } from '#lib/server/insights/trophies.ts';
   import type { JumpLink } from './JumpNav.svelte';
   export function jumpLinks(t: GearTab, trophies: Trophy[] | null): JumpLink[] {
     return [
@@ -18,14 +18,14 @@
 
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
-  import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
-  import { SAMPLE_HELP } from '$lib/sample';
+  import type { InsightsUrlState, InsightsView } from '#lib/insightsUrl.ts';
+  import { SAMPLE_HELP } from '#lib/sample.ts';
   import { SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
   import TrophyCase from './TrophyCase.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
+  import TextTip from '#lib/components/TextTip.svelte';
   import SpeedChart from './SpeedChart.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import UsageChart, { ERA_VIEW_OPTIONS } from './UsageChart.svelte';

@@ -1,11 +1,11 @@
 <script lang="ts">
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
-  import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { CHIP_EXAMPLE, SAMPLE_NOTE, sampleField } from '$lib/sample';
-  import { usd } from '$lib/money';
-  import type { ValueMap, ValuePoint } from '$lib/server/insights/spend';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import { rove, takeFocus } from '#lib/components/Heatmap.svelte';
+  import TipBody, { tipText, type Tip } from '#lib/components/TipBody.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import { CHIP_EXAMPLE, SAMPLE_NOTE, sampleField } from '#lib/sample.ts';
+  import { usd } from '#lib/money.ts';
+  import type { ValueMap, ValuePoint } from '#lib/server/insights/spend.ts';
 
   // Price vs rating, one dot per coffee (a diamond when any of its bags came from a subscription), the dashed lines
   // the medians. The x axis stops at `m.cap` (the cut coffees are listed in the heading's See all). One tab stop,

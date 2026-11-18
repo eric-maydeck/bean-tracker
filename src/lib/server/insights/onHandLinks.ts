@@ -1,8 +1,8 @@
-import { toParams } from '$lib/coffeeViewState';
-import { upsertFilter, type Filter } from '$lib/coffeeFilters';
+import { toParams } from '#lib/coffeeViewState.ts';
+import { upsertFilter, type Filter } from '#lib/coffeeFilters.ts';
 import { WAIT_BUCKETS } from './facts';
 import { REST_STATE } from '../urgency';
-import type { StatusTab } from '$lib/coffeeViewState';
+import type { StatusTab } from '#lib/coffeeViewState.ts';
 
 // /coffees links for On hand's groups: the page's Coffees filter plus the group's own filters, from the existing filters.
 // Dates are today's, so a saved link goes stale (it names the day it was made).

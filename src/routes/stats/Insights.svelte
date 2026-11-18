@@ -1,10 +1,10 @@
 <script lang="ts" module>
-  import type { Tip } from '$lib/components/TipBody.svelte';
-  import { STRENGTH, STRENGTH_WHY, type Badge } from '$lib/strength';
+  import type { Tip } from '#lib/components/TipBody.svelte';
+  import { STRENGTH, STRENGTH_WHY, type Badge } from '#lib/strength.ts';
   // The strength badges' words and explanations, shared with Sweet spots.
   export { STRENGTH };
   import type { JumpLink } from './JumpNav.svelte';
-  import type { InsightsTab } from '$lib/server/insights/insightGenerators';
+  import type { InsightsTab } from '#lib/server/insights/insightGenerators.ts';
   export function jumpLinks(t: InsightsTab): JumpLink[] {
     return [
       ['insights-findings', 'Findings'],
@@ -23,27 +23,27 @@
 </script>
 
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import { unitGap } from '$lib/unitGap';
-  import { labelTip } from '$lib/components/labelTip';
+  import { formatDate } from '#lib/formatDate.ts';
+  import { unitGap } from '#lib/unitGap.ts';
+  import { labelTip } from '#lib/components/labelTip.ts';
   import WholeNote from './WholeNote.svelte';
-  import Usd from '$lib/components/Usd.svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import { usd } from '$lib/money';
+  import Usd from '#lib/components/Usd.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import { usd } from '#lib/money.ts';
   import { useEmptyLine } from './coffeeNote';
   import BarLabels, { barValue } from './BarLabels.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import { formatGrams } from '$lib/grams';
-  import { THEMES, WHATIF_LIMITS as L, type BrewFilterKey, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
-  import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
-  import type { Finding } from '$lib/server/insights/insightGenerators';
+  import Icon from '#lib/components/Icon.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import { formatGrams } from '#lib/grams.ts';
+  import { THEMES, WHATIF_LIMITS as L, type BrewFilterKey, type InsightsUrlState, type Theme } from '#lib/insightsUrl.ts';
+  import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '#lib/insightsWhatIf.ts';
+  import type { Finding } from '#lib/server/insights/insightGenerators.ts';
   import { lines, smooth } from './multiLine';
   import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
+  import TextTip from '#lib/components/TextTip.svelte';
 
   let { t, wholeKeys, theme, inputs, today, explicit, placeTip, choose, link }: {
     t: InsightsTab; wholeKeys: BrewFilterKey[]; theme: Theme | undefined; inputs: Partial<WhatIf>; today: string; explicit: InsightsUrlState;

@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { restoreCoffeeStates, type CoffeeState } from '$lib/server/coffees';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { restoreCoffeeStates, type CoffeeState } from '#lib/server/coffees.ts';
 
 // Undo of a status action: { before, after } from commit-batch. Restores only while the coffees are still as `after`.
 export const POST: RequestHandler = async ({ request, locals }) => {

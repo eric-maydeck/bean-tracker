@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 
 const stub = vi.hoisted(() => ({ spot: null as any }));
-vi.mock('$lib/server/insights/lab', async (orig) => {
-  const m = await orig<typeof import('$lib/server/insights/lab')>();
+vi.mock('#lib/server/insights/lab.ts', async (orig) => {
+  const m = await orig<typeof import('#lib/server/insights/lab.ts')>();
   return { ...m, sweetSpotsTab: (...a: Parameters<typeof m.sweetSpotsTab>) => (stub.spot ? { matching: { bags: 0, brews: 0 }, topBags: [], cards: [{ key: 'rest', name: 'Rest', spot: stub.spot }] } : m.sweetSpotsTab(...a)) };
 });
-import type { BagFact, BrewFact } from '$lib/server/insights/facts';
+import type { BagFact, BrewFact } from '#lib/server/insights/facts.ts';
 import { POOL, fact } from './pool';
 import { brew, ctx, days } from './testFixtures';
 import type { YearCtx } from './year';

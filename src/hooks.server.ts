@@ -1,10 +1,11 @@
-import { json, text, type Handle, type ServerInit } from '@sveltejs/kit';
-import { bodyTooLarge, crossSiteBlocked, SECURITY_HEADERS } from '$lib/server/csrf';
-import { SESSION_COOKIE_NAME, verifySessionCookieValue } from '$lib/server/auth';
-import { getDb } from '$lib/server/db';
-import { queueFillMissing } from '$lib/server/imageFills';
-import { queueReadings } from '$lib/server/pourReadings';
-import { backfillRoasterWebsites } from '$lib/server/roasterWebsites';
+import { json, text } from '@sveltejs/kit';
+import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
+import { bodyTooLarge, crossSiteBlocked, SECURITY_HEADERS } from '#lib/server/csrf.ts';
+import { SESSION_COOKIE_NAME, verifySessionCookieValue } from '#lib/server/auth.ts';
+import { getDb } from '#lib/server/db.ts';
+import { queueFillMissing } from '#lib/server/imageFills.ts';
+import { queueReadings } from '#lib/server/pourReadings.ts';
+import { backfillRoasterWebsites } from '#lib/server/roasterWebsites.ts';
 
 // Backdrop fills for images that have none yet (saved before fills existed,
 // or failed on the last run). Not awaited: boot never waits on the network.

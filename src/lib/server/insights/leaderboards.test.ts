@@ -1,8 +1,8 @@
 import { dialInIds, onceDialed } from './dialed';
 import { describe, it, expect } from 'vitest';
 import { RATINGS_SETTLED_FROM } from './ratings';
-import { fromParams } from '$lib/coffeeViewState';
-import { BOARDS } from '$lib/insightsUrl';
+import { fromParams } from '#lib/coffeeViewState.ts';
+import { BOARDS } from '#lib/insightsUrl.ts';
 import { BREW_KEY, boardSeries, cutBoards, fieldCoverage, smallHidden, hiddenRows, leaderboard, leaderboards, pageFilters, topRegions, withMovement, type BoardRow } from './leaderboards';
 import { roastLevelLabels, type BrewFact, type BagFact } from './facts';
 

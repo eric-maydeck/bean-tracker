@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { COFFEE_CORRECTIONS } from './coffeeCorrections';
-import { formatOriginField } from '$lib/originFormat';
+import { formatOriginField } from '#lib/originFormat.ts';
 import { PRODUCT_PAGE_BACKFILLS } from './productPageBackfill';
 import { createDb } from './db';
 import { getRoastLevels } from './roastLevels';

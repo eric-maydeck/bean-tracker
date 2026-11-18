@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import { LIKE_BOARDS, type Board, type Rank } from '$lib/insightsUrl';
+  import { LIKE_BOARDS, type Board, type Rank } from '#lib/insightsUrl.ts';
   import type { PageData } from './$types';
   import type { JumpLink } from './JumpNav.svelte';
   import { BOARD_TITLE } from './chartLink';
@@ -17,28 +17,28 @@
 <script lang="ts">
   import WholeNote from './WholeNote.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
-  import { bottomInView } from '$lib/scrollToBottom';
-  import { setting } from '$lib/settingName';
-  import Usd from '$lib/components/Usd.svelte';
-  import { usd, wholeUsd } from '$lib/money';
+  import { bottomInView } from '#lib/scrollToBottom.ts';
+  import { setting } from '#lib/settingName.ts';
+  import Usd from '#lib/components/Usd.svelte';
+  import { usd, wholeUsd } from '#lib/money.ts';
   import { useEmptyLine } from './coffeeNote';
-  import SampleNote from '$lib/components/SampleNote.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import { formatGrams } from '$lib/grams';
-  import WorldMap from '$lib/components/WorldMap.svelte';
+  import SampleNote from '#lib/components/SampleNote.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
+  import TextTip from '#lib/components/TextTip.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import { formatGrams } from '#lib/grams.ts';
+  import WorldMap from '#lib/components/WorldMap.svelte';
   import { MediaQuery } from 'svelte/reactivity';
-  import { allShownLine, hiddenLine, BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
-  import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
+  import { allShownLine, hiddenLine, BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '#lib/sample.ts';
+  import type { Tip } from '#lib/components/TipBody.svelte';
+  import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '#lib/insightsUrl.ts';
   import LikeLine from './LikeLine.svelte';
   import { RANK_LABEL, boardValue } from './chartLink';
-  import { labelTip } from '$lib/components/labelTip';
-  import Chart from '$lib/components/Chart.svelte';
-  import type { BoardSeries } from '$lib/server/insights/leaderboards';
-  import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import Chart from '#lib/components/Chart.svelte';
+  import type { BoardSeries } from '#lib/server/insights/leaderboards.ts';
+  import { deltaColor, deltaInk, likeGap } from '#lib/components/deltaColor.ts';
 
   let {
     boards, coverage, wholeKeys, cut, small, rank, avg, open, low, views, series, comparing, perPerson, placeTip, choose, link, part

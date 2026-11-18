@@ -1,13 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { getDistinctFieldValues, getFillHistory } from '$lib/server/coffees';
-import { getRoastLevels } from '$lib/server/roastLevels';
-import { fetchProductData, getUsdRates, FillError } from '$lib/server/productFetch';
-import { buildFill, standardizeBeanBase, type FillContext } from '$lib/server/productFill';
-import type { ProductData } from '$lib/server/productParse';
-import { lookupBeanBase } from '$lib/server/beanBase';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { getDistinctFieldValues, getFillHistory } from '#lib/server/coffees.ts';
+import { getRoastLevels } from '#lib/server/roastLevels.ts';
+import { fetchProductData, getUsdRates, FillError } from '#lib/server/productFetch.ts';
+import { buildFill, standardizeBeanBase, type FillContext } from '#lib/server/productFill.ts';
+import type { ProductData } from '#lib/server/productParse.ts';
+import { lookupBeanBase } from '#lib/server/beanBase.ts';
 
 const NO_PAGE: ProductData = {
   title: null, vendor: null, siteName: null, brand: null, tags: [], description: '',

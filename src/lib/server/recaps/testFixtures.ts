@@ -1,5 +1,5 @@
-import type { BrewFact } from '$lib/server/insights/facts';
-import { addDays } from '$lib/server/insights/time';
+import type { BrewFact } from '#lib/server/insights/facts.ts';
+import { addDays } from '#lib/server/insights/time.ts';
 import type { YearCtx } from './year';
 
 let id = 0;

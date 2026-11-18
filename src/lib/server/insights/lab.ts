@@ -1,6 +1,6 @@
-import { pooled, single, type Sample } from '$lib/sample';
-import { DOSE_BANDS, MON, BREW_FILTER_KEYS, type BrewFilterKey, type BrewFilters, type Ratings, type Slice } from '$lib/insightsUrl';
-import { slugify } from '$lib/server/slug';
+import { pooled, single, type Sample } from '#lib/sample.ts';
+import { DOSE_BANDS, MON, BREW_FILTER_KEYS, type BrewFilterKey, type BrewFilters, type Ratings, type Slice } from '#lib/insightsUrl.ts';
+import { slugify } from '#lib/server/slug.ts';
 import { grindKey, MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { monthlyMulti, settleGroups, type Multi } from './insightGenerators';
 import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, doseBand, grindSteps, mineralOf, type Band, type LabVar, type Mineral } from './labBands';

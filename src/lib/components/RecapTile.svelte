@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { RecapTileData } from '$lib/server/recaps/recap';
-  import { glue } from '$lib/unitGap';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import type { RecapTileData } from '#lib/server/recaps/recap.ts';
+  import { glue } from '#lib/unitGap.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
 
   let { tile }: { tile: RecapTileData } = $props();
   // Dark ink on the light tones (as Slide.svelte), cream text on the rest.

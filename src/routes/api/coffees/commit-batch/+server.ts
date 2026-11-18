@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { commitCoffeeBatchWithStates, type CoffeeBatchChange } from '$lib/server/coffeeBatchActions';
-import { queueFillMissing } from '$lib/server/imageFills';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { commitCoffeeBatchWithStates, type CoffeeBatchChange } from '#lib/server/coffeeBatchActions.ts';
+import { queueFillMissing } from '#lib/server/imageFills.ts';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);

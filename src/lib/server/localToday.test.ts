@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { setBrewingZone } from '$lib/localDate';
+import { setBrewingZone } from '#lib/localDate.ts';
 import { localToday, localTodayDate } from './localToday';
 
 describe('localToday / localTodayDate (America/Denver)', () => {

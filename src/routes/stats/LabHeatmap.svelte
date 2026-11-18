@@ -1,9 +1,9 @@
 <script lang="ts">
-  import Heatmap from '$lib/components/Heatmap.svelte';
-  import type { Tip } from '$lib/components/TipBody.svelte';
-  import type { Breakdown } from '$lib/server/insights/lab';
-  import { deltaInk, labDelta } from '$lib/components/deltaColor';
-  import { TIP_TITLE, sampleField } from '$lib/sample';
+  import Heatmap from '#lib/components/Heatmap.svelte';
+  import type { Tip } from '#lib/components/TipBody.svelte';
+  import type { Breakdown } from '#lib/server/insights/lab.ts';
+  import { deltaInk, labDelta } from '#lib/components/deltaColor.ts';
+  import { TIP_TITLE, sampleField } from '#lib/sample.ts';
   import { noMatch, plural } from './DeltaBars.svelte';
 
   // A lab breakdown as a diverging heatmap of same-bag deltas (green better, red worse). A small-sample cell draws

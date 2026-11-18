@@ -1,23 +1,23 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import { showToast } from '$lib/toast.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { bqImportHref, cloneHref, editHref } from '$lib/bqImportUrl';
-  import { labelTip } from '$lib/components/labelTip';
-  import { coffeeToast, commitChanges, restoreStates } from '$lib/coffeeToast';
-  import type { CoffeeRow } from '$lib/types';
+  import { formatDate } from '#lib/formatDate.ts';
+  import { showToast } from '#lib/toast.svelte.ts';
+  import Icon from '#lib/components/Icon.svelte';
+  import { bqImportHref, cloneHref, editHref } from '#lib/bqImportUrl.ts';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { coffeeToast, commitChanges, restoreStates } from '#lib/coffeeToast.ts';
+  import type { CoffeeRow } from '#lib/types.ts';
   import { invalidateAll, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
-  import { urgencyColorStyle } from '$lib/urgencyColor';
-  import { coffeeImage } from '$lib/coffeeImage';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import { currentParams, pickOne } from '$lib/pageUrlState';
-  import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
-  import { writeUrlParams } from '$lib/urlState';
-  import { formatBag } from '$lib/grams';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { onDeckPreview } from '$lib/linkPreview';
+  import { urgencyColorStyle } from '#lib/urgencyColor.ts';
+  import { coffeeImage } from '#lib/coffeeImage.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import { currentParams, pickOne } from '#lib/pageUrlState.ts';
+  import { loadChoice, serializeChoice } from '#lib/rememberedChoice.ts';
+  import { writeUrlParams } from '#lib/urlState.ts';
+  import { formatBag } from '#lib/grams.ts';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { onDeckPreview } from '#lib/linkPreview.ts';
   import { onDeckParams, parseOnDeckView, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
 
   let { data } = $props();
@@ -40,7 +40,9 @@
   let filter = $derived(explicit ?? 'all');
   let current = $derived(data[filter]);
 
-  afterNavigate(() => {
+  afterNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
+
     const fromUrl = pickOne(currentParams(page.url), 'show', SHOW_VALUES);
     try {
       explicit = fromUrl ?? loadChoice(localStorage.getItem(STORAGE_KEY), SHOW_VALUES, Date.now());
@@ -85,21 +87,27 @@
   }
 </script>
 
-<svelte:head>
-  <title>Bean Tracker - On Deck</title>
-</svelte:head>
-<PreviewMeta preview={onDeckPreview(view, filter, view === 'open' ? current.open : current.nextUp)} />
+<svelte:head><title>Bean Tracker - On Deck</title></svelte:head>
 
-<div class="toolbar">
-  <h1>On Deck</h1>
-  <ShareButton />
-</div>
+<PreviewMeta
+  preview={onDeckPreview(view, filter, view === 'open' ? current.open : current.nextUp)}
+/>
+
+<div class="toolbar"><h1>On Deck</h1> <ShareButton /></div>
 
 <div class="search-row">
   <label class="form-field group-field">
     <span>View</span>
-    <select class="ctl-select" aria-label="View" value={view} onchange={(e) => (explicitView = e.currentTarget.value === 'next' ? 'next' : undefined)}>
-      {#each VIEWS as v (v)}<option value={v}>{VIEW_LABEL[v]}</option>{/each}
+
+    <select
+      class="ctl-select"
+      aria-label="View"
+      value={view}
+      onchange={(e) => explicitView = e.currentTarget.value === 'next' ? 'next' : undefined}
+    >
+      {#each VIEWS as v (v)}
+        <option value={v}>{VIEW_LABEL[v]}</option>
+      {/each}
     </select>
   </label>
   <div class="form-field group-field">
@@ -141,35 +149,35 @@
         {#each current.open as coffee (coffee.id)}
           {@const img = coffeeImage(coffee, '')}
           <div class="card-wrap">
-          <a class="card" href={`/coffees/${coffee.slug}`}>
-            {#if img}
+            <a class="card" href={`/coffees/${coffee.slug}`}>
+              {#if img}
               <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
-            {/if}
+              {/if}
             <h2><CoffeeName name={coffee.coffee_name} /></h2>
 
-            <p class="text-muted">{coffee.roaster}</p>
-            {#if coffee.amount_g != null && coffee.grams_left != null}
-              <p class="text-muted">{formatBag(coffee.amount_g, coffee.grams_left)}</p>
-            {/if}
-            <p class="text-muted">
+              <p class="text-muted">{coffee.roaster}</p>
+              {#if coffee.amount_g != null && coffee.grams_left != null}
+                <p class="text-muted">{formatBag(coffee.amount_g, coffee.grams_left)}</p>
+              {/if}
+              <p class="text-muted">
               Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
                 >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
               >
-            </p>
-            {#if coffee.processing}
-              <p class="text-muted">{coffee.processing}</p>
-            {/if}
-            {#if coffee.roast_date}
-              <p class="text-muted">
+              </p>
+              {#if coffee.processing}
+                <p class="text-muted">{coffee.processing}</p>
+              {/if}
+              {#if coffee.roast_date}
+                <p class="text-muted">
                 Roasted {formatDate(coffee.roast_date)}
                 {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
-              </p>
-            {/if}
-            {#if coffee.drink_before}
-              <p class="text-muted">Drink before {formatDate(coffee.drink_before)}</p>
-            {/if}
-          </a>
-          {@render tileActions(coffee)}
+                </p>
+              {/if}
+              {#if coffee.drink_before}
+                <p class="text-muted">Drink before {formatDate(coffee.drink_before)}</p>
+              {/if}
+            </a>
+            {@render tileActions(coffee)}
           </div>
         {/each}
       </section>
@@ -185,29 +193,29 @@
         {#each current.nextUp as coffee (coffee.id)}
           {@const img = coffeeImage(coffee, '')}
           <div class="card-wrap">
-          <a class="card" href={`/coffees/${coffee.slug}`}>
-            {#if img}
+            <a class="card" href={`/coffees/${coffee.slug}`}>
+              {#if img}
               <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
-            {/if}
+              {/if}
             <h2><CoffeeName name={coffee.coffee_name} /></h2>
 
-            <p class="text-muted">{coffee.roaster}</p>
-            <p class="text-muted">
+              <p class="text-muted">{coffee.roaster}</p>
+              <p class="text-muted">
               Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
                 >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
               >
-            </p>
-            {#if coffee.processing}
-              <p class="text-muted">{coffee.processing}</p>
-            {/if}
-            {#if coffee.roast_date}
-              <p class="text-muted">
+              </p>
+              {#if coffee.processing}
+                <p class="text-muted">{coffee.processing}</p>
+              {/if}
+              {#if coffee.roast_date}
+                <p class="text-muted">
                 Roasted {formatDate(coffee.roast_date)}
                 {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
-              </p>
-            {/if}
-          </a>
-          {@render tileActions(coffee)}
+                </p>
+              {/if}
+            </a>
+            {@render tileActions(coffee)}
           </div>
         {/each}
       </section>

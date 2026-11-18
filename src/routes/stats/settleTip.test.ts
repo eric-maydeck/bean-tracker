@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pooled } from '$lib/sample';
+import { pooled } from '#lib/sample.ts';
 import { settleTip } from './settleTip';
 
 describe('settleTip', () => {

@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { uploadGate } from '$lib/server/uploadGate';
-import { MAX_SHOT_BYTES, parseShot, saveShot, ShotError } from '$lib/server/visualizerUpload';
+import { getDb } from '#lib/server/db.ts';
+import { uploadGate } from '#lib/server/uploadGate.ts';
+import { MAX_SHOT_BYTES, parseShot, saveShot, ShotError } from '#lib/server/visualizerUpload.ts';
 
 // Bean Conqueror's "custom Visualizer server" upload. Exempt from the form CSRF check (csrf.ts), so the
 // password gate must run before anything else, and before the body is read.

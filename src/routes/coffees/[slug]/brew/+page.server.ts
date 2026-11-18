@@ -1,16 +1,16 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { requireAdmin } from '$lib/server/auth';
-import { addMark, deleteMark, marksFor, biasLine } from '$lib/server/brewNow/outcome';
-import { getRoasterWebsite } from '$lib/server/roasterWebsites';
-import { getDb } from '$lib/server/db';
-import { getRedirectSlug, getCoffeeBySlug, openCoffee, unopenCoffee } from '$lib/server/coffees';
-import { coffeeImage } from '$lib/coffeeImage';
-import { localToday } from '$lib/server/localToday';
-import { loadBrewRows, loadGearClass, gearOptions, coffeeGearDefaults, coffeeDetails } from '$lib/server/brewNow/load';
-import { suggest, similarCoffees, thisCoffeeSummary, tierOf } from '$lib/server/brewNow/suggest';
-import { findRoasterRecipe, getRoasterRecipe } from '$lib/server/brewNow/roasterRecipe';
-import { getBrewDoses, getBrewRatios } from '$lib/server/brewNow/prefs';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { addMark, deleteMark, marksFor, biasLine } from '#lib/server/brewNow/outcome.ts';
+import { getRoasterWebsite } from '#lib/server/roasterWebsites.ts';
+import { getDb } from '#lib/server/db.ts';
+import { getRedirectSlug, getCoffeeBySlug, openCoffee, unopenCoffee } from '#lib/server/coffees.ts';
+import { coffeeImage } from '#lib/coffeeImage.ts';
+import { localToday } from '#lib/server/localToday.ts';
+import { loadBrewRows, loadGearClass, gearOptions, coffeeGearDefaults, coffeeDetails } from '#lib/server/brewNow/load.ts';
+import { suggest, similarCoffees, thisCoffeeSummary, tierOf } from '#lib/server/brewNow/suggest.ts';
+import { findRoasterRecipe, getRoasterRecipe } from '#lib/server/brewNow/roasterRecipe.ts';
+import { getBrewDoses, getBrewRatios } from '#lib/server/brewNow/prefs.ts';
 import { parseBrewNowView } from './brewNowUrl';
 
 // The chosen gear and its suggestion, from the view params only: the page and ?/brewThis both derive them here.

@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
-import { getDb } from '$lib/server/db';
-import { allowShortLinkCreate, createShortLink, canonicalSharePath } from '$lib/server/shortLinks';
-import { resolveClientIp } from '$lib/server/loginRateLimit';
+import { getDb } from '#lib/server/db.ts';
+import { allowShortLinkCreate, createShortLink, canonicalSharePath } from '#lib/server/shortLinks.ts';
+import { resolveClientIp } from '#lib/server/loginRateLimit.ts';
 import type { RequestHandler } from './$types';
 
 // Public on purpose (anyone can share a view); not under /api, whose routes

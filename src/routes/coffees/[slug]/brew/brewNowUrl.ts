@@ -1,5 +1,5 @@
-import { pickOne } from '$lib/pageUrlState';
-import type { Gear, Setting } from '$lib/server/brewNow/suggest'; // types only: this runs client-side
+import { pickOne } from '#lib/pageUrlState.ts';
+import type { Gear, Setting } from '#lib/server/brewNow/suggest.ts'; // types only: this runs client-side
 
 // /coffees/[slug]/brew view state: gear pickers (null = the default gear), the dose / ratio override (null = the
 // suggestion) and which row's evidence is open.

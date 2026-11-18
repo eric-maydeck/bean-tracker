@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { proposeStandards, type ProposeInput } from '$lib/server/standards';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { proposeStandards, type ProposeInput } from '#lib/server/standards.ts';
 
 const isStrings = (v: unknown): v is Record<string, string> =>
   !!v && typeof v === 'object' && !Array.isArray(v) && Object.values(v).every((x) => typeof x === 'string');

@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { GearKind, GearValues } from '$lib/gear';
+import type { GearKind, GearValues } from '#lib/gear.ts';
 
 export interface GearDetail {
   kind: GearKind; name: string; values: GearValues; imageUrl: string | null;

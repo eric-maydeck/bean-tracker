@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { OnHandTab } from '$lib/server/insights/onHand';
+  import type { OnHandTab } from '#lib/server/insights/onHand.ts';
   import type { JumpLink } from './JumpNav.svelte';
   const AGE_KEYS = ['before', 'inside', 'past', 'noWindow'] as const;
   const hasAge = (t: OnHandTab) => AGE_KEYS.some((k) => t.age.bags[k].some((n) => n > 0));
@@ -12,14 +12,14 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { useEmptyLine } from './coffeeNote';
-  import { formatGrams } from '$lib/grams';
+  import { formatGrams } from '#lib/grams.ts';
   import LabHead from './LabHead.svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import type { FreshGroup } from '$lib/server/insights/onHand';
-  import Chart from '$lib/components/Chart.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import type { FreshGroup } from '#lib/server/insights/onHand.ts';
+  import Chart from '#lib/components/Chart.svelte';
   import ChartToggle from './ChartToggle.svelte';
-  import { WAIT_BYS, type InsightsUrlState, type Unit, type WaitBy } from '$lib/insightsUrl';
-  import type { Tip } from '$lib/components/TipBody.svelte';
+  import { WAIT_BYS, type InsightsUrlState, type Unit, type WaitBy } from '#lib/insightsUrl.ts';
+  import type { Tip } from '#lib/components/TipBody.svelte';
 
   let { t, tiles, runway, link, placeTip, unit, waitBy, choose }: {
     unit: Unit; waitBy?: WaitBy; choose: (c: InsightsUrlState) => void;

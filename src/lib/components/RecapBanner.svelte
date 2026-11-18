@@ -1,7 +1,7 @@
 <script lang="ts">
   // "Your <year> recap is ready", admin only. A full-bleed strip at the very top of the page, above the nav, in the recap's cover tone; never takes focus.
   import { goto, invalidateAll } from '$app/navigation';
-  import type { Tone } from '$lib/server/recaps/types';
+  import type { Tone } from '#lib/server/recaps/types.ts';
   let { year, tone }: { year: number; tone: Tone } = $props();
   // The year's cover tone, with the ink the recap slides use on it.
   const ink = $derived(['sun', 'amber', 'cream'].includes(tone) ? '#2b211b' : '#faf7f2');

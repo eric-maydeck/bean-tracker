@@ -1,29 +1,29 @@
 <script lang="ts">
-  import Stamp from '$lib/components/Stamp.svelte';
+  import Stamp from '#lib/components/Stamp.svelte';
   import Recaps from './Recaps.svelte';
   import WholeNote from './WholeNote.svelte';
-  import { labelTip, truncTip } from '$lib/components/labelTip';
-  import { setting, plainText } from '$lib/settingName';
-  import Usd from '$lib/components/Usd.svelte';
-  import { usd } from '$lib/money';
-  import TextTip from '$lib/components/TextTip.svelte';
-  import { afterNavigate, beforeNavigate, goto, replaceState } from '$app/navigation';
+  import { labelTip, truncTip } from '#lib/components/labelTip.ts';
+  import { setting, plainText } from '#lib/settingName.ts';
+  import Usd from '#lib/components/Usd.svelte';
+  import { usd } from '#lib/money.ts';
+  import TextTip from '#lib/components/TextTip.svelte';
+  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { tick } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
-  import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState, withoutDeepLinks } from '$lib/insightsMemory';
-  import Icon from '$lib/components/Icon.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
-  import { placeTip } from '$lib/components/modeTip';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import { formatGrams } from '$lib/grams';
-  import { plural } from '$lib/linkPreview';
-  import { hour12 } from '$lib/hours';
+  import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState, withoutDeepLinks } from '#lib/insightsMemory.ts';
+  import Icon from '#lib/components/Icon.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
+  import { placeTip } from '#lib/components/modeTip.ts';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import { formatGrams } from '#lib/grams.ts';
+  import { plural } from '#lib/linkPreview.ts';
+  import { hour12 } from '#lib/hours.ts';
   import {
     PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
-  } from '$lib/insightsUrl';
+  } from '#lib/insightsUrl.ts';
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { page } from '$app/state';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
@@ -44,14 +44,14 @@
   import Spend, { jumpLinks as spendLinks } from './Spend.svelte';
   import OnHand, { jumpLinks as onHandLinks } from './OnHand.svelte';
   import RunwayChart from './RunwayChart.svelte';
-  import CapItem from '$lib/components/CapItem.svelte';
+  import CapItem from '#lib/components/CapItem.svelte';
   import type { Snippet } from 'svelte';
   import Recent from './Recent.svelte';
-  import CollapsibleBar from '$lib/components/CollapsibleBar.svelte';
+  import CollapsibleBar from '#lib/components/CollapsibleBar.svelte';
   import JumpNav, { type JumpLink } from './JumpNav.svelte';
-  import type { Delta } from '$lib/server/insights/overview';
+  import type { Delta } from '#lib/server/insights/overview.ts';
   import type { PageData } from './$types';
-  import { toParams, type StatusTab } from '$lib/coffeeViewState';
+  import { toParams, type StatusTab } from '#lib/coffeeViewState.ts';
 
   let { data }: { data: PageData } = $props();
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
@@ -84,8 +84,10 @@
   };
   const CAFFEINE_CHIP: Record<Caffeine, string> = { caffeinated: 'Caffeinated', decaf: 'Decaf', all: 'Caf + decaf' };
   let coffeeChips = $derived([
-    ...COFFEE_FIELDS.flatMap(([k]) => (s[k] ? [[k, s[k]!] as const] : [])),
-    ...(s.caffeine ? [['caffeine', CAFFEINE_CHIP[s.caffeine]] as const] : [])
+    ...COFFEE_FIELDS.flatMap(([k]) => s[k] ? [[k, s[k]!] as const] : []),
+    ...s.caffeine
+      ? [['caffeine', CAFFEINE_CHIP[s.caffeine]] as const]
+      : []
   ]);
 
   // Brew filters: one select each, on the tabs that use them (BREW_FILTERS_ON); a chip for every one set, any tab.
@@ -96,17 +98,31 @@
   const brewSelects = $derived(brewSelectsOn(s.tab).filter((k) => BREW_OPTIONS[k].length));
   const brewChips = $derived(BREW_FILTER_KEYS.filter((k) => s[k]));
   // Gear's Grinder pick (a slug, not a BrewFilterKey: Brewing's own grinder select shares the param) lives in this dialog too.
-  const gearGrinder = $derived(s.tab === 'gear' && s.grinder ? (data.lab?.grinders.find((g) => g.slug === s.grinder)?.name ?? s.grinder) : undefined);
+  const gearGrinder = $derived(s.tab === 'gear' && s.grinder
+    ? data.lab?.grinders.find((g) => g.slug === s.grinder)?.name ?? s.grinder
+    : undefined);
+
   const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => brewSelectsOn(s.tab).includes(k)).length + (gearGrinder ? 1 : 0));
   const brewOff = Object.fromEntries(BREW_FILTER_KEYS.map((k) => [k, undefined]));
 
   // The Filters dialog edits a draft (fdraft, '' = Any/Default) seeded from the URL on open. Only Apply / Reset reach the URL;
   // Esc, a backdrop click or any other close just drops it (the next open reseeds).
   const grinderShown = $derived(s.tab === 'gear' && (data.lab?.grinders.length ?? 0) > 1);
-  const filterKeys = $derived<string[]>([...COFFEE_FIELDS.map(([k]) => k), 'caffeine', ...brewSelects, ...(grinderShown ? ['grinder'] : [])]);
+
+  const filterKeys = $derived<string[]>([
+    ...COFFEE_FIELDS.map(([k]) => k),
+    'caffeine',
+    ...brewSelects,
+    ...grinderShown ? ['grinder'] : []
+  ]);
+
   let fdraft = $state<Record<string, string>>({});
   function openFilters() {
-    fdraft = Object.fromEntries(filterKeys.map((k) => [k, ((s as Record<string, unknown>)[k] as string | undefined) ?? '']));
+    fdraft = Object.fromEntries(filterKeys.map((k) => [
+      k,
+      (s as Record<string, unknown>)[k] as string | undefined ?? ''
+    ]));
+
     coffeesDialog?.showModal();
   }
   const applyFilters = () => {
@@ -135,12 +151,15 @@
     // Any change that does not itself set chart (filters, rank, views, tab, Reset) drops it; a heading click sets it again.
     if (!('chart' in change)) next.chart = undefined;
     // The hash follows chart: a new chart's id, none when a tab switch or the dropped chart's own id (a reload would scroll back to it).
-    const hash = change.chart ? `#${change.chart}` : change.tab || (!('chart' in change) && location.hash === `#${explicit.chart}`) ? '' : location.hash;
+    const hash = change.chart
+      ? `#${change.chart}`
+      : change.tab || !('chart' in change) && location.hash === `#${explicit.chart}` ? '' : location.hash;
+
     // Only open / views / card / chart / retired / gear, and every Over time board already has its series: nothing to fetch.
     if (Object.keys(change).every((k) => (LOCAL_KEYS as readonly string[]).includes(k)) && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
       local = Object.fromEntries(LOCAL_KEYS.map((k) => [k, next[k]]));
       const qs = insightsParams(next).toString();
-      replaceState(`${qs ? `?${qs}` : location.pathname}${hash}`, {});
+      goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { shallow: true, replace: true });
       remember(qs);
       return Promise.resolve();
     }
@@ -171,10 +190,15 @@
   const tabOf = (u: URL | undefined) => u?.searchParams.get('tab') ?? 'overview';
   const scrollOf = new Map<string, number>();
   let pagerNav = false;
-  beforeNavigate(({ from, to }) => {
+
+  beforeNavigate(({ from, to, shallow, type }) => {
+    if (shallow && type === 'goto') return;
     if (from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url)) scrollOf.set(tabOf(from.url), scrollY);
   });
-  afterNavigate(({ from, to, type }) => {
+
+  afterNavigate(({ from, to, type, shallow }) => {
+    if (shallow && type === 'goto') return;
+
     // (a back/forward step: SvelteKit restores the scroll itself)
     // (Previous / Next: the new tab starts at its top)
     const back = type !== 'popstate' && !pagerNav && from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url) ? scrollOf.get(tabOf(to.url)) : undefined;
@@ -214,7 +238,7 @@
     const [from, to] = v.split('..');
     return { from, to };
   });
-  const custom = (t: 'range' | 'compare') => ((!!draft && target === t) || isCustom(t === 'range' ? s.range : s.compare));
+  const custom = (t: 'range' | 'compare') => !!draft && target === t || isCustom(t === 'range' ? s.range : s.compare);
   function openDates(t: 'range' | 'compare') {
     target = t;
     rangeDialog?.showModal();
@@ -239,7 +263,7 @@
       return;
     }
     draft = null;
-    choose({ compare: /^\d+$/.test(v) ? Number(v) : v });
+    choose({ compare: (/^\d+$/).test(v) ? Number(v) : v });
   }
 
   function editDraft(e: Event) {
@@ -284,7 +308,7 @@
   );
   // The compare window's dates for a tooltip, unless its label already is the dates (custom).
   let compareDates = $derived(data.previousPeriod && !isCustom(s.compare) ? windowLabel(data.previousPeriod, data.today) : '');
-  const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
+  const span = (p: { start: string | null; end: string }) => p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time';
 
   // Finding, leaderboard and Right now links keep the page's Period, Ratings, Caffeine and Coffees filter.
   const link = (href: string) => withPageWide(href, explicit, data.coffeeFilters);
@@ -336,12 +360,34 @@
     { key: 'avgTempC', label: 'Avg brew temp', fmt: (n) => `${Number(n.toFixed(1))}°C` }
   ];
   const CONSUMPTION: Tile[] = [
-    { key: 'perDay', label: 'Per day', fmt: formatGrams, split: true },
-    { key: 'perWeek', label: 'Per week', fmt: formatGrams, split: true },
-    { key: 'perMonth', label: 'Per month', fmt: formatGrams, split: true },
     {
-      key: 'daysToClear', label: 'Time to clear', fmt: (n) => n.toLocaleString('en-US'), suffix: 'days', split: true,
-      sub: () => (data.consumption.clearBy ? `by ${shortDay(data.consumption.clearBy)}` : null)
+      key: 'perDay',
+      label: 'Per day',
+      fmt: formatGrams,
+      split: true
+    },
+
+    {
+      key: 'perWeek',
+      label: 'Per week',
+      fmt: formatGrams,
+      split: true
+    },
+
+    {
+      key: 'perMonth',
+      label: 'Per month',
+      fmt: formatGrams,
+      split: true
+    },
+
+    {
+      key: 'daysToClear',
+      label: 'Time to clear',
+      fmt: (n) => n.toLocaleString('en-US'),
+      suffix: 'days',
+      split: true,
+      sub: () => data.consumption.clearBy ? `by ${shortDay(data.consumption.clearBy)}` : null
     }
   ];
   const RIGHT_NOW: Tile[] = [
@@ -373,14 +419,41 @@
     { key: 'tiedUp', split: true, label: '$ tied up', fmt: usd },
     { key: 'avgAge', label: 'Avg age', fmt: count, suffix: 'days', help: 'Counted by roast date, minus days in the freezer.' },
     // The count is the household's bags (never divided); only the grams under it divide, and its line says so.
-    { key: 'frozenBags', label: 'In the freezer', fmt: count, sub: () => (data.onHand ? `${formatGrams(data.onHand.tiles.frozenGrams)}${perPersonOn ? ' per person' : ''}` : null) },
+    {
+      key: 'frozenBags',
+      label: 'In the freezer',
+      fmt: count,
+      sub: () => data.onHand
+        ? `${formatGrams(data.onHand.tiles.frozenGrams)}${perPersonOn ? ' per person' : ''}`
+        : null
+    },
     { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd },
-    { key: 'oldest', label: 'Oldest unopened', fmt: count, suffix: 'days', sub: () => data.onHand?.tiles.oldest?.name ?? null, sub2: () => data.onHand?.tiles.oldest?.roaster ?? null, subHref: () => (data.onHand?.tiles.oldest?.slug ? `/coffees/${data.onHand.tiles.oldest.slug}` : null) },
-    { key: 'newest', label: 'Newest unopened', fmt: count, suffix: 'days', sub: () => data.onHand?.tiles.newest?.name ?? null, sub2: () => data.onHand?.tiles.newest?.roaster ?? null, subHref: () => (data.onHand?.tiles.newest?.slug ? `/coffees/${data.onHand.tiles.newest.slug}` : null) }
+    {
+      key: 'oldest',
+      label: 'Oldest unopened',
+      fmt: count,
+      suffix: 'days',
+      sub: () => data.onHand?.tiles.oldest?.name ?? null,
+      sub2: () => data.onHand?.tiles.oldest?.roaster ?? null,
+      subHref: () => data.onHand?.tiles.oldest?.slug ? `/coffees/${data.onHand.tiles.oldest.slug}` : null
+    },
+
+    {
+      key: 'newest',
+      label: 'Newest unopened',
+      fmt: count,
+      suffix: 'days',
+      sub: () => data.onHand?.tiles.newest?.name ?? null,
+      sub2: () => data.onHand?.tiles.newest?.roaster ?? null,
+      subHref: () => data.onHand?.tiles.newest?.slug ? `/coffees/${data.onHand.tiles.newest.slug}` : null
+    }
   ]);
   // Runway: the days left at the Period's pace and at the all-time pace (one tile when the Period is all time).
   // "last 12 months pace"; a custom window's dates stay as they are.
-  const paceName = $derived(s.range === 'all' || /^[A-Z][a-z]{2} \d/.test(periodLabel) ? periodLabel : periodLabel.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase()));
+  const paceName = $derived(s.range === 'all' || (/^[A-Z][a-z]{2} \d/).test(periodLabel)
+    ? periodLabel
+    : periodLabel.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase()));
+
   // Per pace: days left, the run-out date (the value is the days; its format is the date) and the daily grams.
   const outDate = (n: number) => shortDay(new Date(Date.parse(`${data.today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10));
   const paceTiles = (k: 'pace' | 'all', name: string): Tile[] => [
@@ -388,40 +461,78 @@
     { key: `${k}Out`, row: name, split: true, label: 'Runs out', fmt: outDate },
     { key: `${k}PerDay`, row: name, split: true, label: 'A day', fmt: formatGrams }
   ];
-  let RUNWAY = $derived<Tile[]>([...(s.range === 'all' ? [] : paceTiles('pace', `At your ${paceName} pace`)), ...paceTiles('all', 'At your all-time pace')]);
-  let HABITS = $derived<Tile[]>(
-    data.habits
-      ? [
+
+  let RUNWAY = $derived<Tile[]>([
+    ...s.range === 'all' ? [] : paceTiles('pace', `At your ${paceName} pace`),
+    ...paceTiles('all', 'At your all-time pace')
+  ]);
+
+  let HABITS = $derived<Tile[]>(data.habits
+    ? [
           { key: 'activeDays', label: 'Active days', fmt: pct, up: 'good',
-            // Under a compare the delta's second line (the pace slot) says the previous count; the "N of M days" sub waits for no compare.
-            from: () => (data.habits!.prevActive ? `${data.habits!.prevActive.brewDays} day${data.habits!.prevActive.brewDays === 1 ? '' : 's'}` : null),
-            sub: () => `${data.habits!.tiles.brewDays} of ${data.habits!.tiles.trackedDays} days` },
-          { key: 'currentStreak', label: data.habits.streakAtEnd ? 'Streak at period end' : 'Current streak', fmt: count, suffix: 'days' },
-          {
-            key: 'longestStreak', label: 'Longest streak', fmt: count, suffix: 'days', up: 'good', keepSub: true,
-            sub: () => (data.habits!.longestFrom ? `${shortDay(data.habits!.longestFrom)} – ${shortDay(data.habits!.longestTo!)}` : null)
-          },
-          { key: 'brewsPerBrewDay', label: 'Per brew day', fmt: (n) => n.toFixed(1), split: true },
-          { key: 'peakHour', label: 'Peak hour', fmt: hour12, sub: () => (data.habits!.prevPeak?.hour != null ? `was ${hour12(data.habits!.prevPeak.hour)}` : null) },
-          {
-            key: 'busiestWeekday', label: 'Busiest weekday', fmt: (n) => WEEKDAYS[n],
-            // Comparing puts "was Thu" on the delta line; this stays the same short form.
-            was: () => (data.habits!.prevPeak?.weekday != null ? `was ${WEEKDAYS[data.habits!.prevPeak.weekday]}` : null),
-            keepSub: true,
-            sub: () => {
-              const h = data.habits!;
-              if (h.busiestAvg === null || h.tiles.busiestWeekday === null) return null;
-              const a = h.busiestAvg;
+        // Under a compare the delta's second line (the pace slot) says the previous count; the "N of M days" sub waits for no compare.
+        from: () => data.habits!.prevActive
+          ? `${data.habits!.prevActive.brewDays} day${data.habits!.prevActive.brewDays === 1 ? '' : 's'}`
+          : null,
+        sub: () => `${data.habits!.tiles.brewDays} of ${data.habits!.tiles.trackedDays} days`
+      },
+
+      {
+        key: 'currentStreak',
+        label: data.habits.streakAtEnd ? 'Streak at period end' : 'Current streak',
+        fmt: count,
+        suffix: 'days'
+      },
+
+      {
+        key: 'longestStreak',
+        label: 'Longest streak',
+        fmt: count,
+        suffix: 'days',
+        up: 'good',
+        keepSub: true,
+        sub: () => data.habits!.longestFrom
+          ? `${shortDay(data.habits!.longestFrom)} – ${shortDay(data.habits!.longestTo!)}`
+          : null
+      },
+
+      {
+        key: 'brewsPerBrewDay',
+        label: 'Per brew day',
+        fmt: (n) => n.toFixed(1),
+        split: true
+      },
+
+      {
+        key: 'peakHour',
+        label: 'Peak hour',
+        fmt: hour12,
+        sub: () => data.habits!.prevPeak?.hour != null ? `was ${hour12(data.habits!.prevPeak.hour)}` : null
+      },
+
+      {
+        key: 'busiestWeekday',
+        label: 'Busiest weekday',
+        fmt: (n) => WEEKDAYS[n],
+        // Comparing puts "was Thu" on the delta line; this stays the same short form.
+        was: () => data.habits!.prevPeak?.weekday != null
+          ? `was ${WEEKDAYS[data.habits!.prevPeak.weekday]}`
+          : null,
+        keepSub: true,
+        sub: () => {
+          const h = data.habits!;
+          if (h.busiestAvg === null || h.tiles.busiestWeekday === null) return null;
+          const a = h.busiestAvg;
               return s.measure === 'grams' ? `${formatGrams(a)} avg`
                 : s.measure === 'rating' ? `${a.toFixed(1)} avg rating`
-                : `${Number.isInteger(a) ? a : a.toFixed(1)} brews avg`;
-            }
-          }
-        ]
+              : `${Number.isInteger(a) ? a : a.toFixed(1)} brews avg`;
+        }
+      }
+    ]
       : []
   );
   // Busiest day: the tile's value is the date as epoch days; the year shows when it isn't this year.
-  const busyDate = (d: string) => (d.slice(0, 4) === data.today.slice(0, 4) ? shortDay(d) : day(d));
+  const busyDate = (d: string) => d.slice(0, 4) === data.today.slice(0, 4) ? shortDay(d) : day(d);
   const busyDay = (n: number) => busyDate(new Date(n * 864e5).toISOString().slice(0, 10));
   const brewsText = (n: number) => `${n} brew${n === 1 ? '' : 's'}`;
   const signed = (f: (n: number) => string) => (n: number) => (n < 0 ? '−' : '') + f(Math.abs(n));
@@ -431,41 +542,56 @@
   });
   let FLOW = $derived<Tile[]>(
     data.consumptionTab
-      ? (() => {
-          const g = s.unit === 'grams';
-          const avg = s.agg !== 'total';
-          const per = s.agg === 'brewday' ? '/brew day' : '/day';
-          // Per-day rates of bags are small fractions: two decimals.
+    ? (() => {
+      const g = s.unit === 'grams';
+      const avg = s.agg !== 'total';
+      const per = s.agg === 'brewday' ? '/brew day' : '/day';
+      // Per-day rates of bags are small fractions: two decimals.
           const f = g ? formatGrams : avg ? (n: number) => n.toFixed(2) : count;
-          return [
+      return [
             { key: 'brewed', label: g ? 'Brewed' + (avg ? per : '') : avg ? 'Finished' + per : 'Bags finished', fmt: f, split: true },
             { key: 'bought', label: g ? 'Bought' + (avg ? per : '') : avg ? 'Bought' + per : 'Bags bought', fmt: f, split: true },
             { key: 'net', label: avg ? 'Net' + per : 'Net change', fmt: signed(f), split: true },
-            avg
-              ? {
+        avg
+          ? {
                   key: 'busiest', label: 'Busiest day', fmt: (n: number) => busyDay(n),
-                  // Comparing puts "vs Oct 4:" over "3 brews · 48g" in the delta slot; this period's stay beneath.
-                  stack: () => {
-                    const p = data.consumptionTab!.prevBusiest;
-                    return p
+            // Comparing puts "vs Oct 4:" over "3 brews · 48g" in the delta slot; this period's stay beneath.
+            stack: () => {
+              const p = data.consumptionTab!.prevBusiest;
+              return p
                       ? { head: `vs ${busyDate(p.date)}:`, tail: `${brewsText(p.brews)} · ${formatGrams(p.grams)}`,
                           said: `Busiest day in the comparison period: ${busyDate(p.date)}, ${brewsText(p.brews)}, ${formatGrams(p.grams)}` }
-                      : null;
-                  },
-                  keepSub: true,
-                  sub: () => {
-                    const b = data.consumptionTab!.busiest;
+                : null;
+            },
+            keepSub: true,
+            sub: () => {
+              const b = data.consumptionTab!.busiest;
                     return b ? `${brewsText(b.brews)} · ${formatGrams(b.grams)}` : null;
-                  }
-                }
-              : { key: 'avg', label: `Avg per ${data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
-            { key: 'onHand', label: g ? 'On hand' : 'Bags on hand', fmt: g ? formatGrams : count },
-            {
-              key: 'daysToClear', label: 'Days to clear', fmt: count, suffix: 'days', split: true,
-              sub: () => (data.consumptionTab!.clearBy ? `by ${shortDay(data.consumptionTab!.clearBy)}` : null)
             }
-          ];
-        })()
+          }
+          : {
+            key: 'avg',
+            label: `Avg per ${data.consumptionTab!.by}`,
+            fmt: g ? formatGrams : (n: number) => n.toFixed(1),
+            split: true
+          },
+
+        {
+          key: 'onHand',
+          label: g ? 'On hand' : 'Bags on hand',
+          fmt: g ? formatGrams : count
+        },
+
+        {
+          key: 'daysToClear',
+          label: 'Days to clear',
+          fmt: count,
+          suffix: 'days',
+          split: true,
+          sub: () => data.consumptionTab!.clearBy ? `by ${shortDay(data.consumptionTab!.clearBy)}` : null
+        }
+      ];
+    })()
       : []
   );
   // One explanation per ratings mode, shared by the switches (hover title,
@@ -485,24 +611,35 @@
   };
   let menuOff = $derived(ratingsMenu ? undefined : MENU_OFF[s.tab]);
   // The tab's own controls row: Leaderboards, Habits, Consumption, Milestones, Sweet spots, and Brewing with 2+ grinders.
-  let tabBarOn = $derived(
-    !!(data.boards || (s.tab === 'habits' && data.habits) || (s.tab === 'consumption' && data.consumptionTab) || (s.tab === 'milestones' && data.milestones) ||
-      (s.tab === 'sweetspots' && data.sweetSpots) || (s.tab === 'brewing' && data.brewing && (data.lab?.grinders.length ?? 0) > 1))
-  );
+  let tabBarOn = $derived(!!(data.boards || s.tab === 'habits' && data.habits || s.tab === 'consumption' && data.consumptionTab || s.tab === 'milestones' && data.milestones || s.tab === 'sweetspots' && data.sweetSpots || s.tab === 'brewing' && data.brewing && (data.lab?.grinders.length ?? 0) > 1));
+
   // Phones (≤480): the narrow Period and Compare selects read "Last 12 mo." instead of clipping "Last 12 months".
   // The data-short attribute lets app.html's first-paint script show the short text before hydration.
   const phone = new MediaQuery('max-width: 480px');
-  const phoneText = (long: string) => (phone.current ? phoneWords(long) : long);
+  const phoneText = (long: string) => phone.current ? phoneWords(long) : long;
   // The bar's phone grid (gate r2 A3): 3 cells per row up to 480px, 2 up to 640px; packSpans widens controls so every
   // row is full. The menu takes two cells at 3 per row (its label is long); People always two; Dates… a cell, or a row at 2.
   // Compare shows on every tab but the lab and On hand (a snapshot of the shelf has nothing to compare).
   const noCompare = $derived(labTab || s.tab === 'onhand' || s.tab === 'recaps');
   const peopleOn = $derived(data.householdSize > 1 && s.tab !== 'milestones' && s.tab !== 'recaps' && !labTab);
-  const barCells = (cols: 2 | 3) => packSpans([
-    ['period', 1], ...(isCustom(s.range) ? [['range-dates', 4 - cols]] : []),
-    ...(noCompare ? [] : [['compare', 1], ...(isCustom(s.compare) ? [['compare-dates', 4 - cols]] : [])]),
-    ...(ratingsMenu || menuOff ? [['menu', cols - 1]] : []), ['filters', 1], ...(peopleOn ? [['people', 2]] : [])
-  ] as [string, number][], cols);
+
+  const barCells = (cols: 2 | 3) => packSpans(
+    [
+      ['period', 1],
+      ...isCustom(s.range) ? [['range-dates', 4 - cols]] : [],
+      ...noCompare
+        ? []
+        : [
+          ['compare', 1],
+          ...isCustom(s.compare) ? [['compare-dates', 4 - cols]] : []
+        ],
+      ...ratingsMenu || menuOff ? [['menu', cols - 1]] : [],
+      ['filters', 1],
+      ...peopleOn ? [['people', 2]] : []
+    ] as [string, number][],
+    cols
+  );
+
   let span2 = $derived(barCells(2));
   let span3 = $derived(barCells(3));
   const cell = (k: string) => `--s2:${span2[k]};--s3:${span3[k]}`;
@@ -512,12 +649,17 @@
   const wholeKeys = $derived(Object.keys(data.brewFilters) as BrewFilterKey[]);
   // Paced or per-person totals are fractional: a count under 10 keeps one decimal, so a small
   // value doesn't read "0" or round 6.5 to "7". Money and grams keep their own formats.
-  const paced = (t: Tile) =>
-    (data.scaled || perPersonOn) && t.split && t.fmt === count ? (n: number) => (Math.abs(n) < 10 ? n.toFixed(1) : count(n)) : t.fmt;
-  const valueText = (t: Tile, v: number | null) => (v === null ? '—' : (perPersonOn ? paced(t) : t.fmt)(v));
+  const paced = (t: Tile) => (data.scaled || perPersonOn) && t.split && t.fmt === count
+    ? (n: number) => Math.abs(n) < 10 ? n.toFixed(1) : count(n)
+    : t.fmt;
+
+  const valueText = (t: Tile, v: number | null) => v === null ? '—' : (perPersonOn ? paced(t) : t.fmt)(v);
 
   // The previous value as the line says it: "112g", or for a ratio of a count "31 days (100%)".
-  const was = (d: NonNullable<D>, t: Tile) => (t.from?.() ? `${t.from()} (${paced(t)(d.base)})` : paced(t)(d.base));
+  const was = (d: NonNullable<D>, t: Tile) => t.from?.()
+    ? `${t.from()} (${paced(t)(d.base)})`
+    : paced(t)(d.base);
+
   // Unscaled: "▼ 19g from 112g". A pace-scaled base isn't the other window's own value, so those
   // keep the change and its %, with "vs X at that pace" on the pace line.
   function deltaText(d: NonNullable<D>, t: Tile): string {
@@ -541,13 +683,13 @@
     }
     return d.paced ? `${dir} vs ${fmt(d.base)}${unit} at that pace` : `${dir} from ${t.from?.() ? was(d, t) : fmt(d.base) + unit} (${compareLabel})`;
   }
-  const paceText = (d: NonNullable<D>, t: Tile) => (d.paced ? `vs ${paced(t)(d.base)} at that pace` : '');
+  const paceText = (d: NonNullable<D>, t: Tile) => d.paced ? `vs ${paced(t)(d.base)} at that pace` : '';
   // Green when the change is the good way for this tile, red when bad; tiles with no good
   // direction go by direction (up green, down red); no change stays gray.
   function trend(d: { abs: number }, t: Tile): string {
     const fmt = paced(t);
     if (fmt(Math.abs(d.abs)) === fmt(0)) return '';
-    return (d.abs > 0) === (t.up !== 'bad') ? 'trend-good' : 'trend-bad';
+    return d.abs > 0 === (t.up !== 'bad') ? 'trend-good' : 'trend-bad';
   }
   let periodText = $derived(
     [span(data.period), data.previousPeriod && `vs ${span(data.previousPeriod)}`, 'Mountain Time'].filter(Boolean).join(' · ')
@@ -603,287 +745,463 @@
   {/each}
 {/snippet}
 <div class="rail-main">
-<CollapsibleBar desktopPinned={sectionH + barHeight}>
-{#snippet children()}
-<div class="toolbar">
-  <h1>Stats</h1>
+  <CollapsibleBar desktopPinned={sectionH + barHeight}>
+    {#snippet children()}
+      <div class="toolbar">
+        <h1>Stats</h1>
   <button class="button button-secondary reset" type="button" onclick={reset}>Reset</button>
-  <ShareButton />
-</div>
-<!-- The current view, right under the title (it navigates Stats, not a filter); it opens the sections drawer. -->
-<div class="section-bar" bind:offsetHeight={sectionH}><button type="button" class="section-row" aria-haspopup="dialog" onclick={() => drawer?.showModal()}><Icon name="list" /><span>View: {TAB_LABEL[s.tab]}</span></button></div>
+        <ShareButton />
+      </div>
+      <!-- The current view, right under the title (it navigates Stats, not a filter); it opens the sections drawer. -->
 
-<div class="insights-controls filter-bar" style:--section-h="{sectionH}px" bind:offsetHeight={barHeight}>
-  <label class="form-field group-field" style={cell('period')}>
-    <span>Period</span>
+      <div class="section-bar" bind:offsetHeight={sectionH}>
+        <button
+          type="button"
+          class="section-row"
+          aria-haspopup="dialog"
+          onclick={() => drawer?.showModal()}
+        >
+          <Icon name="list" />
+          <span>View: {TAB_LABEL[s.tab]}</span>
+        </button>
+      </div>
+
+      <div
+        class="insights-controls filter-bar"
+        style:--section-h="{sectionH}px"
+        bind:offsetHeight={barHeight}
+      >
+        <label
+          class="form-field group-field"
+          style={cell('period')}
+        >
+          <span>Period</span>
     <select class="ctl-select" aria-label="Period" value={custom('range') ? 'custom' : s.range} onchange={(e) => pickRange(e.currentTarget.value)}>
-      <optgroup label="Rolling">
+            <optgroup label="Rolling">
         {#each ROLLING as r (r)}<option value={r} data-short={phoneWords(RANGE_LABELS[r])}>{phoneText(RANGE_LABELS[r])}</option>{/each}
-      </optgroup>
-      <optgroup label="Calendar">
-        <option value="ytd">{RANGE_LABELS.ytd}</option>
+            </optgroup>
+            <optgroup label="Calendar">
+              <option value="ytd">{RANGE_LABELS.ytd}</option>
         {#each [...data.years].reverse() as y (y)}<option value={String(y)}>{y}</option>{/each}
-      </optgroup>
+            </optgroup>
       <optgroup label="Everything">
         <option value="all">{RANGE_LABELS.all}</option>
       </optgroup>
-      <optgroup label="Custom"><option value="custom">{isCustom(s.range) ? span(data.period) : 'Custom range…'}</option></optgroup>
-    </select>
-  </label>
-  {#if isCustom(s.range)}
+            <optgroup label="Custom"><option value="custom">{isCustom(s.range) ? span(data.period) : 'Custom range…'}</option></optgroup>
+          </select>
+        </label>
+        {#if isCustom(s.range)}
     <button class="button button-ghost" style={cell('range-dates')} aria-label="Period dates" onclick={() => openDates('range')}>Dates…</button>
-  {/if}
-  {#if !noCompare}
+        {/if}
+        {#if !noCompare}
   <label class="form-field group-field" style={cell('compare')}>
-    <span>Compare</span>
-    <select
-      class="ctl-select"
-      aria-label="Compare"
-      value={custom('compare') ? 'custom' : String(s.compare)}
-      onchange={(e) => pickCompare(e.currentTarget.value)}
-    >
-      <option value="0">Off</option>
-      {#each data.compareMenus[s.range] as g (g.label)}
-        <optgroup label={g.label}>
+            <span>Compare</span>
+            <select
+              class="ctl-select"
+              aria-label="Compare"
+              value={custom('compare') ? 'custom' : String(s.compare)}
+              onchange={(e) => pickCompare(e.currentTarget.value)}
+            >
+              <option value="0">Off</option>
+              {#each data.compareMenus[s.range] as g (g.label)}
+                <optgroup label={g.label}>
           {#each g.options as o (o.value)}<option value={o.value} data-short={phoneWords(o.label)}>{phoneText(o.label)}</option>{/each}
-        </optgroup>
-      {/each}
-      <optgroup label="Custom"><option value="custom">Custom range…</option></optgroup>
-    </select>
-  </label>
-  {#if isCustom(s.compare)}
+                </optgroup>
+              {/each}
+              <optgroup label="Custom"><option value="custom">Custom range…</option></optgroup>
+            </select>
+          </label>
+          {#if isCustom(s.compare)}
     <button class="button button-ghost" style={cell('compare-dates')} aria-label="Compare dates" onclick={() => openDates('compare')}>Dates…</button>
-  {/if}
-  {/if}
-  <!-- Ratings and Brews, one menu for the tabs where they change most of the page (ui-rules 26/30), in the modes where they apply. -->
-  {#if ratingsMenu || menuOff}
-    <div style={cell('menu')}><RatingsSwitch menu off={menuOff} ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} /></div>
-  {/if}
+          {/if}
+        {/if}
+        <!-- Ratings and Brews, one menu for the tabs where they change most of the page (ui-rules 26/30), in the modes where they apply. -->
+        {#if ratingsMenu || menuOff}
+          <div style={cell('menu')}>
+            <RatingsSwitch
+              menu
+              off={menuOff}
+              ratings={s.ratings}
+              dial={s.dial}
+              ratingsHelp={RATINGS_HELP}
+              choose={choose}
+            />
+          </div>
+        {/if}
   <div class="form-field group-field filters-field" style={cell('filters')}>
-    <span>{FILTERS_LABEL}</span>
+          <span>{FILTERS_LABEL}</span>
     <button class="button button-secondary filters-button" type="button" aria-haspopup="dialog"
-      onclick={() => openFilters()}
-      >Filters{#if badgeCount}<span class="badge">{badgeCount}</span>{/if}</button
-    >
-  </div>
-  <!-- Milestones and the lab tabs are household-level: no People switch there. -->
-  {#if peopleOn}
+            onclick={() => openFilters()}
+          >
+            Filters{#if badgeCount}
+              <span class="badge">{badgeCount}</span>
+            {/if}
+          </button>
+        </div>
+        <!-- Milestones and the lab tabs are household-level: no People switch there. -->
+        {#if peopleOn}
     <div class="form-field group-field people-field" style={cell('people')}>
       <span><button class="mode-tip-button" popovertarget="tip-people" aria-describedby="tip-people"><span class="tip-text">People</span><Icon name="question" /></button></span>
       <div class="tab-group people-switch" role="group" aria-label="People">
-        {#each PEOPLE as m (m)}
-          <button
-            aria-pressed={s.people === m}
+              {#each PEOPLE as m (m)}
+                <button
+                  aria-pressed={s.people === m}
             use:labelTip={{ title: m === 'person' ? 'Per person' : 'Household', lines: [PEOPLE_HELP[m]] }}
-            aria-describedby="people-help-{m}"
+                  aria-describedby="people-help-{m}"
             onclick={() => choose({ people: m })}>{m === 'person' ? 'Per person' : 'Household'}</button
           >
-        {/each}
-      </div>
-    </div>
-  {/if}
-  <!-- The active tab's own controls, a row of the bar so they float with it; rendered here (not by the tab) so they are in the server HTML. -->
-  {#if tabBarOn}
-    <div class="tab-controls">
-      {#if s.tab === 'milestones'}<KindsBar kinds={s.kinds} {choose} />
-      {:else if s.tab === 'brewing'}<div class="insights-bar"><GrinderSelect grinders={data.lab!.grinders} grinder={s.grinder} {choose} /></div>
-      {:else}{@render tab('bar')}{/if}
-    </div>
-  {/if}
-  <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. Sweet spots' Bag set Roast and Process, so dropping either (or Clear all) drops the Bag too. -->
-  {#if coffeeChips.length || brewChips.length || gearGrinder}
-    <div class="filter-chips coffee-chips">
-      {#each coffeeChips as [key, value] (key)}
-        <span class="filter-chip"
-          ><button type="button" class="filter-chip-label" use:labelTip={'Edit in Filters'} onclick={() => openFilters()}>{value}</button
-          ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
-            aria-label="Remove filter: {value}" onclick={() => choose({ [key]: undefined, ...(key === 'roast' || key === 'process' ? { bag: undefined } : {}) })}>✕</button
-          ></span
-        >
-      {/each}
-      {#each brewChips as k (k)}
-        {@const off = !brewSelectsOn(s.tab).includes(k)}
-        {@const value = brewFilterText(k, s[k]!)}
+              {/each}
+            </div>
+          </div>
+        {/if}
+        <!-- The active tab's own controls, a row of the bar so they float with it; rendered here (not by the tab) so they are in the server HTML. -->
+        {#if tabBarOn}
+          <div class="tab-controls">
+            {#if s.tab === 'milestones'}
+              <KindsBar kinds={s.kinds} choose={choose} />
+            {:else if s.tab === 'brewing'}
+              <div class="insights-bar">
+                <GrinderSelect
+                  grinders={data.lab!.grinders}
+                  grinder={s.grinder}
+                  choose={choose}
+                />
+              </div>
+            {:else}
+              {@render tab('bar')}
+            {/if}
+          </div>
+        {/if}
+
+        <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. Sweet spots' Bag set Roast and Process, so dropping either (or Clear all) drops the Bag too. -->
+        {#if coffeeChips.length || brewChips.length || gearGrinder}
+          <div class="filter-chips coffee-chips">
+            {#each coffeeChips as [key, value] (key)}
+              <span class="filter-chip">
+                <button
+                  type="button"
+                  class="filter-chip-label"
+                  use:labelTip={'Edit in Filters'}
+                  onclick={() => openFilters()}
+                >{value}</button>
+
+                <button
+                  type="button"
+                  class="filter-chip-remove"
+                  use:labelTip={'Remove filter'}
+                  aria-label="Remove filter: {value}"
+                  onclick={() => choose({
+                    [key]: undefined,
+                    ...key === 'roast' || key === 'process' ? { bag: undefined } : {}
+                  })}
+                >✕</button>
+              </span>
+            {/each}
+            {#each brewChips as k (k)}
+              {@const off = !brewSelectsOn(s.tab).includes(k)}
+              {@const value = brewFilterText(k, s[k]!)}
         <span class="filter-chip" class:muted={off}
           ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => !off && openFilters()}>{value}</button
           ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
             aria-label="Remove filter: {value}" onclick={() => choose({ [k]: undefined })}>✕</button
           ></span
         >
-      {/each}
-      {#if gearGrinder}
+            {/each}
+            {#if gearGrinder}
         <span class="filter-chip"
           ><button type="button" class="filter-chip-label" use:labelTip={'Edit in Filters'} onclick={() => openFilters()}>{gearGrinder}</button
           ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
             aria-label="Remove filter: {gearGrinder}" onclick={() => choose({ grinder: undefined })}>✕</button
           ></span
         >
-      {/if}
-      <button type="button" class="filter-clear-all"
-        onclick={() => choose({ ...brewOff, ...(s.tab === 'gear' ? { grinder: undefined } : {}), roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined, bag: undefined })}>Clear all</button>
-    </div>
-  {/if}
-</div>
-{#if data.roastMix}
-  {@const [first, ...rest] = data.roastMix}
+            {/if}
+
+            <button
+              type="button"
+              class="filter-clear-all"
+              onclick={() => choose({
+                ...brewOff,
+                ...s.tab === 'gear' ? { grinder: undefined } : {},
+                roast: undefined,
+                process: undefined,
+                origin: undefined,
+                roaster: undefined,
+                caffeine: undefined,
+                bag: undefined
+              })}
+            >Clear all</button>
+          </div>
+        {/if}
+      </div>
+      {#if data.roastMix}
+        {@const [first, ...rest] = data.roastMix}
   <p class="chart-note roast-nudge">{first.roast} averages {first.mean.toFixed(1)}{#each rest as r (r.roast)}, {r.roast.toLowerCase()} {r.mean.toFixed(1)}{/each}:
     <button type="button" class="filter-clear-all" onclick={() => openFilters()}>filter by roast</button></p>
-{/if}
-  <!-- Focus lands on the dialog, never a date input (no-autofocus rule). -->
-  <!-- svelte-ignore a11y_autofocus -->
-  <dialog bind:this={rangeDialog} autofocus class="range-dialog" aria-labelledby="range-title" onclose={() => (draft = null)}>
-    <h2 id="range-title">Custom range</h2>
-    {#if shown}
+      {/if}
+      <!-- Focus lands on the dialog, never a date input (no-autofocus rule). -->
+      <!-- svelte-ignore a11y_autofocus -->
+
+      <dialog
+        bind:this={rangeDialog}
+        autofocus
+        class="range-dialog"
+        aria-labelledby="range-title"
+        onclose={() => draft = null}
+      >
+        <h2 id="range-title">Custom range</h2>
+        {#if shown}
       <form class="custom-range" oninput={editDraft} onsubmit={applyCustom}>
-        <label class="form-field">
-          <span>From</span>
+            <label class="form-field">
+              <span>From</span>
           <input class="ctl-select" type="date" name="from" value={shown.from} min={data.dataStart} max={data.today} />
-        </label>
-        <label class="form-field">
-          <span>To</span>
+            </label>
+            <label class="form-field">
+              <span>To</span>
           <input class="ctl-select" type="date" name="to" value={shown.to} min={data.dataStart} max={data.today} />
-        </label>
-        <footer>
+            </label>
+            <footer>
           <button type="button" class="button button-ghost" onclick={() => rangeDialog?.close()}>Cancel</button>
           <button class="button" disabled={!customRange(shown.from, shown.to, data.today)}>Apply</button>
-        </footer>
-      </form>
-    {/if}
-  </dialog>
-  <!-- Focus lands on the dialog, never a select (no keyboard pop). -->
-  <!-- svelte-ignore a11y_autofocus, a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-  <dialog bind:this={coffeesDialog} autofocus class="range-dialog coffees-dialog" aria-labelledby="coffees-title"
-    onpointerdown={(e) => (pressedOutside = e.target === coffeesDialog && outside(e, coffeesDialog!))}
-    onclick={(e) => e.target === coffeesDialog && pressedOutside && outside(e, coffeesDialog!) && coffeesDialog.close()}>
-    <h2 id="coffees-title">Filters</h2>
-    <div class="coffees-fields">
-      {#each COFFEE_FIELDS as [key, label, values] (key)}
-        <label class="form-field">
-          <span>{label}</span>
-          <select class="ctl-select" aria-label={label} value={fdraft[key] ?? ''}
-            onchange={(e) => (fdraft[key] = e.currentTarget.value)}>
-            <option value="">Any</option>
-            {#each values as v (v)}<option value={v}>{v}</option>{/each}
-          </select>
-        </label>
-      {/each}
-      <label class="form-field">
-        <span>Caffeine</span>
-        <select class="ctl-select" aria-label="Caffeine" value={fdraft.caffeine ?? ''}
-          onchange={(e) => (fdraft.caffeine = e.currentTarget.value)}>
-          <option value="" data-short="Default">{phone.current ? 'Default' : `Default (${data.defaultCaffeine})`}</option>
-          <option value="caffeinated">Caffeinated</option>
-          <option value="decaf">Decaf</option>
-          <option value="all">All</option>
-        </select>
-      </label>
-      {#each brewSelects as key (key)}
-        <label class="form-field">
-          <span>{BREW_FILTER_LABEL[key]}</span>
-          <select class="ctl-select" aria-label={BREW_FILTER_LABEL[key]} value={fdraft[key] ?? ''}
-            onchange={(e) => (fdraft[key] = e.currentTarget.value)}>
-            <option value="">Any</option>
-            {#each BREW_OPTIONS[key] as v (v)}<option value={v}>{brewFilterText(key, v)}</option>{/each}
-          </select>
-        </label>
-      {/each}
-      {#if grinderShown}
-        <label class="form-field">
-          <span>Grinder</span>
-          <select class="ctl-select" aria-label="Grinder" value={fdraft.grinder ?? ''}
-            onchange={(e) => (fdraft.grinder = e.currentTarget.value)}>
-            <option value="">Any</option>
-            {#each data.lab!.grinders as g (g.slug)}<option value={g.slug}>{g.name}</option>{/each}
-          </select>
-        </label>
-      {/if}
-    </div>
-    <!-- Under the fields, its space always reserved: nothing above or below moves when the Default hint comes and goes. -->
-    <p class="coffees-note" class:off={!!fdraft.caffeine}><span class="setting-name">Caffeine</span>, <span class="setting-name">Default ({data.defaultCaffeine})</span>: {DEFAULT_HINT[data.defaultCaffeine]}</p>
-    <footer>
-      <button type="button" class="button button-ghost" onclick={() => coffeesDialog?.close()}>Cancel</button>
-      <button type="button" class="button button-secondary" onclick={() => (fdraft = Object.fromEntries(filterKeys.map((k) => [k, ''])))}>Reset</button>
-      <button type="button" class="button" onclick={() => applyFilters()}>Apply</button>
-    </footer>
-  </dialog>
+            </footer>
+          </form>
+        {/if}
+      </dialog>
+      <!-- Focus lands on the dialog, never a select (no keyboard pop). -->
+      <!-- svelte-ignore a11y_autofocus, a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 
-<div class="period-row">
+      <dialog
+        bind:this={coffeesDialog}
+        autofocus
+        class="range-dialog coffees-dialog"
+        aria-labelledby="coffees-title"
+        onpointerdown={(e) => pressedOutside = e.target === coffeesDialog && outside(e, coffeesDialog!)}
+        onclick={(e) => e.target === coffeesDialog && pressedOutside && outside(e, coffeesDialog!) && coffeesDialog.close()}
+      >
+        <h2 id="coffees-title">Filters</h2>
+        <div class="coffees-fields">
+          {#each COFFEE_FIELDS as [key, label, values] (key)}
+            <label class="form-field">
+              <span>{label}</span>
+
+              <select
+                class="ctl-select"
+                aria-label={label}
+                value={fdraft[key] ?? ''}
+                onchange={(e) => fdraft[key] = e.currentTarget.value}
+              >
+                <option value="">Any</option>
+            {#each values as v (v)}<option value={v}>{v}</option>{/each}
+              </select>
+            </label>
+          {/each}
+          <label class="form-field">
+            <span>Caffeine</span>
+
+            <select
+              class="ctl-select"
+              aria-label="Caffeine"
+              value={fdraft.caffeine ?? ''}
+              onchange={(e) => fdraft.caffeine = e.currentTarget.value}
+            >
+              <option value="" data-short="Default">{phone.current ? 'Default' : `Default (${data.defaultCaffeine})`}</option>
+              <option value="caffeinated">Caffeinated</option>
+              <option value="decaf">Decaf</option>
+              <option value="all">All</option>
+            </select>
+          </label>
+          {#each brewSelects as key (key)}
+            <label class="form-field">
+              <span>{BREW_FILTER_LABEL[key]}</span>
+
+              <select
+                class="ctl-select"
+                aria-label={BREW_FILTER_LABEL[key]}
+                value={fdraft[key] ?? ''}
+                onchange={(e) => fdraft[key] = e.currentTarget.value}
+              >
+                <option value="">Any</option>
+            {#each BREW_OPTIONS[key] as v (v)}<option value={v}>{brewFilterText(key, v)}</option>{/each}
+              </select>
+            </label>
+          {/each}
+          {#if grinderShown}
+            <label class="form-field">
+              <span>Grinder</span>
+
+              <select
+                class="ctl-select"
+                aria-label="Grinder"
+                value={fdraft.grinder ?? ''}
+                onchange={(e) => fdraft.grinder = e.currentTarget.value}
+              >
+                <option value="">Any</option>
+            {#each data.lab!.grinders as g (g.slug)}<option value={g.slug}>{g.name}</option>{/each}
+              </select>
+            </label>
+          {/if}
+        </div>
+        <!-- Under the fields, its space always reserved: nothing above or below moves when the Default hint comes and goes. -->
+    <p class="coffees-note" class:off={!!fdraft.caffeine}><span class="setting-name">Caffeine</span>, <span class="setting-name">Default ({data.defaultCaffeine})</span>: {DEFAULT_HINT[data.defaultCaffeine]}</p>
+        <footer>
+          <button
+            type="button"
+            class="button button-ghost"
+            onclick={() => coffeesDialog?.close()}
+          >Cancel</button>
+
+          <button
+            type="button"
+            class="button button-secondary"
+            onclick={() => fdraft = Object.fromEntries(filterKeys.map((k) => [k, '']))}
+          >Reset</button>
+
+          <button
+            type="button"
+            class="button"
+            onclick={() => applyFilters()}
+          >Apply</button>
+        </footer>
+      </dialog>
+
+      <div class="period-row">
   <p class="insights-period">{periodText}{#if s.tab === 'overview'}{' · '}<span data-last-updated>Last updated: <Stamp iso={data.lastImportedAt} /></span>{/if}</p>
-<!-- See all (gate 3): what the Score/Ratings/Brews settings hide on this tab; once everything shows, the way back.
+        <!-- See all (gate 3): what the Score/Ratings/Brews settings hide on this tab; once everything shows, the way back.
        It shares the period line's row (right-aligned), so it appearing moves nothing below; on a phone it wraps under it only when it does not fit. -->
-  {#if data.hidden}
-    {#if s.avg === 'raw' && s.ratings === 'all' && s.dial === 'all'}
+        {#if data.hidden}
+          {#if s.avg === 'raw' && s.ratings === 'all' && s.dial === 'all'}
       <p class="chart-note see-all">Showing everything<span class="wide-only">, including low-confidence rows</span>.
         <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
-    {:else if hiddenNote(data.hidden)}
-      {@const note = hiddenNote(data.hidden)!}
+          {:else if hiddenNote(data.hidden)}
+            {@const note = hiddenNote(data.hidden)!}
       <p class="chart-note see-all"><span class="wide-only">{note.lead}</span><span class="phone-only">{note.short}</span> <TextTip label="hidden by your settings" tip={note.tip}>hidden<span class="wide-only">{' '}by your settings</span></TextTip>.
         <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
-    {/if}
-  {/if}
-</div>
+          {/if}
+        {/if}
+      </div>
 <JumpNav links={jump} label={s.tab === 'leaderboards' ? 'Jump to a board' : undefined} />
-{/snippet}
+    {/snippet}
 {#snippet summary()}<button type="button" class="mini-menu" aria-haspopup="dialog" aria-label="Stats sections" onclick={() => drawer?.showModal()}><Icon name="list" /></button>{TAB_LABEL[s.tab]}{' · '}{periodText}{#if badgeCount}{' · '}{badgeCount} {badgeCount === 1 ? 'filter' : 'filters'}{/if}{/snippet}
-</CollapsibleBar>
-<!-- The sections drawer, from the "View: …" row or the pinned ☰. A tab link, the backdrop or Esc closes it. -->
+  </CollapsibleBar>
+  <!-- The sections drawer, from the "View: …" row or the pinned ☰. A tab link, the backdrop or Esc closes it. -->
 <dialog bind:this={drawer} class="tab-drawer" aria-label="Stats sections"
   onclick={(e) => { if (e.target === drawer || (e.target as Element).closest('a')) drawer!.close(); }}>
-  <div class="drawer-head">
-    <span>Stats</span>
+    <div class="drawer-head">
+      <span>Stats</span>
     <button type="button" class="button button-ghost drawer-close" aria-label="Close" onclick={() => drawer!.close()}><Icon name="x" /></button>
-  </div>
-  <nav class="rail-links">{@render railGroups()}</nav>
-</dialog>
-<span id="ratings-help-current" hidden>{plainText(RATINGS_HELP.current)}</span>
-<span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
-<span id="dial-help-dialed" hidden>{DIAL_HELP.dialed}</span>
-<span id="dial-help-all" hidden>{DIAL_HELP.all}</span>
+    </div>
+    <nav class="rail-links">{@render railGroups()}</nav>
+  </dialog>
+  <span id="ratings-help-current" hidden>{plainText(RATINGS_HELP.current)}</span>
+  <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
+  <span id="dial-help-dialed" hidden>{DIAL_HELP.dialed}</span>
+  <span id="dial-help-all" hidden>{DIAL_HELP.all}</span>
 {#if peopleOn}<div class="mode-tip" id="tip-people" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'People', lines: [`Per person: ${PEOPLE_HELP.person}`, `Household: ${PEOPLE_HELP.household}`] }} />{#if data.isAdmin}<a class="tip-link people-tip-link" href="/account#household">Set it on Account</a>{/if}</div>
-<span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
+    <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
 <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>{/if}
 
-{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null, whole?: string[], after?: Snippet)}
-  <section class="chart-panel">
-    {#if tiles.some((t) => t.ratingSwitch)}
-      <div class="chart-panel-header">
+  {#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null, whole?: string[], after?: Snippet)}
+    <section class="chart-panel">
+      {#if tiles.some((t) => t.ratingSwitch)}
+        <div class="chart-panel-header">
+          <HeadingAnchor id={panelId(title)}>{title}</HeadingAnchor>
+
+          <RatingsSwitch
+            ratings={s.ratings}
+            dial={s.dial}
+            ratingsHelp={RATINGS_HELP}
+            choose={choose}
+          />
+        </div>
+      {:else}
         <HeadingAnchor id={panelId(title)}>{title}</HeadingAnchor>
-        <RatingsSwitch ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
-      </div>
-    {:else}
-      <HeadingAnchor id={panelId(title)}>{title}</HeadingAnchor>
-    {/if}
+      {/if}
     {#each tiles.some((x) => x.row) ? [...new Set(tiles.map((x) => x.row))].map((r) => ({ row: r, tiles: tiles.filter((x) => x.row === r) })) : [{ row: undefined, tiles }] as g (g.row ?? '')}
     {#if g.row}<h3 class="row-label">{g.row}</h3>{/if}
     <div class="stat-row fit n{g.tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'} class:spending={title === 'Spending'} class:on-shelf={title === 'On the shelf'} class:runway-row={!!g.row}>
-      {#each g.tiles as t (t.key)}
-        {@const v = (values as Record<string, number | null>)[t.key] ?? null}
-        {@const d = (deltas as Record<string, D> | null)?.[t.key]}
-        {@const pp = t.split && perPersonOn}
-        <div class="stat-item" id={tileId(t.key)} class:stack={t.stack?.() && t.sub?.()}>
-          <span class="stat-value" style:--len={valueText(t, v).length}
-            >{#if t.fmt === usd && v !== null}<Usd n={v} />{:else}{valueText(t, v)}{/if}{#if t.suffix && v !== null}<small>{` ${valueText(t, v) === '1' ? t.suffix.replace(/s$/, '') : t.suffix}`}</small>{/if}</span
-          >
-          {#if d}
-            <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and the hover tip. -->
-            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={(t.from || t.fmt === usd || title === 'Spending') && !d.paced} use:labelTip={deltaText(d, t) === 'No change' ? undefined : deltaTitle(d, t)}
-              ><span aria-hidden="true">{deltaText(d, t)}</span><span class="sr-only">{deltaTitle(d, t)}</span></span
+          {#each g.tiles as t (t.key)}
+            {@const v = (values as Record<string, number | null>)[t.key] ?? null}
+            {@const d = (deltas as Record<string, D> | null)?.[t.key]}
+            {@const pp = t.split && perPersonOn}
+
+            <div
+              class="stat-item"
+              id={tileId(t.key)}
+              class:stack={t.stack?.() && t.sub?.()}
             >
-            {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
-          {:else if t.was?.()}
-            <span class="stat-unit insights-delta">{t.was()}</span>
-          {/if}
-          {#if !d && t.stack?.()}
-            {@const st = t.stack()!}
-            <span class="insights-pace compare" use:labelTip={st.said}
-              ><span aria-hidden="true"><span class="part">{st.head}</span>{' '}<span class="part">{st.tail}</span></span><span class="sr-only">{st.said}</span></span
-            >
-          {/if}
-          <!-- Under a delta (or a "was" line), a kept sub takes the pace line's slot (no keepSub tile is paced). -->
-          {#if t.sub?.() && (!d || t.keepSub)}
-            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{#snippet lines()}<span class="sub1">{t.sub?.()}</span>{#if t.sub2?.()}<span class="sub2">{t.sub2()}</span>{/if}{/snippet}{#if t.subHref?.()}<a href={link(t.subHref()!)} class:two={!!t.sub2?.()} use:truncTip={[t.sub?.(), t.sub2?.()].filter(Boolean).join(' · ')}>{@render lines()}</a>{:else}<span class:two={!!t.sub2?.()} use:truncTip={[t.sub?.(), t.sub2?.()].filter(Boolean).join(' · ')}>{@render lines()}</span>{/if}</span>
-          {/if}
-          <div class="stat-caption">
+              <span
+                class="stat-value"
+                style:--len={valueText(t, v).length}
+              >
+                {#if t.fmt === usd && v !== null}
+                  <Usd n={v} />
+                {:else}
+                  {valueText(t, v)}
+                {/if}{#if t.suffix && v !== null}
+                  <small>{` ${valueText(t, v) === '1' ? t.suffix.replace(/s$/, '') : t.suffix}`}</small>
+                {/if}
+              </span>
+
+              {#if d}
+                <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and the hover tip. -->
+
+                <span
+                  class="stat-unit insights-delta {trend(d, t)}"
+                  class:ratio={(t.from || t.fmt === usd || title === 'Spending') && !d.paced}
+                  use:labelTip={deltaText(d, t) === 'No change' ? undefined : deltaTitle(d, t)}
+                >
+                  <span aria-hidden="true">{deltaText(d, t)}</span>
+                  <span class="sr-only">{deltaTitle(d, t)}</span>
+                </span>
+
+                {#if paceText(d, t)}
+                  <span class="insights-pace">{paceText(d, t)}</span>
+                {/if}
+              {:else if t.was?.()}
+                <span class="stat-unit insights-delta">{t.was()}</span>
+              {/if}
+              {#if !d && t.stack?.()}
+                {@const st = t.stack()!}
+
+                <span
+                  class="insights-pace compare"
+                  use:labelTip={st.said}
+                >
+                  <span aria-hidden="true">
+                    <span class="part">{st.head}</span>
+                    {' '}
+                    <span class="part">{st.tail}</span>
+                  </span>
+
+                  <span class="sr-only">{st.said}</span>
+                </span>
+              {/if}
+              <!-- Under a delta (or a "was" line), a kept sub takes the pace line's slot (no keepSub tile is paced). -->
+              {#if t.sub?.() && (!d || t.keepSub)}
+                <span
+                  class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}
+                >
+                  {#snippet lines()}
+                    <span class="sub1">{t.sub?.()}</span>
+
+                    {#if t.sub2?.()}
+                      <span class="sub2">{t.sub2()}</span>
+                    {/if}
+                  {/snippet}{#if t.subHref?.()}
+                    <a
+                      href={link(t.subHref()!)}
+                      class:two={!!t.sub2?.()}
+                      use:truncTip={[t.sub?.(), t.sub2?.()].filter(Boolean).join(' · ')}
+                    >{@render lines()}</a>
+                  {:else}
+                    <span
+                      class:two={!!t.sub2?.()}
+                      use:truncTip={[t.sub?.(), t.sub2?.()].filter(Boolean).join(' · ')}
+                    >{@render lines()}</span>
+                  {/if}
+                </span>
+              {/if}
+
+              <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || t.ratingSwitch} class:has-cap={pp || t.ratingSwitch}
               ><a class="caption-link" href="#{tileId(t.key)}" use:truncTip={t.label}>{t.label}</a>{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
                 >{/if}{#if pp || t.ratingSwitch}{' '}<span class="cap-block"><span class="cap-list">{#if t.ratingSwitch}<CapItem><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
@@ -894,128 +1212,295 @@
                   ><span class="tip-text">per person</span><Icon name="question" /></button
                 ></CapItem>{/if}</span></span>{/if}</span
             >{#if SEE[t.key]}<a class="tile-link" href={link(`/coffees?${toParams({ status: SEE[t.key]!.status, filters: [] })}`)}>{SEE[t.key]!.label}</a>{/if}
-          </div>
-          {#if t.ratingSwitch}
+              </div>
+              {#if t.ratingSwitch}
             <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: RATINGS_LABEL[s.ratings], lines: [RATINGS_HELP[s.ratings], DIAL_HELP[s.dial]] }} /></div>
-          {/if}
-          {#if t.help}
+              {/if}
+              {#if t.help}
             <div class="mode-tip" id="tip-help-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: t.label, lines: [t.help] }} /></div>
-          {/if}
-          {#if pp}
+              {/if}
+              {#if pp}
             <div class="mode-tip" id="tip-pp-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></div>
-          {/if}
+              {/if}
+            </div>
+          {/each}
         </div>
       {/each}
-    </div>
-    {/each}
     {#if whole && wholeKeys.length}<WholeNote keys={wholeKeys} items={whole} />{/if}
-    {@render after?.()}
-  </section>
-{/snippet}
-
-<!-- The Jump to chips for this chain are the `jump` derived in the script (same branch order); keep them in step. -->
-{#snippet tab(part?: 'bar')}
-{#if data.boards}
-  <Leaderboards
-    {part}
-    boards={data.boards}
-    coverage={data.boardCoverage!}
-    cut={data.boardsCut}
-    small={data.boardsSmall}
-    rank={s.rank}
-    avg={explicit.avg}
-    open={s.open ?? []}
-    low={s.low ?? []}
-    views={s.views}
-    series={data.boardSeries}
-    comparing={!!data.previousPeriod}
-    perPerson={perPersonOn}
-    {wholeKeys}
-    {placeTip}
-    {choose}
-    {link}
-  />
-{:else if s.tab === 'habits' && data.habits}
-  <Habits {part} h={data.habits} measure={s.measure} agg={s.agg} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} {choose}>
-    {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
-  </Habits>
-{:else if s.tab === 'consumption' && data.consumptionTab}
-  <Consumption {part} {wholeKeys} t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} trend={s.trend} agg={s.agg} offered={data.byMenus[s.range]} {choose} {placeTip}>
-    {#snippet tiles()}{@render panel('Consumption', FLOW, consumptionValues, data.consumptionTab!.deltas, ['Bought', 'Net', 'On hand', 'Days to clear', ...(s.unit === 'bags' ? ['Bags finished'] : [])])}{/snippet}
-  </Consumption>
-{:else if s.tab === 'sweetspots' && data.sweetSpots && data.lab}
-  <SweetSpots {part} t={data.sweetSpots} lab={data.lab} {s} {placeTip} {choose} />
-{/if}
-{/snippet}
-
-{#if data.boards || (s.tab === 'habits' && data.habits) || (s.tab === 'consumption' && data.consumptionTab) || (s.tab === 'sweetspots' && data.sweetSpots && data.lab)}
-  {@render tab()}
-{:else if s.tab === 'records' && data.records}
-  <Records
-    t={data.records}
-    ratings={s.ratings}
-    dial={s.dial}
-    brewer={s.brewer}
-    top={s.top}
-    topc={s.topc}
-    perPerson={perPersonOn}
-    {wholeKeys}
-    allRange={!data.period.start}
-    {compareLabel}
-    ratingsHelp={RATINGS_HELP}
-    personHelp={PEOPLE_HELP.person}
-    {placeTip}
-    {choose}
-    {link}
-  />
-{:else if s.tab === 'milestones' && data.milestones}
-  <Milestones m={data.milestones} />
-{:else if s.tab === 'insights' && data.insights}
-  <Insights
-    t={data.insights}
-    theme={s.theme}
-    inputs={{ drinkers: s.drinkers, gpp: s.gpp, inflow: s.inflow, bpd: s.bpd, dose: s.dose }}
-    today={data.today}
-    explicit={explicit}
-    {wholeKeys}
-    {placeTip}
-    {choose}
-    {link}
-  />
-{:else if s.tab === 'brewing' && data.brewing && data.lab}
-  <Brewing t={data.brewing} lab={data.lab} {s} {placeTip} {choose} />
-{:else if s.tab === 'pours'}
-  <Pours t={data.pours} {s} {explicit} {placeTip} {choose} />
-{:else if s.tab === 'water' && data.water}
-  <Water t={data.water} {s} {placeTip} {choose} />
-{:else if s.tab === 'gear' && data.gear}
-  <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
-{:else if s.tab === 'onhand' && data.onHand}
-  {#snippet runwayChart()}
-    <RunwayChart t={data.onHand!} today={data.today} paces={[...(s.range === 'all' ? [] : [{ name: paceName, days: data.onHand!.runway.days }]), { name: 'all-time pace', days: data.onHand!.runwayAll.days }]} />
-    <p class="chart-note">{#if perPersonOn}Per person divides the pace, so the same shelf lasts longer.{' '}{/if}<a href={link('/stats?tab=insights&chart=insights-what-if#insights-what-if')}>Plan it: What if</a></p>
+      {@render after?.()}
+    </section>
   {/snippet}
-  {#snippet runwayPanel()}{@render panel('Runway at your pace', RUNWAY, { paceDays: data.onHand!.runway.days, paceOut: data.onHand!.runway.days, pacePerDay: data.onHand!.runway.perDay, allDays: data.onHand!.runwayAll.days, allOut: data.onHand!.runwayAll.days, allPerDay: data.onHand!.runwayAll.perDay }, null, undefined, runwayChart)}{/snippet}
-  <OnHand t={data.onHand} {link} runway={runwayPanel} {placeTip} unit={s.unit} waitBy={s.waitBy} {choose}>
-    {#snippet tiles()}{@render panel('On the shelf', ONHAND, { ...data.onHand!.tiles, oldest: data.onHand!.tiles.oldest?.days ?? null, newest: data.onHand!.tiles.newest?.days ?? null }, null)}{/snippet}
-  </OnHand>
-{:else if s.tab === 'recaps' && data.recaps}
+
+  <!-- The Jump to chips for this chain are the `jump` derived in the script (same branch order); keep them in step. -->
+  {#snippet tab(part?: 'bar')}
+    {#if data.boards}
+      <Leaderboards
+        part={part}
+        boards={data.boards}
+        coverage={data.boardCoverage!}
+        cut={data.boardsCut}
+        small={data.boardsSmall}
+        rank={s.rank}
+        avg={explicit.avg}
+        open={s.open ?? []}
+        low={s.low ?? []}
+        views={s.views}
+        series={data.boardSeries}
+        comparing={!!data.previousPeriod}
+        perPerson={perPersonOn}
+        wholeKeys={wholeKeys}
+        placeTip={placeTip}
+        choose={choose}
+        link={link}
+      />
+    {:else if s.tab === 'habits' && data.habits}
+      <Habits
+        part={part}
+        h={data.habits}
+        measure={s.measure}
+        agg={s.agg}
+        comparing={!!data.previousPeriod}
+        periodLabel={periodLabel}
+        compareLabel={compareLabel}
+        choose={choose}
+      >
+        {#snippet tiles()}
+          {@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}
+        {/snippet}
+      </Habits>
+    {:else if s.tab === 'consumption' && data.consumptionTab}
+      <Consumption
+        part={part}
+        wholeKeys={wholeKeys}
+        t={data.consumptionTab}
+        periodLabel={periodLabel}
+        compareLabel={compareLabel}
+        compareDates={compareDates}
+        unit={s.unit}
+        trend={s.trend}
+        agg={s.agg}
+        offered={data.byMenus[s.range]}
+        choose={choose}
+        placeTip={placeTip}
+      >
+        {#snippet tiles()}
+          {@render panel('Consumption', FLOW, consumptionValues, data.consumptionTab!.deltas, [
+            'Bought',
+            'Net',
+            'On hand',
+            'Days to clear',
+            ...s.unit === 'bags' ? ['Bags finished'] : []
+          ])}
+        {/snippet}
+      </Consumption>
+    {:else if s.tab === 'sweetspots' && data.sweetSpots && data.lab}
+      <SweetSpots
+        part={part}
+        t={data.sweetSpots}
+        lab={data.lab}
+        s={s}
+        placeTip={placeTip}
+        choose={choose}
+      />
+    {/if}
+  {/snippet}
+
+  {#if data.boards || s.tab === 'habits' && data.habits || s.tab === 'consumption' && data.consumptionTab || s.tab === 'sweetspots' && data.sweetSpots && data.lab}
+    {@render tab()}
+  {:else if s.tab === 'records' && data.records}
+    <Records
+      t={data.records}
+      ratings={s.ratings}
+      dial={s.dial}
+      brewer={s.brewer}
+      top={s.top}
+      topc={s.topc}
+      perPerson={perPersonOn}
+      wholeKeys={wholeKeys}
+      allRange={!data.period.start}
+      compareLabel={compareLabel}
+      ratingsHelp={RATINGS_HELP}
+      personHelp={PEOPLE_HELP.person}
+      placeTip={placeTip}
+      choose={choose}
+      link={link}
+    />
+  {:else if s.tab === 'milestones' && data.milestones}
+    <Milestones m={data.milestones} />
+  {:else if s.tab === 'insights' && data.insights}
+    <Insights
+      t={data.insights}
+      theme={s.theme}
+    inputs={{ drinkers: s.drinkers, gpp: s.gpp, inflow: s.inflow, bpd: s.bpd, dose: s.dose }}
+      today={data.today}
+      explicit={explicit}
+      wholeKeys={wholeKeys}
+      placeTip={placeTip}
+      choose={choose}
+      link={link}
+    />
+  {:else if s.tab === 'brewing' && data.brewing && data.lab}
+    <Brewing
+      t={data.brewing}
+      lab={data.lab}
+      s={s}
+      placeTip={placeTip}
+      choose={choose}
+    />
+  {:else if s.tab === 'pours'}
+    <Pours
+      t={data.pours}
+      s={s}
+      explicit={explicit}
+      placeTip={placeTip}
+      choose={choose}
+    />
+  {:else if s.tab === 'water' && data.water}
+    <Water
+      t={data.water}
+      s={s}
+      placeTip={placeTip}
+      choose={choose}
+    />
+  {:else if s.tab === 'gear' && data.gear}
+    <Gear
+      t={data.gear}
+      trophies={data.trophies}
+      s={s}
+      placeTip={placeTip}
+      choose={choose}
+    />
+  {:else if s.tab === 'onhand' && data.onHand}
+    {#snippet runwayChart()}
+      <RunwayChart
+        t={data.onHand!}
+        today={data.today}
+        paces={[
+          ...s.range === 'all'
+            ? []
+            : [{ name: paceName, days: data.onHand!.runway.days }],
+          { name: 'all-time pace', days: data.onHand!.runwayAll.days }
+        ]}
+      />
+
+      <p class="chart-note">
+        {#if perPersonOn}
+          Per person divides the pace, so the same shelf lasts longer.{' '}
+        {/if}
+
+        <a
+          href={link('/stats?tab=insights&chart=insights-what-if#insights-what-if')}
+        >Plan it: What if</a>
+      </p>
+    {/snippet}
+
+    {#snippet runwayPanel()}
+      {@render panel(
+        'Runway at your pace',
+        RUNWAY,
+        {
+          paceDays: data.onHand!.runway.days,
+          paceOut: data.onHand!.runway.days,
+          pacePerDay: data.onHand!.runway.perDay,
+          allDays: data.onHand!.runwayAll.days,
+          allOut: data.onHand!.runwayAll.days,
+          allPerDay: data.onHand!.runwayAll.perDay
+        },
+        null,
+        undefined,
+        runwayChart
+      )}
+    {/snippet}
+
+    <OnHand
+      t={data.onHand}
+      link={link}
+      runway={runwayPanel}
+      placeTip={placeTip}
+      unit={s.unit}
+      waitBy={s.waitBy}
+      choose={choose}
+    >
+      {#snippet tiles()}
+        {@render panel(
+          'On the shelf',
+          ONHAND,
+          {
+            ...data.onHand!.tiles,
+            oldest: data.onHand!.tiles.oldest?.days ?? null,
+            newest: data.onHand!.tiles.newest?.days ?? null
+          },
+          null
+        )}
+      {/snippet}
+    </OnHand>
+  {:else if s.tab === 'recaps' && data.recaps}
   <Recaps tiles={data.recaps} admin={data.isAdmin} period={data.recapsTab ? span(data.period) : null} />
-{:else if s.tab === 'spend' && data.spend}
-  <Spend t={data.spend} {choose} {placeTip} spendView={s.spendView} spendSeries={s.spendSeries} rcSort={s.rcSort} rcDir={s.rcDir} rcTop={s.rcTop} {compareLabel} {compareDates} {link}>
-    {#snippet tiles()}{@render panel('Spending', SPEND, data.spend!.tiles, data.spend!.deltas)}{/snippet}
-  </Spend>
-{:else}
-  {@render panel('Totals', TOTALS, data.tiles, data.deltas, ['Spend', 'Bags finished'])}
-  {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
-  {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas, ['Time to clear'])}
-  {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas, [])}
-  {#if data.recent}<Recent {...data.recent} {wholeKeys} n={s.recent} nc={s.recentc} {choose} />{/if}
-{/if}
-<nav class="tab-pager" aria-label="Previous and next tab">
-  {#if tabIdx > 0}<a class="button button-secondary prev" onclick={() => (pagerNav = true)} href={tabHref(flatTabs[tabIdx - 1])} data-sveltekit-replacestate data-sveltekit-keepfocus><span>Previous</span>← {TAB_LABEL[flatTabs[tabIdx - 1]]}</a>{/if}
-  {#if tabIdx < flatTabs.length - 1}<a class="button button-secondary next" onclick={() => (pagerNav = true)} href={tabHref(flatTabs[tabIdx + 1])} data-sveltekit-replacestate data-sveltekit-keepfocus><span>Next</span>{TAB_LABEL[flatTabs[tabIdx + 1]]} →</a>{/if}
-</nav>
+  {:else if s.tab === 'spend' && data.spend}
+    <Spend
+      t={data.spend}
+      choose={choose}
+      placeTip={placeTip}
+      spendView={s.spendView}
+      spendSeries={s.spendSeries}
+      rcSort={s.rcSort}
+      rcDir={s.rcDir}
+      rcTop={s.rcTop}
+      compareLabel={compareLabel}
+      compareDates={compareDates}
+      link={link}
+    >
+      {#snippet tiles()}
+        {@render panel('Spending', SPEND, data.spend!.tiles, data.spend!.deltas)}
+      {/snippet}
+    </Spend>
+  {:else}
+    {@render panel('Totals', TOTALS, data.tiles, data.deltas, ['Spend', 'Bags finished'])}
+    {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
+    {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas, ['Time to clear'])}
+    {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas, [])}
+
+    {#if data.recent}
+      <Recent
+        {...data.recent}
+        wholeKeys={wholeKeys}
+        n={s.recent}
+        nc={s.recentc}
+        choose={choose}
+      />
+    {/if}
+  {/if}
+
+  <nav
+    class="tab-pager"
+    aria-label="Previous and next tab"
+  >
+    {#if tabIdx > 0}
+      <a
+        class="button button-secondary prev"
+        onclick={() => pagerNav = true}
+        href={tabHref(flatTabs[tabIdx - 1])}
+        data-sveltekit-replacestate
+        data-sveltekit-keepfocus
+      >
+        <span>Previous</span>
+        ← {TAB_LABEL[flatTabs[tabIdx - 1]]}
+      </a>
+    {/if}
+
+    {#if tabIdx < flatTabs.length - 1}
+      <a
+        class="button button-secondary next"
+        onclick={() => pagerNav = true}
+        href={tabHref(flatTabs[tabIdx + 1])}
+        data-sveltekit-replacestate
+        data-sveltekit-keepfocus
+      >
+        <span>Next</span>
+        {TAB_LABEL[flatTabs[tabIdx + 1]]} →
+      </a>
+    {/if}
+  </nav>
 </div>
 
 <style>
@@ -1082,7 +1567,7 @@
     text-decoration: none;
     white-space: nowrap;
   }
-  .rail-links a[aria-current='page'] {
+  .rail-links a[aria-current="page"] {
     border-left-color: var(--color-accent);
     background: color-mix(in oklab, var(--color-accent) 14%, transparent);
     color: var(--color-accent);
@@ -1099,7 +1584,7 @@
     }
   }
   @media (hover: hover) {
-    .rail-links a:not([aria-current='page']):hover {
+    .rail-links a:not([aria-current="page"]):hover {
       background: color-mix(in oklab, var(--color-accent) 7%, transparent);
     }
   }

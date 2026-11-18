@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createDb } from '$lib/server/db';
+import { createDb } from '#lib/server/db.ts';
 import { getGearDetails, saveGearDetails } from './gearDetails';
 
 const d = { kind: 'dripper' as const, name: 'V60', values: { brand: 'Hario', coneAngle: 60 }, imageUrl: 'https://x/v60.png' };

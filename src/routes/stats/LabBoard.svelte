@@ -1,11 +1,11 @@
 <script lang="ts">
   import { sdFocus, sdBlur } from './DeltaBars.svelte';
-  import type { LeaderRow } from '$lib/server/insights/lab';
+  import type { LeaderRow } from '#lib/server/insights/lab.ts';
   import { noMatch, SD_TIP } from './DeltaBars.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
-  import { deltaInk, labDelta } from '$lib/components/deltaColor';
+  import TipBody from '#lib/components/TipBody.svelte';
+  import { deltaInk, labDelta } from '#lib/components/deltaColor.ts';
   import { STRENGTH } from './Insights.svelte';
-  import SampleNote from '$lib/components/SampleNote.svelte';
+  import SampleNote from '#lib/components/SampleNote.svelte';
 
   // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows with the numbers
   // in aligned columns under one header (ui-rules G4): brews · bags · avg rating · SD, then the Likely/Possible

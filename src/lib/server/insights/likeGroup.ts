@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { DEFAULTS, type LikeView } from '$lib/insightsUrl';
-import { POOLED_MIN_BAGS, POOLED_MIN_BREWS, pooled, single, type Sample } from '$lib/sample';
+import { DEFAULTS, type LikeView } from '#lib/insightsUrl.ts';
+import { POOLED_MIN_BAGS, POOLED_MIN_BREWS, pooled, single, type Sample } from '#lib/sample.ts';
 import { loadFacts, type BagFact, type BrewFact } from './facts';
 import { dialInIds, onceDialed } from './dialed';
 import { bagSizes, countsForRating } from './ratings';

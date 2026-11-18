@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { insightsPreview, recordAnchor } from './chartLink';
-import type { RecordsTab } from '$lib/server/insights/records';
-import type { BoardRow } from '$lib/server/insights/leaderboards';
+import type { RecordsTab } from '#lib/server/insights/records.ts';
+import type { BoardRow } from '#lib/server/insights/leaderboards.ts';
 
 const rows = (vals: [string, number][]) => vals.map(([label, value]) => ({ key: label, label, value }) as unknown as BoardRow);
 const ORIGINS = rows([['Ethiopia', 8.42], ['Kenya', 8.1], ['Colombia', 7.94], ['Rwanda', 7.5], ['Burundi', 7.0], ['Peru', 6.9]]);

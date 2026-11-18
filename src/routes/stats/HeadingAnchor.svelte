@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import Icon from '$lib/components/Icon.svelte';
+  import Icon from '#lib/components/Icon.svelte';
   import { useChartLink } from './chartLink';
-  import { copyLinkOf, plainClick } from '$lib/copyLink';
+  import { copyLinkOf, plainClick } from '#lib/copyLink.ts';
 
   // A section heading that links to itself (?…&chart=<id>#<id>), so its URL can be shared and previews name it:
   // a plain click on the text puts that URL in the address bar without a reload (the page's replaceState), a modified

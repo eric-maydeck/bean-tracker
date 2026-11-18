@@ -1,8 +1,8 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { hostOf, type Candidate, type SuggestResponse } from '$lib/imageSuggest';
-  import { backdrop } from '$lib/imageBackdrop';
-  import { formatDate } from '$lib/formatDate';
+  import { hostOf, type Candidate, type SuggestResponse } from '#lib/imageSuggest.ts';
+  import { backdrop } from '#lib/imageBackdrop.ts';
+  import { formatDate } from '#lib/formatDate.ts';
   import SuggestSheet from './SuggestSheet.svelte';
 
   // Image Suggest, shared by the coffee and gear forms: the Suggest

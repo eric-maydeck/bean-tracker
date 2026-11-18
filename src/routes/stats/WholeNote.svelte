@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { wholeNote, type BrewFilterKey } from '$lib/insightsUrl';
+  import { wholeNote, type BrewFilterKey } from '#lib/insightsUrl.ts';
 
   // The note under whole-bag figures; its lead-in (up to the first colon) is bold.
   let { keys, items, cls = 'chart-note' }: { keys: readonly BrewFilterKey[]; items?: readonly string[]; cls?: string } = $props();

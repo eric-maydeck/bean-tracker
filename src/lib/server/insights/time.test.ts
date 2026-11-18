@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { setBrewingZone } from '$lib/localDate';
+import { setBrewingZone } from '#lib/localDate.ts';
 import {
   bcLocalTime, localToday, addMonths, daysBetween, periodBounds, previousPeriod, inPeriod, yearsSince,
   trackedDays, comparePeriod, compareFits, trackedBounds, weekday, autoBy, BY_FITS, byFits

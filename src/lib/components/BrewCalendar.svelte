@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { latestMonths, MAX_MONTHS } from '$lib/calendarMonths';
-  import { MON, WEEKDAYS, weekday } from '$lib/insightsUrl';
+  import { latestMonths, MAX_MONTHS } from '#lib/calendarMonths.ts';
+  import { MON, WEEKDAYS, weekday } from '#lib/insightsUrl.ts';
   import FloatTip from './FloatTip.svelte';
   import TipBody from './TipBody.svelte';
   import { rove, shader, takeFocus } from './Heatmap.svelte';

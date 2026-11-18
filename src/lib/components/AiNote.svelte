@@ -1,8 +1,8 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { currentParams } from '$lib/pageUrlState';
-  import { writeUrlParams } from '$lib/urlState';
-  import { aboutAiOpen } from '$lib/aboutAi';
+  import { currentParams } from '#lib/pageUrlState.ts';
+  import { writeUrlParams } from '#lib/urlState.ts';
+  import { aboutAiOpen } from '#lib/aboutAi.ts';
 
   // Footer line + "How this site was built" dialog. `?about=ai` opens it; closing drops the param (replaceState).
   let { email }: { email: string | null } = $props();

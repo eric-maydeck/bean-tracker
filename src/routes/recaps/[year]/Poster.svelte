@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { Slide as SlideT } from '$lib/server/recaps/types';
-  import { POSTER_ID, recapHref } from '$lib/recapsUrl';
-  import { posterSpans } from '$lib/recapsPoster';
-  import ShareButton from '$lib/components/ShareButton.svelte';
+  import type { Slide as SlideT } from '#lib/server/recaps/types.ts';
+  import { POSTER_ID, recapHref } from '#lib/recapsUrl.ts';
+  import { posterSpans } from '#lib/recapsPoster.ts';
+  import ShareButton from '#lib/components/ShareButton.svelte';
   import Slide from './Slide.svelte';
 
   // Last reel slide: every fact as a tile. Scrolls natively inside the reel.

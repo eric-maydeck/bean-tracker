@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Icon from '$lib/components/Icon.svelte';
-  import { copyText } from '$lib/copyLink';
+  import Icon from '#lib/components/Icon.svelte';
+  import { copyText } from '#lib/copyLink.ts';
 
   // Long, filter-heavy views get a short link (/s/<code>); short ones are
   // shared as-is. Phones get the native share sheet; elsewhere the link is

@@ -1,6 +1,6 @@
 <script lang="ts">
   import TextTip from './TextTip.svelte';
-  import { isWholeUsd, usd, usdPrecise } from '$lib/money';
+  import { isWholeUsd, usd, usdPrecise } from '#lib/money.ts';
 
   // One dollar amount on a page (user, 2026-10-17): usd's format (2 decimals, whole dollars from $1,000), and when that
   // rounds the value, the amount before rounding (usdPrecise) in the shared text tip (ui-rules 36, 39, 41). `suffix`: a per-unit label ("/g"), in both; `tipSuffix`:

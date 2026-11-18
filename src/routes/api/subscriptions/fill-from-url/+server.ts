@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { getFillHistory } from '$lib/server/coffees';
-import { getSubscriptions } from '$lib/server/subscriptions';
-import { fetchProductData, getUsdRates, FillError } from '$lib/server/productFetch';
-import { buildSubscriptionFill } from '$lib/server/subscriptionFill';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { getFillHistory } from '#lib/server/coffees.ts';
+import { getSubscriptions } from '#lib/server/subscriptions.ts';
+import { fetchProductData, getUsdRates, FillError } from '#lib/server/productFetch.ts';
+import { buildSubscriptionFill } from '#lib/server/subscriptionFill.ts';
 
 // The subscription twin of /api/coffees/fill-from-url (same errors).
 export const POST: RequestHandler = async ({ request, locals }) => {

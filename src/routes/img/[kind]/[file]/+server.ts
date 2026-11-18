@@ -4,7 +4,7 @@
 // immutable and CDNs/browsers cache them for a year.
 import { error } from '@sveltejs/kit';
 import { readFile } from 'node:fs/promises';
-import { COPY_KINDS, COPY_FILE_RE, copyPath, imagesRoot } from '$lib/server/imageCopies';
+import { COPY_KINDS, COPY_FILE_RE, copyPath, imagesRoot } from '#lib/server/imageCopies.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params }) => {

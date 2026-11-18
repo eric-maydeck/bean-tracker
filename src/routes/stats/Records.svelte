@@ -1,6 +1,6 @@
 <script lang="ts" module>
-  import type { BrewerType } from '$lib/insightsUrl';
-  import type { RecordsTab } from '$lib/server/insights/records';
+  import type { BrewerType } from '#lib/insightsUrl.ts';
+  import type { RecordsTab } from '#lib/server/insights/records.ts';
   import type { JumpLink } from './JumpNav.svelte';
   import { RECORD_TITLE } from './chartLink';
 
@@ -20,24 +20,24 @@
 </script>
 
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import { unitGap } from '$lib/unitGap';
+  import { formatDate } from '#lib/formatDate.ts';
+  import { unitGap } from '#lib/unitGap.ts';
   import WholeNote from './WholeNote.svelte';
-  import { setting } from '$lib/settingName';
-  import Usd from '$lib/components/Usd.svelte';
+  import { setting } from '#lib/settingName.ts';
+  import Usd from '#lib/components/Usd.svelte';
   import { useEmptyLine } from './coffeeNote';
-  import Icon from '$lib/components/Icon.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import { DIAL_HELP, RATINGS_LABEL, type BrewFilterKey, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
-  import type { Fmt, Holder, RecordPick, RecordTile } from '$lib/server/insights/records';
+  import Icon from '#lib/components/Icon.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import { DIAL_HELP, RATINGS_LABEL, type BrewFilterKey, type InsightsUrlState, type Ratings, type Dial, type Top } from '#lib/insightsUrl.ts';
+  import type { Fmt, Holder, RecordPick, RecordTile } from '#lib/server/insights/records.ts';
   import { rowVars } from './rows';
   import { holderDate, isDateHolder, holderName, recordAnchor, recordParts, recordValue } from './chartLink';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LikeLine from './LikeLine.svelte';
   import ShowMore from './ShowMore.svelte';
   import TileCaption from './TileCaption.svelte';
-  import CapItem from '$lib/components/CapItem.svelte';
+  import CapItem from '#lib/components/CapItem.svelte';
 
   let {
     t, wholeKeys, ratings, dial, brewer, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose, link: pageLink

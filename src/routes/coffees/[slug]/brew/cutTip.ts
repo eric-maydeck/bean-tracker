@@ -1,4 +1,4 @@
-import { labelTip } from '$lib/components/labelTip';
+import { labelTip } from '#lib/components/labelTip.ts';
 
 // An ellipsized cell shows its full text in the shared tip (hover, focus; ui-rules 36, 39: no native title), only while it
 // is actually cut. Same behavior as the Pours tab's, for the evidence grid.

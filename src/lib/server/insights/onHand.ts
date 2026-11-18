@@ -5,7 +5,7 @@ import type { Period } from './time';
 import { country, processLabels } from './leaderboards';
 import { groupBy } from './records';
 import { ageHref, freshHref, waitHref, type AgeKey, type FreshKey } from './onHandLinks';
-import type { Filter } from '$lib/coffeeFilters';
+import type { Filter } from '#lib/coffeeFilters.ts';
 
 export interface FreshBag extends UrgencyInput { name: string; roaster: string; slug: string | null; grams: number }
 export interface FreshGroup { count: number; grams: number; bags: { name: string; roaster: string; slug: string | null }[]; href?: string }

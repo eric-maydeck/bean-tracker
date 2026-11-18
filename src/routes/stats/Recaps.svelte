@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import type { RecapTileData } from '$lib/server/recaps/recap';
-  import RecapTile from '$lib/components/RecapTile.svelte';
+  import type { RecapTileData } from '#lib/server/recaps/recap.ts';
+  import RecapTile from '#lib/components/RecapTile.svelte';
 
   // period: the Period's text when recaps exist but none overlap it; null = there is no recap at all.
   let { tiles, admin, period }: { tiles: RecapTileData[]; admin: boolean; period: string | null } = $props();

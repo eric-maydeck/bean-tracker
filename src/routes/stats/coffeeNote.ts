@@ -1,5 +1,5 @@
 import { getContext, setContext } from 'svelte';
-import { emptyLine } from '$lib/insightsUrl';
+import { emptyLine } from '#lib/insightsUrl.ts';
 
 const KEY = 'insights-coffee-note';
 // +page.svelte provides the active Coffees filter phrase; each tab's empty line names it (spec Part 3).

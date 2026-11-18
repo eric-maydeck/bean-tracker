@@ -1,12 +1,12 @@
-import { usd } from '$lib/money';
-import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
+import { usd } from '#lib/money.ts';
+import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '#lib/insightsUrl.ts';
 import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, boardBrews, leaderboard } from './leaderboards';
 import { labFn, speedTab } from './lab';
 import { likeGaps, twinKeys, type Like } from './likeGroup';
 import { isFinished } from './overview';
 import { bagSizes, countsForRating, ratedGroups } from './ratings';
-import { BAG_MIN_BREWS, single } from '$lib/sample';
+import { BAG_MIN_BREWS, single } from '#lib/sample.ts';
 import { daysBetween, inPeriod, type Period } from './time';
 
 export interface Holder { label: string; sub?: string; href?: string; date: string }

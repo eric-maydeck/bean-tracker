@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { getDistinctFieldValues } from '$lib/server/coffees';
-import { getRoastLevels } from '$lib/server/roastLevels';
-import { searchBeanBase } from '$lib/server/beanBase';
-import { standardizeBeanBase, type FillSuccess } from '$lib/server/productFill';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { getDistinctFieldValues } from '#lib/server/coffees.ts';
+import { getRoastLevels } from '#lib/server/roastLevels.ts';
+import { searchBeanBase } from '#lib/server/beanBase.ts';
+import { standardizeBeanBase, type FillSuccess } from '#lib/server/productFill.ts';
 
 // The coffee form's "Search Loffee Labs". POST like fill-from-url, so SvelteKit's CSRF check covers it.
 const MAX = 200;

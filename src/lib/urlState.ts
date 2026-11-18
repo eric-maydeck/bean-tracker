@@ -1,4 +1,4 @@
-import { replaceState } from '$app/navigation';
+import { goto } from '$app/navigation';
 import { page } from '$app/state';
 
 // Mirror a page's explicit view state into the address bar without a
@@ -14,7 +14,7 @@ export function writeUrlParams(params: URLSearchParams, carryAbout = true): void
   const next = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
   if (next === `${location.pathname}${location.search}${location.hash}`) return;
   try {
-    replaceState(next, page.state);
+    goto(next, { shallow: true, replace: true, state: page.state });
   } catch {
     // Best-effort mirror -- browsers throw SecurityError when history calls
     // are flooded (e.g. fast typing triggering this on every keystroke).

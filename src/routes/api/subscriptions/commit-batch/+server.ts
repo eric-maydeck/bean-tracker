@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { commitSubscriptionBatch, type SubscriptionBatchChange } from '$lib/server/subscriptionBatchActions';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { commitSubscriptionBatch, type SubscriptionBatchChange } from '#lib/server/subscriptionBatchActions.ts';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);

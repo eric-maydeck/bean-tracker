@@ -1,10 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { localToday } from '$lib/server/localToday';
-import { recapYears } from '$lib/recapsUrl';
-import { brewYears, markRecapSeen } from '$lib/server/recaps/store';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { localToday } from '#lib/server/localToday.ts';
+import { recapYears } from '#lib/recapsUrl.ts';
+import { brewYears, markRecapSeen } from '#lib/server/recaps/store.ts';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);

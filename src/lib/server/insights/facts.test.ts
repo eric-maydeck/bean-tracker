@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { setBrewingZone } from '$lib/localDate';
+import { setBrewingZone } from '#lib/localDate.ts';
 import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, rpmOf, brewerType, grindKey, grindValue, MIXED_FILTER, waitBucket, windowState } from './facts';
-import { createDb } from '$lib/server/db';
-import { createCoffee } from '$lib/server/coffees';
-import { createSubscription } from '$lib/server/subscriptions';
+import { createDb } from '#lib/server/db.ts';
+import { createCoffee } from '#lib/server/coffees.ts';
+import { createSubscription } from '#lib/server/subscriptions.ts';
 
 // [name, preparation_tools, dripper, filter]: every prod method on 2026-10-09.
 const METHODS: [string, string, string, string][] = [

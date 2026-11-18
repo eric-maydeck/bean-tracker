@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import type { BrewRow } from '$lib/server/brewNow/load';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
+  import { formatDate } from '#lib/formatDate.ts';
+  import type { BrewRow } from '#lib/server/brewNow/load.ts';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
 
   // Plain dot plot of this coffee's rated brews on the chosen grinder: grind setting on x, rating on y. The Best brew is
   // a crowned green dot. Hovering, focusing or tapping a dot opens the site's tip (FloatTip + TipBody); clicking

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { setBrewingZone } from '$lib/localDate';
+import { setBrewingZone } from '#lib/localDate.ts';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import { setImageFill } from './imageFills';

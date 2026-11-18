@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from '../db';
 import { setNoteWords } from '../recipes';
-import type { PourReading } from '$lib/pours';
-import type { Recipe } from '$lib/recipes';
+import type { PourReading } from '#lib/pours.ts';
+import type { Recipe } from '#lib/recipes.ts';
 import type { BrewFact } from './facts';
 import {
   FLAVOR_WORDS, agitationBand, loadPourFacts, poursTab, swirlAfterBand, type PourFact

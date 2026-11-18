@@ -1,10 +1,10 @@
 import { weightedMedian, spearman } from '../insights/stats';
 import { daysBetween } from '../insights/time';
 import { normalizeRoastLevel } from '../insights/facts';
-import { processGroup } from '$lib/processGroups';
-import { recipeHref } from '$lib/recipeSlug';
+import { processGroup } from '#lib/processGroups.ts';
+import { recipeHref } from '#lib/recipeSlug.ts';
 import type { BrewRow, CoffeeDetails, GearClass } from './load';
-import type { Confidence } from '$lib/brewNowConfidence';
+import type { Confidence } from '#lib/brewNowConfidence.ts';
 
 export type Setting = 'grind' | 'temp' | 'dose' | 'ratio' | 'recipe' | 'water';
 export type { Confidence };

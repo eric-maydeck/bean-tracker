@@ -1,22 +1,22 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import Usd from '$lib/components/Usd.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
-  import { usd, wholeUsd } from '$lib/money';
+  import { formatDate } from '#lib/formatDate.ts';
+  import Usd from '#lib/components/Usd.svelte';
+  import TextTip from '#lib/components/TextTip.svelte';
+  import { usd, wholeUsd } from '#lib/money.ts';
   import { enhance } from '$app/forms';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { page } from '$app/state';
   import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
-  import { defaultViewForWidth } from '$lib/defaultView';
-  import { currentParams, pickOne } from '$lib/pageUrlState';
-  import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
-  import { writeUrlParams } from '$lib/urlState';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
+  import { defaultViewForWidth } from '#lib/defaultView.ts';
+  import { currentParams, pickOne } from '#lib/pageUrlState.ts';
+  import { loadChoice, serializeChoice } from '#lib/rememberedChoice.ts';
+  import { writeUrlParams } from '#lib/urlState.ts';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '#lib/pendingChanges.ts';
   import { SvelteMap } from 'svelte/reactivity';
-  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pendingParts, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsText, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '$lib/subscriptionView';
-  import { afterFailedFill } from '$lib/coffeeFormFill';
-  import type { SubscriptionRow } from '$lib/types';
+  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pendingParts, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsText, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '#lib/subscriptionView.ts';
+  import { afterFailedFill } from '#lib/coffeeFormFill.ts';
+  import type { SubscriptionRow } from '#lib/types.ts';
   let { data, form } = $props();
 
   let editMode = $state(false);
@@ -50,7 +50,9 @@
   let commitErrors = $state(new Map<number, string>());
   let saving = $state(false);
 
-  afterNavigate(() => {
+  afterNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
+
     widthView = defaultViewForWidth(window.innerWidth);
     const fromUrl = pickOne(currentParams(page.url), 'view', VIEWS);
     try {
@@ -128,7 +130,9 @@
 
   // The Add form, or the hidden form an edit row's inputs belong to (form=…).
   function formFor(key: FillKey): HTMLFormElement | null {
-    return key === 'add' ? (addFormEl ?? null) : (document.getElementById(`sub-form-${key}`) as HTMLFormElement | null);
+    return key === 'add'
+      ? addFormEl ?? null
+      : document.getElementById(`sub-form-${key}`) as HTMLFormElement | null;
   }
 
   function inputValue(form: HTMLFormElement, name: string): string {
@@ -227,7 +231,7 @@
         body: JSON.stringify({ changes })
       });
       if (!validateRes.ok) throw new Error('Validation request failed');
-      const { errors } = (await validateRes.json()) as { errors: { id: number; error: string }[] };
+      const { errors } = await validateRes.json() as { errors: { id: number; error: string }[] };
       if (errors.length > 0) {
         const newErrors = new Map<number, string>();
         for (const e of errors) newErrors.set(e.id, e.error);
@@ -284,7 +288,9 @@
     expandedId = null;
   }
 
-  beforeNavigate(({ cancel }) => {
+  beforeNavigate(({ cancel, shallow, type }) => {
+    if (shallow && type === 'goto') return;
+
     if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
       cancel();
     }
@@ -304,8 +310,8 @@
   let totals = $derived(subscriptionTotals(data.subscriptions));
   // One money format for the price column and its total (ui-rules 46).
   let priceWhole = $derived(wholeUsd([...data.subscriptions.map((s) => s.price), totals.price]));
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { subscriptionsPreview } from '$lib/linkPreview';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { subscriptionsPreview } from '#lib/linkPreview.ts';
 </script>
 
 <svelte:head>
@@ -369,7 +375,11 @@
       </button>
       <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
     {:else}
-      <button class="button button-secondary" type="button" onclick={() => (editMode = true)}>Edit</button>
+      <button
+        class="button button-secondary"
+        type="button"
+        onclick={() => editMode = true}
+      >Edit</button>
     {/if}
   </div>
   {#if commitErrors.get(-1)}
@@ -390,190 +400,194 @@
 </div>
 
 {#if view === 'list'}
-<div class="table-scroll">
-  <table class="data-table" class:editing={canEdit}>
-    <thead>
-      <tr>
-        <th>Roaster/Service</th>
-        <th>Name</th>
-        <th>Price</th>
-        {#if canEdit}
-          <th>Bags</th>
-          <th>g/bag</th>
-          <th>Renewal day</th>
-          <th>Subscription page</th>
-          <th>Actions</th>
-        {:else}
+  <div class="table-scroll">
+    <table class="data-table" class:editing={canEdit}>
+      <thead>
+        <tr>
+          <th>Roaster/Service</th>
+          <th>Name</th>
+          <th>Price</th>
+          {#if canEdit}
+            <th>Bags</th>
+            <th>g/bag</th>
+            <th>Renewal day</th>
+            <th>Subscription page</th>
+            <th>Actions</th>
+          {:else}
           <th>Total grams</th>
           <th>Next renewal</th>
-        {/if}
-      </tr>
-    </thead>
-    <tbody>
-      {#each data.subscriptions as sub (sub.id)}
-        <tr
-          class:paused={sub.paused && !canEdit}
-          class:pending={canEdit && !!pendingLabel(pending.get(sub.id))}
-        >
-          <td>
-            {#if canEdit}
-              <input
-                class="inline-input"
-                form={`sub-form-${sub.id}`}
-                name="roaster_service"
-                required
-                value={val(sub, 'roaster_service')}
-                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
-                oninput={() => stageRow(sub.id)}
-              />
-            {:else if sub.subscription_url}
-              <a href={siteOrigin(sub.subscription_url)} target="_blank" rel="noopener noreferrer">{sub.roaster_service}</a>
-            {:else}
-              {sub.roaster_service}
-            {/if}
-            {#if sub.paused && !canEdit}<span class="badge badge-neutral">Paused</span>{/if}
-          </td>
-          <td>
-            {#if canEdit}
-              <input class="inline-input" form={`sub-form-${sub.id}`} name="subscription_name" value={val(sub, 'subscription_name')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
-            {:else if sub.subscription_url}
-              <a href={sub.subscription_url} target="_blank" rel="noopener noreferrer">{sub.subscription_name ?? 'Subscription page'}</a>
-            {:else}
-              {sub.subscription_name ?? '—'}
-            {/if}
-          </td>
-          <td>
-            {#if canEdit}
-              <input class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={val(sub, 'price')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
-            {:else}
-              {#if sub.price != null}<Usd n={sub.price} whole={priceWhole} />{:else}—{/if}
-            {/if}
-          </td>
-          {#if !canEdit}
-            <td>{sub.total_grams ?? '—'}</td>
-            <td>{sub.paused ? '—' : formatDate(sub.next_renewal_date ?? '—')}</td>
-          {:else}
+          {/if}
+        </tr>
+      </thead>
+      <tbody>
+        {#each data.subscriptions as sub (sub.id)}
+          <tr
+            class:paused={sub.paused && !canEdit}
+            class:pending={canEdit && !!pendingLabel(pending.get(sub.id))}
+          >
             <td>
-              <input
-                class="inline-input num-input"
-                form={`sub-form-${sub.id}`}
-                name="bag_count"
-                type="number"
-                step="1"
-                aria-label="Bags"
-                value={val(sub, 'bag_count')}
-                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
-                oninput={() => stageRow(sub.id)}
-              />
-            </td>
-            <td>
-              <input
-                class="inline-input num-input"
-                form={`sub-form-${sub.id}`}
-                name="amount_per_bag_g"
-                type="number"
-                step="1"
-                aria-label="g/bag"
-                value={val(sub, 'amount_per_bag_g')}
-                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
-                oninput={() => stageRow(sub.id)}
-              />
-              <span class="total-note">{totalGramsText(val(sub, 'bag_count'), val(sub, 'amount_per_bag_g'))}</span>
-            </td>
-            <td>
-              <input
-                class="inline-input num-input"
-                form={`sub-form-${sub.id}`}
-                name="renewal_day"
-                type="number"
-                step="1"
-                min="1"
-                max="31"
-                placeholder="day"
-                value={val(sub, 'renewal_day')}
-                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
-                oninput={() => stageRow(sub.id)}
-              />
-            </td>
-            <td class="url-cell">
-              <div class="inline-row">
+              {#if canEdit}
                 <input
-                  class="inline-input url-input"
+                  class="inline-input"
                   form={`sub-form-${sub.id}`}
-                  name="subscription_url"
-                  type="url"
-                  aria-label="Subscription page"
-                  placeholder="https://…"
-                  value={val(sub, 'subscription_url')}
+                  name="roaster_service"
+                  required
+                  value={val(sub, 'roaster_service')}
                   disabled={effectivePaused(sub.paused, pending.get(sub.id))}
                   oninput={() => stageRow(sub.id)}
-                  onkeydown={(e) => fillOnEnter(e, sub.id, sub.subscription_url ?? '')}
                 />
-                {@render fillButton(sub.id, sub.subscription_url ?? '', effectivePaused(sub.paused, pending.get(sub.id)), true)}
-              </div>
-              {#if warningFor(sub)}<p class="url-warning">{warningFor(sub)}</p>{/if}
+              {:else if sub.subscription_url}
+              <a href={siteOrigin(sub.subscription_url)} target="_blank" rel="noopener noreferrer">{sub.roaster_service}</a>
+              {:else}
+                {sub.roaster_service}
+              {/if}
+            {#if sub.paused && !canEdit}<span class="badge badge-neutral">Paused</span>{/if}
             </td>
-            <td class="actions-cell">
-              <form
-                id={`sub-form-${sub.id}`}
-                method="POST"
-                onsubmit={(e) => e.preventDefault()}
+            <td>
+              {#if canEdit}
+              <input class="inline-input" form={`sub-form-${sub.id}`} name="subscription_name" value={val(sub, 'subscription_name')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
+              {:else if sub.subscription_url}
+              <a href={sub.subscription_url} target="_blank" rel="noopener noreferrer">{sub.subscription_name ?? 'Subscription page'}</a>
+              {:else}
+                {sub.subscription_name ?? '—'}
+              {/if}
+            </td>
+            <td>
+              {#if canEdit}
+              <input class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={val(sub, 'price')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
+              {:else}
+                {#if sub.price != null}
+                  <Usd n={sub.price} whole={priceWhole} />
+                {:else}
+                  —
+                {/if}
+              {/if}
+            </td>
+            {#if !canEdit}
+              <td>{sub.total_grams ?? '—'}</td>
+              <td>{sub.paused ? '—' : formatDate(sub.next_renewal_date ?? '—')}</td>
+            {:else}
+              <td>
+                <input
+                  class="inline-input num-input"
+                  form={`sub-form-${sub.id}`}
+                  name="bag_count"
+                  type="number"
+                  step="1"
+                  aria-label="Bags"
+                  value={val(sub, 'bag_count')}
+                  disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                  oninput={() => stageRow(sub.id)}
+                />
+              </td>
+              <td>
+                <input
+                  class="inline-input num-input"
+                  form={`sub-form-${sub.id}`}
+                  name="amount_per_bag_g"
+                  type="number"
+                  step="1"
+                  aria-label="g/bag"
+                  value={val(sub, 'amount_per_bag_g')}
+                  disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                  oninput={() => stageRow(sub.id)}
+                />
+                <span class="total-note">{totalGramsText(val(sub, 'bag_count'), val(sub, 'amount_per_bag_g'))}</span>
+              </td>
+              <td>
+                <input
+                  class="inline-input num-input"
+                  form={`sub-form-${sub.id}`}
+                  name="renewal_day"
+                  type="number"
+                  step="1"
+                  min="1"
+                  max="31"
+                  placeholder="day"
+                  value={val(sub, 'renewal_day')}
+                  disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                  oninput={() => stageRow(sub.id)}
+                />
+              </td>
+              <td class="url-cell">
+                <div class="inline-row">
+                  <input
+                    class="inline-input url-input"
+                    form={`sub-form-${sub.id}`}
+                    name="subscription_url"
+                    type="url"
+                    aria-label="Subscription page"
+                    placeholder="https://…"
+                    value={val(sub, 'subscription_url')}
+                    disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                    oninput={() => stageRow(sub.id)}
+                    onkeydown={(e) => fillOnEnter(e, sub.id, sub.subscription_url ?? '')}
+                  />
+                  {@render fillButton(sub.id, sub.subscription_url ?? '', effectivePaused(sub.paused, pending.get(sub.id)), true)}
+                </div>
+              {#if warningFor(sub)}<p class="url-warning">{warningFor(sub)}</p>{/if}
+              </td>
+              <td class="actions-cell">
+                <form
+                  id={`sub-form-${sub.id}`}
+                  method="POST"
+                  onsubmit={(e) => e.preventDefault()}
               >
                 <input type="hidden" name="id" value={sub.id} />
               </form>
-              <div class="sub-actions" data-button-row>
-                <button
-                  class="button button-secondary pause-button"
-                  type="button"
-                  disabled={saving}
-                  onclick={() => togglePauseStage(pending, sub.id, sub.paused)}
+                <div class="sub-actions" data-button-row>
+                  <button
+                    class="button button-secondary pause-button"
+                    type="button"
+                    disabled={saving}
+                    onclick={() => togglePauseStage(pending, sub.id, sub.paused)}
                 >
                   {pauseButtonLabel(sub.paused, pending.get(sub.id))}
                 </button>
-                <button
-                  class="button {pending.get(sub.id)?.statusAction === 'delete' ? 'button-success' : 'button-danger'}"
-                  type="button"
-                  aria-pressed={pending.get(sub.id)?.statusAction === 'delete'}
-                  disabled={saving}
-                  onclick={() => stageDelete(sub)}
+                  <button
+                    class="button {pending.get(sub.id)?.statusAction === 'delete' ? 'button-success' : 'button-danger'}"
+                    type="button"
+                    aria-pressed={pending.get(sub.id)?.statusAction === 'delete'}
+                    disabled={saving}
+                    onclick={() => stageDelete(sub)}
                 >
                   {deleteButtonLabel(pending.get(sub.id))}
                 </button>
-              </div>
-              <!-- Pending: the row's left accent and this chip; its tip (and its accessible name) lists what.
+                </div>
+                <!-- Pending: the row's left accent and this chip; its tip (and its accessible name) lists what.
                    Always rendered (hidden when empty), so staging never grows the row. -->
               <span class="badge badge-neutral pending-chip" class:empty={!pendingParts(pending.get(sub.id)).length}><TextTip value label="Pending"
                 tip={{ title: 'Pending changes', lines: pendingParts(pending.get(sub.id)).map((p) => p[0].toUpperCase() + p.slice(1)) }} /></span>
-              {#if commitErrors.get(sub.id)}
-                <p class="badge badge-urgent">{commitErrors.get(sub.id)}</p>
-              {/if}
-            </td>
-          {/if}
-        </tr>
-        {#if canEdit && hasFillOutput(sub.id)}
+                {#if commitErrors.get(sub.id)}
+                  <p class="badge badge-urgent">{commitErrors.get(sub.id)}</p>
+                {/if}
+              </td>
+            {/if}
+          </tr>
+          {#if canEdit && hasFillOutput(sub.id)}
           <tr class="fill-row">
             <td colspan="8">{@render fillOutput(sub.id)}</td>
           </tr>
-        {/if}
-      {/each}
-    </tbody>
-    <tfoot>
-      <tr>
-        <td colspan="2"><strong>Totals</strong></td>
+          {/if}
+        {/each}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2"><strong>Totals</strong></td>
         <td><strong>{#if totals.price != null}<Usd n={totals.price} whole={priceWhole} />{:else}—{/if}</strong></td>
-        {#if canEdit}
-          <td colspan="2"><strong>{totals.grams != null ? `${totals.grams}g` : '—'}</strong></td>
-          <td></td>
-          <td></td>
-          <td></td>
-        {:else}
-          <td><strong>{totals.grams ?? '—'}</strong></td>
-          <td></td>
-        {/if}
-      </tr>
-    </tfoot>
-  </table>
-</div>
+          {#if canEdit}
+            <td colspan="2"><strong>{totals.grams != null ? `${totals.grams}g` : '—'}</strong></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          {:else}
+            <td><strong>{totals.grams ?? '—'}</strong></td>
+            <td></td>
+          {/if}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
 {:else}
   <div class="compact-list">
     {#each data.subscriptions as sub (sub.id)}
@@ -870,10 +884,10 @@
     max-width: none;
     min-width: 4rem;
   }
-  .data-table input[name='roaster_service'] {
+  .data-table input[name="roaster_service"] {
     min-width: 7rem;
   }
-  .data-table input[name='subscription_name'] {
+  .data-table input[name="subscription_name"] {
     min-width: 13rem;
   }
   /* The bags × g total under the g/bag input. */

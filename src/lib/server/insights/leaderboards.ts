@@ -1,6 +1,6 @@
-import { BOARDS, LIKE_BOARDS, boardAvg, lowFirst, type Avg, type Board, type By, type Caffeine, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
-import { toParams } from '$lib/coffeeViewState';
-import type { ColumnKey, Filter } from '$lib/coffeeFilters';
+import { BOARDS, LIKE_BOARDS, boardAvg, lowFirst, type Avg, type Board, type By, type Caffeine, type Rank, type Ratings, type RowWhy } from '#lib/insightsUrl.ts';
+import { toParams } from '#lib/coffeeViewState.ts';
+import type { ColumnKey, Filter } from '#lib/coffeeFilters.ts';
 import type { LabFilters } from './lab';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { autoBy, daysBetween, inPeriod, trackedBounds, type Period } from './time';
@@ -9,8 +9,8 @@ import { ADJUSTED_K, RATINGS_SETTLED_FROM, bagSizes, countsForRating, ratedGroup
 import { likeGaps, roasterLikes, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
-import { regionTop, varietyGroups } from '$lib/originFormat';
-import { pooled, shownBrews, single, type Sample } from '$lib/sample';
+import { regionTop, varietyGroups } from '#lib/originFormat.ts';
+import { pooled, shownBrews, single, type Sample } from '#lib/sample.ts';
 
 export interface BoardRow {
   key: string;

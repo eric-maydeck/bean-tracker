@@ -1,21 +1,21 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
+  import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { recipePreview, recipesPreview } from '$lib/linkPreview';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { recipePreview, recipesPreview } from '#lib/linkPreview.ts';
   import { tick } from 'svelte';
   import { goto } from '$app/navigation';
-  import { recipeFollow } from '$lib/recipeNav';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import PourTimeline from '$lib/components/PourTimeline.svelte';
-  import Icon from '$lib/components/Icon.svelte';
+  import { recipeFollow } from '#lib/recipeNav.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import PourTimeline from '#lib/components/PourTimeline.svelte';
+  import Icon from '#lib/components/Icon.svelte';
   import RecipeEditor from './RecipeEditor.svelte';
-  import { fmtRange } from '$lib/recipes';
-  import { stepsText } from '$lib/recipeSteps';
-  import { labelTip } from '$lib/components/labelTip';
-  import { recipesParams, type RecipesItem } from '$lib/recipesView';
-  import type { Timeline } from '$lib/pours';
+  import { fmtRange } from '#lib/recipes.ts';
+  import { stepsText } from '#lib/recipeSteps.ts';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { recipesParams, type RecipesItem } from '#lib/recipesView.ts';
+  import type { Timeline } from '#lib/pours.ts';
   let { data, form } = $props();
   const isAdmin = $derived(!!page.data.isAdmin);
   // The legend lists the bloom colors and the steady-rate fill only when a chart on the page draws them.

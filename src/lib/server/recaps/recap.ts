@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { getHouseholdSize } from '$lib/server/db';
-import { POSTER_ID, recapHref, recapYears } from '$lib/recapsUrl';
-import { fmtInt } from '$lib/recapFormat';
+import { getHouseholdSize } from '#lib/server/db.ts';
+import { POSTER_ID, recapHref, recapYears } from '#lib/recapsUrl.ts';
+import { fmtInt } from '#lib/recapFormat.ts';
 import { md, POOL } from './pool';
 import { personality } from './traits';
 import { coverTone, order, select, tonesFor } from './select';

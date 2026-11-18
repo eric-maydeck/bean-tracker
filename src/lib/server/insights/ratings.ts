@@ -1,5 +1,5 @@
-import type { Ratings, Avg } from '$lib/insightsUrl';
-import { BAG_MIN_BREWS, pooled, type Sample } from '$lib/sample';
+import type { Ratings, Avg } from '#lib/insightsUrl.ts';
+import { BAG_MIN_BREWS, pooled, type Sample } from '#lib/sample.ts';
 import { bagWeight, sd, strengthOf } from './stats';
 
 // Ratings before this date were ~3× as scattered (calibration period), so

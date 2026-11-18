@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { PoursTab } from '$lib/server/insights/pours';
+  import type { PoursTab } from '#lib/server/insights/pours.ts';
   import type { JumpLink } from './JumpNav.svelte';
   export function jumpLinks(t: PoursTab | null): JumpLink[] {
     if (!t) return [];
@@ -27,19 +27,19 @@
 
 <script lang="ts">
   import { page } from '$app/state';
-  import { labelTip } from '$lib/components/labelTip';
+  import { labelTip } from '#lib/components/labelTip.ts';
   import { assignCols, sortAgitation, sortContact } from './pourCols';
-  import SampleNote from '$lib/components/SampleNote.svelte';
-  import { deltaInk, labDelta, signed } from '$lib/components/deltaColor';
-  import { SAMPLE_HELP, TIP_TITLE, sampleField } from '$lib/sample';
-  import type { Tip } from '$lib/components/TipBody.svelte';
-  import { insightsParams, type InsightsView, type InsightsUrlState } from '$lib/insightsUrl';
-  import type { Breakdown } from '$lib/server/insights/lab';
+  import SampleNote from '#lib/components/SampleNote.svelte';
+  import { deltaInk, labDelta, signed } from '#lib/components/deltaColor.ts';
+  import { SAMPLE_HELP, TIP_TITLE, sampleField } from '#lib/sample.ts';
+  import type { Tip } from '#lib/components/TipBody.svelte';
+  import { insightsParams, type InsightsView, type InsightsUrlState } from '#lib/insightsUrl.ts';
+  import type { Breakdown } from '#lib/server/insights/lab.ts';
   import { useEmptyLine } from './coffeeNote';
   import DeltaBars, { bandRows, plural, SAME_BAG_HELP } from './DeltaBars.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
-  import Heatmap from '$lib/components/Heatmap.svelte';
+  import Heatmap from '#lib/components/Heatmap.svelte';
 
   let { t, s, explicit, placeTip, choose }: {
     t: PoursTab | null; s: InsightsView; explicit: InsightsUrlState; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;

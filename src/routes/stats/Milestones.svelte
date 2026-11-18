@@ -1,13 +1,13 @@
 <script lang="ts">
-  import { unitGap } from '$lib/unitGap';
-  import { labelTip } from '$lib/components/labelTip';
-  import { pinnedBar } from '$lib/components/pinnedBar.svelte';
+  import { unitGap } from '#lib/unitGap.ts';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { pinnedBar } from '#lib/components/pinnedBar.svelte.ts';
   import { useEmptyLine } from './coffeeNote';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { MON, type InsightsUrlState, type Kind } from '$lib/insightsUrl';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import { MON, type InsightsUrlState, type Kind } from '#lib/insightsUrl.ts';
   import { ICON, LABEL } from './KindsBar.svelte';
-  import type { MilestonesTab } from '$lib/server/insights/milestones';
+  import type { MilestonesTab } from '#lib/server/insights/milestones.ts';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';

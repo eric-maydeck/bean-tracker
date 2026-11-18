@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { requireAdmin } from '$lib/server/auth';
-import { fetchProductData, getUsdRates, FillError } from '$lib/server/productFetch';
-import { buildGearFill } from '$lib/server/gearFill';
-import { GEAR_KINDS, type GearKind } from '$lib/gear';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { fetchProductData, getUsdRates, FillError } from '#lib/server/productFetch.ts';
+import { buildGearFill } from '#lib/server/gearFill.ts';
+import { GEAR_KINDS, type GearKind } from '#lib/gear.ts';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);

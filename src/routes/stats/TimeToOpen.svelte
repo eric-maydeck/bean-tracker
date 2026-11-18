@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import SampleNote from '$lib/components/SampleNote.svelte';
-  import { SAMPLE_HELP } from '$lib/sample';
+  import SampleNote from '#lib/components/SampleNote.svelte';
+  import { SAMPLE_HELP } from '#lib/sample.ts';
   import LabHead from './LabHead.svelte';
-  import type { TimeToOpen, Wait } from '$lib/server/insights/freshness';
+  import type { TimeToOpen, Wait } from '#lib/server/insights/freshness.ts';
 
   let { t, placeTip, foot }: { t: TimeToOpen; placeTip: (e: ToggleEvent) => void; foot?: Snippet } = $props();
 

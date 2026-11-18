@@ -1,9 +1,9 @@
 <script lang="ts">
-  import Icon from '$lib/components/Icon.svelte';
-  import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import TipBody, { type Tip } from '#lib/components/TipBody.svelte';
+  import TextTip from '#lib/components/TextTip.svelte';
   import type { Snippet } from 'svelte';
-  import { SAMPLE_HELP } from '$lib/sample';
+  import { SAMPLE_HELP } from '#lib/sample.ts';
   import HeadingAnchor from './HeadingAnchor.svelte';
 
   // A lab section's heading (an anchor link) and its `?` explanation popover (ui-rules 27): the section's

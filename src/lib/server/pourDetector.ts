@@ -10,7 +10,7 @@ import {
   type Pour,
   type PourReading,
   type Swirl
-} from '$lib/pours';
+} from '#lib/pours.ts';
 
 type Run = [number, number];
 const SETTLE = 3;

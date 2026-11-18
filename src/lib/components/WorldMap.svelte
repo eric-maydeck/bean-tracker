@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { WORLD, WORLD_VIEWBOX } from '$lib/worldMap';
-  import { isoCode } from '$lib/countryFlags';
-  import type { Rank } from '$lib/insightsUrl';
+  import { WORLD, WORLD_VIEWBOX } from '#lib/worldMap.ts';
+  import { isoCode } from '#lib/countryFlags.ts';
+  import type { Rank } from '#lib/insightsUrl.ts';
   import { onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import FloatTip from './FloatTip.svelte';
@@ -57,7 +57,7 @@
   const toLocal = (px: number, py: number) => [(vis.x + (px * vis.w) / cw - view.x) / view.k, (vis.y + (py * vis.h) / ch - view.y) / view.k];
   const toPx = (t: { mx: number; my: number }, v = view) => [((v.x + v.k * t.mx - vis.x) * cw) / vis.w, ((v.y + v.k * t.my - vis.y) * ch) / vis.h];
   function setView(v: View) {
-    if (v.k > 1 && !sharp) (sharp = true), import('$lib/worldMap50').then((m) => (world = inOrder(m.WORLD)));
+    if (v.k > 1 && !sharp) (sharp = true), import('#lib/worldMap50.ts').then((m) => (world = inOrder(m.WORLD)));
     view = v;
     if (!tip) return;
     const [x, y] = toPx(tip, v);

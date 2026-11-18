@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
-import { getDb } from '$lib/server/db';
-import { resolveShortLink } from '$lib/server/shortLinks';
+import { getDb } from '#lib/server/db.ts';
+import { resolveShortLink } from '#lib/server/shortLinks.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ params }) => {

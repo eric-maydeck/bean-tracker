@@ -1,9 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { FillError } from '$lib/server/productFetch';
-import { fetchImageFill } from '$lib/server/imageFills';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { FillError } from '#lib/server/productFetch.ts';
+import { fetchImageFill } from '#lib/server/imageFills.ts';
 
 // The coffee form's image previews: the backdrop fill for a URL (cached, or
 // fetched and computed now). POST like fill-from-url, so SvelteKit's CSRF

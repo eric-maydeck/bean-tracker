@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { setBrewingZone } from '$lib/localDate';
+import { setBrewingZone } from '#lib/localDate.ts';
 import { isRedirect, isActionFailure } from '@sveltejs/kit';
 
 // getDb() is a lazily-created singleton keyed off DB_PATH — set before the
@@ -7,8 +7,8 @@ import { isRedirect, isActionFailure } from '@sveltejs/kit';
 // (vitest isolates modules per test file, so this doesn't leak elsewhere).
 process.env.DB_PATH = ':memory:';
 
-import { getDb, setDefaultCaffeine } from '$lib/server/db';
-import { createCoffee, updateCoffee, getRedirectSlug, type NewCoffeeInput } from '$lib/server/coffees';
+import { getDb, setDefaultCaffeine } from '#lib/server/db.ts';
+import { createCoffee, updateCoffee, getRedirectSlug, type NewCoffeeInput } from '#lib/server/coffees.ts';
 import { load, actions } from './+page.server';
 import { load as insightsLoad } from '../../stats/+page.server';
 

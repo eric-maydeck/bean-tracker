@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { recapYears } from '$lib/recapsUrl';
-import { bcLocalTime } from '$lib/server/insights/time';
-import { createAlert } from '$lib/server/alerts';
+import { recapYears } from '#lib/recapsUrl.ts';
+import { bcLocalTime } from '#lib/server/insights/time.ts';
+import { createAlert } from '#lib/server/alerts.ts';
 
 const get = (db: DatabaseSync, key: string) =>
   (db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(key) as { value: string } | undefined)?.value ?? null;

@@ -1,15 +1,15 @@
 import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
-import { getHouseholdSize } from '$lib/server/db';
-import { getGearDetails } from '$lib/server/gearDetails';
-import type { Recipe } from '$lib/recipes';
-import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
-import { loadFacts, type BagFact, type BrewFact } from '$lib/server/insights/facts';
-import type { GenCtx } from '$lib/server/insights/insightGenerators';
-import { gramsOnHand, loggedGrams } from '$lib/server/insights/overview';
-import { loadPourFacts, type PourFact } from '$lib/server/insights/pours';
-import { inPeriod, type Period } from '$lib/server/insights/time';
-import { gearArchive, trophyCase, type Trophy } from '$lib/server/insights/trophies';
+import { getHouseholdSize } from '#lib/server/db.ts';
+import { getGearDetails } from '#lib/server/gearDetails.ts';
+import type { Recipe } from '#lib/recipes.ts';
+import { dialInIds, onceDialed } from '#lib/server/insights/dialed.ts';
+import { loadFacts, type BagFact, type BrewFact } from '#lib/server/insights/facts.ts';
+import type { GenCtx } from '#lib/server/insights/insightGenerators.ts';
+import { gramsOnHand, loggedGrams } from '#lib/server/insights/overview.ts';
+import { loadPourFacts, type PourFact } from '#lib/server/insights/pours.ts';
+import { inPeriod, type Period } from '#lib/server/insights/time.ts';
+import { gearArchive, trophyCase, type Trophy } from '#lib/server/insights/trophies.ts';
 
 export interface YearCtx {
   year: number; period: Period; today: string; preview: boolean;

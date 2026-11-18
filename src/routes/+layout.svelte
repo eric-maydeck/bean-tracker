@@ -1,20 +1,20 @@
 <script lang="ts">
   import '../app.css';
   import { page } from '$app/state';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
-  import type { AlertRow } from '$lib/types';
-  import AiNote from '$lib/components/AiNote.svelte';
-  import RecapBanner from '$lib/components/RecapBanner.svelte';
-  import Toast from '$lib/components/Toast.svelte';
-  import Icon, { type IconName } from '$lib/components/Icon.svelte';
-  import Stamp from '$lib/components/Stamp.svelte';
-  import { setBrewingZone } from '$lib/localDate';
+  import type { AlertRow } from '#lib/types.ts';
+  import AiNote from '#lib/components/AiNote.svelte';
+  import RecapBanner from '#lib/components/RecapBanner.svelte';
+  import Toast from '#lib/components/Toast.svelte';
+  import Icon, { type IconName } from '#lib/components/Icon.svelte';
+  import Stamp from '#lib/components/Stamp.svelte';
+  import { setBrewingZone } from '#lib/localDate.ts';
   import { onMount } from 'svelte';
-  import { captionItems } from '$lib/capItems';
-  import { tipOver, tipOut, tipClick } from '$lib/components/modeTip';
-  import { scrollBehavior } from '$lib/scrollToBottom';
+  import { captionItems } from '#lib/capItems.ts';
+  import { tipOver, tipOut, tipClick } from '#lib/components/modeTip.ts';
+  import { scrollBehavior } from '#lib/scrollToBottom.ts';
   let { children, data } = $props();
   // The brewing zone, applied before anything renders so the client's local dates match the server's.
   setBrewingZone(data.brewingZone);
@@ -61,7 +61,7 @@
 
   const unreadAlertCount = $derived(data.alerts.filter((a: AlertRow) => a.read_at === null).length);
   // /recipes/<slug> is the Recipes page too.
-  const current = (href: string) => page.url.pathname === href || (href === '/recipes' && page.url.pathname.startsWith('/recipes/'));
+  const current = (href: string) => page.url.pathname === href || href === '/recipes' && page.url.pathname.startsWith('/recipes/');
   // The recap story is full-screen: no site header, tab bar or footer.
   const recapPage = $derived(page.route.id === '/recaps/[year]' && !page.error); // a 404 keeps the site chrome
   const onAccount = $derived(page.url.pathname === '/account' || page.url.pathname.startsWith('/account/'));
@@ -137,87 +137,102 @@
 
 {#if data.recapReady && !recapPage}<RecapBanner year={data.recapReady} tone={data.recapTone!} />{/if}
 {#if !recapPage}
-<nav class="site-nav">
-  <div class="nav-links">
-    {#each links as link (link.href)}
+  <nav class="site-nav">
+    <div class="nav-links">
+      {#each links as link (link.href)}
       <a href={link.href} aria-current={current(link.href) ? 'page' : undefined}>
         {link.label}
       </a>
-    {/each}
-    {#if data.isAdmin}
+      {/each}
+      {#if data.isAdmin}
       <a href="/account" aria-current={onAccount ? 'page' : undefined}>Account</a>
       <form method="POST" action="/login?/logout" use:enhance>
         <button class="nav-link-button" type="submit">Sign out</button>
       </form>
-    {:else}
+      {:else}
       <a href="/login" onclick={signInHere} aria-current={page.url.pathname === '/login' ? 'page' : undefined}>Sign in</a>
-    {/if}
-  </div>
-  <button
-    class="icon-button"
-    onclick={toggleTheme}
-    aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+      {/if}
+    </div>
+    <button
+      class="icon-button"
+      onclick={toggleTheme}
+      aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
   >
     <Icon name={theme === 'light' ? 'moon' : 'sun'} />
   </button>
-  {#if data.isAdmin}
-    <button
-      class="icon-button"
-      type="button"
-      onclick={() => (showAlerts = true)}
-      aria-label={`Alerts${unreadAlertCount > 0 ? ` (${unreadAlertCount} unread)` : ''}`}
-    >
+    {#if data.isAdmin}
+      <button
+        class="icon-button"
+        type="button"
+        onclick={() => showAlerts = true}
+        aria-label={`Alerts${unreadAlertCount > 0 ? ` (${unreadAlertCount} unread)` : ''}`}
+      >
       <Icon name="bell" />{#if unreadAlertCount > 0}<span class="alert-badge">{unreadAlertCount}</span>{/if}
-    </button>
-  {/if}
-</nav>
+      </button>
+    {/if}
+  </nav>
 
-<nav class="bottom-tabs">
-  {#each tabLinks as link (link.href)}
+  <nav class="bottom-tabs">
+    {#each tabLinks as link (link.href)}
     <a href={link.href} aria-current={page.url.pathname === link.href ? 'page' : undefined}>
       <span class="bottom-tabs-icon" aria-hidden="true"><Icon name={tabIcon(link.href, page.url.pathname === link.href)} /></span>
-      {link.label}
-    </a>
-  {/each}
-  <button
-    class="bottom-tabs-more"
-    type="button"
-    aria-expanded={showMore}
-    onclick={() => (showMore = !showMore)}
-  >
-    <span class="bottom-tabs-icon" aria-hidden="true"><Icon name={showMore ? 'dots-three-fill' : 'dots-three'} /></span>
-    More
-  </button>
-</nav>
+        {link.label}
+      </a>
+    {/each}
+    <button
+      class="bottom-tabs-more"
+      type="button"
+      aria-expanded={showMore}
+      onclick={() => showMore = !showMore}
+    >
+      <span class="bottom-tabs-icon" aria-hidden="true"><Icon name={showMore ? 'dots-three-fill' : 'dots-three'} /></span>
+      More
+    </button>
+  </nav>
 
-{#if showMore}
-  <div class="bottom-tabs-more-panel">
+  {#if showMore}
+    <div class="bottom-tabs-more-panel">
     <a class="nav-link-button" href="/recipes" aria-current={current('/recipes') ? 'page' : undefined}
       ><Icon name="list-checks" /> Recipes</a
     >
     <a class="nav-link-button" href="/water" aria-current={page.url.pathname === '/water' ? 'page' : undefined}
       ><Icon name="drop" /> Water</a
     >
-    {#if data.isAdmin}
-      <a class="nav-link-button" href="/account" aria-current={onAccount ? 'page' : undefined}
-        ><Icon name={onAccount ? 'user-circle-fill' : 'user-circle'} /> Account</a
-      >
-      <form method="POST" action="/login?/logout" use:enhance>
-        <button class="nav-link-button" type="submit"><Icon name="sign-out" /> Sign out</button>
-      </form>
-    {:else}
+      {#if data.isAdmin}
+        <a
+          class="nav-link-button"
+          href="/account"
+          aria-current={onAccount ? 'page' : undefined}
+        >
+          <Icon
+            name={onAccount ? 'user-circle-fill' : 'user-circle'}
+          />
+
+          Account
+        </a>
+
+        <form method="POST" action="/login?/logout" use:enhance><button class="nav-link-button" type="submit"><Icon name="sign-out" /> Sign out</button></form>
+      {:else}
       <a class="nav-link-button" href="/login" onclick={signInHere}><Icon name="sign-in" /> Sign in</a>
-    {/if}
-    {#if data.isAdmin}
-      <button class="nav-link-button" type="button" onclick={() => (showAlerts = true)}>
-        <Icon name="bell" /> Alerts{#if unreadAlertCount > 0} ({unreadAlertCount}){/if}
-      </button>
-    {/if}
+      {/if}
+      {#if data.isAdmin}
+        <button
+          class="nav-link-button"
+          type="button"
+          onclick={() => showAlerts = true}
+        >
+          <Icon name="bell" />
+
+          Alerts{#if unreadAlertCount > 0}
+            ({unreadAlertCount})
+          {/if}
+        </button>
+      {/if}
     <button class="nav-link-button" type="button" onclick={toggleTheme}>
       <Icon name={theme === 'light' ? 'moon' : 'sun'} /> {theme === 'light' ? 'Dark mode' : 'Light mode'}
-    </button>
-  </div>
-{/if}
+      </button>
+    </div>
+  {/if}
 
 {/if}
 
@@ -225,15 +240,50 @@
   {@render children()}
   <Toast />
   {#if !recapPage}
-  <footer class="site-footer">
-    <div><span class="fi">Coffee data from <a href="https://www.loffeelabs.com" target="_blank" rel="noopener noreferrer">Loffee Labs Bean Base</a><span class="d" aria-hidden="true">&nbsp;·</span></span> <span class="fi">Brews logged with <a href="https://beanconqueror.com" target="_blank" rel="noopener noreferrer">Beanconqueror</a></span></div>
-    <AiNote email={data.site.contactEmail} />
-    <div>
-      <span class="fi">v{data.version}<span class="d" aria-hidden="true">&nbsp;·</span></span>
-      <span class="fi">Last updated: <Stamp iso={data.lastUpdated} empty="no data yet" minute /><span class="d" aria-hidden="true">&nbsp;·</span></span>
-      <span class="fi">Last deployed: <Stamp iso={data.lastDeployed} empty="no data yet" minute /></span>
-    </div>
-  </footer>
+    <footer class="site-footer">
+      <div>
+        <span class="fi">
+          Coffee data from 
+
+          <a
+            href="https://www.loffeelabs.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Loffee Labs Bean Base</a>
+
+          <span class="d" aria-hidden="true">·</span>
+        </span>
+
+        <span class="fi">
+          Brews logged with 
+
+          <a
+            href="https://beanconqueror.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Beanconqueror</a>
+        </span>
+      </div>
+
+      <AiNote email={data.site.contactEmail} />
+      <div>
+        <span class="fi">
+          v{data.version}
+          <span class="d" aria-hidden="true">·</span>
+        </span>
+
+        <span class="fi">
+          Last updated: 
+          <Stamp iso={data.lastUpdated} empty="no data yet" minute />
+          <span class="d" aria-hidden="true">·</span>
+        </span>
+
+        <span class="fi">
+          Last deployed: 
+          <Stamp iso={data.lastDeployed} empty="no data yet" minute />
+        </span>
+      </div>
+    </footer>
   {/if}
 </main>
 
@@ -244,7 +294,12 @@
 {/if}
 
 <!-- Help popovers open on mouse hover too, on every page (modeTip.ts). -->
-<svelte:document onpointerover={tipOver} onpointerout={tipOut} onclickcapture={tipClick} />
+
+<svelte:document
+  onpointerover={tipOver}
+  onpointerout={tipOut}
+  onclickcapture={tipClick}
+></svelte:document>
 
 <svelte:window
   bind:scrollY
@@ -252,10 +307,14 @@
   onkeydown={(e) => {
     if (showAlerts && e.key === 'Escape') showAlerts = false;
   }}
-/>
+></svelte:window>
 
 {#if showAlerts}
-  <div class="modal-backdrop" onclick={() => (showAlerts = false)} role="presentation">
+  <div
+    class="modal-backdrop"
+    onclick={() => showAlerts = false}
+    role="presentation"
+  >
     <div class="modal" onclick={(e) => e.stopPropagation()}>
       <h2>Alerts</h2>
       {#if data.alerts.length === 0}
@@ -263,9 +322,29 @@
       {:else}
         <ul class="alert-list">
           {#each data.alerts as alert (alert.id)}
-            <li class="alert-list-item" class:alert-unread={alert.read_at === null}>
-              <p class="alert-message">{#if alert.href}<a href={alert.href} onclick={() => (showAlerts = false)}>{alert.message}</a>{:else}{alert.message}{/if}</p>
-              <p class="alert-meta">{#if alert.source !== 'recap'}{alert.source} · {/if}<Stamp iso={alert.created_at} minute /></p>
+            <li
+              class="alert-list-item"
+              class:alert-unread={alert.read_at === null}
+            >
+              <p class="alert-message">
+                {#if alert.href}
+                  <a
+                    href={alert.href}
+                    onclick={() => showAlerts = false}
+                  >{alert.message}</a>
+                {:else}
+                  {alert.message}
+                {/if}
+              </p>
+
+              <p class="alert-meta">
+                {#if alert.source !== 'recap'}
+                  {alert.source} ·
+                {/if}
+
+                <Stamp iso={alert.created_at} minute />
+              </p>
+
               <div class="alert-actions">
                 {#if alert.read_at === null}
                   <button class="button button-secondary" type="button" onclick={() => markAlertReadClick(alert.id)}
@@ -280,7 +359,12 @@
           {/each}
         </ul>
       {/if}
-      <button class="button" type="button" onclick={() => (showAlerts = false)}>Close</button>
+
+      <button
+        class="button"
+        type="button"
+        onclick={() => showAlerts = false}
+      >Close</button>
     </div>
   </div>
 {/if}

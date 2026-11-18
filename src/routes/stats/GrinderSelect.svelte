@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { InsightsUrlState } from '$lib/insightsUrl';
-  import type { LabOptions } from '$lib/server/insights/lab';
+  import type { InsightsUrlState } from '#lib/insightsUrl.ts';
+  import type { LabOptions } from '#lib/server/insights/lab.ts';
 
   // A lab tab's Grinder select (ui-rules 6): shown with 2+ grinders; the most-used one is the default (bare URL).
   let { grinders, grinder, choose, label = 'Grinder' }: { label?: string; grinders: LabOptions['grinders']; grinder: string | undefined; choose: (c: InsightsUrlState) => void } = $props();

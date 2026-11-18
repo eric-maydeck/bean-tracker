@@ -1,16 +1,16 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { asDateFormat } from '$lib/localDate';
-  import { formatDate } from '$lib/formatDate';
+  import { asDateFormat } from '#lib/localDate.ts';
+  import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll } from '$app/navigation';
-  import { UNTRACKED_CAP, accountQuery } from '$lib/accountUrl';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import CoffeeForm from '$lib/components/CoffeeForm.svelte';
-  import LinkPicker from '$lib/components/LinkPicker.svelte';
-  import { linkPickerGroups, cap, type LinkableCoffee } from '$lib/linkPicker';
-  import type { UnmatchedBean } from '$lib/server/beanconqueror';
-  import type { CoffeeRow } from '$lib/types';
+  import { UNTRACKED_CAP, accountQuery } from '#lib/accountUrl.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import CoffeeForm from '#lib/components/CoffeeForm.svelte';
+  import LinkPicker from '#lib/components/LinkPicker.svelte';
+  import { linkPickerGroups, cap, type LinkableCoffee } from '#lib/linkPicker.ts';
+  import type { UnmatchedBean } from '#lib/server/beanconqueror.ts';
+  import type { CoffeeRow } from '#lib/types.ts';
   import type { ComponentProps } from 'svelte';
 
   type FormProps = ComponentProps<typeof CoffeeForm>;

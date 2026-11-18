@@ -1,22 +1,22 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { afterNavigate } from '$app/navigation';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { waterPreview } from '$lib/linkPreview';
-  import { currentParams } from '$lib/pageUrlState';
-  import { writeUrlParams } from '$lib/urlState';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { waterPreview } from '#lib/linkPreview.ts';
+  import { currentParams } from '#lib/pageUrlState.ts';
+  import { writeUrlParams } from '#lib/urlState.ts';
   import {
     RECIPES, idealMls, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, MODES, MODE_LABEL, KETTLES, kettleFor, dropsFromPpm, ppmFromMgl,
     minerals, lotusParams, parseLotus, loadWater, serializeWater, WATER_STORAGE_KEY, TIPS, TIP_LABEL, dropAnchor, dropsFromAnchor, type Drops, type Mode, type Unit, type Tip
-  } from '$lib/lotus';
+  } from '#lib/lotus.ts';
 
   const SLIDER_MAX = 1200;
   const TICKS = Array.from({ length: (SLIDER_MAX - MIN_ML) / 50 + 1 }, (_, i) => MIN_ML + i * 50);
   type Fields = Record<keyof Drops, string>;
   const blank = (): Fields => ({ mg: '', ca: '', na: '', k: '' });
   const fromVals = (v: Partial<Drops> = {}): Fields => ({ mg: str(v.mg), ca: str(v.ca), na: str(v.na), k: str(v.k) });
-  const str = (n?: number) => (n === undefined ? '' : String(n));
+  const str = (n?: number) => n === undefined ? '' : String(n);
 
   // Untouched = undefined -> defaults; only what the visitor picked rides the URL.
   let mode = $state<Mode>('recipe');
@@ -52,7 +52,7 @@
     ml = s.ml ?? KETTLES.find((k) => k.slug === s.kettle)?.ml;
     raw = String(ml ?? DEFAULT_ML[s.tip ?? 'round']);
     dropsIn = s.mode === 'drops' ? fromVals(s.vals) : blank();
-    anchors = Object.fromEntries(Object.entries(s.mode === 'drops' ? (s.vals ?? {}) : {}).map(([k, v]) => [k, dropAnchor(v, s.tip ?? 'round')]));
+    anchors = Object.fromEntries(Object.entries(s.mode === 'drops' ? s.vals ?? {} : {}).map(([k, v]) => [k, dropAnchor(v, s.tip ?? 'round')]));
     targetIn = s.mode === 'target' ? fromVals(s.vals) : blank();
   }
   applyUrl();
@@ -62,13 +62,13 @@
   let volume = $derived(ml ?? DEFAULT_ML[tip]);
   let ideals = $derived(idealMls(recipe, tip));
   let kettle = $derived(kettleFor(volume, picked));
-  let valid = $derived(/^\d+$/.test(raw) && +raw >= MIN_ML && +raw <= MAX_ML);
+  let valid = $derived((/^\d+$/).test(raw) && +raw >= MIN_ML && +raw <= MAX_ML);
 
   const INT = /^\d{1,3}$/;
   const DEC = /^\d{1,4}(\.\d+)?$/;
   // Empty or half-typed fields count as 0 for the maths; only complete numbers ride the URL.
   const nums = (f: Fields, re: RegExp): Drops => {
-    const n = (v: string) => (re.test(v) ? +v : 0);
+    const n = (v: string) => re.test(v) ? +v : 0;
     return { mg: n(f.mg), ca: n(f.ca), na: n(f.na), k: n(f.k) };
   };
   const urlVals = (f: Fields, re: RegExp): Partial<Drops> =>
@@ -88,7 +88,7 @@
   // Bar scales: a fixed reference so small values stay small; a bigger value stretches its own group.
   const ionTop = $derived(Math.max(40, ...IONS.map(([k]) => result[k])));
   const anionTop = $derived(Math.max(100, ...ANIONS.map(([k]) => result[k])));
-  const hardTop = (v: number, goal: number) => (showTarget ? Math.max(v, goal, 1) * 1.15 : Math.max(150, v * 1.15));
+  const hardTop = (v: number, goal: number) => showTarget ? Math.max(v, goal, 1) * 1.15 : Math.max(150, v * 1.15);
   const f1 = (n: number) => n.toFixed(1).replace(/\.0$/, '');
 
   // Whole drops only: a decimal (or 4+ digits) is refused where it is typed, so the results never jump to 0.
@@ -125,7 +125,7 @@
     setMl(String(v));
   }
   function stepSlider(e: KeyboardEvent & { currentTarget: HTMLInputElement }) {
-    const dir = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key];
+    const dir = ({ ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 })[e.key];
     if (!dir) return;
     e.preventDefault();
     const v = +e.currentTarget.value;
@@ -136,7 +136,7 @@
 
   function setMl(v: string) {
     raw = v;
-    if (/^\d+$/.test(v) && +v >= MIN_ML && +v <= MAX_ML) ml = +v;
+    if ((/^\d+$/).test(v) && +v >= MIN_ML && +v <= MAX_ML) ml = +v;
   }
 
   // Mirror the state into the URL and the remembered state.
@@ -182,123 +182,185 @@
     arrived;
     sync();
   });
-  afterNavigate(() => {
+
+  afterNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
+
     applyUrl();
     arrived++;
   });
 </script>
 
-<svelte:head>
-  <title>Bean Tracker - Water</title>
-</svelte:head>
-<PreviewMeta preview={waterPreview({ mode, tip, recipe: recipe.name, ml: volume, drops, gh: result.gh, kh: result.kh, target: mode === 'target' ? target : mode === 'recipe' ? { gh: recipe.ppm.mg + recipe.ppm.ca, kh: recipe.ppm.na + recipe.ppm.k } : undefined, idealMl: ideals })} />
+<svelte:head><title>Bean Tracker - Water</title></svelte:head>
+
+<PreviewMeta
+  preview={waterPreview({
+    mode,
+    tip,
+    recipe: recipe.name,
+    ml: volume,
+    drops,
+    gh: result.gh,
+    kh: result.kh,
+    target: mode === 'target'
+      ? target
+      : mode === 'recipe'
+        ? {
+          gh: recipe.ppm.mg + recipe.ppm.ca,
+          kh: recipe.ppm.na + recipe.ppm.k
+        }
+        : undefined,
+    idealMl: ideals
+  })}
+/>
 
 <div class="water-page">
-<div class="toolbar water-title">
-  <h1>Water</h1>
-  <div class="water-actions">
+  <div class="toolbar water-title">
+    <h1>Water</h1>
+    <div class="water-actions">
     <button class="button button-secondary" type="button" onclick={reset}>Reset</button>
-    <ShareButton />
+      <ShareButton />
+    </div>
   </div>
-</div>
 
-<div class="water-tabs search-row">
-  <div class="form-field group-field">
-    <span>Mode</span>
-    <div class="tab-group" role="group" aria-label="Mode">
-      {#each MODES as m (m)}
-        <button type="button" aria-pressed={mode === m} onclick={() => (mode = m)}>{MODE_LABEL[m]}</button>
-      {/each}
+  <div class="water-tabs search-row">
+    <div class="form-field group-field">
+      <span>Mode</span>
+      <div class="tab-group" role="group" aria-label="Mode">
+        {#each MODES as m (m)}
+          <button
+            type="button"
+            aria-pressed={mode === m}
+            onclick={() => mode = m}
+          >{MODE_LABEL[m]}</button>
+        {/each}
+      </div>
     </div>
-  </div>
-  <div class="form-field group-field">
-    <span>Dropper tip</span>
+    <div class="form-field group-field">
+      <span>Dropper tip</span>
     <div class="tab-group" role="group" aria-label="Dropper tip">
-      {#each TIPS as t (t)}
+        {#each TIPS as t (t)}
         <button type="button" aria-pressed={tip === t} onclick={() => setTip(t)}>{TIP_LABEL[t]}</button>
-      {/each}
+        {/each}
+      </div>
     </div>
   </div>
-</div>
-<div class="water-controls">
-<div class="water-kettle-row">
+  <div class="water-controls">
+    <div class="water-kettle-row">
   <label class="form-field group-field water-field water-kettle">
-    <span>Kettle</span>
+        <span>Kettle</span>
     <select class="ctl-select" aria-label="Kettle" value={valid ? kettle : ''} onchange={(e) => pickKettle(e.currentTarget.value)}>
-      <option value="" disabled>Custom</option>
+          <option value="" disabled>Custom</option>
       {#each KETTLES as k (k.slug)}<option value={k.slug}>{k.name} ({k.ml}mL)</option>{/each}
-    </select>
-  </label>
-  <label class="form-field group-field water-field">
-    <span>Water (mL)</span>
+        </select>
+      </label>
+      <label class="form-field group-field water-field">
+        <span>Water (mL)</span>
     <input type="number" inputmode="numeric" min={MIN_ML} max={MAX_ML} step="1" aria-label="Water (mL)" value={raw} oninput={(e) => setMl(e.currentTarget.value)} />
-  </label>
-</div>
-<div class="form-field group-field water-slider">
+      </label>
+    </div>
+    <div class="form-field group-field water-slider">
   <input type="range" min={MIN_ML} max={SLIDER_MAX} step="any" aria-label="Water slider (mL)" aria-valuetext="{volume}mL" value={Math.min(volume, SLIDER_MAX)} oninput={snapSlider} onkeydown={stepSlider} />
-  <div class="water-ticks" aria-hidden="true">
-    {#each TICKS as t (t)}
-      <span class="water-tick" class:water-tick-major={t % 100 === 0} style:left="{((t - MIN_ML) / (SLIDER_MAX - MIN_ML)) * 100}%">
-        {#if t % 100 === 0}<span class="water-tick-label">{t}</span>{/if}
-      </span>
-    {/each}
+      <div class="water-ticks" aria-hidden="true">
+        {#each TICKS as t (t)}
+          <span
+            class="water-tick"
+            class:water-tick-major={t % 100 === 0}
+            style:left="{(t - MIN_ML) / (SLIDER_MAX - MIN_ML) * 100}%"
+          >
+            {#if t % 100 === 0}
+              <span class="water-tick-label">{t}</span>
+            {/if}
+          </span>
+        {/each}
+      </div>
+    </div>
   </div>
-</div>
-</div>
 <div class="water-inputs-wrap"><div class="water-inputs search-row">
-  {#if mode === 'recipe'}
-    <label class="form-field group-field water-field">
-      <span>Recipe</span>
-      <select class="ctl-select" aria-label="Recipe" value={recipe.slug} onchange={(e) => (recipeSlug = e.currentTarget.value)}>
-        {#each RECIPES as r (r.slug)}<option value={r.slug}>{r.name}</option>{/each}
-      </select>
-    </label>
-    {#if !ideals.includes(volume)}
+      {#if mode === 'recipe'}
+        <label class="form-field group-field water-field">
+          <span>Recipe</span>
+
+          <select
+            class="ctl-select"
+            aria-label="Recipe"
+            value={recipe.slug}
+            onchange={(e) => recipeSlug = e.currentTarget.value}
+          >
+            {#each RECIPES as r (r.slug)}
+              <option value={r.slug}>{r.name}</option>
+            {/each}
+          </select>
+        </label>
+        {#if !ideals.includes(volume)}
       <p class="text-muted water-ideal"><strong>
         The {recipe.name} recipe is best used with {ideals.join('mL or ')}mL of distilled water.</strong>
         {#each ideals as m (m)}<button class="button button-secondary" type="button" onclick={() => setMl(String(m))}>Switch to {m}mL</button>{/each}
-      </p>
-    {/if}
-  {:else}
-    {#if mode === 'target'}
-      <div class="form-field group-field water-unit">
-        <span>Unit</span>
-        <div class="tab-group" role="group" aria-label="Unit">
-          <button type="button" aria-pressed={(unit ?? 'ppm') === 'ppm'} onclick={() => (unit = 'ppm')}>ppm as CaCO₃</button>
-          <button type="button" aria-pressed={unit === 'mgl'} onclick={() => (unit = 'mgl')}>mg/L</button>
-        </div>
-      </div>
-    {/if}
-    {#each CONCENTRATES as [key, label] (key)}
+          </p>
+        {/if}
+      {:else}
+        {#if mode === 'target'}
+          <div class="form-field group-field water-unit">
+            <span>Unit</span>
+            <div class="tab-group" role="group" aria-label="Unit">
+              <button
+                type="button"
+                aria-pressed={(unit ?? 'ppm') === 'ppm'}
+                onclick={() => unit = 'ppm'}
+              >ppm as CaCO₃</button>
+
+              <button
+                type="button"
+                aria-pressed={unit === 'mgl'}
+                onclick={() => unit = 'mgl'}
+              >mg/L</button>
+            </div>
+          </div>
+        {/if}
+        {#each CONCENTRATES as [key, label] (key)}
       <label class="form-field group-field water-mineral" style:--el="var(--el-{key})">
         <span class="water-el">{SYMBOL[key]}{mode === 'drops' ? ' (drops)' : (unit ?? 'ppm') === 'mgl' ? ' (mg/L)' : ' (ppm)'}</span>
-        {#if mode === 'drops'}
+            {#if mode === 'drops'}
           <input type="number" inputmode="numeric" min="0" step="1" value={dropsIn[key]} oninput={(e) => setDrops(key, e.currentTarget)} />
-        {:else}
-          <input type="number" inputmode="decimal" min="0" step="any" value={targetIn[key]} oninput={(e) => (targetIn[key] = e.currentTarget.value)} />
-        {/if}
-      </label>
-    {/each}
-  {/if}
+            {:else}
+              <input
+                type="number"
+                inputmode="decimal"
+                min="0"
+                step="any"
+                value={targetIn[key]}
+                oninput={(e) => targetIn[key] = e.currentTarget.value}
+              />
+            {/if}
+          </label>
+        {/each}
+      {/if}
 </div></div>
 
-<!-- Results stay on the last valid mL while the box holds a partial number; the hint only shows then, in reserved space. -->
+  <!-- Results stay on the last valid mL while the box holds a partial number; the hint only shows then, in reserved space. -->
 <p class="text-muted water-hint" class:water-hint-off={valid}>Enter {MIN_ML}-{MAX_ML}mL.</p>
-<section class="wr water-results">
-  <div class="card wr-head">
-    <h2>Lotus drops for {volume}mL of water</h2>
-    <ul class="wr-drops" aria-label="Drops to add">
-      {#each CONCENTRATES as [key, label] (key)}
+  <section class="wr water-results">
+    <div class="card wr-head">
+      <h2>Lotus drops for {volume}mL of water</h2>
+      <ul class="wr-drops" aria-label="Drops to add">
+        {#each CONCENTRATES as [key, label] (key)}
         <li class="wr-drop" style:--el="var(--el-{key})" class:wr-zero={drops[key] === 0} aria-label="{drops[key]} {label}"><b>{drops[key]}</b><span>{SYMBOL[key]}</span></li>
-      {/each}
-    </ul>
-  </div>
+        {/each}
+      </ul>
+    </div>
     <div class="card wr-card">
       <h3>Minerals</h3>
       <ul class="wr-meters">
         {#each [...IONS, ...ANIONS] as [key, label] (key)}
           {@const top = key === 'cl' || key === 'hco3' ? anionTop : ionTop}
-          <li style:--el={key in SYMBOL ? `var(--el-${key})` : 'var(--color-text-muted)'}><span class="wr-meter-label">{label}</span><span class="wr-bar"><i style:width="{(result[key] / top) * 100}%"></i></span><span class="wr-meter-num">{f1(result[key])}<small>mg/L</small></span></li>
+
+          <li
+            style:--el={key in SYMBOL ? `var(--el-${key})` : 'var(--color-text-muted)'}
+          >
+            <span class="wr-meter-label">{label}</span>
+            <span class="wr-bar"><i style:width="{result[key] / top * 100}%"></i></span>
+            <span class="wr-meter-num">{f1(result[key])}<small>mg/L</small></span>
+          </li>
         {/each}
       </ul>
     </div>
@@ -308,20 +370,39 @@
         {#each [['GH', result.gh, target.gh], ['KH', result.kh, target.kh]] as [label, value, goal] (label)}
           {@const top = hardTop(value as number, goal as number)}
           <div class="wr-gauge">
-            <div class="wr-gauge-head"><b>{label}</b><span>{f1(value as number)}<small>ppm{#if showTarget}, target {f1(goal as number)}{/if}</small></span></div>
-            <span class="wr-bar wr-bar-tall"><i style:width="{((value as number) / top) * 100}%"></i>{#if showTarget}<u style:left="{((goal as number) / top) * 100}%"></u>{/if}</span>
+            <div class="wr-gauge-head">
+              <b>{label}</b>
+
+              <span>
+                {f1(value as number)}
+
+                <small>
+                  ppm{#if showTarget}
+                    , target {f1(goal as number)}
+                  {/if}
+                </small>
+              </span>
+            </div>
+
+            <span class="wr-bar wr-bar-tall">
+              <i style:width="{value as number / top * 100}%"></i>
+
+              {#if showTarget}
+                <u style:left="{goal as number / top * 100}%"></u>
+              {/if}
+            </span>
           </div>
         {/each}
       </div>
     </div>
-</section>
-<div class="water-notes">
-  <p class="text-muted wr-note">Whole drops from a {tip === 'round' ? 'round-tip' : 'precision'} dropper; GH and KH in ppm as CaCO₃.</p>
-  <p class="text-muted wr-note">
-    Drop math follows Lotus's own calculator. For official Lotus recipes and instructions, see
+  </section>
+  <div class="water-notes">
+    <p class="text-muted wr-note">Whole drops from a {tip === 'round' ? 'round-tip' : 'precision'} dropper; GH and KH in ppm as CaCO₃.</p>
+    <p class="text-muted wr-note">
+      Drop math follows Lotus's own calculator. For official Lotus recipes and instructions, see 
     <a href="https://lotuscoffeeproducts.com/pages/product-instructions" rel="noopener">Lotus Coffee Products</a>.
-  </p>
-</div>
+    </p>
+  </div>
 </div>
 
 <style>
@@ -379,7 +460,7 @@
     --thumb: 24px;
     margin-bottom: 0;
   }
-  .water-slider input[type='range'] {
+  .water-slider input[type="range"] {
     appearance: none;
     width: 100%;
     height: var(--thumb);
@@ -387,17 +468,17 @@
     padding: 0;
     background: transparent;
   }
-  .water-slider input[type='range']::-webkit-slider-runnable-track {
+  .water-slider input[type="range"]::-webkit-slider-runnable-track {
     height: 4px;
     border-radius: 2px;
     background: var(--color-border);
   }
-  .water-slider input[type='range']::-moz-range-track {
+  .water-slider input[type="range"]::-moz-range-track {
     height: 4px;
     border-radius: 2px;
     background: var(--color-border);
   }
-  .water-slider input[type='range']::-webkit-slider-thumb {
+  .water-slider input[type="range"]::-webkit-slider-thumb {
     appearance: none;
     width: var(--thumb);
     height: var(--thumb);
@@ -406,7 +487,7 @@
     border-radius: 50%;
     background: var(--color-accent);
   }
-  .water-slider input[type='range']::-moz-range-thumb {
+  .water-slider input[type="range"]::-moz-range-thumb {
     width: var(--thumb);
     height: var(--thumb);
     box-sizing: border-box;

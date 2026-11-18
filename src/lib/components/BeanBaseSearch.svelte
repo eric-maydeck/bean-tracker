@@ -5,8 +5,8 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
-  import type { BeanCard, BeanSearch } from '$lib/server/beanBase';
-  import { formatDate } from '$lib/formatDate';
+  import type { BeanCard, BeanSearch } from '#lib/server/beanBase.ts';
+  import { formatDate } from '#lib/formatDate.ts';
   import SuggestSheet from './SuggestSheet.svelte';
   import Icon from './Icon.svelte';
 

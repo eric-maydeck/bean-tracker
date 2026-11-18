@@ -16,7 +16,7 @@ writeFileSync(cfg, `hosts:
 process.env.CONFIG_PATH = cfg;
 
 const { load } = await import('./+layout.server');
-const { resetSiteConfig } = await import('$lib/server/siteConfig');
+const { resetSiteConfig } = await import('#lib/server/siteConfig.ts');
 
 const siteOf = async (host: string) => {
   const r = (await (load as any)({ locals: { isAdmin: false }, url: new URL(`https://${host}/`), cookies: { get: () => undefined } })) as { site: unknown };
