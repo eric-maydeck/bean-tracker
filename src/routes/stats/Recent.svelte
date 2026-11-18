@@ -2,7 +2,7 @@
   import { formatDate } from '$lib/formatDate';
   import { RATING_MAX } from '$lib/rating';
   import WholeNote from './WholeNote.svelte';
-  import { labelTip } from '$lib/components/labelTip';
+  import { labelTip, truncTip } from '$lib/components/labelTip';
   import { type BrewFilterKey, type InsightsUrlState, type Top } from '$lib/insightsUrl';
   import type { RecentBrew, RecentBag } from '$lib/server/insights/overview';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
@@ -21,9 +21,8 @@
 </script>
 
 {#snippet who(name: string, slug: string | null, sub: string)}
-  <span class="who">
-    {#if slug}<a href="/coffees/{slug}" use:labelTip={name}><CoffeeName {name} /></a>{:else}<span class="name" use:labelTip={name}><CoffeeName {name} /></span>{/if}
-
+  <span class="who" use:truncTip={`${name} · ${sub}`}>
+    {#if slug}<a href="/coffees/{slug}"><CoffeeName {name} /></a>{:else}<span class="name"><CoffeeName {name} /></span>{/if}
     <small>{sub}</small>
   </span>
 {/snippet}
@@ -36,8 +35,8 @@
       {#each shownBrews as b, i (b.id)}
         <li class="board-row bar" style:--share={(b.rating ?? 0) / RATING_MAX}>
           <span class="rank">{i + 1}</span>
-          {@render who(b.name ?? 'No coffee linked', b.slug, day(b.date))}
-          <span class="val">{rating(b.rating)}</span>
+          {@render who(b.name ?? 'No coffee linked', b.slug, b.roaster ? `${b.roaster} · ${day(b.date)}` : day(b.date))}
+          <span class="val" use:labelTip={b.tip}>{rating(b.rating)}</span>
         </li>
       {/each}
     </ol>
@@ -50,8 +49,8 @@
       {#each shownBags as b, i (b.id)}
         <li class="board-row bar" style:--share={(b.rating ?? 0) / RATING_MAX}>
           <span class="rank">{i + 1}</span>
-          {@render who(b.name, b.slug, `Open for ${b.days} ${b.days === 1 ? 'day' : 'days'} · Finished ${day(b.finished)}`)}
-          <span class="val">{rating(b.rating)}</span>
+          {@render who(b.name, b.slug, `${b.roaster} · Open for ${b.days} ${b.days === 1 ? 'day' : 'days'} · Finished ${day(b.finished)}`)}
+          <span class="val" use:labelTip={b.tip}>{rating(b.rating)}</span>
         </li>
       {/each}
     </ol>
@@ -64,6 +63,11 @@
   /* Board rows and bars are :global() in +page.svelte (shared with Leaderboards). */
   .recent {
     --row-h: 3rem;
+  }
+  /* The rating sits above the link's overlay so its own tip opens. */
+  .recent :global(.board-row .val) {
+    position: relative;
+    z-index: 1;
   }
   .second {
     margin-top: var(--space-4);

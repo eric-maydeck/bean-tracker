@@ -2,6 +2,7 @@ import type { Ratings } from '$lib/insightsUrl';
 import type { BrewFact, BagFact } from './facts';
 import { inPeriod, trackedDays, addDays, daysBetween, type Period } from './time';
 import { countsForRating } from './ratings';
+import { brewTip, bagTip, type RecentCtx, type Tip } from './recentTips';
 
 export interface OverviewTiles {
   brews: number;
@@ -190,29 +191,31 @@ export function consumption(
   };
 }
 
-export type RecentBrew = { id: number; name: string | null; slug: string | null; date: string; rating: number | null };
-export type RecentBag = { id: number; name: string; slug: string | null; finished: string; days: number; rating: number | null };
+export type RecentBrew = { id: number; name: string | null; slug: string | null; roaster: string | null; date: string; rating: number | null; tip: Tip };
+export type RecentBag = { id: number; name: string; slug: string | null; roaster: string; finished: string; days: number; rating: number | null; tip: Tip };
 
 // Overview's Recent panel: the household's last 10 brews and last 10 bags finished, newest first,
 // regardless of period or people. A bag's days open count calendar days from its start to its last
 // brew, both included (opened and finished the same day = 1). The start is the earlier of opened_date
 // and the first brew: opened_date is when the bag was marked Open in the app, which is often days
 // after its first brew. A bag with neither date is skipped.
-export function recent(brews: readonly BrewFact[], bags: readonly BagFact[], n = 10): { brews: RecentBrew[]; bags: RecentBag[] } {
+export function recent(brews: readonly BrewFact[], bags: readonly BagFact[], n = 10, ctx: RecentCtx = {}): { brews: RecentBrew[]; bags: RecentBag[] } {
   const byId = new Map(bags.map((b) => [b.id, b]));
+  const c = { ...ctx, all: ctx.all ?? brews };
+  const shownBrews = brews.slice(-n).reverse();
+  const shownBags = bags
+    .filter((g) => isFinished(g) && g.firstBrew) // open day is always the first brew (user): status 'open' isn't a physical opening
+    .sort((a, b) => b.lastBrew!.localeCompare(a.lastBrew!) || b.id - a.id)
+    .slice(0, n);
+  const x = ctx.extra?.(shownBrews.map((b) => b.id), shownBags.map((g) => g.id)) ?? { brews: new Map(), bags: new Map() };
   return {
-    brews: brews.slice(-n).reverse().map((b) => {
+    brews: shownBrews.map((b) => {
       const g = b.coffeeId === null ? undefined : byId.get(b.coffeeId);
-      return { id: b.id, name: g?.name ?? null, slug: g?.slug ?? null, date: b.localDate, rating: b.rating };
+      return { id: b.id, name: g?.name ?? null, slug: g?.slug ?? null, roaster: g?.roaster ?? b.roaster, date: b.localDate, rating: b.rating, tip: brewTip(b, g?.name ?? null, g, c, x.brews.get(b.id)) };
     }),
-    bags: bags
-      .flatMap((g) => {
-        const from = g.firstBrew; // open day is always the first brew (user): status 'open' isn't a physical opening
-        return isFinished(g) && from
-          ? [{ id: g.id, name: g.name, slug: g.slug, finished: g.lastBrew!, days: Math.max(1, daysBetween(from, g.lastBrew!) + 1), rating: g.bagRating }]
-          : [];
-      })
-      .sort((a, b) => b.finished.localeCompare(a.finished) || b.id - a.id)
-      .slice(0, n)
+    bags: shownBags.map((g) => ({
+      id: g.id, name: g.name, slug: g.slug, roaster: g.roaster, finished: g.lastBrew!, days: Math.max(1, daysBetween(g.firstBrew!, g.lastBrew!) + 1), rating: g.bagRating,
+      tip: bagTip(g, c, x.bags.get(g.id))
+    }))
   };
 }

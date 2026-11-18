@@ -6676,7 +6676,7 @@ export const STATES: State[] = [
       // Finished coffees lead with the rating (— unrated); how long it was open and when it ran out sit under the name.
       const finished = panel.locator('.board-rows').nth(1).locator('.board-row');
       for (const v of await finished.locator('.val').allTextContents()) expect(v).toMatch(/^(\d+\.\d|—)$/);
-      for (const sub of await finished.locator('small').allTextContents()) expect(sub).toMatch(/^Open for (1 day|\d+ days) · Finished \d{4}-\d{2}-\d{2}$/);
+      for (const sub of await finished.locator('small').allTextContents()) expect(sub).toMatch(/^.+ · Open for (1 day|\d+ days) · Finished \d{4}-\d{2}-\d{2}$/);
       // Recent is the last panel on Overview.
       await expect(page.locator('section.chart-panel').last()).toHaveClass(/recent/);
       const lists = panel.locator('.board-rows');
@@ -6693,6 +6693,49 @@ export const STATES: State[] = [
       expect(await lists.first().locator('.board-row.bar').count()).toBeGreaterThan(0);
       await expect(lists.first().locator('.board-row.bar a').first()).toHaveAttribute('href', /^\/coffees\//);
       await expectBarHover(page);
+      // Brew rows lead their sub line with the roaster.
+      const subs = await lists.first().locator('small').allTextContents();
+      for (const sub of subs) expect(sub).toMatch(/^(.+ · )?\d{4}-\d{2}-\d{2}$/);
+      expect(subs.some((sub) => sub.includes(' · '))).toBe(true);
+      const tip = page.locator('[popover]:popover-open');
+      const inView = async () => {
+        const r = await tip.evaluate((e) => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom, w: innerWidth, h: innerHeight, clipped: [...e.querySelectorAll('*')].filter((c) => getComputedStyle(c).display !== 'inline' && c.scrollWidth > c.clientWidth + 1).map((c) => `${c.outerHTML.slice(0, 120)} ${c.scrollWidth}>${c.clientWidth}`) }; });
+        expect(r.l).toBeGreaterThanOrEqual(-1); expect(r.r).toBeLessThanOrEqual(r.w + 1); expect(r.t).toBeGreaterThanOrEqual(-1); expect(r.b).toBeLessThanOrEqual(r.h + 1); expect(r.clipped).toEqual([]);
+      };
+      // A name or sub line gets a tip only while it is cut by an ellipsis (truncTip): none for text shown whole, its full text when cut.
+      if (await page.evaluate(() => matchMedia('(hover: hover)').matches)) {
+        // One tip per row (on .who: the link's overlay covers its parts), cut when the name or the sub line is.
+        const who = panel.locator('.board-row .who');
+        const cells = await who.evaluateAll((els) => els.map((e, i) => ({ i, cut: [...e.children].some((c) => c.scrollWidth > c.clientWidth + 1) })));
+        for (const want of [false, true]) {
+          const c = cells.find((x) => x.cut === want);
+          if (!c) continue;
+          const el = who.nth(c.i);
+          await el.evaluate((e) => e.scrollIntoView({ block: 'center' })); // clear of the sticky bars and bottom tabs
+          await el.hover({ position: { x: 4, y: 4 } });
+          if (want) await expect(tip).toContainText((await el.locator('a, .name').innerText()).trim().slice(0, 12));
+          else { await page.waitForTimeout(150); await expect(tip).toHaveCount(0); }
+          await page.mouse.move(0, 0);
+        }
+      }
+      // Rating tip: hover on desktop, tap on phones; brew details, then a finished coffee's.
+      for (const [i, want] of [[0, /Roaster[\s\S]*Brew/], [1, /Roaster[\s\S]*Brews/]] as const) {
+        const val = lists.nth(i).locator('.board-row.bar .val').first();
+        await val.evaluate((e) => e.scrollIntoView({ block: 'center' }));
+        if (touch()) await val.tap(); else await val.hover();
+        await expect(tip).toContainText(want);
+        await inView();
+        // Rows sit under group headers; at desktop width no row wraps (each value is as tall as its label).
+        const wraps = await tip.evaluate((e) => [...e.querySelectorAll('.tip-rows dd')].filter((dd) => dd.getBoundingClientRect().height > (dd.previousElementSibling as Element).getBoundingClientRect().height + 2).map((dd) => dd.textContent));
+        if (page.viewportSize()!.width >= 1280) expect(wraps).toEqual([]);
+        expect(await tip.locator('.tip-group').count()).toBeGreaterThanOrEqual(2);
+        expect(await tip.locator('.tip-group').first().evaluate((e) => getComputedStyle(e).textTransform)).toBe('uppercase');
+        // A note comes under its own Notes header; no note, no header.
+        expect(await tip.locator('.tip-group', { hasText: 'Notes' }).count()).toBe(await tip.locator('.tip-note').count());
+        await page.mouse.move(0, 0);
+        if (touch()) await page.mouse.click(5, 5);
+        await expect(tip).toHaveCount(0);
+      }
     }
   },
   {
