@@ -1,3 +1,14 @@
+## [2.0.1](https://github.com/eric-maydeck/bean-tracker/compare/v2.0.0...v2.0.1) (2026-11-18)
+
+
+### Bug Fixes
+
+* bold the loffee labs search labels, values in full text color ([13132e5](https://github.com/eric-maydeck/bean-tracker/commit/13132e561a25045e4de9d2d7c6065402c90935fc))
+* bold the loffee labs search values ([64453bb](https://github.com/eric-maydeck/bean-tracker/commit/64453bbdf1b13640e660be1fdf5cb2466c720044))
+* label the loffee labs search lines roaster and coffee ([d7e0c13](https://github.com/eric-maydeck/bean-tracker/commit/d7e0c13549afea2ffc183c2f710afc9caaf06a9f))
+* send the coffee name to the loffee labs search ([d86eb3a](https://github.com/eric-maydeck/bean-tracker/commit/d86eb3a385ca825b620e04eb1d842f3440ccaf19))
+* the loffee labs dialog header follows the current search ([d4205b6](https://github.com/eric-maydeck/bean-tracker/commit/d4205b61c469f89d906c6eb3f602b30ffcaf9d0c))
+
 # [2.0.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.118.0...v2.0.0) (2026-11-18)
 
 
