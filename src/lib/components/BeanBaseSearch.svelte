@@ -108,11 +108,11 @@
     {@const r = result}
     {#if r.status === 'ok'}
       <p class="text-muted fill-note">
-        Roaster: {r.roaster} ·
+        Roaster: <strong>{r.roaster}</strong> ·
         <button type="button" class="suggest-change" onclick={() => { roasterEditing = true; termEditing = false; roasterInput = r.roaster; }}>change</button>
       </p>
       <p class="text-muted fill-note">
-        Coffee: {typedTerm || 'any'} ·
+        Coffee: <strong>{typedTerm || 'any'}</strong> ·
         <button type="button" class="suggest-change" onclick={() => { termEditing = true; roasterEditing = false; termInput = typedTerm; }}>change</button>
       </p>
       {#if r.fallback}
