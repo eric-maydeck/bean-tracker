@@ -3456,7 +3456,7 @@ export const STATES: State[] = [
       await expect(dlg).toHaveCount(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await expect(page.getByText('1 brew not on the site yet: import the Bean Conqueror .zip above to add it and its coffee')).toBeVisible();
-      await expect(page.getByRole('listitem').filter({ hasText: 'custom server' }).locator('code')).toHaveText('http://localhost:5198/');
+      await expect(page.getByRole('listitem').filter({ hasText: 'custom server' }).locator('code')).toHaveText(new URL('/', page.url()).href);
       await expect(page.getByText('Username: bean-tracker. Password: your Bean Tracker sign-in password.')).toBeVisible();
       // Bean Conqueror's Basic auth takes the sign-in password (the UI tests' is `test`, playwright.config.ts).
       const basic = 'Basic ' + Buffer.from('x:test').toString('base64');
