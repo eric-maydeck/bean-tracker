@@ -8,8 +8,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 
 export type Scope = { kind: 'full'; reason: string } | { kind: 'tags'; tags: string[] } | { kind: 'none' };
+// .github/ changes (release, publish, CodeQL workflows) can't change the UI; ci.yml runs the UI jobs, so it still counts.
 const NO_UI = [/^docs\//, /\.md$/, /\.test\.ts$/, /^deploy\//, /^\.claude\//,
-  /^src\/lib\/server\/fixtures\//];
+  /^src\/lib\/server\/fixtures\//, /^\.github\/(?!workflows\/ci\.yml$)/];
 // The test:ui tag is a state's first path segment (routeTag in tests/ui/layout.spec.ts).
 const TAGGED = /^src\/routes\/(coffees|insights|stats|on-deck|subscriptions|recaps)\//;
 // Shared by every route: the root layout/page, hooks, app.css, app.html.
