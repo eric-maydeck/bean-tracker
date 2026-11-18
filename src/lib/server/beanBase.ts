@@ -3,6 +3,8 @@ import { conciseProcess } from '../processGroups';
 import { words } from './imageSuggest/rankImages';
 import { canonical, normalizeRoaster, type FillFields } from './productFill';
 
+// /beans lists only a roaster's current beans unless historical=true; both callers share this (limit 1000 is the plan cap).
+const ALL_BEANS = '&limit=1000&historical=true';
 // The docs say api.loffeelabs.com, but that host doesn't resolve (checked 2026-11-17); the API is served from www.
 const BASE_URL = 'https://www.loffeelabs.com/api/v2';
 
@@ -143,7 +145,7 @@ export async function lookupBeanBase(
   const key = opts.key === undefined ? beanBaseKey() : opts.key;
   if (!key) return { miss: 'no-key' };
   try {
-    const body = (await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}`, key, opts.fetcher)) as BeanBaseBean[] | { data?: BeanBaseBean[]; beans?: BeanBaseBean[] };
+    const body = (await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}${ALL_BEANS}`, key, opts.fetcher)) as BeanBaseBean[] | { data?: BeanBaseBean[]; beans?: BeanBaseBean[] };
     const beans = Array.isArray(body) ? body : (body.data ?? body.beans);
     if (!Array.isArray(beans)) return { miss: 'error' };
     const mapped = mapRoaster(roaster, coffee.product_url, beans);
@@ -161,7 +163,7 @@ export type BeanCard = {
 export type BeanSearch =
   | { status: 'no-key' | 'failed' }
   | { status: 'roaster'; closest: string[] }
-  | { status: 'ok'; roaster: string; beans: BeanCard[] };
+  | { status: 'ok'; roaster: string; beans: BeanCard[]; fallback?: boolean };
 
 // ponytail: shared words, then containment/prefix, then edit distance. A one-word typo that shares no word
 // with the real name ranks by edit distance alone; upgrade to trigram similarity if misses show up.
@@ -208,14 +210,24 @@ export async function rankedBeans(
   roaster: string,
   coffeeName: string,
   opts: SearchOpts = {}
-): Promise<{ status: 'no-key' | 'failed' } | { status: 'roaster'; closest: string[] } | { status: 'ok'; roaster: string; ranked: Ranked[] }> {
+): Promise<{ status: 'no-key' | 'failed' } | { status: 'roaster'; closest: string[] } | { status: 'ok'; roaster: string; ranked: Ranked[]; fallback?: boolean }> {
   const key = opts.key === undefined ? beanBaseKey() : opts.key;
   if (!key) return { status: 'no-key' };
   try {
     const list = (body: unknown, k: string) => (Array.isArray(body) ? body : (body as Record<string, unknown> | null)?.data ?? (body as Record<string, unknown> | null)?.[k]);
     // ponytail: fetchBeanBase builds its own timeout signal, so a caller's abort signal isn't passed through.
-    const body = await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}&limit=1000`, key, opts.fetcher);
-    const beans = list(body, 'beans') as BeanBaseBean[];
+    const getBeans = async (extra: string) => {
+      const body = await fetchBeanBase(`/beans?roaster=${encodeURIComponent(roaster)}${extra}${ALL_BEANS}`, key, opts.fetcher);
+      return { body, beans: list(body, 'beans') as BeanBaseBean[] };
+    };
+    // The coffee name goes to the API's full-text search; none found (or no name) falls back to the roaster's whole list.
+    const term = coffeeName.trim();
+    let fallback = false;
+    let got = term ? await getBeans(`&search=${encodeURIComponent(term)}`) : null;
+    if (got && !Array.isArray(got.beans)) return shapeFail('/beans', got.body);
+    if (got && !mapRoaster(roaster, null, got.beans)) [got, fallback] = [null, true];
+    got ??= await getBeans('');
+    const { body, beans } = got;
     if (!Array.isArray(beans)) return shapeFail('/beans', body);
     const mapped = mapRoaster(roaster, null, beans);
     if (!mapped) {
@@ -243,7 +255,7 @@ export async function rankedBeans(
         };
       })
       .sort((a, b) => b.link - a.link || b.exact - a.exact || b.match - a.match || (a.days === b.days ? 0 : a.days < b.days ? -1 : 1) || b.ms - a.ms);
-    return { status: 'ok', roaster: mapped, ranked: scored };
+    return { status: 'ok', roaster: mapped, ranked: scored, ...(fallback && { fallback }) };
   } catch (err) {
     console.error('bean base search failed:', err instanceof Error ? err.message : String(err));
     return { status: 'failed' };
@@ -263,5 +275,5 @@ export async function searchBeanBase(roaster: string, coffeeName: string, ctx: C
     id: String(b.id), name: b['roast-name']?.trim() || 'Unnamed', image: b.image?.trim() || null, soldout: !!b.soldout,
     date: b.date, link: b.link, closest: i === best, fields: beanBaseFields(b, ctx)
   }));
-  return { status: 'ok', roaster: r.roaster, beans };
+  return { status: 'ok', roaster: r.roaster, beans, ...(r.fallback && { fallback: true }) };
 }

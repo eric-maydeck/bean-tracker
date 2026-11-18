@@ -11055,7 +11055,7 @@ export const STATES: State[] = [
       const d = dlg(page);
       await expect(d.getByRole('heading', { name: 'Loffee Labs matches' })).toBeVisible();
       await expect(d.locator('.suggest-pick')).toHaveCount(3);
-      await expect(d.getByText('Loffee Labs roaster: Moonwake Coffee Roasters ·')).toBeVisible();
+      await expect(d.getByText('Roaster: Moonwake Coffee Roasters ·')).toBeVisible();
       // The first card has an image with both badges, Closest before Sold out; a card with no photo gets a same-size placeholder.
       const first = d.locator('.suggest-pick').first();
       await expect(first.locator('.suggest-image img')).toHaveCount(1);
@@ -11073,6 +11073,53 @@ export const STATES: State[] = [
       await expect(first).toContainText('Added ');
       await expect(d.getByRole('link', { name: 'From Loffee Labs Bean Base' })).toHaveAttribute('href', 'https://www.loffeelabs.com');
       await expect(d.getByRole('button', { name: 'None of these' })).toBeVisible();
+      await expectDialogInViewport(page);
+    }
+  },
+  {
+    name: 'coffee-edit-loffee-term-change', viewports: 'two',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      const bodies: Record<string, string>[] = [];
+      await openBeanBase(page, async (route) => {
+        bodies.push(route.request().postDataJSON());
+        await reply(bodies.length > 1 ? BB_OK : { ...BB_OK, fallback: true })(route);
+      });
+      const d = dlg(page);
+      await expect(d.getByText('No match for "Ethiopia Bensa Bombe"; showing all Moonwake Coffee Roasters beans')).toBeVisible();
+      await expectDialogInViewport(page);
+      const list = d.locator('.suggest-list');
+      const before = await list.boundingBox();
+      await d.getByRole('button', { name: 'change' }).nth(1).click();
+      const input = d.getByLabel('Loffee Labs search term');
+      await expect(input).toBeVisible();
+      await expectDialogInViewport(page);
+      const open = await list.boundingBox();
+      expect(open!.y).toBeGreaterThan(before!.y);
+      await input.fill('Bensa Bombe');
+      await input.press('Enter');
+      await expect(input).toHaveCount(0);
+      await expect(d.getByText('Coffee: Bensa Bombe ·')).toBeVisible();
+      await expect(d.locator('.suggest-matching p').first()).toHaveText('Moonwake Coffee Roasters · Bensa Bombe');
+      expect(bodies[1].coffee_name).toBe('Bensa Bombe');
+      // A blank term searches any coffee, and the header says so.
+      await d.getByRole('button', { name: 'change' }).nth(1).click();
+      await d.getByLabel('Loffee Labs search term').fill('');
+      await d.getByLabel('Loffee Labs search term').press('Enter');
+      await expect(d.getByText('Coffee: any ·')).toBeVisible();
+      await expect(d.locator('.suggest-matching p').first()).toHaveText('Moonwake Coffee Roasters · any');
+      expect(bodies[2].coffee_name).toBe('');
+      await d.getByRole('button', { name: 'change' }).nth(1).click();
+      await d.getByLabel('Loffee Labs search term').fill('Bensa Bombe');
+      await d.getByLabel('Loffee Labs search term').press('Enter');
+      await expect(d.getByText('Coffee: Bensa Bombe ·')).toBeVisible();
+      // The term survives a roaster change.
+      await d.getByRole('button', { name: 'change' }).first().click();
+      await d.getByLabel('Loffee Labs roaster').fill('Moon Roasters');
+      await d.getByRole('button', { name: 'Search', exact: true }).click();
+      await expect(d.getByText('Roaster: Moonwake Coffee Roasters ·')).toBeVisible();
+      expect(bodies[4]).toMatchObject({ roaster: 'Moon Roasters', coffee_name: 'Bensa Bombe' });
+      await expect(d.getByText('No match for')).toHaveCount(0);
       await expectDialogInViewport(page);
     }
   },

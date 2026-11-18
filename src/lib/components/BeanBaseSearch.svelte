@@ -25,24 +25,30 @@
   let typedRoaster = $state('');
   let roasterEditing = $state(false);
   let roasterInput = $state('');
+  let typedTerm = $state('');
+  let termEditing = $state(false);
+  let termInput = $state('');
   let sheet: SuggestSheet;
   let button: HTMLButtonElement;
   let searchId = 0;
-  let lastRoaster: string | undefined;
+  // Overrides from "change" (or a tapped closest name) for this dialog session; absent = as typed on the form.
+  // Each survives a rerun that changes the other.
+  let override: { roaster?: string; term?: string } = {};
 
-  // roaster: one typed via "change" or a tapped closest name; undefined = the roaster as typed on the form.
-  async function run(roaster?: string) {
+  async function run(patch: { roaster?: string; term?: string } = {}) {
     const id = ++searchId;
-    lastRoaster = roaster;
+    override = { ...override, ...patch };
     roasterEditing = false;
+    termEditing = false;
     searching = true;
     try {
       const b = body();
-      typedRoaster = roaster ?? b.roaster;
+      typedRoaster = override.roaster ?? b.roaster;
+      typedTerm = override.term ?? b.coffee_name.trim();
       const res = await fetch('/api/coffees/bean-base-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...b, roaster: typedRoaster })
+        body: JSON.stringify({ ...b, roaster: typedRoaster, coffee_name: typedTerm })
       });
       const data = await res.json().catch(() => null);
       if (id !== searchId) return;
@@ -55,8 +61,16 @@
   }
 
   let matchingLines = $state<string[]>([]);
+  // The header's first line follows the current search (Loffee Labs' roaster name once matched, the term or "any"),
+  // not the form as it was when the dialog opened; the form's second line (process, roast date) stays.
+  const headerLines = $derived(
+    typedRoaster
+      ? [`${result?.status === 'ok' ? result.roaster : typedRoaster} · ${typedTerm || 'any'}`, ...matchingLines.slice(1)]
+      : matchingLines
+  );
   function open() {
     matchingLines = matching();
+    override = {};
     sheet.show();
     run();
   }
@@ -66,16 +80,23 @@
     searching = false;
     result = null;
     roasterEditing = false;
+    termEditing = false;
+    override = {};
     await tick();
     button.focus();
   }
 
-  function changeKey(e: KeyboardEvent) {
-    // Enter here reruns the search, never submits the parent form.
+  // Enter here reruns the search, never submits the parent form. A blank term is allowed (any coffee).
+  const changeKey = (e: KeyboardEvent) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    if (roasterInput.trim()) run(roasterInput.trim());
-  }
+    if (roasterInput.trim()) run({ roaster: roasterInput.trim() });
+  };
+  const termKey = (e: KeyboardEvent) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    run({ term: termInput.trim() });
+  };
 
   const lines = (f: BeanCard['fields']) =>
     [
@@ -87,22 +108,35 @@
 </script>
 
 <button class="button button-secondary" type="button" bind:this={button} disabled={disabled || searching} onclick={open}>Search Loffee Labs</button>
-<SuggestSheet title="Loffee Labs matches" matching={matchingLines} onclose={closed} showFooter={!!result && !searching} bind:this={sheet}>
+<SuggestSheet title="Loffee Labs matches" matching={headerLines} onclose={closed} showFooter={!!result && !searching} bind:this={sheet}>
   {#if searching}
     <p class="text-muted fill-note suggest-status" role="status"><span class="spinner" aria-hidden="true"></span>Searching…</p>
   {:else if result}
     {@const r = result}
     {#if r.status === 'ok'}
       <p class="text-muted fill-note">
-        Loffee Labs roaster: {r.roaster} ·
-        <button type="button" class="suggest-change" onclick={() => { roasterEditing = true; roasterInput = r.roaster; }}>change</button>
+        <strong class="search-label">Roaster:</strong> <span class="search-value">{r.roaster}</span> ·
+        <button type="button" class="suggest-change" onclick={() => { roasterEditing = true; termEditing = false; roasterInput = r.roaster; }}>change</button>
       </p>
+      <p class="text-muted fill-note">
+        <strong class="search-label">Coffee:</strong> <span class="search-value">{typedTerm || 'any'}</span> ·
+        <button type="button" class="suggest-change" onclick={() => { termEditing = true; roasterEditing = false; termInput = typedTerm; }}>change</button>
+      </p>
+      {#if r.fallback}
+        <p class="text-muted fill-note">No match for "{typedTerm}"; showing all {r.roaster} beans</p>
+      {/if}
     {/if}
     {#if roasterEditing}
       <!-- No name: never submitted. -->
       <div class="inline-row">
         <input type="text" aria-label="Loffee Labs roaster" bind:value={roasterInput} onkeydown={changeKey} />
-        <button class="button button-secondary" type="button" disabled={!roasterInput.trim()} onclick={() => run(roasterInput.trim())}>Search</button>
+        <button class="button button-secondary" type="button" disabled={!roasterInput.trim()} onclick={() => run({ roaster: roasterInput.trim() })}>Search</button>
+      </div>
+    {/if}
+    {#if termEditing}
+      <div class="inline-row">
+        <input type="text" aria-label="Loffee Labs search term" bind:value={termInput} onkeydown={termKey} />
+        <button class="button button-secondary" type="button" onclick={() => run({ term: termInput.trim() })}>Search</button>
       </div>
     {/if}
     {#if r.status === 'ok'}
@@ -139,7 +173,7 @@
         <p class="text-muted fill-note">Closest:</p>
         <div class="inline-row">
           {#each r.closest as name (name)}
-            <button class="button button-secondary" type="button" onclick={() => run(name)}>{name}</button>
+            <button class="button button-secondary" type="button" onclick={() => run({ roaster: name })}>{name}</button>
           {/each}
         </div>
       {/if}
@@ -152,13 +186,20 @@
   {/if}
   {#snippet footer()}
     {#if result?.status === 'failed'}
-      <button class="button button-secondary" type="button" onclick={() => run(lastRoaster)}>Retry</button>
+      <button class="button button-secondary" type="button" onclick={() => run()}>Retry</button>
     {/if}
     <button class="button button-secondary" type="button" onclick={() => sheet.close()}>None of these</button>
   {/snippet}
 </SuggestSheet>
 
 <style>
+  /* The search lines: bold label, full-strength value on the muted line; "change" stays the accent link. */
+  .search-label {
+    color: var(--color-label);
+  }
+  .search-value {
+    color: var(--color-text);
+  }
   /* Badges over the image's top-left corner: Closest first, Sold out under it. */
   .suggest-image :global(.badge-sold) {
     top: calc(var(--space-1) + 1.5rem);

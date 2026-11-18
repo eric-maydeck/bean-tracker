@@ -154,6 +154,45 @@ describe('searchBeanBase', () => {
   });
 });
 
+describe('searchBeanBase name search', () => {
+  const bean = (id: number, name: string): BeanBaseBean => ({ ...BEANS[0], id, roaster: 'Lume Coffee', 'roast-name': name, date: '2025-01-01', link: null });
+  const urls = (f: ReturnType<typeof ok>) => f.mock.calls.map((c) => decodeURIComponent(String(c[0])));
+  // Answers a search= URL with `found`, any other /beans URL with `all`.
+  const split = (found: BeanBaseBean[], all: BeanBaseBean[]) =>
+    vi.fn(async (u: unknown, _i?: RequestInit) => new Response(JSON.stringify({ beans: String(u).includes('search=') ? found : all, meta: { total: 0 } }), { status: 200 }));
+
+  it('sends the coffee name as search= with the roaster and limit', async () => {
+    const f = split([bean(1, 'Kenya Kiambu')], []);
+    const r = await searchBeanBase('Lume Coffee', 'Kenya Kiambu', ctx, { key: 'k', fetcher: f });
+    expect(urls(f)).toEqual(['https://www.loffeelabs.com/api/v2/beans?roaster=Lume Coffee&search=Kenya Kiambu&limit=1000&historical=true']);
+    expect(r).toMatchObject({ status: 'ok' });
+    expect(r).not.toHaveProperty('fallback');
+  });
+  it('an empty search falls back to the roaster-only list and says so', async () => {
+    const f = split([], [bean(1, 'Kenya Kiambu'), bean(2, 'Other')]);
+    const r = await searchBeanBase('Lume Coffee', 'Nope', ctx, { key: 'k', fetcher: f });
+    expect(urls(f)[1]).toBe('https://www.loffeelabs.com/api/v2/beans?roaster=Lume Coffee&limit=1000&historical=true');
+    expect(r).toMatchObject({ status: 'ok', fallback: true });
+    expect((r as { beans: unknown[] }).beans).toHaveLength(2);
+  });
+  it('a blank name skips the search call', async () => {
+    const f = split([], [bean(1, 'Kenya Kiambu')]);
+    const r = await searchBeanBase('Lume Coffee', '  ', ctx, { key: 'k', fetcher: f });
+    expect(urls(f)).toHaveLength(1);
+    expect(urls(f)[0]).not.toContain('search=');
+    expect(r).not.toHaveProperty('fallback');
+  });
+  it('an empty search for an unknown roaster is still a roaster miss', async () => {
+    const f = vi.fn(async (u: unknown) => new Response(JSON.stringify({ data: String(u).includes('/roasters') ? ['Lume Coffee'] : [] }), { status: 200 }));
+    expect(await searchBeanBase('Lume', 'x', ctx, { key: 'k', fetcher: f })).toEqual({ status: 'roaster', closest: ['Lume Coffee'] });
+  });
+  it('lookupBeanBase asks for the full list', async () => {
+    const f = ok({ beans: BEANS });
+    await lookupBeanBase('Example Roasters', { coffee_name: 'a', product_url: null }, ctx, { key: 'k', fetcher: f });
+    expect(urls(f)[0]).toContain('&limit=1000&historical=true');
+  });
+});
+
 describe('searchBeanBase ranking like image Suggest', () => {
   const mk = (id: number, name: string, date: string, link: string | null = null): BeanBaseBean => ({
     ...BEANS[0], id, roaster: 'Lume Coffee', 'roast-name': name, date, link
