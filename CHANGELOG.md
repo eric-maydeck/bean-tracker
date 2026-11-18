@@ -1,3 +1,32 @@
+# [2.0.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.118.0...v2.0.0) (2026-11-18)
+
+
+### Bug Fixes
+
+* drop codemod formatting from svelte files ([9f64084](https://github.com/eric-maydeck/bean-tracker/commit/9f64084ddfb4bd19aa0816481cc63eac13965a4a)), closes [#lib](https://github.com/eric-maydeck/bean-tracker/issues/lib) [#73](https://github.com/eric-maydeck/bean-tracker/issues/73)
+* keep enhanced forms on the current url under kit 3 ([212a3a7](https://github.com/eric-maydeck/bean-tracker/commit/212a3a7122bd8ac751d5b6653d21e235184bdc12))
+* kit 3 review fixes for pager scroll, goto errors and snapshot id ([ba19bf7](https://github.com/eric-maydeck/bean-tracker/commit/ba19bf74fb41ffb94ba577d8d29882eb57a0c6cd)), closes [#73](https://github.com/eric-maydeck/bean-tracker/issues/73)
+* mirror queue keeps only writes for the url it was queued on ([6ea06b6](https://github.com/eric-maydeck/bean-tracker/commit/6ea06b6c4e64e7dca5d5f2da5b4e42d0614fc383))
+* reject protocol-relative login redirect targets ([4e191be](https://github.com/eric-maydeck/bean-tracker/commit/4e191bec72cd02b14c5175335eb9b9281b54af79))
+* stats day-count tiles read in years past a year so they fit phone tiles ([c1376ca](https://github.com/eric-maydeck/bean-tracker/commit/c1376ca68e6d2d04d6724832ffdd6d146cc7d300))
+* sveltekit 3 behavior changes ([8b2abba](https://github.com/eric-maydeck/bean-tracker/commit/8b2abba66064c02c586abaa1cf83d2d27677a7b4)), closes [#74](https://github.com/eric-maydeck/bean-tracker/issues/74)
+* url mirror writes no longer cancel pending navigations ([9152268](https://github.com/eric-maydeck/bean-tracker/commit/91522687b89a92dc59baad0fa5f3c41c27bb4843))
+
+
+### chore
+
+* **deps:** sveltekit 3 and adapter-node 6 ([b0b91c3](https://github.com/eric-maydeck/bean-tracker/commit/b0b91c3e8b9b89a4bbf5870181fead57395a46cd)), closes [#lib](https://github.com/eric-maydeck/bean-tracker/issues/lib) [#73](https://github.com/eric-maydeck/bean-tracker/issues/73)
+
+
+### Features
+
+* offer a reload toast when a new version is deployed ([6c80ce7](https://github.com/eric-maydeck/bean-tracker/commit/6c80ce7e074201ea9ff556fce25f03a4e25bfa5c))
+
+
+### BREAKING CHANGES
+
+* **deps:** requires Node 22.17+; built on SvelteKit 3.
+
 # [1.118.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.117.0...v1.118.0) (2026-11-18)
 
 
