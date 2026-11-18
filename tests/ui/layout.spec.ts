@@ -4524,6 +4524,9 @@ export const STATES: State[] = [
       expect(onHand.getAll('processing').length).toBeGreaterThan(0);
       expect(onHand.get('decaf')).toBe('true');
       await expectLinksInTiles(page, links);
+      // A slow decaf's thousands of days read in years, dated by month and year (#104).
+      await expect(page.locator('#overview-days-to-clear .stat-value')).toHaveText(/^\d[\d.,]* years?$/);
+      await expect(page.locator('#overview-days-to-clear')).toContainText(/by [A-Z][a-z]{2} \d{4}/);
     }
   },
   { name: 'insights-right-now-links-compare', path: () => '/stats?range=1w&compare=1',

@@ -18,7 +18,7 @@
   import ShareButton from '#lib/components/ShareButton.svelte';
   import { formatGrams } from '#lib/grams.ts';
   import { plural } from '#lib/linkPreview.ts';
-  import { hour12 } from '#lib/hours.ts';
+  import { formatDays, hour12 } from '#lib/hours.ts';
   import {
     PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '#lib/insightsUrl.ts';
@@ -322,6 +322,15 @@
   const tileId = (key: string) => `${s.tab}-${key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
   const shortDay = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  // A day count's number; the tile's unit says days or years (unitText), so "8,382 days" reads "23 years".
+  const days = (n: number) => formatDays(n).split(' ')[0];
+  const unitText = (t: Tile, n: number, text: string) =>
+    t.fmt === days ? formatDays(n).split(' ')[1] : text === '1' ? t.suffix!.replace(/s$/, '') : t.suffix!; // the value's unit
+  // A coming date: "Oct 30", or "Oct 2049" a year or more out (the day alone would read as this year's).
+  const aheadDay = (d: string) =>
+    Date.parse(d) - Date.parse(data.today) < 365 * 86_400_000 ? shortDay(d)
+      : new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const outDate = (n: number) => aheadDay(new Date(Date.parse(`${data.today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10));
   const TOTALS: Tile[] = [
     { key: 'brews', split: true, label: 'Brews', fmt: count, up: 'good' },
     { key: 'roasters', label: 'Roasters', fmt: count },
@@ -345,8 +354,8 @@
     { key: 'perWeek', label: 'Per week', fmt: formatGrams, split: true },
     { key: 'perMonth', label: 'Per month', fmt: formatGrams, split: true },
     {
-      key: 'daysToClear', label: 'Time to clear', fmt: (n) => n.toLocaleString('en-US'), suffix: 'days', split: true,
-      sub: () => (data.consumption.clearBy ? `by ${shortDay(data.consumption.clearBy)}` : null)
+      key: 'daysToClear', label: 'Time to clear', fmt: days, suffix: 'days', split: true,
+      sub: () => (data.consumption.clearBy ? `by ${aheadDay(data.consumption.clearBy)}` : null)
     }
   ];
   const RIGHT_NOW: Tile[] = [
@@ -387,9 +396,8 @@
   // "last 12 months pace"; a custom window's dates stay as they are.
   const paceName = $derived(s.range === 'all' || /^[A-Z][a-z]{2} \d/.test(periodLabel) ? periodLabel : periodLabel.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase()));
   // Per pace: days left, the run-out date (the value is the days; its format is the date) and the daily grams.
-  const outDate = (n: number) => shortDay(new Date(Date.parse(`${data.today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10));
   const paceTiles = (k: 'pace' | 'all', name: string): Tile[] => [
-    { key: `${k}Days`, row: name, split: true, label: 'Days left', fmt: count, suffix: 'days' },
+    { key: `${k}Days`, row: name, split: true, label: 'Days left', fmt: days, suffix: 'days' },
     { key: `${k}Out`, row: name, split: true, label: 'Runs out', fmt: outDate },
     { key: `${k}PerDay`, row: name, split: true, label: 'A day', fmt: formatGrams }
   ];
@@ -466,8 +474,8 @@
               : { key: 'avg', label: `Avg per ${data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
             { key: 'onHand', label: g ? 'On hand' : 'Bags on hand', fmt: g ? formatGrams : count },
             {
-              key: 'daysToClear', label: 'Days to clear', fmt: count, suffix: 'days', split: true,
-              sub: () => (data.consumptionTab!.clearBy ? `by ${shortDay(data.consumptionTab!.clearBy)}` : null)
+              key: 'daysToClear', label: 'Days to clear', fmt: days, suffix: 'days', split: true,
+              sub: () => (data.consumptionTab!.clearBy ? `by ${aheadDay(data.consumptionTab!.clearBy)}` : null)
             }
           ];
         })()
@@ -517,9 +525,10 @@
   const wholeKeys = $derived(Object.keys(data.brewFilters) as BrewFilterKey[]);
   // Paced or per-person totals are fractional: a count under 10 keeps one decimal, so a small
   // value doesn't read "0" or round 6.5 to "7". Money and grams keep their own formats.
-  const paced = (t: Tile) =>
+  // Day tiles' change lines stay in days ("▲ 40 from 8,382"): years would round small changes away.
+  const paced = (t: Tile) => t.fmt === days ? count :
     (data.scaled || perPersonOn) && t.split && t.fmt === count ? (n: number) => (Math.abs(n) < 10 ? n.toFixed(1) : count(n)) : t.fmt;
-  const valueText = (t: Tile, v: number | null) => (v === null ? '—' : (perPersonOn ? paced(t) : t.fmt)(v));
+  const valueText = (t: Tile, v: number | null) => (v === null ? '—' : (perPersonOn && t.fmt !== days ? paced(t) : t.fmt)(v));
 
   // The previous value as the line says it: "112g", or for a ratio of a count "31 days (100%)".
   const was = (d: NonNullable<D>, t: Tile) => (t.from?.() ? `${t.from()} (${paced(t)(d.base)})` : paced(t)(d.base));
@@ -864,9 +873,11 @@
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
+        {@const unit = t.suffix && v !== null ? ` ${unitText(t, v, valueText(t, v))}` : ''}
         <div class="stat-item" id={tileId(t.key)} class:stack={t.stack?.() && t.sub?.()}>
-          <span class="stat-value" style:--len={valueText(t, v).length}
-            >{#if t.fmt === usd && v !== null}<Usd n={v} />{:else}{valueText(t, v)}{/if}{#if t.suffix && v !== null}<small>{` ${valueText(t, v) === '1' ? t.suffix.replace(/s$/, '') : t.suffix}`}</small>{/if}</span
+          <!-- The unit (0.4em) counts toward the shrink-to-fit length, so "1,234 days" stays in its tile. -->
+          <span class="stat-value" style:--len={valueText(t, v).length + Math.ceil(unit.length * 0.4)}
+            >{#if t.fmt === usd && v !== null}<Usd n={v} />{:else}{valueText(t, v)}{/if}{#if unit}<small>{unit}</small>{/if}</span
           >
           {#if d}
             <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and the hover tip. -->

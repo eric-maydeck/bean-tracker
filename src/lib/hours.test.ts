@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { clock12, hour12 } from './hours';
+import { clock12, formatDays, hour12 } from './hours';
+
+describe('formatDays', () => {
+  it('reads days under a year and years past it', () => {
+    expect([1, 12, 364, 365, 511, 3649, 8382].map(formatDays)).toEqual(['1 day', '12 days', '364 days', '1 year', '1.4 years', '10 years', '23 years']);
+  });
+});
 
 describe('hour12', () => {
   it('formats tight axis labels', () => {
