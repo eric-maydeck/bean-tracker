@@ -10,7 +10,9 @@ export default defineConfig({
       adapter: adapter(),
       // '*' turns off the built-in form-origin check; src/lib/server/csrf.ts re-implements
       // it in the hook with one exempt path (the Basic-auth visualizer upload).
-      csrf: { trustedOrigins: ['*'] }
+      csrf: { trustedOrigins: ['*'] },
+      // Sets updated.current once a new build is live; the root layout then shows a Reload toast.
+      version: { pollInterval: 60_000 }
     })
   ],
   test: {

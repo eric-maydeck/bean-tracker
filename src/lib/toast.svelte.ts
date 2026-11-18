@@ -4,6 +4,7 @@ export interface ToastItem {
   id: number;
   text: string;
   undo?: () => Promise<unknown> | unknown;
+  reload?: boolean; // the "new version" toast: a Reload button, and it stays until used
 }
 
 export const toasts = $state<ToastItem[]>([]);
@@ -15,9 +16,9 @@ export const remainingAfterLeave = (left: number): number => Math.max(left, BUMP
 export const noteLeaving = (): void => void leaving.n++;
 let nextId = 1;
 
-export function showToast(text: string, opts: { undo?: ToastItem['undo'] } = {}): number {
+export function showToast(text: string, opts: { undo?: ToastItem['undo']; reload?: boolean } = {}): number {
   const id = nextId++;
-  toasts.push({ id, text, undo: opts.undo });
+  toasts.push({ id, text, undo: opts.undo, reload: opts.reload });
   return id;
 }
 

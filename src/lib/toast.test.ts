@@ -20,6 +20,11 @@ describe('toasts', () => {
     expect(toasts.map((t) => t.text)).toEqual(['Undone.']);
   });
 
+  it('keeps the reload flag for the new-version toast', () => {
+    showToast('A new version is available.', { reload: true });
+    expect(toasts[0].reload).toBe(true);
+  });
+
   it('a failing undo shows the error text', async () => {
     showToast('Archived', { undo: () => { throw new Error('Nope'); } });
     await undoToast(toasts[0]);
