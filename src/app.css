@@ -2876,6 +2876,20 @@ select.quick-filter-select {
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+/* A short screen (a phone in landscape): the groups flow into two columns so the tip fits its height (the tip takes no pointer, so it cannot scroll). */
+@media (max-height: 30rem) {
+  .cell-tip.wide-tip {
+    max-width: min(46rem, 100vw - 2rem);
+    columns: 2 15rem;
+    column-gap: var(--space-4);
+  }
+  .wide-tip .tip-rows {
+    break-inside: avoid;
+  }
+  .wide-tip .tip-group {
+    break-after: avoid;
+  }
+}
 .tip-title {
   display: block;
   font-weight: 700;
