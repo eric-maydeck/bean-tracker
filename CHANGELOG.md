@@ -1,3 +1,26 @@
+# [1.118.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.117.0...v1.118.0) (2026-11-18)
+
+
+### Bug Fixes
+
+* accept crop-season harvests like crop 25/26 as 2025/26 ([27533e2](https://github.com/eric-maydeck/bean-tracker/commit/27533e2e4544a8077fff9dbe7adc845898f1a3ef))
+* **coffees:** check fill from url values that filled blank fields on save ([d7abc30](https://github.com/eric-maydeck/bean-tracker/commit/d7abc303628aac4749618dd3787b7a1f17c1c2dc)), closes [#87](https://github.com/eric-maydeck/bean-tracker/issues/87)
+* **coffees:** drop the country from a region fill from url offers ([625ef9a](https://github.com/eric-maydeck/bean-tracker/commit/625ef9a5433e94fe4cac4e5945186e435118521d)), closes [#87](https://github.com/eric-maydeck/bean-tracker/issues/87)
+* split the footer credits so phones stack them instead of scrolling sideways ([0ee34a0](https://github.com/eric-maydeck/bean-tracker/commit/0ee34a032bf8f73ce0f8b598784dfbdfd2c24ebc))
+* **stats:** recent rating tip flows into two columns on short screens ([25ffbf1](https://github.com/eric-maydeck/bean-tracker/commit/25ffbf1be54fbb42647ad95900bb3d4f75681372))
+* **stats:** recent rows tip the whole row text when cut, not parts under the link overlay ([408fc97](https://github.com/eric-maydeck/bean-tracker/commit/408fc97f8fbc2933a35968cd6a47ab1fb826d1a3))
+
+
+### Features
+
+* credit beanconqueror in the footer and attribute the copied proto schema ([097c4c2](https://github.com/eric-maydeck/bean-tracker/commit/097c4c2e218f067335013f880b66412802331524))
+* **stats:** distinct group headers, notes header, cost under coffee in recent tips ([f81d331](https://github.com/eric-maydeck/bean-tracker/commit/f81d331f31bd488af137147a670820eae410d73b))
+* **stats:** group the recent rating tip rows under small headers ([5fcedf0](https://github.com/eric-maydeck/bean-tracker/commit/5fcedf0dd43c37cf78d0703c1edc8058b92c1b6e))
+* **stats:** recent names tip only when cut, roaster on finished sub line ([3f42d35](https://github.com/eric-maydeck/bean-tracker/commit/3f42d3551b4518f75bd08249ae6e432bb83ba84c))
+* **stats:** recent row tips follow the pointer over the bar, rating tip on the value ([1471eaa](https://github.com/eric-maydeck/bean-tracker/commit/1471eaafe98cc73f40892f45f59062ba14235618))
+* **stats:** recent rows carry roaster and a detailed rating tip ([6ea5b61](https://github.com/eric-maydeck/bean-tracker/commit/6ea5b6152466ee2907b4e53e6922283f3d140588))
+* **stats:** ruled wide rating tips and cost per gram to 4 decimals ([f136d5e](https://github.com/eric-maydeck/bean-tracker/commit/f136d5e5220c856fd50e2b6912c7ddc9bb701983))
+
 # [1.117.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.116.0...v1.117.0) (2026-11-17)
 
 
