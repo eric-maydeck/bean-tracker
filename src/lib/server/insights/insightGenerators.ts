@@ -1,6 +1,6 @@
 import { usd } from '#lib/money.ts';
 import { MON, type BrewFilters, type Ratings, type Theme } from '#lib/insightsUrl.ts';
-import { likeGap as gapText } from '#lib/components/deltaColor'; // like gaps read the same as on Leaderboards ("−0.1")
+import { likeGap as gapText } from '#lib/components/deltaColor.ts'; // like gaps read the same as on Leaderboards ("−0.1")
 import { formatGrams } from '#lib/grams.ts';
 import type { WhatIf } from '#lib/insightsWhatIf.ts';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';

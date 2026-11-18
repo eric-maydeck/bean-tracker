@@ -3,7 +3,7 @@
   import { page } from '$app/state';
   import { browser } from '$app/env';
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll } from '$app/navigation';
   import type { AlertRow } from '#lib/types.ts';
   import AiNote from '#lib/components/AiNote.svelte';
   import RecapBanner from '#lib/components/RecapBanner.svelte';
@@ -72,7 +72,7 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ id })
     });
-    await invalidateAll();
+    await refreshAll();
   }
 
   async function dismissAlertClick(id: number) {
@@ -81,7 +81,7 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ id })
     });
-    await invalidateAll();
+    await refreshAll();
   }
 
   // Regular outline icons; the current tab shows the `-fill` variant.

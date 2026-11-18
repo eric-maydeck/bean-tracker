@@ -158,7 +158,7 @@
     return async ({ result, update }) => {
     if (result.type === 'success') ondone();
     const to = recipeFollow(result, focusId);
-    if (to) { await goto(to, { invalidateAll: true, noScroll: true }); return; } // noScroll: a goto resets to the page top; the closed editor already put its card there
+    if (to) { await goto(to, { refreshAll: true, reset: false }); return; } // reset: false: a goto resets to the page top; the closed editor already put its card there
     await update({ reset: false });
   };
   }}

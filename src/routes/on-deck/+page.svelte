@@ -6,7 +6,7 @@
   import { labelTip } from '#lib/components/labelTip.ts';
   import { coffeeToast, commitChanges, restoreStates } from '#lib/coffeeToast.ts';
   import type { CoffeeRow } from '#lib/types.ts';
-  import { invalidateAll, afterNavigate } from '$app/navigation';
+  import { refreshAll, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
   import { coffeeImage } from '#lib/coffeeImage.ts';
@@ -69,7 +69,7 @@
   });
 
   async function refresh() {
-    await invalidateAll();
+    await refreshAll();
   }
 
   // A tile's Open: toasts with Undo and the tile moves to Currently open.
@@ -82,8 +82,8 @@
       showToast(e instanceof Error ? e.message : 'Something went wrong.');
       return;
     }
-    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await invalidateAll(); } });
-    await invalidateAll();
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await refreshAll(); } });
+    await refreshAll();
   }
 </script>
 

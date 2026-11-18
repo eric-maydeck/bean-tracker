@@ -12,7 +12,7 @@
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
   import { coffeeImage } from '#lib/coffeeImage.ts';
   import RoastBeans from '#lib/components/RoastBeans.svelte';
-  import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
+  import { refreshAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import CoffeeForm from '#lib/components/CoffeeForm.svelte';
   import AddedToast from '#lib/components/AddedToast.svelte';
@@ -146,7 +146,7 @@
     clearTimeout(refreshTimer);
     refreshState = 'busy';
     try {
-      await invalidateAll();
+      await refreshAll();
       refreshState = 'done';
       refreshTimer = setTimeout(() => refreshState = 'idle', 1000);
     } catch {
@@ -187,8 +187,8 @@
       showToast(e instanceof Error ? e.message : 'Something went wrong.');
       return;
     }
-    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await invalidateAll(); } });
-    await invalidateAll();
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await refreshAll(); } });
+    await refreshAll();
   }
 
   let addedSlug = $state<string | null>(null);
@@ -197,7 +197,7 @@
   const undoAdded = $derived(addedId ? async () => {
       try {
         await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
-        await invalidateAll();
+        await refreshAll();
         showToast('Undone.');
     } catch (e) {
         showToast(e instanceof Error ? e.message : 'Could not undo that.');
@@ -301,15 +301,15 @@
     }
 
     // Outside the try/catch above on purpose: the commit itself already
-    // succeeded by this point, so a failure in invalidateAll() (or
+    // succeeded by this point, so a failure in refreshAll() (or
     // anything else here) must not be misattributed to the save as a
     // whole via the generic catch-all error message.
     const toastText = coffeeToast(changes, (id) => [...data.backlog, ...data.open, ...data.archive].find((c) => c.id === id)?.coffee_name ?? 'this coffee');
-    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await invalidateAll(); } } : {});
+    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await refreshAll(); } } : {});
     if (onlyId != null) {
       saving = false;
       discardRow(onlyId);
-      await invalidateAll();
+      await refreshAll();
       return;
     }
     pending = new SvelteMap();
@@ -319,7 +319,7 @@
     editIds.clear();
     openForms.clear();
     saving = false;
-    await invalidateAll();
+    await refreshAll();
   }
 
   // A row opened by its own Edit button (not the page-level Edit): it gets

@@ -6,7 +6,7 @@
   import { enhance } from '$app/forms';
   import { browser } from '$app/env';
   import { page } from '$app/state';
-  import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
+  import { refreshAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { defaultViewForWidth } from '#lib/defaultView.ts';
   import { currentParams, pickOne } from '#lib/pageUrlState.ts';
   import { loadChoice, serializeChoice } from '#lib/rememberedChoice.ts';
@@ -268,7 +268,7 @@
     }
 
     // Outside the try/catch above on purpose: the commit itself already
-    // succeeded by this point, so a failure in invalidateAll() must not be
+    // succeeded by this point, so a failure in refreshAll() must not be
     // misattributed to the save as a whole via the generic catch-all error
     // message.
     pending = new SvelteMap();
@@ -277,7 +277,7 @@
     editMode = false;
     expandedId = null;
     saving = false;
-    await invalidateAll();
+    await refreshAll();
   }
 
   function discardChanges() {

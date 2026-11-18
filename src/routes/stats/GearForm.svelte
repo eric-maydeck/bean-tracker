@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll } from '$app/navigation';
   import { CONVERT_KEYS, fieldsFor, isWebUrl } from '#lib/gear.ts';
   import ImageSuggest from '#lib/components/ImageSuggest.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -98,7 +98,7 @@
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind: trophy.kind, name: trophy.name, values, image_url: imageUrl })
     }).catch(() => null);
-    if (res?.ok) { await invalidateAll(); onclose(); return; }
+    if (res?.ok) { await refreshAll(); onclose(); return; }
     error = (await res?.json().catch(() => null))?.error ?? "Couldn't save";
     saving = false;
   }

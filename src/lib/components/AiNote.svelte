@@ -11,14 +11,14 @@
   let link: HTMLAnchorElement;
 
   // The link keeps the page's current params (a new tab lands on the same view with the dialog open).
-  const aboutHref = (q: URLSearchParams) => {
+  const aboutHref = (q: string) => {
     const p = new URLSearchParams(q);
     p.set('about', 'ai');
     return `?${p}`;
   };
-  const href = $derived(aboutHref(page.url.searchParams));
+  const href = $derived(aboutHref(page.url.search));
   // `replaceState` leaves page.url stale, so refresh from `location` just before a click or focus.
-  const syncHref = () => (link.href = aboutHref(currentParams(page.url)));
+  const syncHref = () => (link.href = aboutHref(`${currentParams(page.url)}`));
 
   function setParam(on: boolean) {
     const p = new URLSearchParams(currentParams(page.url));

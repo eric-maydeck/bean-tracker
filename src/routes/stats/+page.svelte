@@ -170,7 +170,7 @@
     // A by the new range doesn't offer is dropped, like the compare.
     if (menu && next.by && !data.byMenus[change.range!].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
-    return goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { replaceState: true, noScroll: true, keepFocus: true }).then(keep);
+    return goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { replaceState: true, reset: false }).then(keep);
   }
 
   // Remembered view state (spec Part 3): a fresh entry to a bare /stats restores the saved query into the URL
@@ -185,7 +185,7 @@
       // localStorage unavailable (private window): the page works, it just isn't remembered.
     }
   }
-  // A tab keeps the scroll you left it at. Tab links keep the scroll (noscroll), so a shorter tab in between clamped it and
+  // A tab keeps the scroll you left it at. Tab links keep the scroll (reset=false), so a shorter tab in between clamped it and
   // coming back landed higher ("scrolled up a little"); every tab switch, link or choose(), routes through here.
   const tabOf = (u: URL | undefined) => u?.searchParams.get('tab') ?? 'overview';
   const scrollOf = new Map<string, number>();
@@ -209,7 +209,7 @@
     try {
       if (!qs && !location.search && (!from || from.url.pathname !== location.pathname)) {
         const saved = loadInsightsState(localStorage.getItem(INSIGHTS_STORAGE_KEY), Date.now());
-        if (saved) return void goto(`?${saved}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
+        if (saved) return void goto(`?${saved}${location.hash}`, { replaceState: true, reset: false });
       }
     } catch {
       // localStorage unavailable (private window): the page works, it just isn't remembered.
@@ -223,7 +223,7 @@
     draft = null;
     try { localStorage.removeItem(INSIGHTS_STORAGE_KEY); } catch { /* nothing remembered to clear */ }
     const qs = insightsParams(resetInsights(explicit)).toString();
-    goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
+    goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replaceState: true, reset: false });
   }
 
   // Custom range draft: the From/To being edited, not yet applied. Never in the URL
@@ -737,8 +737,7 @@
           href={tabHref(t)}
           aria-current={s.tab === t ? 'page' : undefined}
           data-sveltekit-replacestate
-          data-sveltekit-noscroll
-          data-sveltekit-keepfocus>{TAB_LABEL[t]}</a
+          data-sveltekit-reset="false">{TAB_LABEL[t]}</a
         >
       {/each}
     </div>
@@ -1481,7 +1480,7 @@
         onclick={() => pagerNav = true}
         href={tabHref(flatTabs[tabIdx - 1])}
         data-sveltekit-replacestate
-        data-sveltekit-keepfocus
+        data-sveltekit-reset="false"
       >
         <span>Previous</span>
         ← {TAB_LABEL[flatTabs[tabIdx - 1]]}
@@ -1494,7 +1493,7 @@
         onclick={() => pagerNav = true}
         href={tabHref(flatTabs[tabIdx + 1])}
         data-sveltekit-replacestate
-        data-sveltekit-keepfocus
+        data-sveltekit-reset="false"
       >
         <span>Next</span>
         {TAB_LABEL[flatTabs[tabIdx + 1]]} →

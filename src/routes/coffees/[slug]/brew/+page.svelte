@@ -1,6 +1,6 @@
 <script lang="ts">
   import { enhance, deserialize } from '$app/forms';
-  import { goto, invalidateAll } from '$app/navigation';
+  import { goto, refreshAll } from '$app/navigation';
   import { page } from '$app/state';
   import { originWithFlag } from '#lib/countryFlags.ts';
   import { formatDate } from '#lib/formatDate.ts';
@@ -32,7 +32,7 @@
   function go(patch: Patch) {
     const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why,
       dose: data.suggestion.dose, ratio: data.suggestion.ratio, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
-    goto(page.url.pathname + (q ? `?${q}` : ''), { replaceState: true, noScroll: true, keepFocus: true });
+    goto(page.url.pathname + (q ? `?${q}` : ''), { replaceState: true, reset: false });
   }
   const dripperFirst = (key: string): Patch => (key === 'dripper' ? { filter: null } : {});
   // Up to three chips (names that fit one line); the rest sit behind an "Other" dropdown button, whose label becomes
@@ -71,7 +71,7 @@
     for (const [k, v] of Object.entries(fields)) body.set(k, v);
     const res = deserialize(await (await fetch(`?/${action}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } })).text());
     if (res.type !== 'success') throw new Error("Couldn't undo that.");
-    await invalidateAll();
+    await refreshAll();
   }
   async function openAndBrew() {
     openError = '';
@@ -79,7 +79,7 @@
     if (res.type !== 'success') { openError = "Couldn't open this coffee"; return; }
     confirmOpen = false;
     showToast(`Coffee "${c.coffeeName}" marked as open.`, { undo: () => post('unopenCoffee') });
-    await invalidateAll();
+    await refreshAll();
     brewForm?.requestSubmit();
   }
 

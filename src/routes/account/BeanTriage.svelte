@@ -3,7 +3,7 @@
   import { asDateFormat } from '#lib/localDate.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
-  import { goto, invalidateAll } from '$app/navigation';
+  import { goto, refreshAll } from '$app/navigation';
   import { UNTRACKED_CAP, accountQuery } from '#lib/accountUrl.ts';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import CoffeeForm from '#lib/components/CoffeeForm.svelte';
@@ -52,10 +52,10 @@
 
   async function closeCreate() {
     createBean = null;
-    await invalidateAll();
+    await refreshAll();
   }
   const shown = $derived(showAll ? unmatched.beans : unmatched.beans.slice(0, UNTRACKED_CAP));
-  const toggle = () => goto(accountQuery({ untracked: showAll ? undefined : 'all' }) || '/account', { replaceState: true, noScroll: true, keepFocus: true });
+  const toggle = () => goto(accountQuery({ untracked: showAll ? undefined : 'all' }) || '/account', { replaceState: true, reset: false });
   const facts = (b: UnmatchedBean) => [b.roaster ?? 'Unknown roaster', b.origin, b.processing, b.roastDate ?? 'No roast date'].filter(Boolean).join(' · ');
 </script>
 

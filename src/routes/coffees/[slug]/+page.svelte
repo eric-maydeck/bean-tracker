@@ -11,7 +11,7 @@
   import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '#lib/coffeeToast.ts';
   import { showToast } from '#lib/toast.svelte.ts';
   import { enhance } from '$app/forms';
-  import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
+  import { goto, refreshAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { browser } from '$app/env';
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
   import { coffeeImage } from '#lib/coffeeImage.ts';
@@ -65,7 +65,7 @@
   const undoAdded = $derived(addedId ? async () => {
       try {
         await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
-        await invalidateAll();
+        await refreshAll();
         showToast('Undone.');
     } catch (e) {
         showToast(e instanceof Error ? e.message : 'Could not undo that.');
@@ -245,11 +245,11 @@
     }
 
     // Outside the try/catch above on purpose: the commit itself already
-    // succeeded by this point, so a failure in goto()/invalidateAll() must
+    // succeeded by this point, so a failure in goto()/refreshAll() must
     // not be misattributed to the save as a whole via the generic
     // catch-all error message.
     const toastText = coffeeToast(changes, () => data.coffee.coffee_name);
-    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await invalidateAll(); } } : {});
+    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await refreshAll(); } } : {});
     pending = new SvelteMap();
     editMode = false;
     saving = false;
@@ -262,7 +262,7 @@
       await goto(`/coffees/${savedSlug}`);
       return;
     }
-    await invalidateAll();
+    await refreshAll();
   }
 
   function discardChanges() {
@@ -600,7 +600,7 @@
         {@const l = data.like}
         <section class="detail-section" data-section="like">
           <h2>Vs like coffees</h2>
-          <p class="text-muted">Compared with {data.coffee.decaf ? '' : 'caffeinated '}{l.label}: all time, <span class="setting-name">{lower(DIAL_LABEL[v.dial ?? 'dialed'])}</span>, <span class="setting-name">{lower(RATINGS_LABEL[v.ratings ?? 'current'])}</span>.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}</p>
+          <p class="text-muted">Compared with {data.coffee.decaf ? '' : 'caffeinated '}{l.label}: all time, <span class="setting-name">{lower(DIAL_LABEL[v.dial ?? 'dialed'])}</span>, <span class="setting-name">{lower(RATINGS_LABEL[v.ratings ?? 'current'])}</span>.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-reset="false">Back to defaults</a>{/if}</p>
           <div class="stat-grid">
             <div class="stat">
               <span class="stat-label">Score</span>
@@ -618,8 +618,8 @@
           <h2>Vs like coffees</h2>
           <p class="text-muted like-none">
             <TextTip label={n.why} tip={{ title: 'Why no comparison', rows: n.rows }} />
-            {#if n.fix}<a href="?{insightsParams(n.fix)}" data-sveltekit-noscroll>Compare with {fixText(n.fix)}</a>{/if}
-            {#if explicit}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}
+            {#if n.fix}<a href="?{insightsParams(n.fix)}" data-sveltekit-reset="false">Compare with {fixText(n.fix)}</a>{/if}
+            {#if explicit}<a href="/coffees/{data.coffee.slug}" data-sveltekit-reset="false">Back to defaults</a>{/if}
           </p>
         </section>
       {/if}

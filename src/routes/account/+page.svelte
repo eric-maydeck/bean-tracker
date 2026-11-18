@@ -1,7 +1,7 @@
 <script lang="ts">
   import Stamp from '#lib/components/Stamp.svelte';
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
+  import { refreshAll } from '$app/navigation';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import { labelTip } from '#lib/components/labelTip.ts';
   import Icon from '#lib/components/Icon.svelte';
@@ -33,7 +33,7 @@
           const out = await res.json().catch(() => null) as { type?: string } | null;
 
           if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await invalidateAll();
+          await refreshAll();
         }
       });
     };
@@ -74,7 +74,7 @@
           const out = await res.json().catch(() => null) as { type?: string } | null;
 
           if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await invalidateAll();
+          await refreshAll();
         }
       });
     };
@@ -127,7 +127,7 @@
           const out = await res.json().catch(() => null) as { type?: string } | null;
 
           if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await invalidateAll();
+          await refreshAll();
         }
       });
     };
