@@ -4168,7 +4168,7 @@ export const STATES: State[] = [
       expect(lines).toHaveLength(3);
       const stacked = page.viewportSize()!.width <= 640;
       // The data credit has its own line above the AI note (user, 2026-11-16).
-      expect(lines[0]).toBe('Coffee data from Loffee Labs Bean Base');
+      expect(lines[0]).toBe(stacked ? 'Coffee data from Loffee Labs Bean Base Brews logged with Beanconqueror' : 'Coffee data from Loffee Labs Bean Base · Brews logged with Beanconqueror');
       // Phones stack one item per line with no separators (the links share a line, joined by one dot); wider screens run the items together.
       expect(lines[1]).toBe(stacked ? 'Built with help from Claude Code, an AI coding assistant How AI was used · Contact' : 'Built with help from Claude Code, an AI coding assistant · How AI was used · Contact');
       expect(lines[2]).toMatch(stacked ? /^v[\d.]+ Last updated: [^·]+ Last deployed: [^·]+$/ : /^v[\d.]+ · Last updated: .+ · Last deployed: [^·]+$/);
@@ -4192,7 +4192,7 @@ export const STATES: State[] = [
       for (const c of lineStarts) expect(c, 'a line never starts with a separator').not.toBe('·');
       if (page.viewportSize()!.width >= 1200) expect(lineStarts.length, 'one line each on a wide screen').toBe(3);
       if (stacked) {
-        expect(lineStarts, 'credit, sentence, links, version, updated, deployed').toHaveLength(6);
+        expect(lineStarts, 'two credits, sentence, links, version, updated, deployed').toHaveLength(7);
         const shown = await foot.locator('.d').evaluateAll((ds) => ds.filter((d) => getComputedStyle(d).display !== 'none').length);
         expect(shown, 'only the dot between the two links shows').toBe(1);
         const xs = await spans.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().x)));

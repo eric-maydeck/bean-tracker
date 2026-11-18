@@ -1,3 +1,7 @@
+// Derived from Beanconqueror (https://github.com/graphefruit/Beanconqueror),
+// licensed GPL-3.0; combined here under GPL-3.0 section 13 with this
+// project's AGPL-3.0-only code.
+//
 // Mirrors Bean Conqueror's bean share schema as shipped on their released
 // `master` branch, confirmed byte-for-byte identical to the `v8.7.0` tag
 // (diffed directly against raw.githubusercontent.com on 2026-09-22).

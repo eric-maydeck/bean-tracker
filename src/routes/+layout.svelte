@@ -226,7 +226,7 @@
   <Toast />
   {#if !recapPage}
   <footer class="site-footer">
-    <div><span class="fi">Coffee data from <a href="https://www.loffeelabs.com" target="_blank" rel="noopener noreferrer">Loffee Labs Bean Base</a></span></div>
+    <div><span class="fi">Coffee data from <a href="https://www.loffeelabs.com" target="_blank" rel="noopener noreferrer">Loffee Labs Bean Base</a><span class="d" aria-hidden="true">&nbsp;·</span></span> <span class="fi">Brews logged with <a href="https://beanconqueror.com" target="_blank" rel="noopener noreferrer">Beanconqueror</a></span></div>
     <AiNote email={data.site.contactEmail} />
     <div>
       <span class="fi">v{data.version}<span class="d" aria-hidden="true">&nbsp;·</span></span>
