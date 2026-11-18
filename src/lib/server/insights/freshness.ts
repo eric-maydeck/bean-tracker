@@ -4,8 +4,8 @@ import { isFinished } from './overview';
 import { ratedGroups } from './ratings';
 import { groupBy } from './records';
 import { weightedMedian } from './stats';
-import { pooled, type Sample } from '$lib/sample';
-import type { Ratings } from '$lib/insightsUrl';
+import { pooled, type Sample } from '#lib/sample.ts';
+import type { Ratings } from '#lib/insightsUrl.ts';
 
 export interface Wait { median: number | null; n: number; sample: Sample }
 export interface WaitRow extends Wait { key: string }

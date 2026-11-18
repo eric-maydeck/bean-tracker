@@ -2,7 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFile
 import { dirname, join } from 'node:path';
 import satori from 'satori';
 import sharp from 'sharp';
-import { glue } from '$lib/unitGap';
+import { glue } from '#lib/unitGap.ts';
 import karlaLatin from './fonts/karla-latin-700-normal.woff?inline';
 import karlaExt from './fonts/karla-latin-ext-700-normal.woff?inline';
 import loraLatin from './fonts/lora-latin-600-normal.woff?inline';

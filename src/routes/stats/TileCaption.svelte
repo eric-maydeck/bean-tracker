@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
   import { useChartLink } from './chartLink';
-  import { truncTip } from '$lib/components/labelTip';
-  import CapItem from '$lib/components/CapItem.svelte';
-  import { plainClick } from '$lib/copyLink';
+  import { truncTip } from '#lib/components/labelTip.ts';
+  import CapItem from '#lib/components/CapItem.svelte';
+  import { plainClick } from '#lib/copyLink.ts';
 
   // A Records / Milestones tile's name at its foot: bold in the label color, linking to the tile's
   // own #anchor. `children` follows the name on the same line (Records' "· Current" mode words).
@@ -24,6 +24,6 @@
 </script>
 
 <div class="hl-caption">
-  <span class="stat-label" class:has-cap={!!children} data-head={head}><a class="caption-link" href={chart ? link.href(chart) : href} onclickcapture={onclick} data-sveltekit-preload-data={chart ? 'off' : undefined} use:truncTip={label}>{#if parts.length > 1}<span class="cap-block"><span class="cap-list">{#each parts as part, i (i)}<CapItem><CoffeeName text={part} /></CapItem>{/each}</span></span>{:else}<CoffeeName text={label} />{/if}</a>
+  <span class="stat-label" class:has-cap={!!children} data-head={head}><a class="caption-link" href={chart ? link.href(chart) : href} onclickcapture={onclick} data-sveltekit-preload-data={chart ? 'false' : undefined} use:truncTip={label}>{#if parts.length > 1}<span class="cap-block"><span class="cap-list">{#each parts as part, i (i)}<CapItem><CoffeeName text={part} /></CapItem>{/each}</span></span>{:else}<CoffeeName text={label} />{/if}</a>
 {#if children}{' '}<span class="cap-block"><span class="cap-list">{@render children()}</span></span>{/if}</span>
 </div>

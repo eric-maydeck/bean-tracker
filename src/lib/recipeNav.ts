@@ -1,4 +1,4 @@
-import type { ActionResult } from '@sveltejs/kit';
+import type { ActionResult } from '$app/forms';
 
 // After a recipe action on /recipes/<slug>: where to go so the page never re-loads a slug that no longer exists.
 // A rename goes to the new slug, a delete to /recipes; anything else (another recipe, a failure) stays and updates.

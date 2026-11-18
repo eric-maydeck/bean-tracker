@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Top } from '$lib/insightsUrl';
-  import { bottomInView } from '$lib/scrollToBottom';
+  import type { Top } from '#lib/insightsUrl.ts';
+  import { bottomInView } from '#lib/scrollToBottom.ts';
 
   // Footer of a 10 → 20 → 50 list: Show less (left) steps back, Show more steps on while rows remain.
   let { count, n, set }: { count: number; n: Top | undefined; set: (v: Top | undefined) => unknown } = $props();

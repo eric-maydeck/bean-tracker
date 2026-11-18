@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { localToday } from '$lib/server/localToday';
+import { localToday } from '#lib/server/localToday.ts';
 vi.mock('node:fs', async (orig) => { const a = await orig<typeof import('node:fs')>(); return { ...a, unlinkSync: vi.fn(a.unlinkSync) }; });
 import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard } from './card';
 
@@ -67,9 +67,9 @@ describe('cachedCard robustness', () => {
 
 describe('endpoint', () => {
   let GET: (a: unknown) => Promise<Response>;
-  let db: Awaited<typeof import('$lib/server/db')>;
+  let db: Awaited<typeof import('#lib/server/db.ts')>;
   beforeAll(async () => {
-    db = await import('$lib/server/db');
+    db = await import('#lib/server/db.ts');
     const d = db.getDb(), now = '2026-10-09T00:00:00.000Z';
     ['A', 'B'].forEach((r, k) => {
       const id = d.prepare(`INSERT INTO coffees (roaster, coffee_name, slug, origin, created_at, updated_at) VALUES (?, ?, ?, ?, '2020-01-01', '2020-01-01')`).run(r, `Bag ${r}`, `bag-${r}`, k ? 'Colombia' : 'Ethiopia').lastInsertRowid;

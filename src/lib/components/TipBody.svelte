@@ -1,7 +1,7 @@
 <script lang="ts" module>
-  import { TIP_TITLE, sampleTip, type Sample } from '$lib/sample';
-  import { STRENGTH, STRENGTH_WHY, type Badge } from '$lib/strength';
-  import { plainText, settingRuns } from '$lib/settingName';
+  import { TIP_TITLE, sampleTip, type Sample } from '#lib/sample.ts';
+  import { STRENGTH, STRENGTH_WHY, type Badge } from '#lib/strength.ts';
+  import { plainText, settingRuns } from '#lib/settingName.ts';
   // Every tip and help popover's content, one format (ui-rules 36, round 3 T1): a bold title, then either
   // label/value rows (data tips: label muted, value right-aligned; a row's third item, a deltaInk class,
   // colors a signed delta, T4) or short lines (help: one idea per line; an empty line is a visual gap), and an optional muted note.
@@ -27,7 +27,7 @@ export type Tip = { wide?: boolean; title: string; rows?: TipRow[]; groups?: { t
 <script lang="ts">
   import Icon from './Icon.svelte';
   import CoffeeName from './CoffeeName.svelte';
-  import { CHIP_EXAMPLE, SAMPLE_NOTE } from '$lib/sample';
+  import { CHIP_EXAMPLE, SAMPLE_NOTE } from '#lib/sample.ts';
   let { tip }: { tip: Tip } = $props();
   let caution = $derived(tip.caution ?? (tip.sample ? sampleTip(tip.sample.s, tip.sample.paired) : null));
 </script>

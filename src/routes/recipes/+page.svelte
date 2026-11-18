@@ -1,21 +1,22 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
+  import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
+  import { stay } from '#lib/stay.ts';
   import { page } from '$app/state';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { recipePreview, recipesPreview } from '$lib/linkPreview';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { recipePreview, recipesPreview } from '#lib/linkPreview.ts';
   import { tick } from 'svelte';
   import { goto } from '$app/navigation';
-  import { recipeFollow } from '$lib/recipeNav';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import PourTimeline from '$lib/components/PourTimeline.svelte';
-  import Icon from '$lib/components/Icon.svelte';
+  import { recipeFollow } from '#lib/recipeNav.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import PourTimeline from '#lib/components/PourTimeline.svelte';
+  import Icon from '#lib/components/Icon.svelte';
   import RecipeEditor from './RecipeEditor.svelte';
-  import { fmtRange } from '$lib/recipes';
-  import { stepsText } from '$lib/recipeSteps';
-  import { labelTip } from '$lib/components/labelTip';
-  import { recipesParams, type RecipesItem } from '$lib/recipesView';
-  import type { Timeline } from '$lib/pours';
+  import { fmtRange } from '#lib/recipes.ts';
+  import { stepsText } from '#lib/recipeSteps.ts';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { recipesParams, type RecipesItem } from '#lib/recipesView.ts';
+  import type { Timeline } from '#lib/pours.ts';
   let { data, form } = $props();
   const isAdmin = $derived(!!page.data.isAdmin);
   // The legend lists the bloom colors and the steady-rate fill only when a chart on the page draws them.
@@ -100,8 +101,8 @@
 {#snippet brewList()}
   {#if data.brews}
     <div class="order" data-button-row>
-      <a class="button {data.view.order ? 'button-secondary' : ''}" href={orderHref()} aria-current={data.view.order ? undefined : 'true'} data-sveltekit-noscroll>Latest</a>
-      <a class="button {data.view.order ? '' : 'button-secondary'}" href={orderHref('top')} aria-current={data.view.order ? 'true' : undefined} data-sveltekit-noscroll>Top rated</a>
+      <a class="button {data.view.order ? 'button-secondary' : ''}" href={orderHref()} aria-current={data.view.order ? undefined : 'true'} data-sveltekit-reset="false">Latest</a>
+      <a class="button {data.view.order ? '' : 'button-secondary'}" href={orderHref('top')} aria-current={data.view.order ? 'true' : undefined} data-sveltekit-reset="false">Top rated</a>
     </div>
     {#if data.brewsTotal > data.brews.length}<p class="text-muted">Showing {data.brews.length} of {data.brewsTotal}.</p>{/if}
     <ul class="brew-rows">
@@ -153,7 +154,7 @@
             <div class="text-muted">
               {n(h.count, 'brew', 'brews')}{#if h.matchedBy.length} · Now matched by {h.matchedBy.length === 1 ? h.matchedBy[0].name : h.matchedBy.map((m: { name: string; count: number }) => `${m.name} (${m.count})`).join(', ')}{/if}
             </div>
-            <form method="POST" action="?/undismiss" use:enhance data-button-row class="row-actions">
+            <form method="POST" action="?/undismiss" use:enhance={stay} data-button-row class="row-actions">
               <input type="hidden" name="key" value={h.key} />
               <button class="button button-secondary" type="submit">Show again</button>
             </form>
@@ -171,7 +172,7 @@
       <ul class="items">
         {#each data.recipes as r (r.recipe.id)}
           <li class="item" class:open={isOpen({ recipe: r.recipe.id })} class:flash={flashId === r.recipe.id} id="recipe-{r.recipe.id}">
-            <h3><a class="recipe-link" href="/recipes/{r.slug}" data-sveltekit-preload-data="off" data-sveltekit-noscroll>{r.recipe.name}<Icon name="link" /></a></h3>
+            <h3><a class="recipe-link" href="/recipes/{r.slug}" data-sveltekit-preload-data="false" data-sveltekit-reset="false">{r.recipe.name}<Icon name="link" /></a></h3>
             <PourTimeline timeline={r.timeline} label={r.description} />
             <div>{r.description}</div>
             <ol class="steps" aria-label="Steps">
@@ -189,7 +190,7 @@
               {r.counts.logged} from notes · {r.counts.match} look like it · {r.counts.modified} modified · {avg(r.avgRating)}
             </div>
             <div class="row-actions" data-button-row>
-              <a class="button" class:button-secondary={!isOpen({ recipe: r.recipe.id })} href={brewsHref({ recipe: r.recipe.id })} aria-expanded={isOpen({ recipe: r.recipe.id })} data-sveltekit-noscroll>{isOpen({ recipe: r.recipe.id }) ? 'Hide brews' : 'See brews'}</a>
+              <a class="button" class:button-secondary={!isOpen({ recipe: r.recipe.id })} href={brewsHref({ recipe: r.recipe.id })} aria-expanded={isOpen({ recipe: r.recipe.id })} data-sveltekit-reset="false">{isOpen({ recipe: r.recipe.id }) ? 'Hide brews' : 'See brews'}</a>
               {#if isAdmin}
                 <button class="button button-secondary" type="button" onclick={() => (editing = 'r' + r.recipe.id)}>Edit</button>
                 <button class="button button-danger button-ghost" type="button" onclick={() => (deleting = r.recipe.id)}>Delete</button>
@@ -199,7 +200,7 @@
               <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} drippers={data.drippers} locked={data.locked} error={formError} focusId={data.focusId} ondone={closeEditor} />
             {/if}
             {#if deleting === r.recipe.id}
-              <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ result, update }) => { deleting = null; const to = recipeFollow(result, data.focusId); if (to) await goto(to, { invalidateAll: true }); else await update(); }} class="panel">
+              <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ result, update }) => { deleting = null; const to = recipeFollow(result, data.focusId); if (to) await goto(to, { refreshAll: true }); else await update({ navigate: false }); }} class="panel">
                 <p>Delete {r.recipe.name}? Its brews stay; they just lose the label.</p>
                 <input type="hidden" name="id" value={r.recipe.id} />
                 <div class="row-actions" data-button-row>
@@ -226,7 +227,7 @@
           <div>{data.unlisted.description}</div>
           <div class="text-muted">{n(data.unlisted.count, 'brew', 'brews')}</div>
           <div class="row-actions" data-button-row>
-            <a class="button button-secondary" href={brewsHref({ key: data.unlisted.key })} data-sveltekit-noscroll>Close</a>
+            <a class="button button-secondary" href={brewsHref({ key: data.unlisted.key })} data-sveltekit-reset="false">Close</a>
           </div>
           {@render brewList()}
         </li>
@@ -246,9 +247,9 @@
             {#if g.common.length}<div class="text-muted">Mostly {g.common.join(' · ')}</div>{/if}
             <div class="row-actions" data-button-row>
               <button class="button" type="button" onclick={() => (naming = g.key)}>Name &amp; save</button>
-              <a class="button button-secondary" href={brewsHref({ key: g.key })} data-sveltekit-noscroll>See brews</a>
+              <a class="button button-secondary" href={brewsHref({ key: g.key })} data-sveltekit-reset="false">See brews</a>
               <button class="button button-secondary" type="button" onclick={() => (editing = 's' + g.key)}>Edit</button>
-              <form method="POST" action="?/dismiss" use:enhance class="inline">
+              <form method="POST" action="?/dismiss" use:enhance={stay} class="inline">
                 <input type="hidden" name="key" value={g.key} />
                 <button class="button button-ghost" type="submit">Not a recipe</button>
               </form>
@@ -264,8 +265,8 @@
                 use:enhance={() => async ({ result, update }) => {
                   if (result.type === 'success') naming = null;
                   const to = recipeFollow(result, data.focusId);
-                  if (to) { await goto(to, { invalidateAll: true }); return; }
-                  await update();
+                  if (to) { await goto(to, { refreshAll: true }); return; }
+                  await update({ navigate: false });
                 }}
               >
                 <input type="hidden" name="definition" value={JSON.stringify(g.draft)} />
@@ -298,7 +299,7 @@
   <section class="chart-panel">
     <h2>Words in your notes</h2>
     <p class="text-muted">A brew whose note contains one of these as a word gets that agitation, unless its recipe sets one.</p>
-    <form method="POST" action="?/saveNoteWords" use:enhance={() => async ({ result, update }) => { await update({ reset: false }); if (result.type === 'success') resetWords(); }} class="panel">
+    <form method="POST" action="?/saveNoteWords" use:enhance={() => async ({ result, update }) => { await update({ reset: false, navigate: false }); if (result.type === 'success') resetWords(); }} class="panel">
       {#if words.length}
         {#each words as w, i (i)}
           <div class="word-row">

@@ -1,8 +1,8 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { deltaInk } from '$lib/components/deltaColor';
-import { formatGrams } from '$lib/grams';
-import { usd } from '$lib/money';
-import { mmss } from '$lib/recipes';
+import { deltaInk } from '#lib/components/deltaColor.ts';
+import { formatGrams } from '#lib/grams.ts';
+import { usd } from '#lib/money.ts';
+import { mmss } from '#lib/recipes.ts';
 import type { BagFact, BrewFact } from './facts';
 import { mean } from './stats';
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { flip } from 'svelte/animate';
-  import { toasts } from '$lib/toast.svelte';
+  import { toasts } from '#lib/toast.svelte.ts';
   import { tick } from 'svelte';
   import ToastItem from './ToastItem.svelte';
 

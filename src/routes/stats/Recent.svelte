@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import { RATING_MAX } from '$lib/rating';
+  import { formatDate } from '#lib/formatDate.ts';
+  import { RATING_MAX } from '#lib/rating.ts';
   import WholeNote from './WholeNote.svelte';
-  import { labelTip, truncTip } from '$lib/components/labelTip';
-  import { type BrewFilterKey, type InsightsUrlState, type Top } from '$lib/insightsUrl';
-  import type { RecentBrew, RecentBag } from '$lib/server/insights/overview';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import { labelTip, truncTip } from '#lib/components/labelTip.ts';
+  import { type BrewFilterKey, type InsightsUrlState, type Top } from '#lib/insightsUrl.ts';
+  import type { RecentBrew, RecentBag } from '#lib/server/insights/overview.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
   import ShowMore from './ShowMore.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
 

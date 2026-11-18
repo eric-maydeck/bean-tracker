@@ -21,12 +21,12 @@
     type ColumnKind,
     type Filter,
     type Op
-  } from '$lib/coffeeFilters';
+  } from '#lib/coffeeFilters.ts';
 
   // Editor-only label: appends the column's unit (e.g. "Weight (g)") so the
   // number typed is unambiguous. Chips keep the plain short/full name.
   const editorLabel = (c: Column) => (c.unit ? `${c.label} (${c.unit})` : c.label);
-  import type { CoffeeWithComputed } from '$lib/server/urgency';
+  import type { CoffeeWithComputed } from '#lib/server/urgency.ts';
 
   let {
     coffees,

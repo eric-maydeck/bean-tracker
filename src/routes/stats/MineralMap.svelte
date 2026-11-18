@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { deltaColor, labDelta } from '$lib/components/deltaColor';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
-  import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
-  import type { MineralMap } from '$lib/server/insights/lab';
-  import Icon from '$lib/components/Icon.svelte';
-  import { chipLabel, sampleField } from '$lib/sample';
-  import { deltaInk } from '$lib/components/deltaColor';
+  import { deltaColor, labDelta } from '#lib/components/deltaColor.ts';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import { rove, takeFocus } from '#lib/components/Heatmap.svelte';
+  import TipBody, { tipText, type Tip } from '#lib/components/TipBody.svelte';
+  import type { MineralMap } from '#lib/server/insights/lab.ts';
+  import Icon from '#lib/components/Icon.svelte';
+  import { chipLabel, sampleField } from '#lib/sample.ts';
+  import { deltaInk } from '#lib/components/deltaColor.ts';
   import { noMatch } from './DeltaBars.svelte';
 
   // Recipe mineral map (round 2, W-map): a row per recipe (Ratings by recipe order), its same-bag delta on the

@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const h = vi.hoisted(() => ({ fetchProductData: vi.fn(), history: [] as { roaster: string; product_url: string | null }[] }));
-vi.mock('$lib/server/db', () => ({ getDb: () => ({ prepare: () => ({ all: () => [] }) }) }));
-vi.mock('$lib/server/coffees', () => ({ getFillHistory: () => h.history, getDistinctFieldValues: () => [] }));
-vi.mock('$lib/server/roastLevels', () => ({ getRoastLevels: () => [{ roast_level: 'Light' }] }));
-vi.mock('$lib/server/productFetch', async (orig) => ({ ...(await orig<object>()), fetchProductData: h.fetchProductData }));
+vi.mock('#lib/server/db.ts', () => ({ getDb: () => ({ prepare: () => ({ all: () => [] }) }) }));
+vi.mock('#lib/server/coffees.ts', () => ({ getFillHistory: () => h.history, getDistinctFieldValues: () => [] }));
+vi.mock('#lib/server/roastLevels.ts', () => ({ getRoastLevels: () => [{ roast_level: 'Light' }] }));
+vi.mock('#lib/server/productFetch.ts', async (orig) => ({ ...(await orig<object>()), fetchProductData: h.fetchProductData }));
 
 import { POST } from './+server';
-import { FillError } from '$lib/server/productFetch';
+import { FillError } from '#lib/server/productFetch.ts';
 
 const URL_ = 'https://acme.example/products/lot-7';
 const page = { title: 'Lot 7', vendor: 'Acme', siteName: null, brand: null, tags: [], description: '', attributes: { origin: 'Kenya' }, image: null, currency: 'USD', variants: [] };

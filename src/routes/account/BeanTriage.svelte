@@ -1,16 +1,18 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { asDateFormat } from '$lib/localDate';
-  import { formatDate } from '$lib/formatDate';
+  import { asDateFormat } from '#lib/localDate.ts';
+  import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
-  import { goto, invalidateAll } from '$app/navigation';
-  import { UNTRACKED_CAP, accountQuery } from '$lib/accountUrl';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import CoffeeForm from '$lib/components/CoffeeForm.svelte';
-  import LinkPicker from '$lib/components/LinkPicker.svelte';
-  import { linkPickerGroups, cap, type LinkableCoffee } from '$lib/linkPicker';
-  import type { UnmatchedBean } from '$lib/server/beanconqueror';
-  import type { CoffeeRow } from '$lib/types';
+  import { stay } from '#lib/stay.ts';
+  import { goto } from '$app/navigation';
+  import { refreshTracked } from '#lib/urlState.ts';
+  import { UNTRACKED_CAP, accountQuery } from '#lib/accountUrl.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import CoffeeForm from '#lib/components/CoffeeForm.svelte';
+  import LinkPicker from '#lib/components/LinkPicker.svelte';
+  import { linkPickerGroups, cap, type LinkableCoffee } from '#lib/linkPicker.ts';
+  import type { UnmatchedBean } from '#lib/server/beanconqueror.ts';
+  import type { CoffeeRow } from '#lib/types.ts';
   import type { ComponentProps } from 'svelte';
 
   type FormProps = ComponentProps<typeof CoffeeForm>;
@@ -52,10 +54,10 @@
 
   async function closeCreate() {
     createBean = null;
-    await invalidateAll();
+    await refreshTracked();
   }
   const shown = $derived(showAll ? unmatched.beans : unmatched.beans.slice(0, UNTRACKED_CAP));
-  const toggle = () => goto(accountQuery({ untracked: showAll ? undefined : 'all' }) || '/account', { replaceState: true, noScroll: true, keepFocus: true });
+  const toggle = () => goto(accountQuery({ untracked: showAll ? undefined : 'all' }) || '/account', { replace: true, reset: false });
   const facts = (b: UnmatchedBean) => [b.roaster ?? 'Unknown roaster', b.origin, b.processing, b.roastDate ?? 'No roast date'].filter(Boolean).join(' · ');
 </script>
 
@@ -89,7 +91,7 @@
                 return;
               }
               linkError = null;
-              await update();
+              await update({ navigate: false });
               if (result.type === 'success') linkingId = null;
             }}
           >
@@ -105,7 +107,7 @@
           <div class="action-buttons candidate-actions">
             <button class="button button-secondary" type="button" onclick={() => (createBean = bean)}>Create</button>
             <button class="button button-secondary" type="button" onclick={() => { linkingId = bean.id; linkCoffeeId = null; linkError = null; }}>Link</button>
-            <form method="POST" action="?/dismissBeanConqueror" use:enhance>
+            <form method="POST" action="?/dismissBeanConqueror" use:enhance={stay}>
               <input type="hidden" name="id" value={bean.id} />
               <button class="button button-danger" type="submit">Dismiss</button>
             </form>

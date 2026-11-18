@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { mirrorUrl } from '#lib/urlState.ts';
   import { onMount } from 'svelte';
-  import { afterNavigate, replaceState } from '$app/navigation';
-  import { POSTER_ID, recapHref } from '$lib/recapsUrl';
-  import type { Slide as SlideT } from '$lib/server/recaps/types';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { recapPreview } from '$lib/linkPreview';
+  import { afterNavigate } from '$app/navigation';
+  import { page } from '$app/state';
+  import { POSTER_ID, recapHref } from '#lib/recapsUrl.ts';
+  import type { Slide as SlideT } from '#lib/server/recaps/types.ts';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { recapPreview } from '#lib/linkPreview.ts';
   import Slide from './Slide.svelte';
   import Poster from './Poster.svelte';
 
@@ -22,8 +24,11 @@
 
   // Back is the browser's back whenever an in-app page came before (as the coffee page's Back); otherwise a plain link to the Recaps tab.
   let cameFromApp = $state(false);
-  // The reel's own replaceState (slide hash) is not an earlier page.
-  afterNavigate(({ from }) => { if (from && from.route.id !== '/recaps/[year]') cameFromApp = true; });
+  // The reel's own shallow goto (slide hash) is not an earlier page.
+  afterNavigate(({ from, shallow, type }) => {
+    if (shallow && type === 'goto') return;
+    if (from && from.route.id !== '/recaps/[year]') cameFromApp = true;
+  });
   function back(e: MouseEvent) {
     if (!cameFromApp || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
@@ -45,7 +50,7 @@
       const q = new URLSearchParams(location.search);
       q.delete('slide');
       const qs = q.size ? `?${q}` : '';
-      replaceState(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`, {});
+      if (location.pathname === page.url.pathname) mirrorUrl(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`);
     }), { root: reel, rootMargin: '-50% 0px -50% 0px' });
     for (const s of reel.children) io.observe(s);
     return () => io.disconnect();

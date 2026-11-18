@@ -4,7 +4,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import CoffeeName from './CoffeeName.svelte';
-  import { filterLinkGroups, type LinkPickerGroup } from '$lib/linkPicker';
+  import { filterLinkGroups, type LinkPickerGroup } from '#lib/linkPicker.ts';
 
   let {
     groups,

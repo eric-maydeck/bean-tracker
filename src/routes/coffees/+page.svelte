@@ -1,25 +1,25 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import { labelTip } from '$lib/components/labelTip';
-  import { bqImportHref } from '$lib/bqImportUrl';
-  import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '$lib/coffeeToast';
-  import { showToast } from '$lib/toast.svelte';
-  import Usd from '$lib/components/Usd.svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import { usd } from '$lib/money';
+  import { formatDate } from '#lib/formatDate.ts';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { bqImportHref } from '#lib/bqImportUrl.ts';
+  import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '#lib/coffeeToast.ts';
+  import { showToast } from '#lib/toast.svelte.ts';
+  import Usd from '#lib/components/Usd.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import { usd } from '#lib/money.ts';
   import { tick } from 'svelte';
-  import { browser } from '$app/environment';
-  import { urgencyColorStyle } from '$lib/urgencyColor';
-  import { coffeeImage } from '$lib/coffeeImage';
-  import RoastBeans from '$lib/components/RoastBeans.svelte';
-  import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
+  import { browser } from '$app/env';
+  import { urgencyColorStyle } from '#lib/urgencyColor.ts';
+  import { coffeeImage } from '#lib/coffeeImage.ts';
+  import RoastBeans from '#lib/components/RoastBeans.svelte';
+  import { beforeNavigate, afterNavigate, snapshot } from '$app/navigation';
   import { page } from '$app/state';
-  import CoffeeForm from '$lib/components/CoffeeForm.svelte';
-  import AddedToast from '$lib/components/AddedToast.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import CollapsibleBar from '$lib/components/CollapsibleBar.svelte';
-  import { defaultViewForWidth } from '$lib/defaultView';
-  import { originWithFlag } from '$lib/countryFlags';
+  import CoffeeForm from '#lib/components/CoffeeForm.svelte';
+  import AddedToast from '#lib/components/AddedToast.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import CollapsibleBar from '#lib/components/CollapsibleBar.svelte';
+  import { defaultViewForWidth } from '#lib/defaultView.ts';
+  import { originWithFlag } from '#lib/countryFlags.ts';
   import {
     stageFieldChange,
     stageStatusAction,
@@ -27,16 +27,15 @@
     mergeStagedCoffee,
     clonePrefill,
     type PendingChange
-  } from '$lib/pendingChanges';
+  } from '#lib/pendingChanges.ts';
   import { SvelteMap, SvelteSet } from 'svelte/reactivity';
-  import type { CoffeeRow } from '$lib/types';
-  import type { Snapshot } from './$types';
-  import FilterBar from '$lib/components/FilterBar.svelte';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import { currentParams } from '$lib/pageUrlState';
-  import { applyFilters, COLUMNS, previewChip, isFrozen, withoutStalePlans, type ColumnKey } from '$lib/coffeeFilters';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { coffeesPreview } from '$lib/linkPreview';
+  import type { CoffeeRow } from '#lib/types.ts';
+  import FilterBar from '#lib/components/FilterBar.svelte';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import { currentParams } from '#lib/pageUrlState.ts';
+  import { applyFilters, COLUMNS, previewChip, isFrozen, withoutStalePlans, type ColumnKey } from '#lib/coffeeFilters.ts';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { coffeesPreview } from '#lib/linkPreview.ts';
   import {
     fromParams,
     toParams,
@@ -55,9 +54,9 @@
     type Status,
     type SortKey,
     type SortDir
-  } from '$lib/coffeeViewState';
-  import { writeUrlParams } from '$lib/urlState';
-  import { formatBag, formatGrams } from '$lib/grams';
+  } from '#lib/coffeeViewState.ts';
+  import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
+  import { formatBag, formatGrams } from '#lib/grams.ts';
 
   let { data, form } = $props();
 
@@ -116,12 +115,13 @@
 
   // Back from a coffee page (a real history back) re-expands the compact
   // row the user opened it from, so it's clear where they were.
-  export const snapshot: Snapshot<number | null> = {
+  snapshot<number | null>({
+    id: 'coffees-expanded-row', // explicit: the default id comes from the call-site stack and changes every build
     capture: () => (view === 'compact' && !editMode && typeof expandedId === 'number' ? expandedId : null),
     restore: (id) => {
       if (id != null) expandedId = id;
     }
-  };
+  });
 
   // Plain `Map` wrapped in `$state()` is NOT deeply reactive in Svelte 5 —
   // `$state()`'s proxy only wraps plain objects/arrays, so in-place
@@ -146,7 +146,7 @@
     clearTimeout(refreshTimer);
     refreshState = 'busy';
     try {
-      await invalidateAll();
+      await refreshTracked();
       refreshState = 'done';
       refreshTimer = setTimeout(() => (refreshState = 'idle'), 1000);
     } catch {
@@ -187,8 +187,8 @@
       showToast(e instanceof Error ? e.message : 'Something went wrong.');
       return;
     }
-    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await invalidateAll(); } });
-    await invalidateAll();
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await refreshTracked(); } });
+    await refreshTracked();
   }
 
   let addedSlug = $state<string | null>(null);
@@ -197,7 +197,7 @@
   const undoAdded = $derived(addedId ? async () => {
     try {
       await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
-      await invalidateAll();
+      await refreshTracked();
       showToast('Undone.');
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not undo that.');
@@ -301,15 +301,15 @@
     }
 
     // Outside the try/catch above on purpose: the commit itself already
-    // succeeded by this point, so a failure in invalidateAll() (or
+    // succeeded by this point, so a failure in refreshAll() (or
     // anything else here) must not be misattributed to the save as a
     // whole via the generic catch-all error message.
     const toastText = coffeeToast(changes, (id) => [...data.backlog, ...data.open, ...data.archive].find((c) => c.id === id)?.coffee_name ?? 'this coffee');
-    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await invalidateAll(); } } : {});
+    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await refreshTracked(); } } : {});
     if (onlyId != null) {
       saving = false;
       discardRow(onlyId);
-      await invalidateAll();
+      await refreshTracked();
       return;
     }
     pending = new SvelteMap();
@@ -319,7 +319,7 @@
     editIds.clear();
     openForms.clear();
     saving = false;
-    await invalidateAll();
+    await refreshTracked();
   }
 
   // A row opened by its own Edit button (not the page-level Edit): it gets
@@ -352,7 +352,8 @@
     return mergeStagedCoffee(coffee, pending.get(coffee.id)?.fields);
   }
 
-  beforeNavigate(({ cancel }) => {
+  beforeNavigate(({ cancel, shallow, type }) => {
+    if (shallow && type === 'goto') return;
     if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
       cancel();
       return;
@@ -377,7 +378,8 @@
   // On arrival (first load, or a client navigation to /coffees while
   // already here): the URL's params win; a bare URL restores the
   // remembered state, which the effect below then writes into the URL.
-  afterNavigate(() => {
+  afterNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
     widthView = defaultViewForWidth(window.innerWidth);
     const fromUrl = withoutStalePlans(fromParams(currentParams(page.url), knownValues()), data.plans);
     try {

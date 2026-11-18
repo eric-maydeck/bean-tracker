@@ -1,4 +1,4 @@
-// Replaces SvelteKit's built-in origin check (svelte.config.js turns it off) so one
+// Replaces SvelteKit's built-in origin check (vite.config.ts turns it off) so one
 // path can be exempt, and widens it from form posts to every mutating request, JSON included.
 const UNSAFE = ['POST', 'PUT', 'PATCH', 'DELETE'];
 // Bean Conqueror's native POST may carry no Origin; this route uses HTTP Basic, never cookies.

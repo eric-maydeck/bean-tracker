@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { dev } from '$app/environment';
+import { dev } from '$app/env';
 import type { Actions } from './$types';
 import {
   SESSION_COOKIE_NAME,
@@ -7,8 +7,8 @@ import {
   REMEMBERED_SESSION_DURATION_MS,
   createSessionCookieValue,
   safeRedirectTarget
-} from '$lib/server/auth';
-import { attemptLogin, resolveClientIp } from '$lib/server/loginRateLimit';
+} from '#lib/server/auth.ts';
+import { attemptLogin, resolveClientIp } from '#lib/server/loginRateLimit.ts';
 
 export const actions: Actions = {
   login: async ({ request, cookies, getClientAddress }) => {

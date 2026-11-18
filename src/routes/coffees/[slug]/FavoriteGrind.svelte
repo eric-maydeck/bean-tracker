@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import type { FavoriteGrind, OtherBag } from '$lib/server/favoriteGrind';
-  import { RATING_MAX } from '$lib/rating';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
+  import { formatDate } from '#lib/formatDate.ts';
+  import type { FavoriteGrind, OtherBag } from '#lib/server/favoriteGrind.ts';
+  import { RATING_MAX } from '#lib/rating.ts';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
+  import TextTip from '#lib/components/TextTip.svelte';
 
   // The Timing section's "Favorite grind": per grinder used on this bag, the setting of its highest-rated brew
   // (ties: the latest), with the rating and dripper; a grinder with brews and no ratings shows its count.

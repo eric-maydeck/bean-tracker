@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { absoluteImage, type Preview } from '$lib/linkPreview';
+  import { absoluteImage, type Preview } from '#lib/linkPreview.ts';
 
   let { preview }: { preview: Preview } = $props();
   let image = $derived(preview.image ? absoluteImage(preview.image.src, page.url.origin) : null);

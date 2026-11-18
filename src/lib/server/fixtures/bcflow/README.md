@@ -26,7 +26,7 @@ bbs-30s 335.7/20.1/120, long-pour 336.6/20.2/127.
 ## Detector notes
 
 `../../pourDetector.ts` reads the interpolated curve at a fixed 0.1 s step (never sample to sample), so
-raw and compact series read alike. Constants live in `$lib/pours.ts`:
+raw and compact series read alike. Constants live in `#lib/pours.ts`:
 
 - **Fast/slow uses the 1 s peak**, not the average: a pour's average depends on how the run is cut,
   while peaks separate cleanly. A pour is fast when its peak is >= `FAST_GPS` and its average is >=

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { labelTip } from '$lib/components/labelTip';
-  import { DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, type Dial, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, type Dial, type InsightsUrlState, type Ratings } from '#lib/insightsUrl.ts';
 
   // Labeled Ratings (Calibrated ratings | All ratings) and Brews (Once dialed | All brews) switches (ui-rules 26–27: a hover/focus help tip (labelTip) +
   // aria-describedby on each option; the #ratings-help-* / #dial-help-* spans live in +page.svelte).

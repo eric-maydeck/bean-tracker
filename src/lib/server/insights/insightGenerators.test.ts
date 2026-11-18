@@ -1,14 +1,14 @@
-import { likeGap } from '$lib/components/deltaColor';
+import { likeGap } from '#lib/components/deltaColor.ts';
 import { describe, it, expect } from 'vitest';
 import { leaderboard } from './leaderboards';
 import { GENERATORS, monthlyMulti, insightsTab, settleGroups, settlePositions, rescueOdds, settleEvidence, POUR_FINDINGS_MAX, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 import { loggedGrams } from './overview';
-import { formatGrams } from '$lib/grams';
+import { formatGrams } from '#lib/grams.ts';
 import { solidBar } from './stats';
 import { poursTab, type PourFact, type PoursTab } from './pours';
-import type { Recipe } from '$lib/recipes';
+import type { Recipe } from '#lib/recipes.ts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: null, rating: null, roaster: null, origin: null,

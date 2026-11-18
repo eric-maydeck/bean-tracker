@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Timeline } from '$lib/pours';
-  import { followTip } from '$lib/components/labelTip';
+  import type { Timeline } from '#lib/pours.ts';
+  import { followTip } from '#lib/components/labelTip.ts';
   let { timeline, label, compact = false }: { timeline: Timeline; label: string; compact?: boolean } = $props();
 
   // Cumulative water: x = time, y = water poured so far (0 to the timeline's total grams). Each pour is a filled

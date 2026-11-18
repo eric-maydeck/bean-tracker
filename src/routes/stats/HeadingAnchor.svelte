@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import Icon from '$lib/components/Icon.svelte';
+  import Icon from '#lib/components/Icon.svelte';
   import { useChartLink } from './chartLink';
-  import { copyLinkOf, plainClick } from '$lib/copyLink';
+  import { copyLinkOf, plainClick } from '#lib/copyLink.ts';
 
   // A section heading that links to itself (?…&chart=<id>#<id>), so its URL can be shared and previews name it:
-  // a plain click on the text puts that URL in the address bar without a reload (the page's replaceState), a modified
+  // a plain click on the text puts that URL in the address bar without a reload (the page's shallow goto), a modified
   // click follows the href. No hover preload (it would fetch the page data for a link that never navigates). Capture
   // phase: SvelteKit's own link handler runs before a delegated onclick. The link icon after the text is its own
   // button: it copies the link's full URL with a "Link copied" toast (copyLinkOf). It shows on hover and focus, and
@@ -25,7 +25,7 @@
      text line, so its tap area follows the heading's line height, not that of a "?" button beside the heading (LabHead);
      the two icons share the row's baseline. -->
 <svelte:element this={`h${level}`} {id} class="heading-anchor {cls}" aria-labelledby="{id}-text" data-row-scope>
-  <a bind:this={a} id="{id}-text" href={link.href(id)} onclickcapture={onclick} data-sveltekit-preload-data="off">{@render children()}</a><button
+  <a bind:this={a} id="{id}-text" href={link.href(id)} onclickcapture={onclick} data-sveltekit-preload-data="false">{@render children()}</a><button
     type="button" class="copy-link" aria-label="Copy link" onclick={() => a && copyLinkOf(a)}><Icon name="link" /></button>
 </svelte:element>
 

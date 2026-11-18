@@ -1,12 +1,12 @@
 // The Pours tab: recipes and pour technique against rating, always as same-bag paired deltas (lab.ts).
-import { recipeSlugs } from '$lib/recipeSlug';
+import { recipeSlugs } from '#lib/recipeSlug.ts';
 import type { DatabaseSync } from 'node:sqlite';
-import { MON } from '$lib/insightsUrl';
-import { AGITATION_LABEL, brewAgitation, sequenceLabel, type Agitation, type BrewAgitation } from '$lib/agitation';
-import type { PourReading } from '$lib/pours';
-import type { Match, Recipe } from '$lib/recipes';
-import { pooled, type Sample } from '$lib/sample';
-import { getNoteWords, listRecipes } from '$lib/server/recipes';
+import { MON } from '#lib/insightsUrl.ts';
+import { AGITATION_LABEL, brewAgitation, sequenceLabel, type Agitation, type BrewAgitation } from '#lib/agitation.ts';
+import type { PourReading } from '#lib/pours.ts';
+import type { Match, Recipe } from '#lib/recipes.ts';
+import { pooled, type Sample } from '#lib/sample.ts';
+import { getNoteWords, listRecipes } from '#lib/server/recipes.ts';
 import { WAIT_BUCKETS, waitBucket, type BrewFact } from './facts';
 import { SLICE_OF, breakdown, labFn, pairedDeltas, type BandFn, type BandStat, type Breakdown } from './lab';
 import type { Band } from './labBands';

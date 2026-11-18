@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { setBrewingZone } from '$lib/localDate';
-import { OWN_DATA_ONLY } from '$lib/gear';
+import { setBrewingZone } from '#lib/localDate.ts';
+import { OWN_DATA_ONLY } from '#lib/gear.ts';
 import { createDb } from '../db';
 import { createCoffee } from '../coffees';
 import { saveGearDetails } from '../gearDetails';

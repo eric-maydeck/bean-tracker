@@ -1,5 +1,5 @@
 import { page } from '$app/state';
-import { asDateFormat, formatDay } from '$lib/localDate';
+import { asDateFormat, formatDay } from '#lib/localDate.ts';
 
 // A calendar date as text, in the account's Date format (layout data, so the server and the client agree).
 // A stored UTC ISO timestamp is cut to its date part; clock times go through Stamp.svelte.

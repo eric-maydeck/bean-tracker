@@ -1,7 +1,7 @@
 <script lang="ts">
   // One toast. Timing matches AddedToast ("Coffee added!"): 3 s visible (5 s on touch screens), a 400 ms fade, hover or
   // focus inside pauses the countdown, and leaving resumes it with at least 2 s left. No focus move, no backdrop.
-  import { dismissToast, leaving, noteLeaving, remainingAfterLeave, undoToast, type ToastItem } from '$lib/toast.svelte';
+  import { dismissToast, leaving, noteLeaving, remainingAfterLeave, undoToast, type ToastItem } from '#lib/toast.svelte.ts';
 
   let { t }: { t: ToastItem } = $props();
 

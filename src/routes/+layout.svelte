@@ -1,20 +1,20 @@
 <script lang="ts">
   import '../app.css';
   import { page } from '$app/state';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
-  import type { AlertRow } from '$lib/types';
-  import AiNote from '$lib/components/AiNote.svelte';
-  import RecapBanner from '$lib/components/RecapBanner.svelte';
-  import Toast from '$lib/components/Toast.svelte';
-  import Icon, { type IconName } from '$lib/components/Icon.svelte';
-  import Stamp from '$lib/components/Stamp.svelte';
-  import { setBrewingZone } from '$lib/localDate';
+  import { refreshTracked } from '#lib/urlState.ts';
+  import type { AlertRow } from '#lib/types.ts';
+  import AiNote from '#lib/components/AiNote.svelte';
+  import RecapBanner from '#lib/components/RecapBanner.svelte';
+  import Toast from '#lib/components/Toast.svelte';
+  import Icon, { type IconName } from '#lib/components/Icon.svelte';
+  import Stamp from '#lib/components/Stamp.svelte';
+  import { setBrewingZone } from '#lib/localDate.ts';
   import { onMount } from 'svelte';
-  import { captionItems } from '$lib/capItems';
-  import { tipOver, tipOut, tipClick } from '$lib/components/modeTip';
-  import { scrollBehavior } from '$lib/scrollToBottom';
+  import { captionItems } from '#lib/capItems.ts';
+  import { tipOver, tipOut, tipClick } from '#lib/components/modeTip.ts';
+  import { scrollBehavior } from '#lib/scrollToBottom.ts';
   let { children, data } = $props();
   // The brewing zone, applied before anything renders so the client's local dates match the server's.
   setBrewingZone(data.brewingZone);
@@ -72,7 +72,7 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ id })
     });
-    await invalidateAll();
+    await refreshTracked();
   }
 
   async function dismissAlertClick(id: number) {
@@ -81,7 +81,7 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ id })
     });
-    await invalidateAll();
+    await refreshTracked();
   }
 
   // Regular outline icons; the current tab shows the `-fill` variant.
@@ -119,7 +119,7 @@
   });
 
   // Sign in comes back to this page. Read from location at click time, since
-  // page.url goes stale after replaceState.
+  // page.url goes stale after a shallow goto.
   function signInHere(event: MouseEvent & { currentTarget: HTMLAnchorElement }) {
     if (location.pathname === '/login') return;
     event.currentTarget.href = `/login?redirectTo=${encodeURIComponent(location.pathname + location.search)}`;

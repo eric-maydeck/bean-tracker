@@ -1,4 +1,4 @@
-import type { Multi } from '$lib/server/insights/insightGenerators';
+import type { Multi } from '#lib/server/insights/insightGenerators.ts';
 
 // One shared y scale over a 100×40 box (2 units of padding top and bottom).
 function frame(m: Multi) {

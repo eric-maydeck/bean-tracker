@@ -1,4 +1,4 @@
-import type { By, Ratings } from '$lib/insightsUrl';
+import type { By, Ratings } from '#lib/insightsUrl.ts';
 import type { BrewFact, BagFact } from './facts';
 import { autoBy, daysBetween, inPeriod, trackedBounds, trackedDays, type Period } from './time';
 import { buckets, bucketLabels, bucketTitles, type Bucket } from './consumption';
@@ -6,11 +6,11 @@ import { ratedGroups, bagSizes } from './ratings';
 import { twinKeys } from './likeGroup';
 import { groupBy, valueScore } from './records';
 import { weightedMedian } from './stats';
-import { BAG_MIN_BREWS, single, type Sample } from '$lib/sample';
+import { BAG_MIN_BREWS, single, type Sample } from '#lib/sample.ts';
 import { compareTiles, type Delta } from './overview';
 import { leaderboard, listHref } from './leaderboards';
-import { toParams } from '$lib/coffeeViewState';
-import type { Filter } from '$lib/coffeeFilters';
+import { toParams } from '#lib/coffeeViewState.ts';
+import type { Filter } from '#lib/coffeeFilters.ts';
 import type { Multi } from './insightGenerators';
 import type { RcRow } from '../../../routes/stats/reportCard';
 

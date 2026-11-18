@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { labelTip } from '$lib/components/labelTip';
+  import { labelTip } from '#lib/components/labelTip.ts';
   // Labels under a row of bars (findings' bars, Brewing's Brews until dialed in): one-letter initials (weekday bars,
   // weekends bold), or `full`: the value stacked over the name, centered under its bar, the name ellipsized (full text in its tip).
   let { series, full = false, diverging = false }: { series: { label: string; value: number; tip?: string }[]; full?: boolean; diverging?: boolean } = $props();

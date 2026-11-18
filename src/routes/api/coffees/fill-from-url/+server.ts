@@ -1,13 +1,12 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
-import { getDistinctFieldValues, getFillHistory } from '$lib/server/coffees';
-import { getRoastLevels } from '$lib/server/roastLevels';
-import { fetchProductData, getUsdRates, FillError } from '$lib/server/productFetch';
-import { buildFill, standardizeBeanBase, type FillContext } from '$lib/server/productFill';
-import type { ProductData } from '$lib/server/productParse';
-import { lookupBeanBase } from '$lib/server/beanBase';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { getDistinctFieldValues, getFillHistory } from '#lib/server/coffees.ts';
+import { getRoastLevels } from '#lib/server/roastLevels.ts';
+import { fetchProductData, getUsdRates, FillError } from '#lib/server/productFetch.ts';
+import { buildFill, standardizeBeanBase, type FillContext } from '#lib/server/productFill.ts';
+import type { ProductData } from '#lib/server/productParse.ts';
+import { lookupBeanBase } from '#lib/server/beanBase.ts';
 
 const NO_PAGE: ProductData = {
   title: null, vendor: null, siteName: null, brand: null, tags: [], description: '',
@@ -18,7 +17,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);
   const body = (await request.json().catch(() => null)) as { url?: unknown } | null;
   const url = typeof body?.url === 'string' ? body.url.trim() : '';
-  if (!url) return json({ error: 'Paste a product page URL first' }, { status: 400 });
+  if (!url) return Response.json({ error: 'Paste a product page URL first' }, { status: 400 });
   try {
     const db = getDb();
     const ctx: Omit<FillContext, 'rates'> = {
@@ -47,14 +46,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     if (pageError && !(hit && 'id' in hit)) throw pageError;
     // Bean Base drops accents; the page text (already fetched) may have them.
     const pageText = [product.title, product.description, ...Object.values(product.attributes)].join('\n');
-    return json(standardizeBeanBase(fill, hit && 'id' in hit ? hit : null, { db, pageText }));
+    return Response.json(standardizeBeanBase(fill, hit && 'id' in hit ? hit : null, { db, pageText }));
   } catch (err) {
-    if (err instanceof FillError) return json({ error: err.message }, { status: 422 });
+    if (err instanceof FillError) return Response.json({ error: err.message }, { status: 422 });
     const name = err instanceof Error ? err.name : '';
     if (name === 'AbortError' || name === 'TimeoutError') {
-      return json({ error: 'The page took longer than 10 seconds to respond' }, { status: 504 });
+      return Response.json({ error: 'The page took longer than 10 seconds to respond' }, { status: 504 });
     }
     console.error('fill-from-url failed', err);
-    return json({ error: `Couldn't load that page (${err instanceof Error ? err.message : 'unknown error'})` }, { status: 502 });
+    return Response.json({ error: `Couldn't load that page (${err instanceof Error ? err.message : 'unknown error'})` }, { status: 502 });
   }
 };

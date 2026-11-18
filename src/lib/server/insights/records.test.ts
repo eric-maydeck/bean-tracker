@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { pick, RECORDS, recordsTab, type RecordsCtx } from './records';
 import type { BrewFact, BagFact } from './facts';
-import { lowFirst, type Ratings } from '$lib/insightsUrl';
+import { lowFirst, type Ratings } from '#lib/insightsUrl.ts';
 import { leaderboard } from './leaderboards';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({

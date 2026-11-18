@@ -1,26 +1,27 @@
 <script lang="ts">
-  import { COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '$lib/types';
-  import Usd from '$lib/components/Usd.svelte';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { coffeePreview } from '$lib/linkPreview';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import { COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '#lib/types.ts';
+  import Usd from '#lib/components/Usd.svelte';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { coffeePreview } from '#lib/linkPreview.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
   import { untrack, onMount } from 'svelte';
   import { page } from '$app/state';
-  import { bqImportRequested, cloneRequested, editRequested } from '$lib/bqImportUrl';
-  import { writeUrlParams } from '$lib/urlState';
-  import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '$lib/coffeeToast';
-  import { showToast } from '$lib/toast.svelte';
+  import { bqImportRequested, cloneRequested, editRequested } from '#lib/bqImportUrl.ts';
+  import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
+  import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '#lib/coffeeToast.ts';
+  import { showToast } from '#lib/toast.svelte.ts';
   import { enhance } from '$app/forms';
-  import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
-  import { browser } from '$app/environment';
-  import { urgencyColorStyle } from '$lib/urgencyColor';
-  import { coffeeImage } from '$lib/coffeeImage';
-  import { isFrozen } from '$lib/coffeeFilters';
-  import CoffeeForm from '$lib/components/CoffeeForm.svelte';
-  import { originWithFlag } from '$lib/countryFlags';
-  import { formatDate } from '$lib/formatDate';
-  import Stamp from '$lib/components/Stamp.svelte';
-  import { localDate } from '$lib/localDate';
+  import { stay } from '#lib/stay.ts';
+  import { goto, beforeNavigate, afterNavigate } from '$app/navigation';
+  import { browser } from '$app/env';
+  import { urgencyColorStyle } from '#lib/urgencyColor.ts';
+  import { coffeeImage } from '#lib/coffeeImage.ts';
+  import { isFrozen } from '#lib/coffeeFilters.ts';
+  import CoffeeForm from '#lib/components/CoffeeForm.svelte';
+  import { originWithFlag } from '#lib/countryFlags.ts';
+  import { formatDate } from '#lib/formatDate.ts';
+  import Stamp from '#lib/components/Stamp.svelte';
+  import { localDate } from '#lib/localDate.ts';
   import {
     stageFieldChange,
     stageStatusAction,
@@ -28,17 +29,17 @@
     mergeStagedCoffee,
     clonePrefill,
     type PendingChange
-  } from '$lib/pendingChanges';
+  } from '#lib/pendingChanges.ts';
   import { SvelteMap } from 'svelte/reactivity';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import AddedToast from '$lib/components/AddedToast.svelte';
-  import type { CoffeeRow } from '$lib/types';
-  import { formatBag } from '$lib/grams';
-  import SampleNote from '$lib/components/SampleNote.svelte';
-  import { deltaInk, likeGap } from '$lib/components/deltaColor';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import AddedToast from '#lib/components/AddedToast.svelte';
+  import type { CoffeeRow } from '#lib/types.ts';
+  import { formatBag } from '#lib/grams.ts';
+  import SampleNote from '#lib/components/SampleNote.svelte';
+  import { deltaInk, likeGap } from '#lib/components/deltaColor.ts';
   import FavoriteGrind from './FavoriteGrind.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
-  import { DIAL_LABEL, RATINGS_LABEL, insightsParams, type LikeView } from '$lib/insightsUrl';
+  import TextTip from '#lib/components/TextTip.svelte';
+  import { DIAL_LABEL, RATINGS_LABEL, insightsParams, type LikeView } from '#lib/insightsUrl.ts';
 
   let { data, form } = $props();
 
@@ -65,7 +66,7 @@
   const undoAdded = $derived(addedId ? async () => {
     try {
       await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
-      await invalidateAll();
+      await refreshTracked();
       showToast('Undone.');
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not undo that.');
@@ -99,7 +100,7 @@
     // every coffee page would otherwise download, for a button most of them
     // never press. Dynamic import moves both into a chunk fetched on click.
     const [{ buildShareUrl }, { default: QRCode }] = await Promise.all([
-      import('$lib/beanConquerorShare'),
+      import('#lib/beanConquerorShare.ts'),
       import('qrcode')
     ]);
     const url = await buildShareUrl(data.coffee, data.roastLevels);
@@ -115,7 +116,8 @@
   onMount(() => {
     if (bqImportRequested(page.url.searchParams)) void shareToBeanConqueror();
   });
-  afterNavigate(() => {
+  afterNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
     const q = new URLSearchParams(location.search);
     const edit = editRequested(q), clone = cloneRequested(q);
     if (!edit && !clone) return;
@@ -125,7 +127,7 @@
       if (edit) editMode = true;
       if (clone) openModal(clonePrefill(formCoffee));
     }
-    setTimeout(() => writeUrlParams(q), 0); // after afterNavigate returns: replaceState isn't allowed inside it
+    setTimeout(() => writeUrlParams(q), 0); // after afterNavigate returns: a shallow goto isn't allowed inside it
   });
   let canEdit = $derived(editMode && data.isAdmin);
   let detailImage = $derived(coffeeImage(data.coffee, `${data.coffee.coffee_name} label`));
@@ -242,11 +244,11 @@
     }
 
     // Outside the try/catch above on purpose: the commit itself already
-    // succeeded by this point, so a failure in goto()/invalidateAll() must
+    // succeeded by this point, so a failure in goto()/refreshAll() must
     // not be misattributed to the save as a whole via the generic
     // catch-all error message.
     const toastText = coffeeToast(changes, () => data.coffee.coffee_name);
-    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await invalidateAll(); } } : {});
+    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await refreshTracked(); } } : {});
     pending = new SvelteMap();
     editMode = false;
     saving = false;
@@ -259,7 +261,7 @@
       await goto(`/coffees/${savedSlug}`);
       return;
     }
-    await invalidateAll();
+    await refreshTracked();
   }
 
   function discardChanges() {
@@ -268,7 +270,8 @@
     editMode = false;
   }
 
-  beforeNavigate(({ cancel }) => {
+  beforeNavigate(({ cancel, shallow, type }) => {
+    if (shallow && type === 'goto') return;
     if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
       cancel();
     }
@@ -278,7 +281,8 @@
   // page we left returns with its scroll position and its URL state. Otherwise (direct link, reload, new tab) it stays a
   // plain link to /coffees. `from` is SvelteKit's navigation info: null on the first load, never document.referrer.
   let cameFromApp = $state(false);
-  afterNavigate(({ from }) => {
+  afterNavigate(({ from, shallow, type }) => {
+    if (shallow && type === 'goto') return;
     cameFromApp = !!from;
   });
 
@@ -430,7 +434,7 @@
                 {'Bean Conqueror: '}<CoffeeName name={data.beanConqueror.name} />{` · ${data.beanConqueror.brewCount} ${data.beanConqueror.brewCount === 1 ? 'brew' : 'brews'}`}
               </span>
               {#if data.isAdmin}
-                <form method="POST" action="?/unlinkBeanConqueror" use:enhance>
+                <form method="POST" action="?/unlinkBeanConqueror" use:enhance={stay}>
                   <button class="button button-ghost" type="submit">Unlink</button>
                 </form>
               {/if}
@@ -572,7 +576,7 @@
         {@const l = data.like}
         <section class="detail-section" data-section="like">
           <h2>Vs like coffees</h2>
-          <p class="text-muted">Compared with {data.coffee.decaf ? '' : 'caffeinated '}{l.label}: all time, <span class="setting-name">{lower(DIAL_LABEL[v.dial ?? 'dialed'])}</span>, <span class="setting-name">{lower(RATINGS_LABEL[v.ratings ?? 'current'])}</span>.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}</p>
+          <p class="text-muted">Compared with {data.coffee.decaf ? '' : 'caffeinated '}{l.label}: all time, <span class="setting-name">{lower(DIAL_LABEL[v.dial ?? 'dialed'])}</span>, <span class="setting-name">{lower(RATINGS_LABEL[v.ratings ?? 'current'])}</span>.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-reset="false">Back to defaults</a>{/if}</p>
           <div class="stat-grid">
             <div class="stat">
               <span class="stat-label">Score</span>
@@ -590,8 +594,8 @@
           <h2>Vs like coffees</h2>
           <p class="text-muted like-none">
             <TextTip label={n.why} tip={{ title: 'Why no comparison', rows: n.rows }} />
-            {#if n.fix}<a href="?{insightsParams(n.fix)}" data-sveltekit-noscroll>Compare with {fixText(n.fix)}</a>{/if}
-            {#if explicit}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}
+            {#if n.fix}<a href="?{insightsParams(n.fix)}" data-sveltekit-reset="false">Compare with {fixText(n.fix)}</a>{/if}
+            {#if explicit}<a href="/coffees/{data.coffee.slug}" data-sveltekit-reset="false">Back to defaults</a>{/if}
           </p>
         </section>
       {/if}

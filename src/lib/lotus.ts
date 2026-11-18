@@ -1,4 +1,4 @@
-import { pickOne } from '$lib/pageUrlState';
+import { pickOne } from '#lib/pageUrlState.ts';
 
 // Lotus drop calculator, copied from Lotus's own (lotuscoffeeproducts.com product-instructions):
 // drops = round(ppm x L/4.5 x tip factor), doubled for Na and K. The factor is Lotus's calculator inline JS

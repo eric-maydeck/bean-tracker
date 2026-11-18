@@ -7102,7 +7102,9 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
       await page.waitForTimeout(300);
-      expect(requests.filter((u) => /__data\.json/.test(u))).toEqual([]);
+      // Only a stats refetch counts: Kit 3 hover-preloads a /coffees row link that scrolls in under
+      // the pointer during the click's scroll, so other pages' __data.json requests are expected.
+      expect(requests.filter((u) => /\/stats\/__data\.json/.test(u))).toEqual([]);
       expect(await href('leaderboard-roasters')).toContain('chart=leaderboard-roasters');
       // A reload, and a load with no hash (Share and short links drop it), land the heading under the bar.
       const url = page.url();
@@ -7725,8 +7727,11 @@ export const STATES: State[] = [
       expect([u.searchParams.get('tab'), u.searchParams.get('range')]).toEqual(['records', 'all']);
       const pager = page.locator('nav.tab-pager');
       await expect(pager.locator('.prev')).toContainText('Spend');
+      await pager.locator('.next').scrollIntoViewIfNeeded();
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
       await pager.locator('.next').click();
       await expect(row).toHaveText('View: Milestones');
+      await expect.poll(() => page.evaluate(() => scrollY), 'Next opens the new tab at its top').toBe(0);
       await expect(pager.locator('.prev')).toContainText('Records');
       await gotoReady(page, '/stats?range=all');
       await expect(pager.locator('.prev')).toHaveCount(0);

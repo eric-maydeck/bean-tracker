@@ -2,7 +2,7 @@
   import { Chart as ChartJS, registerables, type Plugin } from 'chart.js';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { seriesToken } from './chartColor';
-  import { sampleField, type Sample } from '$lib/sample';
+  import { sampleField, type Sample } from '#lib/sample.ts';
   import { anchorOf, type Hit } from './chartAnchor';
   import FloatTip from './FloatTip.svelte';
   import TipBody, { tipText, type Tip } from './TipBody.svelte';

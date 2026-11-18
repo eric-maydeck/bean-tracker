@@ -1,14 +1,14 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
-  import { CONVERT_KEYS, fieldsFor, isWebUrl } from '$lib/gear';
-  import ImageSuggest from '$lib/components/ImageSuggest.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
-  import { labelTip } from '$lib/components/labelTip';
-  import { placeTip } from '$lib/components/modeTip';
-  import { backdrop } from '$lib/imageBackdrop';
+  import { refreshTracked } from '#lib/urlState.ts';
+  import { CONVERT_KEYS, fieldsFor, isWebUrl } from '#lib/gear.ts';
+  import ImageSuggest from '#lib/components/ImageSuggest.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { placeTip } from '#lib/components/modeTip.ts';
+  import { backdrop } from '#lib/imageBackdrop.ts';
   import type { Snippet } from 'svelte';
-  import type { Trophy } from '$lib/server/insights/trophies';
+  import type { Trophy } from '#lib/server/insights/trophies.ts';
 
   // Replaces the dialog's article: `head` is the title, `photo` the picture (showing the previewed image, `preview`).
   let { trophy, onclose, head, photo, top, preview = $bindable(null) }: {
@@ -98,7 +98,7 @@
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind: trophy.kind, name: trophy.name, values, image_url: imageUrl })
     }).catch(() => null);
-    if (res?.ok) { await invalidateAll(); onclose(); return; }
+    if (res?.ok) { await refreshTracked(); onclose(); return; }
     error = (await res?.json().catch(() => null))?.error ?? "Couldn't save";
     saving = false;
   }

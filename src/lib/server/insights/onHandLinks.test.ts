@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { CoffeeRow } from '$lib/types';
-import { applyFilters } from '$lib/coffeeFilters';
-import { fromParams } from '$lib/coffeeViewState';
+import type { CoffeeRow } from '#lib/types.ts';
+import { applyFilters } from '#lib/coffeeFilters.ts';
+import { fromParams } from '#lib/coffeeViewState.ts';
 import { withComputedFields, parseDate } from '../urgency';
 import { freshness } from './onHand';
 import { freshHref, type FreshKey } from './onHandLinks';

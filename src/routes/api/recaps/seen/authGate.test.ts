@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createDb } from '$lib/server/db';
-import { recapSeen } from '$lib/server/recaps/store';
+import { createDb } from '#lib/server/db.ts';
+import { recapSeen } from '#lib/server/recaps/store.ts';
 
 const h = vi.hoisted(() => ({ db: null as unknown }));
-vi.mock('$lib/server/db', async (orig) => ({ ...(await orig<object>()), getDb: () => h.db }));
+vi.mock('#lib/server/db.ts', async (orig) => ({ ...(await orig<object>()), getDb: () => h.db }));
 const { POST } = await import('./+server');
 
 const call = (isAdmin: boolean, body: unknown) =>

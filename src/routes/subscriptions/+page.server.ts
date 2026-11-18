@@ -1,9 +1,9 @@
 import type { Actions, PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { localTodayDate } from '$lib/server/localToday';
-import { getSubscriptions, createSubscription, withTotalGrams, withNextRenewalDate } from '$lib/server/subscriptions';
-import { requireAdmin } from '$lib/server/auth';
-import { parseSubscriptionUrl } from '$lib/subscriptionView';
+import { getDb } from '#lib/server/db.ts';
+import { localTodayDate } from '#lib/server/localToday.ts';
+import { getSubscriptions, createSubscription, withTotalGrams, withNextRenewalDate } from '#lib/server/subscriptions.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { parseSubscriptionUrl } from '#lib/subscriptionView.ts';
 
 function readSubscriptionFields(formData: FormData) {
   return {

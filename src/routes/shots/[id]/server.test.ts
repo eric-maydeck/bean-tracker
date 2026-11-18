@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createDb } from '$lib/server/db';
+import { createDb } from '#lib/server/db.ts';
 
 const h = vi.hoisted(() => ({ db: null as unknown }));
-vi.mock('$lib/server/db', async (orig) => ({ ...(await orig<object>()), getDb: () => h.db }));
+vi.mock('#lib/server/db.ts', async (orig) => ({ ...(await orig<object>()), getDb: () => h.db }));
 const { GET } = await import('./+server');
 
 const UUID = '0b1c2d3e-4f50-6172-8394-a5b6c7d8e9f0';

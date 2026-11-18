@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDb, setHouseholdSize } from '$lib/server/db';
-import { localToday } from '$lib/server/localToday';
+import { createDb, setHouseholdSize } from '#lib/server/db.ts';
+import { localToday } from '#lib/server/localToday.ts';
 import { isKnownSlide, recap, recapTiles } from './recap';
 import { freezeIds, frozenIds } from './store';
 
@@ -131,7 +131,7 @@ describe('route load', () => {
   let load: (a: unknown) => unknown;
   beforeAll(async () => {
     process.env.DB_PATH = join(mkdtempSync(join(tmpdir(), 'recap-')), 't.db');
-    const { getDb } = await import('$lib/server/db');
+    const { getDb } = await import('#lib/server/db.ts');
     seed(getDb(), [cur - 1, cur]);
     load = (await import('../../../routes/recaps/[year]/+page.server')).load as never;
   });

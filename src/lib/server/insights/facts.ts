@@ -1,10 +1,10 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { processGroup, type ProcessGroup } from '$lib/processGroups';
-import { generalHardness, carbonateHardness } from '$lib/water';
-import type { BrewerType } from '$lib/insightsUrl';
+import { processGroup, type ProcessGroup } from '#lib/processGroups.ts';
+import { generalHardness, carbonateHardness } from '#lib/water.ts';
+import type { BrewerType } from '#lib/insightsUrl.ts';
 import { bcLocalTime, daysBetween } from './time';
-import { localDate as toLocalDate } from '$lib/localDate';
-import type { GearValues } from '$lib/gear';
+import { localDate as toLocalDate } from '#lib/localDate.ts';
+import type { GearValues } from '#lib/gear.ts';
 
 // Method names are "Dripper - Filter". Gabi Master A brews used Kalita,
 // xBloom or Timemore 155 filters interchangeably (user, 2026-10-09), so its

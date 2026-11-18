@@ -1,6 +1,6 @@
 <script lang="ts" module>
-  import type { Trend } from '$lib/insightsUrl';
-  import type { ConsumptionTab } from '$lib/server/insights/consumption';
+  import type { Trend } from '#lib/insightsUrl.ts';
+  import type { ConsumptionTab } from '#lib/server/insights/consumption.ts';
   import type { JumpLink } from './JumpNav.svelte';
   const TITLE: Record<Trend, string> = { brews: 'Brews over time', water: 'Water over time', rating: 'Rating over time' };
   export function jumpLinks(t: ConsumptionTab, trend: Trend | undefined): JumpLink[] {
@@ -11,12 +11,12 @@
 
 <script lang="ts">
   import WholeNote from './WholeNote.svelte';
-  import { labelTip } from '$lib/components/labelTip';
+  import { labelTip } from '#lib/components/labelTip.ts';
   import { useEmptyLine } from './coffeeNote';
   import type { Snippet } from 'svelte';
-  import Chart from '$lib/components/Chart.svelte';
-  import { formatGrams } from '$lib/grams';
-  import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
+  import Chart from '#lib/components/Chart.svelte';
+  import { formatGrams } from '#lib/grams.ts';
+  import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '#lib/insightsUrl.ts';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import TimeToOpen from './TimeToOpen.svelte';

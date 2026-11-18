@@ -1,23 +1,23 @@
 <script lang="ts">
-  import Stamp from '$lib/components/Stamp.svelte';
+  import Stamp from '#lib/components/Stamp.svelte';
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import { labelTip } from '$lib/components/labelTip';
-  import Icon from '$lib/components/Icon.svelte';
+  import { refreshTracked } from '#lib/urlState.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import Icon from '#lib/components/Icon.svelte';
   import BeanTriage from './BeanTriage.svelte';
-  import { showToast } from '$lib/toast.svelte';
+  import { showToast } from '#lib/toast.svelte.ts';
   import { page } from '$app/state';
-  import { DATE_FORMAT_LABEL, type DateFormat } from '$lib/localDate';
-  import { parseAccount } from '$lib/accountUrl';
-  import { importSummary } from '$lib/importSummary';
-  import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
+  import { DATE_FORMAT_LABEL, type DateFormat } from '#lib/localDate.ts';
+  import { parseAccount } from '#lib/accountUrl.ts';
+  import { importSummary } from '#lib/importSummary.ts';
+  import { loadChoice, serializeChoice } from '#lib/rememberedChoice.ts';
   let { data, form } = $props();
   // A short toast when a dose/ratio add or remove saved, with Undo (the opposite action on the same value).
-  const toasting = (say: (v: string) => string, reverse: string): import('@sveltejs/kit').SubmitFunction => ({ formData }) => {
+  const toasting = (say: (v: string) => string, reverse: string): import('$app/forms').SubmitFunction => ({ formData }) => {
     const v = String(formData.get('value') ?? '').trim();
     return async ({ result, update }) => {
-      await update();
+      await update({ navigate: false });
       if (result.type !== 'success') return;
       showToast(say(v), {
         undo: async () => {
@@ -26,7 +26,7 @@
           const res = await fetch(`?/${reverse}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
           const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await invalidateAll();
+          await refreshTracked();
         }
       });
     };
@@ -41,7 +41,7 @@
   const shown = (name: SettingName, v: string) =>
     name === 'dateFormat' ? DATE_FORMAT_LABEL[v as DateFormat] : v === 'browser' ? 'Browser time' : name === 'defaultCaffeine' ? v[0].toUpperCase() + v.slice(1) : v;
   let settingError = $state<{ name: SettingName; text: string } | null>(null);
-  const saveSetting = (name: SettingName): import('@sveltejs/kit').SubmitFunction => ({ formData }) => {
+  const saveSetting = (name: SettingName): import('$app/forms').SubmitFunction => ({ formData }) => {
     const before = data.settings[name];
     const v = String(formData.get('value') ?? '');
     return async ({ result, update }) => {
@@ -51,7 +51,7 @@
         return;
       }
       settingError = null;
-      await update({ reset: false });
+      await update({ reset: false, navigate: false });
       if (result.type !== 'success') return;
       showToast(`${SETTING_LABEL[name]} set to ${shown(name, v)}.`, {
         undo: async () => {
@@ -60,7 +60,7 @@
           const res = await fetch(`?/${SETTING_ACTION[name]}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
           const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await invalidateAll();
+          await refreshTracked();
         }
       });
     };
@@ -88,7 +88,7 @@
   const s = $derived(data.status);
   // Household size: a failure shows here (not as the page-level form error above the upload); a save toasts with Undo.
   let householdError = $state<string | null>(null);
-  const saveHousehold: import('@sveltejs/kit').SubmitFunction = ({ formData }) => {
+  const saveHousehold: import('$app/forms').SubmitFunction = ({ formData }) => {
     const before = data.householdSize;
     const n = String(formData.get('householdSize') ?? '').trim();
     return async ({ result, update }) => {
@@ -97,7 +97,7 @@
         return;
       }
       householdError = null;
-      await update();
+      await update({ navigate: false });
       if (result.type !== 'success') return;
       showToast(`Household size set to ${n}.`, {
         undo: async () => {
@@ -106,7 +106,7 @@
           const res = await fetch('?/updateHouseholdSize', { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
           const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await invalidateAll();
+          await refreshTracked();
         }
       });
     };
@@ -149,7 +149,7 @@
     use:enhance={() => {
       submitting = true;
       return async ({ result, update }) => {
-        await update();
+        await update({ navigate: false });
         submitting = false;
         // update() resets the form (and its file input) only on success; after an error the file is still there to retry.
         if (result.type === 'success') picked = null;

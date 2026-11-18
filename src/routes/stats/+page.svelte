@@ -1,29 +1,30 @@
 <script lang="ts">
-  import Stamp from '$lib/components/Stamp.svelte';
+  import { mirrorUrl } from '#lib/urlState.ts';
+  import Stamp from '#lib/components/Stamp.svelte';
   import Recaps from './Recaps.svelte';
   import WholeNote from './WholeNote.svelte';
-  import { labelTip, truncTip } from '$lib/components/labelTip';
-  import { setting, plainText } from '$lib/settingName';
-  import Usd from '$lib/components/Usd.svelte';
-  import { usd } from '$lib/money';
-  import TextTip from '$lib/components/TextTip.svelte';
-  import { afterNavigate, beforeNavigate, goto, replaceState } from '$app/navigation';
+  import { labelTip, truncTip } from '#lib/components/labelTip.ts';
+  import { setting, plainText } from '#lib/settingName.ts';
+  import Usd from '#lib/components/Usd.svelte';
+  import { usd } from '#lib/money.ts';
+  import TextTip from '#lib/components/TextTip.svelte';
+  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { tick } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
-  import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState, withoutDeepLinks } from '$lib/insightsMemory';
-  import Icon from '$lib/components/Icon.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
-  import { placeTip } from '$lib/components/modeTip';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import { formatGrams } from '$lib/grams';
-  import { plural } from '$lib/linkPreview';
-  import { hour12 } from '$lib/hours';
+  import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState, withoutDeepLinks } from '#lib/insightsMemory.ts';
+  import Icon from '#lib/components/Icon.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
+  import { placeTip } from '#lib/components/modeTip.ts';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import { formatGrams } from '#lib/grams.ts';
+  import { plural } from '#lib/linkPreview.ts';
+  import { hour12 } from '#lib/hours.ts';
   import {
     PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
-  } from '$lib/insightsUrl';
+  } from '#lib/insightsUrl.ts';
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { page } from '$app/state';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
@@ -44,18 +45,18 @@
   import Spend, { jumpLinks as spendLinks } from './Spend.svelte';
   import OnHand, { jumpLinks as onHandLinks } from './OnHand.svelte';
   import RunwayChart from './RunwayChart.svelte';
-  import CapItem from '$lib/components/CapItem.svelte';
+  import CapItem from '#lib/components/CapItem.svelte';
   import type { Snippet } from 'svelte';
   import Recent from './Recent.svelte';
-  import CollapsibleBar from '$lib/components/CollapsibleBar.svelte';
+  import CollapsibleBar from '#lib/components/CollapsibleBar.svelte';
   import JumpNav, { type JumpLink } from './JumpNav.svelte';
-  import type { Delta } from '$lib/server/insights/overview';
+  import type { Delta } from '#lib/server/insights/overview.ts';
   import type { PageData } from './$types';
-  import { toParams, type StatusTab } from '$lib/coffeeViewState';
+  import { toParams, type StatusTab } from '#lib/coffeeViewState.ts';
 
   let { data }: { data: PageData } = $props();
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
-  // to the URL with replaceState: no refetch, no re-render of the other tiles. `local` holds them until the next real
+  // to the URL with a shallow goto: no refetch, no re-render of the other tiles. `local` holds them until the next real
   // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
   const LOCAL_KEYS = ['open', 'low', 'views', 'card', 'chart', 'retired', 'gear', 'spendView', 'spendSeries', 'rcSort', 'rcDir', 'rcTop', 'waitBy', 'recipeBy', 'pourThin', 'recipeVs'] as const;
   let local = $state<Pick<InsightsUrlState, (typeof LOCAL_KEYS)[number]> | null>(null);
@@ -140,7 +141,7 @@
     if (Object.keys(change).every((k) => (LOCAL_KEYS as readonly string[]).includes(k)) && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
       local = Object.fromEntries(LOCAL_KEYS.map((k) => [k, next[k]]));
       const qs = insightsParams(next).toString();
-      replaceState(`${qs ? `?${qs}` : location.pathname}${hash}`, {});
+      mirrorUrl(`${qs ? `?${qs}` : location.pathname}${hash}`);
       remember(qs);
       return Promise.resolve();
     }
@@ -151,7 +152,7 @@
     // A by the new range doesn't offer is dropped, like the compare.
     if (menu && next.by && !data.byMenus[change.range!].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
-    return goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { replaceState: true, noScroll: true, keepFocus: true }).then(keep);
+    return goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { replace: true, reset: false }).then(keep);
   }
 
   // Remembered view state (spec Part 3): a fresh entry to a bare /stats restores the saved query into the URL
@@ -166,18 +167,22 @@
       // localStorage unavailable (private window): the page works, it just isn't remembered.
     }
   }
-  // A tab keeps the scroll you left it at. Tab links keep the scroll (noscroll), so a shorter tab in between clamped it and
+  // A tab keeps the scroll you left it at. Tab links keep the scroll (reset=false), so a shorter tab in between clamped it and
   // coming back landed higher ("scrolled up a little"); every tab switch, link or choose(), routes through here.
   const tabOf = (u: URL | undefined) => u?.searchParams.get('tab') ?? 'overview';
   const scrollOf = new Map<string, number>();
   let pagerNav = false;
-  beforeNavigate(({ from, to }) => {
+  beforeNavigate(({ from, to, shallow, type }) => {
+    if (shallow && type === 'goto') return;
     if (from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url)) scrollOf.set(tabOf(from.url), scrollY);
   });
-  afterNavigate(({ from, to, type }) => {
+  afterNavigate(({ from, to, type, shallow }) => {
+    if (shallow && type === 'goto') return;
     // (a back/forward step: SvelteKit restores the scroll itself)
     // (Previous / Next: the new tab starts at its top)
     const back = type !== 'popstate' && !pagerNav && from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url) ? scrollOf.get(tabOf(to.url)) : undefined;
+    // reset=false keeps focus on the pager link but also the old scroll, so Previous / Next scrolls to the top itself.
+    if (pagerNav) void tick().then(() => scrollTo(0, 0));
     pagerNav = false;
     if (back !== undefined) void tick().then(() => scrollTo(0, back));
     local = null;
@@ -185,7 +190,7 @@
     try {
       if (!qs && !location.search && (!from || from.url.pathname !== location.pathname)) {
         const saved = loadInsightsState(localStorage.getItem(INSIGHTS_STORAGE_KEY), Date.now());
-        if (saved) return void goto(`?${saved}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
+        if (saved) return void goto(`?${saved}${location.hash}`, { replace: true, reset: false });
       }
     } catch {
       // localStorage unavailable (private window): the page works, it just isn't remembered.
@@ -199,7 +204,7 @@
     draft = null;
     try { localStorage.removeItem(INSIGHTS_STORAGE_KEY); } catch { /* nothing remembered to clear */ }
     const qs = insightsParams(resetInsights(explicit)).toString();
-    goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
+    goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replace: true, reset: false });
   }
 
   // Custom range draft: the From/To being edited, not yet applied. Never in the URL
@@ -595,8 +600,7 @@
           href={tabHref(t)}
           aria-current={s.tab === t ? 'page' : undefined}
           data-sveltekit-replacestate
-          data-sveltekit-noscroll
-          data-sveltekit-keepfocus>{TAB_LABEL[t]}</a
+          data-sveltekit-reset="false">{TAB_LABEL[t]}</a
         >
       {/each}
     </div>
@@ -1013,8 +1017,8 @@
   {#if data.recent}<Recent {...data.recent} {wholeKeys} n={s.recent} nc={s.recentc} {choose} />{/if}
 {/if}
 <nav class="tab-pager" aria-label="Previous and next tab">
-  {#if tabIdx > 0}<a class="button button-secondary prev" onclick={() => (pagerNav = true)} href={tabHref(flatTabs[tabIdx - 1])} data-sveltekit-replacestate data-sveltekit-keepfocus><span>Previous</span>← {TAB_LABEL[flatTabs[tabIdx - 1]]}</a>{/if}
-  {#if tabIdx < flatTabs.length - 1}<a class="button button-secondary next" onclick={() => (pagerNav = true)} href={tabHref(flatTabs[tabIdx + 1])} data-sveltekit-replacestate data-sveltekit-keepfocus><span>Next</span>{TAB_LABEL[flatTabs[tabIdx + 1]]} →</a>{/if}
+  {#if tabIdx > 0}<a class="button button-secondary prev" onclick={() => (pagerNav = true)} href={tabHref(flatTabs[tabIdx - 1])} data-sveltekit-replacestate data-sveltekit-reset="false"><span>Previous</span>← {TAB_LABEL[flatTabs[tabIdx - 1]]}</a>{/if}
+  {#if tabIdx < flatTabs.length - 1}<a class="button button-secondary next" onclick={() => (pagerNav = true)} href={tabHref(flatTabs[tabIdx + 1])} data-sveltekit-replacestate data-sveltekit-reset="false"><span>Next</span>{TAB_LABEL[flatTabs[tabIdx + 1]]} →</a>{/if}
 </nav>
 </div>
 

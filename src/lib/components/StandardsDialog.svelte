@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Icon from './Icon.svelte';
-  import { allLeaveBlank, inFormOrder, initialDecisions, resolve, saveBlock, type Decision, type StdRow } from '$lib/standardsDialog';
+  import { allLeaveBlank, inFormOrder, initialDecisions, resolve, saveBlock, type Decision, type StdRow } from '#lib/standardsDialog.ts';
 
   // Confirmation before saving / filling a coffee: lists the fields that would change (Now vs Proposed). #76
   let { rows, onsave, oncancel, roasterLink }: {

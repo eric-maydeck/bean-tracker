@@ -1,13 +1,13 @@
 import { getContext, setContext } from 'svelte';
-import { BAG_BOARDS, BOARDS, LIKE_BOARDS, MON, lowFirst, type Board, type Rank, type Tab } from '$lib/insightsUrl';
-import { DESCRIPTION_MAX, fitList, plural, type Preview } from '$lib/linkPreview';
-import { originWithFlag } from '$lib/countryFlags';
-import { formatGrams } from '$lib/grams';
-import { clock12 } from '$lib/hours';
-import { usd, wholeUsd } from '$lib/money';
-import { likeGap } from '$lib/components/deltaColor';
-import type { BoardRow } from '$lib/server/insights/leaderboards';
-import type { Fmt, Holder, RecordPick, RecordsTab, Section } from '$lib/server/insights/records';
+import { BAG_BOARDS, BOARDS, LIKE_BOARDS, MON, lowFirst, type Board, type Rank, type Tab } from '#lib/insightsUrl.ts';
+import { DESCRIPTION_MAX, fitList, plural, type Preview } from '#lib/linkPreview.ts';
+import { originWithFlag } from '#lib/countryFlags.ts';
+import { formatGrams } from '#lib/grams.ts';
+import { clock12 } from '#lib/hours.ts';
+import { usd, wholeUsd } from '#lib/money.ts';
+import { likeGap } from '#lib/components/deltaColor.ts';
+import type { BoardRow } from '#lib/server/insights/leaderboards.ts';
+import type { Fmt, Holder, RecordPick, RecordsTab, Section } from '#lib/server/insights/records.ts';
 
 // +page.svelte provides how a heading links to itself: an href carrying chart=<id> (link previews name the chart)
 // and a click that puts the same URL in the address bar without a reload. Same shape as coffeeNote.ts.

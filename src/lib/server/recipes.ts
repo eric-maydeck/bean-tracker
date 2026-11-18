@@ -1,6 +1,6 @@
 // Recipe storage, brew matching and structure discovery (plan 2026-10-27-pour-reading-recipes).
 import type { DatabaseSync } from 'node:sqlite';
-import { describeReading, timelineOf, type PourReading, type Timeline } from '$lib/pours';
+import { describeReading, timelineOf, type PourReading, type Timeline } from '#lib/pours.ts';
 import {
   draftFromReadings,
   describeRecipe,
@@ -11,8 +11,8 @@ import {
   triggerWindows,
   type Recipe,
   type RecipeDef
-} from '$lib/recipes';
-import { DEFAULT_NOTE_WORDS, parseNoteWords, type NoteWord } from '$lib/agitation';
+} from '#lib/recipes.ts';
+import { DEFAULT_NOTE_WORDS, parseNoteWords, type NoteWord } from '#lib/agitation.ts';
 import { parseMethod } from './insights/facts';
 import { bcLocalTime } from './insights/time';
 

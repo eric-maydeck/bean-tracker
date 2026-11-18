@@ -4,18 +4,18 @@ import { isActionFailure } from '@sveltejs/kit';
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
 process.env.DB_PATH = ':memory:';
 
-import { getDb, getHouseholdSize, setHouseholdSize } from '$lib/server/db';
+import { getDb, getHouseholdSize, setHouseholdSize } from '#lib/server/db.ts';
 import ExcelJS from 'exceljs';
-import { fixtureZip } from '$lib/server/fixtures/beanconqueror/fixture';
-import { MAX_UPLOAD_BYTES } from '$lib/server/beanConquerorJson';
-import { linkMarks } from '$lib/server/brewNow/outcome';
-import type { ImportChanges } from '$lib/server/beanconqueror';
-import { createCoffee } from '$lib/server/coffees';
-import { brewingZone, localDate } from '$lib/localDate';
-import { localToday } from '$lib/server/localToday';
+import { fixtureZip } from '#lib/server/fixtures/beanconqueror/fixture.ts';
+import { MAX_UPLOAD_BYTES } from '#lib/server/beanConquerorJson.ts';
+import { linkMarks } from '#lib/server/brewNow/outcome.ts';
+import type { ImportChanges } from '#lib/server/beanconqueror.ts';
+import { createCoffee } from '#lib/server/coffees.ts';
+import { brewingZone, localDate } from '#lib/localDate.ts';
+import { localToday } from '#lib/server/localToday.ts';
 import { actions, load } from './+page.server';
 
-vi.mock('$lib/server/brewNow/outcome', () => ({ linkMarks: vi.fn(() => 0) }));
+vi.mock('#lib/server/brewNow/outcome.ts', () => ({ linkMarks: vi.fn(() => 0) }));
 
 const event = (isAdmin: boolean) =>
   ({ locals: { isAdmin }, url: new URL('https://beans.example/account'), request: new Request('http://localhost/account', { method: 'POST', body: new FormData() }) }) as never;

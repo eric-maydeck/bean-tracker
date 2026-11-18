@@ -1,8 +1,8 @@
-import type { Agg, Measure, Ratings } from '$lib/insightsUrl';
+import type { Agg, Measure, Ratings } from '#lib/insightsUrl.ts';
 import type { BrewFact } from './facts';
 import { addDays, inPeriod, trackedBounds, weekday, type Period } from './time';
 import { countsForRating } from './ratings';
-import { pooled, type Sample } from '$lib/sample';
+import { pooled, type Sample } from '#lib/sample.ts';
 import { tileDelta, type Delta } from './overview';
 
 export type HabitTiles = {

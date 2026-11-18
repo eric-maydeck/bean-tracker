@@ -1,9 +1,9 @@
-import { MON } from '$lib/insightsUrl';
-import { seeMoreHref } from '$lib/recapsUrl';
-import { country } from '$lib/server/insights/leaderboards';
-import { recipeBand } from '$lib/server/insights/pours';
-import { countsForRating } from '$lib/server/insights/ratings';
-import { pooled } from '$lib/sample';
+import { MON } from '#lib/insightsUrl.ts';
+import { seeMoreHref } from '#lib/recapsUrl.ts';
+import { country } from '#lib/server/insights/leaderboards.ts';
+import { recipeBand } from '#lib/server/insights/pours.ts';
+import { countsForRating } from '#lib/server/insights/ratings.ts';
+import { pooled } from '#lib/sample.ts';
 import { andList, avg, boardRows, evening, grams, monthMeans, pct, ratioMode } from './pool';
 import type { FactResult, Trait } from './types';
 import type { YearCtx } from './year';

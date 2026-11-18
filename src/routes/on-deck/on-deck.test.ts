@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
-import { createDb } from '$lib/server/db';
-import { createCoffee, getBacklogCoffees, getOpenCoffees, openCoffee, type NewCoffeeInput } from '$lib/server/coffees';
+import { createDb } from '#lib/server/db.ts';
+import { createCoffee, getBacklogCoffees, getOpenCoffees, openCoffee, type NewCoffeeInput } from '#lib/server/coffees.ts';
 import { buildOnDeckData } from './onDeckData';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {

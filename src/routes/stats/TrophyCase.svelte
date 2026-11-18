@@ -1,16 +1,16 @@
 <script lang="ts">
-  import { withUnit } from '$lib/unitGap';
-  import Icon from '$lib/components/Icon.svelte';
-  import SampleNote from '$lib/components/SampleNote.svelte';
-  import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField } from '$lib/gear';
-  import { formatDate } from '$lib/formatDate';
-  import Stamp from '$lib/components/Stamp.svelte';
-  import { formatGrams } from '$lib/grams';
-  import { backdrop } from '$lib/imageBackdrop';
-  import { hostOf } from '$lib/imageSuggest';
-  import { usd } from '$lib/money';
-  import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
-  import type { Trophy } from '$lib/server/insights/trophies';
+  import { withUnit } from '#lib/unitGap.ts';
+  import Icon from '#lib/components/Icon.svelte';
+  import SampleNote from '#lib/components/SampleNote.svelte';
+  import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField } from '#lib/gear.ts';
+  import { formatDate } from '#lib/formatDate.ts';
+  import Stamp from '#lib/components/Stamp.svelte';
+  import { formatGrams } from '#lib/grams.ts';
+  import { backdrop } from '#lib/imageBackdrop.ts';
+  import { hostOf } from '#lib/imageSuggest.ts';
+  import { usd } from '#lib/money.ts';
+  import type { InsightsUrlState, InsightsView } from '#lib/insightsUrl.ts';
+  import type { Trophy } from '#lib/server/insights/trophies.ts';
   import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import GearForm from './GearForm.svelte';

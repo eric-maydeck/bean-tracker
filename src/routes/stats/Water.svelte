@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { WaterTab } from '$lib/server/insights/lab';
+  import type { WaterTab } from '#lib/server/insights/lab.ts';
   import type { JumpLink } from './JumpNav.svelte';
   export function jumpLinks(t: WaterTab): JumpLink[] {
     return [
@@ -16,19 +16,19 @@
 
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
-  import { bottomInView } from '$lib/scrollToBottom';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
-  import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
-  import { deltaInk, signed } from '$lib/components/deltaColor';
+  import { bottomInView } from '#lib/scrollToBottom.ts';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import TipBody, { type Tip } from '#lib/components/TipBody.svelte';
+  import type { InsightsUrlState, InsightsView } from '#lib/insightsUrl.ts';
+  import { deltaInk, signed } from '#lib/components/deltaColor.ts';
   import DeltaBars, { bandRows, SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import MineralMap from './MineralMap.svelte';
-  import SampleNote from '$lib/components/SampleNote.svelte';
-  import { BAG_MIN_BREWS, single } from '$lib/sample';
+  import SampleNote from '#lib/components/SampleNote.svelte';
+  import { BAG_MIN_BREWS, single } from '#lib/sample.ts';
   import ChartToggle from './ChartToggle.svelte';
   import UsageChart, { ERA_VIEW_OPTIONS } from './UsageChart.svelte';
   import { inkOf, nameColors } from './multiLine';

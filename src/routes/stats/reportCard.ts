@@ -1,5 +1,5 @@
-import type { RcCol } from '$lib/insightsUrl';
-import type { Sample } from '$lib/sample';
+import type { RcCol } from '#lib/insightsUrl.ts';
+import type { Sample } from '#lib/sample.ts';
 
 export interface RcRow {
   roaster: string; bags: number; spent: number; ppg: number | null; rating: number | null; ratingSample?: Sample;

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { nameColor, nameRuns } from '$lib/nameColor';
+  import { nameColor, nameRuns } from '#lib/nameColor.ts';
   import { signRuns } from './deltaColor';
   // A coffee name in its keyword color (nameColor.ts), over any color the spot would give it (an inline style wins
   // over link, hover, status and board colors). `name`: a coffee name. `text`: any text (a headline, a

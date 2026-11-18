@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { SpendTab } from '$lib/server/insights/spend';
+  import type { SpendTab } from '#lib/server/insights/spend.ts';
   import type { JumpLink } from './JumpNav.svelte';
   // Each panel task adds its section here.
   export function jumpLinks(t: SpendTab): JumpLink[] {
@@ -10,21 +10,21 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { useEmptyLine } from './coffeeNote';
-  import type { InsightsUrlState, RcCol, SpendSeries, Top } from '$lib/insightsUrl';
-  import Chart from '$lib/components/Chart.svelte';
+  import type { InsightsUrlState, RcCol, SpendSeries, Top } from '#lib/insightsUrl.ts';
+  import Chart from '#lib/components/Chart.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
-  import { SAMPLE_HELP } from '$lib/sample';
-  import { usd, wholeUsd } from '$lib/money';
+  import { SAMPLE_HELP } from '#lib/sample.ts';
+  import { usd, wholeUsd } from '#lib/money.ts';
   import LabHead from './LabHead.svelte';
   import ValueMap from './ValueMap.svelte';
   import ReportCard from './ReportCard.svelte';
   import PlanPanel from './PlanPanel.svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
   import StackedBars from './StackedBars.svelte';
   import { fitPairs } from './fitPairs';
-  import { seriesToken } from '$lib/components/chartColor';
-  import type { Tip, Mark } from '$lib/components/TipBody.svelte';
+  import { seriesToken } from '#lib/components/chartColor.ts';
+  import type { Tip, Mark } from '#lib/components/TipBody.svelte';
 
   let { t, choose, tiles, spendView, spendSeries, rcSort, rcDir, rcTop, compareLabel, compareDates, link, placeTip }: {
     t: SpendTab; choose: (c: InsightsUrlState) => void; tiles: Snippet; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top;

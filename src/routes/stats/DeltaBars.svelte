@@ -1,8 +1,8 @@
 <script lang="ts" module>
-  import type { BandStat } from '$lib/server/insights/lab';
-  import { SAMPLE_HELP, sampleField } from '$lib/sample';
-  import type { Tip } from '$lib/components/TipBody.svelte';
-  import { labDelta } from '$lib/components/deltaColor';
+  import type { BandStat } from '#lib/server/insights/lab.ts';
+  import { SAMPLE_HELP, sampleField } from '#lib/sample.ts';
+  import type { Tip } from '#lib/components/TipBody.svelte';
+  import { labDelta } from '#lib/components/deltaColor.ts';
   export const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
   // Help popovers are one idea per line (ui-rules 36, T1); a section's help builds on these.
   export const SAME_BAG_HELP = [
@@ -36,13 +36,13 @@
 </script>
 
 <script lang="ts">
-  import { deltaColor, deltaInk } from '$lib/components/deltaColor';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import { takeFocus } from '$lib/components/Heatmap.svelte';
-  import TipBody, { tipText } from '$lib/components/TipBody.svelte';
-  import type { Strength } from '$lib/server/insights/stats';
+  import { deltaColor, deltaInk } from '#lib/components/deltaColor.ts';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import { takeFocus } from '#lib/components/Heatmap.svelte';
+  import TipBody, { tipText } from '#lib/components/TipBody.svelte';
+  import type { Strength } from '#lib/server/insights/stats.ts';
   import { STRENGTH } from './Insights.svelte';
-  import { symAxis } from '$lib/arrowAxis';
+  import { symAxis } from '#lib/arrowAxis.ts';
 
   type Row = { label: string; value: number | null; text: string; tip: Tip; small: boolean; bold?: boolean; strength?: Strength | null };
   let { rows, ariaLabel, colors = 'polarity' }: { rows: Row[]; ariaLabel: string; colors?: 'polarity' | 'direction' } = $props();

@@ -1,7 +1,6 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { uploadGate } from '$lib/server/uploadGate';
+import { uploadGate } from '#lib/server/uploadGate.ts';
 
 // Bean Conqueror checks the upload credentials here before sending anything.
 export const GET: RequestHandler = async ({ request, getClientAddress }) =>
-  (await uploadGate(request, getClientAddress)) ?? json({ id: 'bean-tracker', name: 'Bean Tracker' });
+  (await uploadGate(request, getClientAddress)) ?? Response.json({ id: 'bean-tracker', name: 'Bean Tracker' });

@@ -4,13 +4,13 @@ import { readFileSync } from 'node:fs';
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
 process.env.DB_PATH = ':memory:';
 
-import { getDb } from '$lib/server/db';
-import { compactFlow } from '$lib/server/bcFlow';
-import { saveShot } from '$lib/server/visualizerUpload';
-import { readStale } from '$lib/server/pourReadings';
-import { deleteRecipe, listRecipes, saveRecipe } from '$lib/server/recipes';
-import { draftFromReadings } from '$lib/recipes';
-import type { PourReading } from '$lib/pours';
+import { getDb } from '#lib/server/db.ts';
+import { compactFlow } from '#lib/server/bcFlow.ts';
+import { saveShot } from '#lib/server/visualizerUpload.ts';
+import { readStale } from '#lib/server/pourReadings.ts';
+import { deleteRecipe, listRecipes, saveRecipe } from '#lib/server/recipes.ts';
+import { draftFromReadings } from '#lib/recipes.ts';
+import type { PourReading } from '#lib/pours.ts';
 import { actions, load, _loadRecipes } from './+page.server';
 
 const flow = compactFlow(JSON.parse(readFileSync(new URL('../../lib/server/fixtures/bcflow/bbs.json', import.meta.url), 'utf8')))!;

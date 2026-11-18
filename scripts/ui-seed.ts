@@ -256,7 +256,7 @@ db.prepare(`UPDATE beanconqueror_brews SET grind_speed_rpm = CASE WHEN id % 2 TH
 for (let k = 0; k < 18; k++) {
   const slow = k >= 9, roaster = k % 2 ? 'Cup Co' : 'Dial Co', up = roaster === 'Dial Co' ? 0.5 : -0.5;
   const [roast_level, processing] = slow ? (['Light', 'Natural'] as const) : (['Ultralight', 'Washed'] as const);
-  const first = 100 - 5 * k, name = `Dial Bag ${k + 1}`;
+  const first = k === 13 ? 30 : 100 - 5 * k, name = `Dial Bag ${k + 1}`; // bag 14 is Cup Co's third in the 1m window: first 35 would leave one brew on its edge, gone once a CI run crosses midnight
   const c = coffee({ roaster, coffee_name: name, roast_level, processing, origin: 'Ethiopia', status: 'archive', roast_date: daysAgo(first + 10) });
   bean.run(`bean-dial-${k}`, name, roaster, daysAgo(first + 10), 250, 22, 0, isoDaysAgo(first), now);
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-dial-${k}`);

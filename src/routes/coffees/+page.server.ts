@@ -1,14 +1,14 @@
-import { getSubscriptionOptions } from '$lib/server/subscriptions';
+import { getSubscriptionOptions } from '#lib/server/subscriptions.ts';
 import type { Actions, PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { localTodayDate } from '$lib/server/localToday';
-import { getBacklogCoffees, getOpenCoffees, getArchivedCoffees, getDistinctFieldValues } from '$lib/server/coffees';
-import { getRoasterImages } from '$lib/server/roasterImages';
-import { getRoastLevels } from '$lib/server/roastLevels';
-import { withComputedFields } from '$lib/server/urgency';
-import { requireAdmin } from '$lib/server/auth';
-import { handleCoffeeCreate } from '$lib/server/coffeeFormActions';
-import { queueFillMissing } from '$lib/server/imageFills';
+import { getDb } from '#lib/server/db.ts';
+import { localTodayDate } from '#lib/server/localToday.ts';
+import { getBacklogCoffees, getOpenCoffees, getArchivedCoffees, getDistinctFieldValues } from '#lib/server/coffees.ts';
+import { getRoasterImages } from '#lib/server/roasterImages.ts';
+import { getRoastLevels } from '#lib/server/roastLevels.ts';
+import { withComputedFields } from '#lib/server/urgency.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
+import { handleCoffeeCreate } from '#lib/server/coffeeFormActions.ts';
+import { queueFillMissing } from '#lib/server/imageFills.ts';
 
 export const load: PageServerLoad = ({ locals }) => {
   const db = getDb();

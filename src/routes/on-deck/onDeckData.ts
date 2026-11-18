@@ -1,5 +1,5 @@
-import { withComputedFields, type CoffeeWithComputed } from '$lib/server/urgency';
-import type { CoffeeRow } from '$lib/types';
+import { withComputedFields, type CoffeeWithComputed } from '#lib/server/urgency.ts';
+import type { CoffeeRow } from '#lib/types.ts';
 
 export function byUrgencyDesc(a: CoffeeWithComputed, b: CoffeeWithComputed): number {
   const au = typeof a.urgency_rating === 'number' ? a.urgency_rating : -Infinity;

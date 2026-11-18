@@ -1,4 +1,4 @@
-import { usd } from '$lib/money';
+import { usd } from '#lib/money.ts';
 // Client-safe subscription helpers: the "Subscription page" link, its
 // roaster warning, totals, and the staged Pause/Resume toggle.
 import { hostMatchesRoaster } from './imageSuggest';

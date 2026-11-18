@@ -1,17 +1,17 @@
 import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
+import { getDb } from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
 import {
   MIN_GROUP, RecipeError, recipeBrewTimes, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, getNoteWords, setNoteWords, listDrippers, listRecipes, lockedDrippers, matchedBy, saveRecipe,
   smallGroupCount, undismissStructure
-} from '$lib/server/recipes';
-import { describeRecipe, flowNote, parseRecipeInput, parseRecipeDef, recipeTimeline } from '$lib/recipes';
-import { recipeSteps, tempNotesLine } from '$lib/recipeSteps';
-import { describeReading, type PourReading } from '$lib/pours';
-import { parseNoteWords } from '$lib/agitation';
-import { parseRecipesView } from '$lib/recipesView';
-import { recipeIdBySlug, recipeSlugs } from '$lib/recipeSlug';
+} from '#lib/server/recipes.ts';
+import { describeRecipe, flowNote, parseRecipeInput, parseRecipeDef, recipeTimeline } from '#lib/recipes.ts';
+import { recipeSteps, tempNotesLine } from '#lib/recipeSteps.ts';
+import { describeReading, type PourReading } from '#lib/pours.ts';
+import { parseNoteWords } from '#lib/agitation.ts';
+import { parseRecipesView } from '#lib/recipesView.ts';
+import { recipeIdBySlug, recipeSlugs } from '#lib/recipeSlug.ts';
 
 // The page for /recipes and /recipes/<name-slug> (the latter scrolls to, highlights and previews that recipe).
 export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, slug?: string) {

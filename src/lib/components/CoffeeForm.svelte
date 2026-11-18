@@ -1,23 +1,23 @@
 <script lang="ts">
-  import { usd } from '$lib/money';
-  import { costAfterPlanChange, type CostMemo, type SubscriptionOption } from '$lib/planBagCost';
+  import { usd } from '#lib/money.ts';
+  import { costAfterPlanChange, type CostMemo, type SubscriptionOption } from '#lib/planBagCost.ts';
   import { onMount, tick } from 'svelte';
   import ImageSuggest from './ImageSuggest.svelte';
   import BeanBaseSearch, { CREDIT_URL } from './BeanBaseSearch.svelte';
-  import type { BeanCard } from '$lib/server/beanBase';
+  import type { BeanCard } from '#lib/server/beanBase.ts';
   import { enhance } from '$app/forms';
-  import type { CoffeeRow } from '$lib/types';
-  import { COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '$lib/types';
-  import type { RoastLevelRow } from '$lib/types';
-  import { clonePrefill, mergeStagedCoffee, stagedRoasterDefault, stagedRoasterWebsite } from '$lib/pendingChanges';
-  import { pickCandidate, type Candidate, type SuggestResponse } from '$lib/imageSuggest';
-  import { roasterDefaultFor } from '$lib/coffeeImage';
-  import { backdrop } from '$lib/imageBackdrop';
-  import { formatDate } from '$lib/formatDate';
-  import { afterFailedFill, suggestRest, canReplaceRest, fieldsChanged, type RestHistoryRow, type RestSuggestion } from '$lib/coffeeFormFill';
+  import type { CoffeeRow } from '#lib/types.ts';
+  import { COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '#lib/types.ts';
+  import type { RoastLevelRow } from '#lib/types.ts';
+  import { clonePrefill, mergeStagedCoffee, stagedRoasterDefault, stagedRoasterWebsite } from '#lib/pendingChanges.ts';
+  import { pickCandidate, type Candidate, type SuggestResponse } from '#lib/imageSuggest.ts';
+  import { roasterDefaultFor } from '#lib/coffeeImage.ts';
+  import { backdrop } from '#lib/imageBackdrop.ts';
+  import { formatDate } from '#lib/formatDate.ts';
+  import { afterFailedFill, suggestRest, canReplaceRest, fieldsChanged, type RestHistoryRow, type RestSuggestion } from '#lib/coffeeFormFill.ts';
   import StandardsDialog from './StandardsDialog.svelte';
-  import { CHECKED_FIELDS, needsDialog, resolve, type Decision, type StdRow } from '$lib/standardsDialog';
-  import { toParams } from '$lib/coffeeViewState';
+  import { CHECKED_FIELDS, needsDialog, resolve, type Decision, type StdRow } from '#lib/standardsDialog.ts';
+  import { toParams } from '#lib/coffeeViewState.ts';
 
   let {
     coffee = null,
@@ -486,7 +486,7 @@
       return;
     }
     return async ({ result, update }) => {
-      await update();
+      await update({ navigate: false });
       if (result.type === 'success') {
         // The form may stay open and reset: whatever it holds next is unchecked again.
         lastChecked = cloned ? captureFields() : {};

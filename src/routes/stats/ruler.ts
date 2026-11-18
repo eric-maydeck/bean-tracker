@@ -1,4 +1,4 @@
-import { MON } from '$lib/insightsUrl';
+import { MON } from '#lib/insightsUrl.ts';
 
 // The Milestones timeline ruler: every calendar month from the newest to the oldest with
 // milestones, newest first like the feed, each at the center of its equal band (p: 0..1).

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Viz } from '$lib/server/recaps/types';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import type { Viz } from '#lib/server/recaps/types.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
 
   // The six Viz kinds as the mockup's inline SVG/HTML. Mark tips are SVG <title>s (server-built strings;
   // the site's FloatTip needs a pointer-anchored client component, which a static recap mark doesn't warrant).

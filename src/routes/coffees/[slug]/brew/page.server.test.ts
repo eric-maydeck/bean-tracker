@@ -3,9 +3,9 @@ import { isHttpError } from '@sveltejs/kit';
 
 process.env.DB_PATH = ':memory:';
 
-import { getDb } from '$lib/server/db';
-import { createCoffee } from '$lib/server/coffees';
-import { setRoasterWebsite } from '$lib/server/roasterWebsites';
+import { getDb } from '#lib/server/db.ts';
+import { createCoffee } from '#lib/server/coffees.ts';
+import { setRoasterWebsite } from '#lib/server/roasterWebsites.ts';
 import { actions, load } from './+page.server';
 
 const db = getDb();

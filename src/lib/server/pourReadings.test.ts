@@ -8,7 +8,7 @@ import { compactFlow } from './bcFlow';
 import { saveShot } from './visualizerUpload';
 import { importBeanConquerorData } from './beanconqueror';
 import * as pr from './pourReadings';
-import { DETECTOR_VERSION } from '$lib/pours';
+import { DETECTOR_VERSION } from '#lib/pours.ts';
 
 const BBS = '/fixtures/bcflow/bbs.json';
 const flow = compactFlow(JSON.parse(readFileSync(new URL(`.${BBS}`, import.meta.url), 'utf8')))!;

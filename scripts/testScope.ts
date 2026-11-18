@@ -37,7 +37,7 @@ function importers(sources: Record<string, string>) {
   for (const [file, text] of Object.entries(sources)) {
     for (const m of text.matchAll(IMPORT)) {
       const spec = m[1] ?? m[2];
-      const base = spec.startsWith('$lib/') ? 'src/lib/' + spec.slice(5)
+      const base = spec.startsWith('#lib/') ? 'src/lib/' + spec.slice(5)
         : spec.startsWith('.') ? normalize(join(dirname(file), spec)) : null;
       const target = base === null ? undefined : EXTS.map((e) => base + e).find((p) => p in sources);
       if (target) out.set(target, [...(out.get(target) ?? []), file]);

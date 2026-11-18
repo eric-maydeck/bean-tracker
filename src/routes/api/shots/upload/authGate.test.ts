@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
-import { createDb } from '$lib/server/db';
-import { hashPassword } from '$lib/server/auth';
-import { _resetForTests } from '$lib/server/loginRateLimit';
+import { createDb } from '#lib/server/db.ts';
+import { hashPassword } from '#lib/server/auth.ts';
+import { _resetForTests } from '#lib/server/loginRateLimit.ts';
 
 const h = vi.hoisted(() => ({ db: null as unknown }));
-vi.mock('$lib/server/db', async (orig) => ({ ...(await orig<object>()), getDb: () => h.db }));
+vi.mock('#lib/server/db.ts', async (orig) => ({ ...(await orig<object>()), getDb: () => h.db }));
 const { POST } = await import('./+server');
 
 const basic = (pw: string) => 'Basic ' + Buffer.from(`bean-tracker:${pw}`).toString('base64');

@@ -1,15 +1,15 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { afterNavigate } from '$app/navigation';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { waterPreview } from '$lib/linkPreview';
-  import { currentParams } from '$lib/pageUrlState';
-  import { writeUrlParams } from '$lib/urlState';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { waterPreview } from '#lib/linkPreview.ts';
+  import { currentParams } from '#lib/pageUrlState.ts';
+  import { writeUrlParams } from '#lib/urlState.ts';
   import {
     RECIPES, idealMls, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, MODES, MODE_LABEL, KETTLES, kettleFor, dropsFromPpm, ppmFromMgl,
     minerals, lotusParams, parseLotus, loadWater, serializeWater, WATER_STORAGE_KEY, TIPS, TIP_LABEL, dropAnchor, dropsFromAnchor, type Drops, type Mode, type Unit, type Tip
-  } from '$lib/lotus';
+  } from '#lib/lotus.ts';
 
   const SLIDER_MAX = 1200;
   const TICKS = Array.from({ length: (SLIDER_MAX - MIN_ML) / 50 + 1 }, (_, i) => MIN_ML + i * 50);
@@ -182,7 +182,8 @@
     arrived;
     sync();
   });
-  afterNavigate(() => {
+  afterNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
     applyUrl();
     arrived++;
   });

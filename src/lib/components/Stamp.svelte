@@ -7,7 +7,7 @@
   // A clock time in the reader's display zone (src/lib/displayZone.ts). On a "browser time" first visit the
   // server renders UTC; after mount it re-renders in the browser's zone, so hydration never mismatches.
   import { page } from '$app/state';
-  import { asDateFormat, stampText } from '$lib/localDate';
+  import { asDateFormat, stampText } from '#lib/localDate.ts';
 
   let { iso, empty = 'never', minute = false }: { iso: string | null; empty?: string; minute?: boolean } = $props();
   $effect(() => { mounted = true; });

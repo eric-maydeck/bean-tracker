@@ -1,22 +1,22 @@
 <script lang="ts">
   import LikeLine from './LikeLine.svelte';
   import { useEmptyLine } from './coffeeNote';
-  import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
-  import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
+  import type { InsightsUrlState, InsightsView } from '#lib/insightsUrl.ts';
+  import type { LabOptions, Spot, SweetSpotsTab } from '#lib/server/insights/lab.ts';
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
-  import { inkOf, spotAxis } from '$lib/arrowAxis';
+  import { inkOf, spotAxis } from '#lib/arrowAxis.ts';
   import { noMatch, plural, sdBlur, sdFocus, SD_TIP, STRENGTH_LINE } from './DeltaBars.svelte';
-  import SampleNote from '$lib/components/SampleNote.svelte';
-  import { sampleField } from '$lib/sample';
+  import SampleNote from '#lib/components/SampleNote.svelte';
+  import { sampleField } from '#lib/sample.ts';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import TileCaption from './TileCaption.svelte';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import { labDelta } from '$lib/components/deltaColor';
-  import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import { labDelta } from '#lib/components/deltaColor.ts';
+  import TipBody, { tipText, type Tip } from '#lib/components/TipBody.svelte';
+  import TextTip from '#lib/components/TextTip.svelte';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
 
   let { t, lab, s, placeTip, choose, part }: {
     part?: 'bar'; // 'bar': only the Bag / Grinder controls (rendered inside the sticky bar), else the tab

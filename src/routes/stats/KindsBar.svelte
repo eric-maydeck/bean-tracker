@@ -1,13 +1,13 @@
 <script lang="ts" module>
-  import type { IconName } from '$lib/components/Icon.svelte';
-  import type { Kind } from '$lib/insightsUrl';
+  import type { IconName } from '#lib/components/Icon.svelte';
+  import type { Kind } from '#lib/insightsUrl.ts';
   export const LABEL: Record<Kind, string> = { counts: 'Counts', firsts: 'Firsts', bests: 'Bests', streaks: 'Streaks', gear: 'Gear', anniversaries: 'Anniversaries' };
   export const ICON: Record<Kind, IconName> = { counts: 'hash', firsts: 'sparkle', bests: 'trophy', streaks: 'fire', gear: 'gear', anniversaries: 'cake' };
 </script>
 
 <script lang="ts">
-  import Icon from '$lib/components/Icon.svelte';
-  import { KINDS, type InsightsUrlState } from '$lib/insightsUrl';
+  import Icon from '#lib/components/Icon.svelte';
+  import { KINDS, type InsightsUrlState } from '#lib/insightsUrl.ts';
 
   // Milestones' Kinds chips, rendered inside the sticky bar (+page.svelte).
   let { kinds, choose }: { kinds: Kind[] | undefined; choose: (c: InsightsUrlState) => void } = $props();

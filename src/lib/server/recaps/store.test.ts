@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { setBrewingZone } from '$lib/localDate';
-import { createDb } from '$lib/server/db';
+import { setBrewingZone } from '#lib/localDate.ts';
+import { createDb } from '#lib/server/db.ts';
 import { brewYears, ensureRecapAlerts, freezeIds, frozenIds, markRecapSeen, recapReadyYear, recapSeen } from './store';
-import { dismissAlert, getActiveAlerts, markAlertRead } from '$lib/server/alerts';
+import { dismissAlert, getActiveAlerts, markAlertRead } from '#lib/server/alerts.ts';
 
 describe('store', () => {
   it('freezeIds keeps the first write', () => {

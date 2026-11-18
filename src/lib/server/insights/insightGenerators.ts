@@ -1,18 +1,18 @@
-import { usd } from '$lib/money';
-import { MON, type BrewFilters, type Ratings, type Theme } from '$lib/insightsUrl';
-import { likeGap as gapText } from '$lib/components/deltaColor'; // like gaps read the same as on Leaderboards ("−0.1")
-import { formatGrams } from '$lib/grams';
-import type { WhatIf } from '$lib/insightsWhatIf';
+import { usd } from '#lib/money.ts';
+import { MON, type BrewFilters, type Ratings, type Theme } from '#lib/insightsUrl.ts';
+import { likeGap as gapText } from '#lib/components/deltaColor.ts'; // like gaps read the same as on Leaderboards ("−0.1")
+import { formatGrams } from '#lib/grams.ts';
+import type { WhatIf } from '#lib/insightsWhatIf.ts';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { bagSizes, countsForRating, fullBags } from './ratings';
 import { SETTLE_WINDOW, settleWithin } from './dialed';
 import { bagWeight, brewZ, demeaned, effN, mean, wmean, weightedMedian, MIN_BAGS, MIN_BREWS, partialR, pearson, rBand, restZ, sd, spearman, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, twinKeys, type Like } from './likeGroup';
-import { POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
+import { POOLED_MIN_BAGS, pooled, single } from '#lib/sample.ts';
 import { exceptOwn, matchesBrew, pairedGap, tagTwins } from './lab';
 import { agitationBand, type PourFact, type PoursTab } from './pours';
-import { AGITATION_LABEL } from '$lib/agitation';
+import { AGITATION_LABEL } from '#lib/agitation.ts';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
 import { addDays, daysBetween, inPeriod, trackedBounds, trackedDays, weekday } from './time';

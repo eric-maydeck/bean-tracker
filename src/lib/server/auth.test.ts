@@ -125,7 +125,7 @@ describe('safeRedirectTarget', () => {
 
   it('falls back to /coffees for anything off-site, empty or malformed', async () => {
     for (const bad of [
-      null, '', 'coffees', '//evil.com', '///evil.com', 'https://evil.com', '/\\evil.com',
+      null, '', 'coffees', '//evil.com', '///evil.com', '/.//evil.com', '/./\\evil.com', 'https://evil.com', '/\\evil.com',
       '\\evil.com', 'javascript:alert(1)', ' /stats', '/%0a/evil.com'.replace('%0a', '\n')
     ]) {
       expect(safeRedirectTarget(bad), String(bad)).toBe('/coffees');

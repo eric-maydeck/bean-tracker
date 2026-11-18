@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { labelTip } from '$lib/components/labelTip';
+  import { labelTip } from '#lib/components/labelTip.ts';
   import { tick } from 'svelte';
   import FilterEditor from './FilterEditor.svelte';
-  import { chipLabel, chipTitle, type ColumnKey, type Filter, type PlanOption } from '$lib/coffeeFilters';
-  import type { CoffeeWithComputed } from '$lib/server/urgency';
+  import { chipLabel, chipTitle, type ColumnKey, type Filter, type PlanOption } from '#lib/coffeeFilters.ts';
+  import type { CoffeeWithComputed } from '#lib/server/urgency.ts';
 
   let {
     filters = $bindable(),

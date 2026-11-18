@@ -3,10 +3,10 @@ import { describe, it, expect, vi } from 'vitest';
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
 process.env.DB_PATH = ':memory:';
 
-import { getDb, setHouseholdSize, setDefaultCaffeine } from '$lib/server/db';
-import { createCoffee } from '$lib/server/coffees';
-import { localToday, periodBounds, previousPeriod, addDays, daysBetween, trackedDays, comparePeriod, type Period } from '$lib/server/insights/time';
-import { setBrewingZone } from '$lib/localDate';
+import { getDb, setHouseholdSize, setDefaultCaffeine } from '#lib/server/db.ts';
+import { createCoffee } from '#lib/server/coffees.ts';
+import { localToday, periodBounds, previousPeriod, addDays, daysBetween, trackedDays, comparePeriod, type Period } from '#lib/server/insights/time.ts';
+import { setBrewingZone } from '#lib/localDate.ts';
 import { load } from './+page.server';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

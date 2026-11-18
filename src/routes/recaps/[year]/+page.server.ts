@@ -1,9 +1,9 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
-import { localToday } from '$lib/server/localToday';
-import { parseRecapUrl, parseYear } from '$lib/recapsUrl';
-import { recap } from '$lib/server/recaps/recap';
+import { getDb } from '#lib/server/db.ts';
+import { localToday } from '#lib/server/localToday.ts';
+import { parseRecapUrl, parseYear } from '#lib/recapsUrl.ts';
+import { recap } from '#lib/server/recaps/recap.ts';
 
 // Public for opened years (a year opens Jan 1 after it); the current year only as an admin's ?preview=1.
 export const load: PageServerLoad = ({ params, url, locals }) => {

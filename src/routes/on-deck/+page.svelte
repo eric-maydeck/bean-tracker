@@ -1,23 +1,23 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import { showToast } from '$lib/toast.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { bqImportHref, cloneHref, editHref } from '$lib/bqImportUrl';
-  import { labelTip } from '$lib/components/labelTip';
-  import { coffeeToast, commitChanges, restoreStates } from '$lib/coffeeToast';
-  import type { CoffeeRow } from '$lib/types';
-  import { invalidateAll, afterNavigate } from '$app/navigation';
+  import { formatDate } from '#lib/formatDate.ts';
+  import { showToast } from '#lib/toast.svelte.ts';
+  import Icon from '#lib/components/Icon.svelte';
+  import { bqImportHref, cloneHref, editHref } from '#lib/bqImportUrl.ts';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { coffeeToast, commitChanges, restoreStates } from '#lib/coffeeToast.ts';
+  import type { CoffeeRow } from '#lib/types.ts';
+  import { afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
-  import { urgencyColorStyle } from '$lib/urgencyColor';
-  import { coffeeImage } from '$lib/coffeeImage';
-  import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import { currentParams, pickOne } from '$lib/pageUrlState';
-  import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
-  import { writeUrlParams } from '$lib/urlState';
-  import { formatBag } from '$lib/grams';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { onDeckPreview } from '$lib/linkPreview';
+  import { urgencyColorStyle } from '#lib/urgencyColor.ts';
+  import { coffeeImage } from '#lib/coffeeImage.ts';
+  import CoffeeName from '#lib/components/CoffeeName.svelte';
+  import { currentParams, pickOne } from '#lib/pageUrlState.ts';
+  import { loadChoice, serializeChoice } from '#lib/rememberedChoice.ts';
+  import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
+  import { formatBag } from '#lib/grams.ts';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { onDeckPreview } from '#lib/linkPreview.ts';
   import { onDeckParams, parseOnDeckView, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
 
   let { data } = $props();
@@ -40,7 +40,8 @@
   let filter = $derived(explicit ?? 'all');
   let current = $derived(data[filter]);
 
-  afterNavigate(() => {
+  afterNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
     const fromUrl = pickOne(currentParams(page.url), 'show', SHOW_VALUES);
     try {
       explicit = fromUrl ?? loadChoice(localStorage.getItem(STORAGE_KEY), SHOW_VALUES, Date.now());
@@ -67,7 +68,7 @@
   });
 
   async function refresh() {
-    await invalidateAll();
+    await refreshTracked();
   }
 
   // A tile's Open: toasts with Undo and the tile moves to Currently open.
@@ -80,8 +81,8 @@
       showToast(e instanceof Error ? e.message : 'Something went wrong.');
       return;
     }
-    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await invalidateAll(); } });
-    await invalidateAll();
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await refreshTracked(); } });
+    await refreshTracked();
   }
 </script>
 

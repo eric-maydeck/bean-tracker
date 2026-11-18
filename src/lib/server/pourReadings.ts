@@ -1,6 +1,6 @@
 // One stored pour reading per Bean Conqueror brew with flow (plan 2026-10-27-pour-reading-recipes).
 import type { DatabaseSync } from 'node:sqlite';
-import { DETECTOR_VERSION, type PourReading } from '$lib/pours';
+import { DETECTOR_VERSION, type PourReading } from '#lib/pours.ts';
 import { expandFlow } from './bcFlow';
 import { readPours } from './pourDetector';
 import { rematchBrews } from './recipes';

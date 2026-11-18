@@ -3,27 +3,27 @@ import type { Actions, PageServerLoad, RequestEvent } from './$types';
 import {
   getDb, getHouseholdSize, lastImportedAt, setHouseholdSize, InvalidHouseholdSizeError, InvalidTimeZoneError, InvalidSettingError,
   getBrewingZone, setBrewingZone, getDisplayZone, setDisplayZone, getDateFormat, setDateFormat, getDefaultCaffeine, setDefaultCaffeine
-} from '$lib/server/db';
-import { requireAdmin } from '$lib/server/auth';
+} from '#lib/server/db.ts';
+import { requireAdmin } from '#lib/server/auth.ts';
 import {
   importBeanConquerorData,
   getUnmatchedBeanConquerorBeans,
   countUnmatchedBeanConquerorBeans,
   dismissBeanConquerorBean
-} from '$lib/server/beanconqueror';
-import { getDistinctFieldValues, getFillHistory } from '$lib/server/coffees';
-import { getRoasterImages } from '$lib/server/roasterImages';
-import { getRoastLevels } from '$lib/server/roastLevels';
-import { getSubscriptionOptions } from '$lib/server/subscriptions';
-import { handleCoffeeCreateAndLink } from '$lib/server/coffeeFormActions';
-import { queueFillMissing } from '$lib/server/imageFills';
-import { linkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '$lib/server/beanConquerorLinks';
-import { editBrewList, getBrewDoses, getBrewRatios } from '$lib/server/brewNow/prefs';
-import { linkMarks } from '$lib/server/brewNow/outcome';
-import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '$lib/server/beanConquerorJson';
-import { queueReadings } from '$lib/server/pourReadings';
-import { discoverGroups, listRecipes } from '$lib/server/recipes';
-import { uploadStatus, UPLOAD_USERNAME } from '$lib/server/visualizerUpload';
+} from '#lib/server/beanconqueror.ts';
+import { getDistinctFieldValues, getFillHistory } from '#lib/server/coffees.ts';
+import { getRoasterImages } from '#lib/server/roasterImages.ts';
+import { getRoastLevels } from '#lib/server/roastLevels.ts';
+import { getSubscriptionOptions } from '#lib/server/subscriptions.ts';
+import { handleCoffeeCreateAndLink } from '#lib/server/coffeeFormActions.ts';
+import { queueFillMissing } from '#lib/server/imageFills.ts';
+import { linkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '#lib/server/beanConquerorLinks.ts';
+import { editBrewList, getBrewDoses, getBrewRatios } from '#lib/server/brewNow/prefs.ts';
+import { linkMarks } from '#lib/server/brewNow/outcome.ts';
+import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '#lib/server/beanConquerorJson.ts';
+import { queueReadings } from '#lib/server/pourReadings.ts';
+import { discoverGroups, listRecipes } from '#lib/server/recipes.ts';
+import { uploadStatus, UPLOAD_USERNAME } from '#lib/server/visualizerUpload.ts';
 
 // Matches the "Showing top N of M" treatment elsewhere: a real export can have a couple hundred
 // unmatched beans, and rendering every one buries the rest of the page.

@@ -1,22 +1,22 @@
 <script lang="ts">
-  import { formatDate } from '$lib/formatDate';
-  import Usd from '$lib/components/Usd.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
-  import { usd, wholeUsd } from '$lib/money';
+  import { formatDate } from '#lib/formatDate.ts';
+  import Usd from '#lib/components/Usd.svelte';
+  import TextTip from '#lib/components/TextTip.svelte';
+  import { usd, wholeUsd } from '#lib/money.ts';
   import { enhance } from '$app/forms';
-  import { browser } from '$app/environment';
+  import { browser } from '$app/env';
   import { page } from '$app/state';
-  import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
-  import { defaultViewForWidth } from '$lib/defaultView';
-  import { currentParams, pickOne } from '$lib/pageUrlState';
-  import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
-  import { writeUrlParams } from '$lib/urlState';
-  import ShareButton from '$lib/components/ShareButton.svelte';
-  import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
+  import { beforeNavigate, afterNavigate } from '$app/navigation';
+  import { defaultViewForWidth } from '#lib/defaultView.ts';
+  import { currentParams, pickOne } from '#lib/pageUrlState.ts';
+  import { loadChoice, serializeChoice } from '#lib/rememberedChoice.ts';
+  import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
+  import ShareButton from '#lib/components/ShareButton.svelte';
+  import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '#lib/pendingChanges.ts';
   import { SvelteMap } from 'svelte/reactivity';
-  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pendingParts, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsText, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '$lib/subscriptionView';
-  import { afterFailedFill } from '$lib/coffeeFormFill';
-  import type { SubscriptionRow } from '$lib/types';
+  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pendingParts, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsText, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '#lib/subscriptionView.ts';
+  import { afterFailedFill } from '#lib/coffeeFormFill.ts';
+  import type { SubscriptionRow } from '#lib/types.ts';
   let { data, form } = $props();
 
   let editMode = $state(false);
@@ -50,7 +50,8 @@
   let commitErrors = $state(new Map<number, string>());
   let saving = $state(false);
 
-  afterNavigate(() => {
+  afterNavigate(({ shallow, type }) => {
+    if (shallow && type === 'goto') return;
     widthView = defaultViewForWidth(window.innerWidth);
     const fromUrl = pickOne(currentParams(page.url), 'view', VIEWS);
     try {
@@ -264,7 +265,7 @@
     }
 
     // Outside the try/catch above on purpose: the commit itself already
-    // succeeded by this point, so a failure in invalidateAll() must not be
+    // succeeded by this point, so a failure in refreshAll() must not be
     // misattributed to the save as a whole via the generic catch-all error
     // message.
     pending = new SvelteMap();
@@ -273,7 +274,7 @@
     editMode = false;
     expandedId = null;
     saving = false;
-    await invalidateAll();
+    await refreshTracked();
   }
 
   function discardChanges() {
@@ -284,7 +285,8 @@
     expandedId = null;
   }
 
-  beforeNavigate(({ cancel }) => {
+  beforeNavigate(({ cancel, shallow, type }) => {
+    if (shallow && type === 'goto') return;
     if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
       cancel();
     }
@@ -304,8 +306,8 @@
   let totals = $derived(subscriptionTotals(data.subscriptions));
   // One money format for the price column and its total (ui-rules 46).
   let priceWhole = $derived(wholeUsd([...data.subscriptions.map((s) => s.price), totals.price]));
-  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { subscriptionsPreview } from '$lib/linkPreview';
+  import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import { subscriptionsPreview } from '#lib/linkPreview.ts';
 </script>
 
 <svelte:head>
@@ -746,7 +748,7 @@
     bind:this={addFormEl}
     use:enhance={() =>
       async ({ result, update }) => {
-        await update();
+        await update({ navigate: false });
         if (result.type === 'success') {
           addUrl = '';
           addRoaster = '';

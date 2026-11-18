@@ -1,6 +1,6 @@
 // Orders a page's images by how likely each is the bag art
 // (docs/image-suggest-criteria.md). Pure; uses only what the page states.
-import { hostOf } from '$lib/imageSuggest';
+import { hostOf } from '#lib/imageSuggest.ts';
 import type { PageDetails, PageImage } from './pageImages';
 import type { Candidate, CandidatePage } from './types';
 

@@ -1,10 +1,10 @@
 <script lang="ts">
   // Grams on the shelf from today to zero, one straight line per pace, each ending on its run-out day.
-  import Chart from '$lib/components/Chart.svelte';
-  import { formatGrams } from '$lib/grams';
-  import { seriesToken } from '$lib/components/chartColor';
-  import type { Tip } from '$lib/components/TipBody.svelte';
-  import type { OnHandTab } from '$lib/server/insights/onHand';
+  import Chart from '#lib/components/Chart.svelte';
+  import { formatGrams } from '#lib/grams.ts';
+  import { seriesToken } from '#lib/components/chartColor.ts';
+  import type { Tip } from '#lib/components/TipBody.svelte';
+  import type { OnHandTab } from '#lib/server/insights/onHand.ts';
 
   let { t, today, paces }: { t: OnHandTab; today: string; paces: { name: string; days: number | null }[] } = $props();
 

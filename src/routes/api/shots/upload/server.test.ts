@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { createDb } from '$lib/server/db';
-import { hashPassword } from '$lib/server/auth';
-import { MAX_SHOT_BYTES } from '$lib/server/visualizerUpload';
-import { _resetForTests, isLockedOut } from '$lib/server/loginRateLimit';
+import { createDb } from '#lib/server/db.ts';
+import { hashPassword } from '#lib/server/auth.ts';
+import { MAX_SHOT_BYTES } from '#lib/server/visualizerUpload.ts';
+import { _resetForTests, isLockedOut } from '#lib/server/loginRateLimit.ts';
 
 const h = vi.hoisted(() => ({ db: null as unknown }));
-vi.mock('$lib/server/db', async (orig) => ({ ...(await orig<object>()), getDb: () => h.db }));
+vi.mock('#lib/server/db.ts', async (orig) => ({ ...(await orig<object>()), getDb: () => h.db }));
 const { POST } = await import('./+server');
 
 const UUID = '0b1c2d3e-4f50-6172-8394-a5b6c7d8e9f0';

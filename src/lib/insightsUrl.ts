@@ -1,7 +1,7 @@
-import { pickOne } from '$lib/pageUrlState';
-import { GEAR_KINDS, type GearKind } from '$lib/gear';
-import { upsertFilter, type Filter } from '$lib/coffeeFilters';
-import { fromParams, toParams } from '$lib/coffeeViewState';
+import { pickOne } from '#lib/pageUrlState.ts';
+import { GEAR_KINDS, type GearKind } from '#lib/gear.ts';
+import { upsertFilter, type Filter } from '#lib/coffeeFilters.ts';
+import { fromParams, toParams } from '#lib/coffeeViewState.ts';
 
 // /stats view state (spec "URL state"). Explicit choices only: a param a
 // visitor never touched stays undefined and out of the URL.

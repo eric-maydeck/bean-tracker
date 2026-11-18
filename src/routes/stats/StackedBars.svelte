@@ -1,10 +1,10 @@
 <script lang="ts">
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
-  import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
-  import type { Multi } from '$lib/server/insights/insightGenerators';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import { rove, takeFocus } from '#lib/components/Heatmap.svelte';
+  import TipBody, { tipText, type Tip } from '#lib/components/TipBody.svelte';
+  import type { Multi } from '#lib/server/insights/insightGenerators.ts';
   import { capList, inkOf, seriesColors } from './multiLine';
-  import { usd } from '$lib/money';
+  import { usd } from '#lib/money.ts';
 
   // Shares that sum to 100% per month (the lab's "usage over time", G6): one 100% stacked bar per month,
   // the first line at the bottom, "Other" muted; each segment is a tap/keyboard target with its own tip.

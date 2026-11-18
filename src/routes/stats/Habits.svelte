@@ -1,5 +1,5 @@
 <script lang="ts" module>
-  import type { Habits } from '$lib/server/insights/habits';
+  import type { Habits } from '#lib/server/insights/habits.ts';
   import type { JumpLink } from './JumpNav.svelte';
   export function jumpLinks(h: Habits): JumpLink[] {
     const empty = h.tiles.brewDays === 0;
@@ -8,17 +8,17 @@
 </script>
 
 <script lang="ts">
-  import { labelTip } from '$lib/components/labelTip';
+  import { labelTip } from '#lib/components/labelTip.ts';
   import { useEmptyLine } from './coffeeNote';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import type { Snippet } from 'svelte';
-  import { sampleField } from '$lib/sample';
-  import Chart from '$lib/components/Chart.svelte';
-  import Heatmap from '$lib/components/Heatmap.svelte';
-  import BrewCalendar from '$lib/components/BrewCalendar.svelte';
-  import { formatGrams } from '$lib/grams';
-  import { hour12 } from '$lib/hours';
-  import { AGG_LABEL, AGGS, MEASURES, WEEKDAYS, type Agg, type InsightsUrlState, type Measure } from '$lib/insightsUrl';
+  import { sampleField } from '#lib/sample.ts';
+  import Chart from '#lib/components/Chart.svelte';
+  import Heatmap from '#lib/components/Heatmap.svelte';
+  import BrewCalendar from '#lib/components/BrewCalendar.svelte';
+  import { formatGrams } from '#lib/grams.ts';
+  import { hour12 } from '#lib/hours.ts';
+  import { AGG_LABEL, AGGS, MEASURES, WEEKDAYS, type Agg, type InsightsUrlState, type Measure } from '#lib/insightsUrl.ts';
 
   let {
     h, measure, agg, comparing, periodLabel, compareLabel, choose, tiles, part

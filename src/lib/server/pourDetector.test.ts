@@ -7,7 +7,7 @@ import {
   structureKey,
   timelineOf,
   type PourReading
-} from '$lib/pours';
+} from '#lib/pours.ts';
 import { compactFlow, expandFlow } from './bcFlow';
 import { readPours } from './pourDetector';
 

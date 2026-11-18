@@ -1,14 +1,14 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { recipeFollow } from '$lib/recipeNav';
+  import { recipeFollow } from '#lib/recipeNav.ts';
   import { enhance } from '$app/forms';
-  import Icon from '$lib/components/Icon.svelte';
-  import PourTimeline from '$lib/components/PourTimeline.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
-  import { labelTip } from '$lib/components/labelTip';
-  import { placeTip } from '$lib/components/modeTip';
-  import { convertAmounts, defaultLength, describeRecipe, LENGTH_CHIP_SECONDS, lengthChip, parseDuration, formatDuration, parseRatioTarget, flowNote, recipeTimeline, type RecipeDef, type Length } from '$lib/recipes';
-  import { stepsText } from '$lib/recipeSteps';
+  import Icon from '#lib/components/Icon.svelte';
+  import PourTimeline from '#lib/components/PourTimeline.svelte';
+  import TipBody from '#lib/components/TipBody.svelte';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { placeTip } from '#lib/components/modeTip.ts';
+  import { convertAmounts, defaultLength, describeRecipe, LENGTH_CHIP_SECONDS, lengthChip, parseDuration, formatDuration, parseRatioTarget, flowNote, recipeTimeline, type RecipeDef, type Length } from '#lib/recipes.ts';
+  import { stepsText } from '#lib/recipeSteps.ts';
 
   let {
     name,
@@ -158,8 +158,8 @@
     return async ({ result, update }) => {
     if (result.type === 'success') ondone();
     const to = recipeFollow(result, focusId);
-    if (to) { await goto(to, { invalidateAll: true, noScroll: true }); return; } // noScroll: a goto resets to the page top; the closed editor already put its card there
-    await update({ reset: false });
+    if (to) { await goto(to, { refreshAll: true, reset: false }); return; } // reset: false: a goto resets to the page top; the closed editor already put its card there
+    await update({ reset: false, navigate: false });
   };
   }}
 >

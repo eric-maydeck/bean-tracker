@@ -1,21 +1,22 @@
 <script lang="ts">
   import { enhance, deserialize } from '$app/forms';
-  import { goto, invalidateAll } from '$app/navigation';
+  import { goto } from '$app/navigation';
+  import { refreshTracked } from '#lib/urlState.ts';
   import { page } from '$app/state';
-  import { originWithFlag } from '$lib/countryFlags';
-  import { formatDate } from '$lib/formatDate';
-  import type { BrewRow } from '$lib/server/brewNow/load';
-  import type { Setting } from '$lib/server/brewNow/suggest';
+  import { originWithFlag } from '#lib/countryFlags.ts';
+  import { formatDate } from '#lib/formatDate.ts';
+  import type { BrewRow } from '#lib/server/brewNow/load.ts';
+  import type { Setting } from '#lib/server/brewNow/suggest.ts';
   import { brewNowParams } from './brewNowUrl';
-  import { CONFIDENCE_LABEL } from '$lib/brewNowConfidence';
+  import { CONFIDENCE_LABEL } from '#lib/brewNowConfidence.ts';
   import GrindTrend from './GrindTrend.svelte';
   import { recipeSteps } from './recipeSteps';
-  import FloatTip from '$lib/components/FloatTip.svelte';
-  import Icon from '$lib/components/Icon.svelte';
-  import { showToast } from '$lib/toast.svelte';
+  import FloatTip from '#lib/components/FloatTip.svelte';
+  import Icon from '#lib/components/Icon.svelte';
+  import { showToast } from '#lib/toast.svelte.ts';
   import { cutTip } from './cutTip';
-  import { recipeHref } from '$lib/recipeSlug';
-  import TipBody from '$lib/components/TipBody.svelte';
+  import { recipeHref } from '#lib/recipeSlug.ts';
+  import TipBody from '#lib/components/TipBody.svelte';
 
   let { data, form } = $props();
   const recipeError = $derived((form as { recipeError?: string } | null)?.recipeError);
@@ -32,7 +33,7 @@
   function go(patch: Patch) {
     const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why,
       dose: data.suggestion.dose, ratio: data.suggestion.ratio, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
-    goto(page.url.pathname + (q ? `?${q}` : ''), { replaceState: true, noScroll: true, keepFocus: true });
+    goto(page.url.pathname + (q ? `?${q}` : ''), { replace: true, reset: false });
   }
   const dripperFirst = (key: string): Patch => (key === 'dripper' ? { filter: null } : {});
   // Up to three chips (names that fit one line); the rest sit behind an "Other" dropdown button, whose label becomes
@@ -71,7 +72,7 @@
     for (const [k, v] of Object.entries(fields)) body.set(k, v);
     const res = deserialize(await (await fetch(`?/${action}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } })).text());
     if (res.type !== 'success') throw new Error("Couldn't undo that.");
-    await invalidateAll();
+    await refreshTracked();
   }
   async function openAndBrew() {
     openError = '';
@@ -79,7 +80,7 @@
     if (res.type !== 'success') { openError = "Couldn't open this coffee"; return; }
     confirmOpen = false;
     showToast(`Coffee "${c.coffeeName}" marked as open.`, { undo: () => post('unopenCoffee') });
-    await invalidateAll();
+    await refreshTracked();
     brewForm?.requestSubmit();
   }
 
@@ -160,7 +161,7 @@
         <p class="rr-meta"><span>Searched {formatDate(rr.searchedAt)}</span></p>
       {/if}
       {#if data.isAdmin}
-        <form method="POST" action="?/findRecipe" use:enhance={() => async ({ update }) => { await update({ reset: false }); }}>
+        <form method="POST" action="?/findRecipe" use:enhance={() => async ({ update }) => { await update({ reset: false, navigate: false }); }}>
           <button type="submit" class="button">{rr ? 'Search again' : 'Find roaster recipe'}</button>
           {#if recipeError}<span role="alert">{recipeError}</span>{/if}
         </form>
@@ -313,7 +314,7 @@
       </FloatTip>
     {/if}
     {#if data.isAdmin}
-      <form class="mark" method="POST" action="?/brewThis" bind:this={brewForm} use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false }); if (result.type === 'success') { const id = (result.data as { markId?: number } | undefined)?.markId; showToast('Marked. Your next BQ brew of this coffee will be compared.', id === undefined ? {} : { undo: () => post('deleteMark', { id: String(id) }) }); } } finally { submitting = false; } }; }}>
+      <form class="mark" method="POST" action="?/brewThis" bind:this={brewForm} use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false, navigate: false }); if (result.type === 'success') { const id = (result.data as { markId?: number } | undefined)?.markId; showToast('Marked. Your next BQ brew of this coffee will be compared.', id === undefined ? {} : { undo: () => post('deleteMark', { id: String(id) }) }); } } finally { submitting = false; } }; }}>
         {#each ['grinder', 'dripper', 'filter'] as const as k (k)}{#if data.gear[k]}<input type="hidden" name={k} value={data.gear[k]} />{/if}{/each}
         {#if data.suggestion.dose !== null}<input type="hidden" name="dose" value={data.suggestion.dose} />{/if}
         {#if data.suggestion.ratio !== null}<input type="hidden" name="ratio" value={data.suggestion.ratio} />{/if}
@@ -332,7 +333,7 @@
             <span class="date">{formatDate(m.markedLocal)}</span>
             {#if m.status === 'pending'}<span class="badge badge-neutral">Waiting for your next BQ brew</span>
               {#if data.isAdmin}
-                <form method="POST" action="?/deleteMark" use:enhance={() => async ({ result, update }) => { await update({ reset: false }); if (result.type === 'success') showToast('Brew mark canceled.'); }}>
+                <form method="POST" action="?/deleteMark" use:enhance={() => async ({ result, update }) => { await update({ reset: false, navigate: false }); if (result.type === 'success') showToast('Brew mark canceled.'); }}>
                   <input type="hidden" name="id" value={m.id} /><button type="submit" class="button button-ghost">Cancel</button>
                 </form>
               {/if}

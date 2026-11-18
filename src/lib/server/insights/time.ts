@@ -1,5 +1,5 @@
-import { STORE_ZONE, brewingZone, localStamp, wallToInstant } from '$lib/localDate';
-import { CUSTOM_RANGE, isCustom, isDate, type By, type ByFits } from '$lib/insightsUrl';
+import { STORE_ZONE, brewingZone, localStamp, wallToInstant } from '#lib/localDate.ts';
+import { CUSTOM_RANGE, isCustom, isDate, type By, type ByFits } from '#lib/insightsUrl.ts';
 
 // Insights count days in the brewing zone (src/lib/localDate.ts). Dates here are
 // local 'YYYY-MM-DD' strings, compared as strings.
@@ -82,7 +82,7 @@ export function trackedBounds(p: Period, dataStart: string | null, today: string
   return start > end ? null : { start, end };
 }
 
-export { weekday } from '$lib/insightsUrl';
+export { weekday } from '#lib/insightsUrl.ts';
 
 // Consumption buckets (spec): auto day up to a month, week up to six months, else month; a
 // choice is offered only when it gives a readable chart (day <= 1 year, week >= 2, month >= 2).

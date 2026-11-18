@@ -1,4 +1,4 @@
-import { pickOne } from '$lib/pageUrlState';
+import { pickOne } from '#lib/pageUrlState.ts';
 
 // /on-deck view state: `show` (All/Caffeinated/Decaf) and `view` (Currently open is the default,
 // so only `next` is ever explicit).
