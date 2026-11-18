@@ -11055,7 +11055,7 @@ export const STATES: State[] = [
       const d = dlg(page);
       await expect(d.getByRole('heading', { name: 'Loffee Labs matches' })).toBeVisible();
       await expect(d.locator('.suggest-pick')).toHaveCount(3);
-      await expect(d.getByText('Loffee Labs roaster: Moonwake Coffee Roasters ·')).toBeVisible();
+      await expect(d.getByText('Roaster: Moonwake Coffee Roasters ·')).toBeVisible();
       // The first card has an image with both badges, Closest before Sold out; a card with no photo gets a same-size placeholder.
       const first = d.locator('.suggest-pick').first();
       await expect(first.locator('.suggest-image img')).toHaveCount(1);
@@ -11099,13 +11099,13 @@ export const STATES: State[] = [
       await input.fill('Bensa Bombe');
       await input.press('Enter');
       await expect(input).toHaveCount(0);
-      await expect(d.getByText('Search: Bensa Bombe ·')).toBeVisible();
+      await expect(d.getByText('Coffee: Bensa Bombe ·')).toBeVisible();
       expect(bodies[1].coffee_name).toBe('Bensa Bombe');
       // The term survives a roaster change.
       await d.getByRole('button', { name: 'change' }).first().click();
       await d.getByLabel('Loffee Labs roaster').fill('Moon Roasters');
       await d.getByRole('button', { name: 'Search', exact: true }).click();
-      await expect(d.getByText('Loffee Labs roaster: Moonwake Coffee Roasters ·')).toBeVisible();
+      await expect(d.getByText('Roaster: Moonwake Coffee Roasters ·')).toBeVisible();
       expect(bodies[2]).toMatchObject({ roaster: 'Moon Roasters', coffee_name: 'Bensa Bombe' });
       await expect(d.getByText('No match for')).toHaveCount(0);
       await expectDialogInViewport(page);

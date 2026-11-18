@@ -79,7 +79,7 @@
     button.focus();
   }
 
-  // Enter here reruns the search, never submits the parent form. A blank term is allowed (all beans).
+  // Enter here reruns the search, never submits the parent form. A blank term is allowed (any coffee).
   const changeKey = (e: KeyboardEvent) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
@@ -108,11 +108,11 @@
     {@const r = result}
     {#if r.status === 'ok'}
       <p class="text-muted fill-note">
-        Loffee Labs roaster: {r.roaster} ·
+        Roaster: {r.roaster} ·
         <button type="button" class="suggest-change" onclick={() => { roasterEditing = true; termEditing = false; roasterInput = r.roaster; }}>change</button>
       </p>
       <p class="text-muted fill-note">
-        Search: {typedTerm || 'all beans'} ·
+        Coffee: {typedTerm || 'any'} ·
         <button type="button" class="suggest-change" onclick={() => { termEditing = true; roasterEditing = false; termInput = typedTerm; }}>change</button>
       </p>
       {#if r.fallback}
