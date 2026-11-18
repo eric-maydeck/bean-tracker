@@ -29,11 +29,6 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: release
-          fetch-depth: 0
-
       # The built-in secrets.GITHUB_TOKEN can't be used here: GitHub does not
       # raise `release: published` for events created by that token, so
       # publish-image.yml would never fire. A GitHub App installation token
@@ -43,6 +38,15 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      # Checkout with the app token: checkout stores its token in git config, and every later git push
+      # (semantic-release's release commit, the back-merge) goes out as it. Only the app is on the
+      # main/release ruleset's bypass list for the required checks; the default token is rejected (GH013).
+      - uses: actions/checkout@v7
+        with:
+          ref: release
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: actions/setup-node@v7
         with:
