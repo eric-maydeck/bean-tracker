@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db.ts';
 import { requireAdmin } from '#lib/server/auth.ts';
@@ -8,8 +7,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);
   const body = await request.json();
   if (typeof body.id !== 'number') {
-    return json({ error: 'Invalid request: id must be a number' }, { status: 400 });
+    return Response.json({ error: 'Invalid request: id must be a number' }, { status: 400 });
   }
   markAlertRead(getDb(), body.id);
-  return json({ success: true });
+  return Response.json({ success: true });
 };

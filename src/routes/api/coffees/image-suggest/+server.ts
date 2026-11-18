@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db.ts';
 import { requireAdmin } from '#lib/server/auth.ts';
@@ -13,11 +12,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
   const roaster = str(body?.roaster);
   const name = str(body?.name);
-  if (!roaster || !name) return json({ error: 'Roaster and coffee name are required' }, { status: 400 });
+  if (!roaster || !name) return Response.json({ error: 'Roaster and coffee name are required' }, { status: 400 });
   const typedSite = str(body?.site);
   const override = typedSite ? toOrigin(typedSite) : null;
-  if (typedSite && !override) return json({ error: "That site isn't a web address" }, { status: 400 });
+  if (typedSite && !override) return Response.json({ error: "That site isn't a web address" }, { status: 400 });
   const storedSite = getRoasterWebsite(getDb(), roaster);
   const result = await suggest({ roaster, name, origin: str(body?.origin), roastDate: str(body?.roastDate), site: override ?? storedSite, productUrl: str(body?.product_url)?.slice(0, 2000) });
-  return json({ ...result, storedSite });
+  return Response.json({ ...result, storedSite });
 };

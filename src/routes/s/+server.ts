@@ -1,4 +1,4 @@
-import { error, json } from '@sveltejs/kit';
+import { error } from '@sveltejs/kit';
 import { getDb } from '#lib/server/db.ts';
 import { allowShortLinkCreate, createShortLink, canonicalSharePath } from '#lib/server/shortLinks.ts';
 import { resolveClientIp } from '#lib/server/loginRateLimit.ts';
@@ -14,5 +14,5 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
   const body = await request.json().catch(() => null);
   const canonical = canonicalSharePath(body?.url);
   if (canonical === null) error(400, 'Only links to this site’s pages can be shortened');
-  return json({ code: createShortLink(getDb(), canonical, new Date()) });
+  return Response.json({ code: createShortLink(getDb(), canonical, new Date()) });
 };

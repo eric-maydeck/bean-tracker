@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db.ts';
 import { uploadGate } from '#lib/server/uploadGate.ts';
@@ -10,7 +9,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   const db = getDb();
   const refused = await uploadGate(request, getClientAddress);
   if (refused) return refused;
-  const bad = (error: string, status = 400) => json({ error }, { status });
+  const bad = (error: string, status = 400) => Response.json({ error }, { status });
   if (Number(request.headers.get('content-length')) > MAX_SHOT_BYTES) return bad('Upload is too large', 413);
   const form = await request.formData().catch(() => null);
   const file = form?.get('file');
@@ -23,7 +22,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     return bad('visualizer.json is not valid JSON');
   }
   try {
-    return json(saveShot(db, parseShot(parsed)));
+    return Response.json(saveShot(db, parseShot(parsed)));
   } catch (e) {
     if (e instanceof ShotError) return bad(e.message);
     throw e;

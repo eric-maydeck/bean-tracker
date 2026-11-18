@@ -1,4 +1,3 @@
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db.ts';
 import { requireAdmin } from '#lib/server/auth.ts';
@@ -17,11 +16,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
   const roaster = str(body?.roaster);
   const coffeeName = str(body?.coffee_name);
-  if (!roaster) return json({ error: 'Roaster is required' }, { status: 400 });
-  if (roaster.length > MAX || coffeeName.length > MAX) return json({ error: 'Roaster or coffee name is too long' }, { status: 400 });
+  if (!roaster) return Response.json({ error: 'Roaster is required' }, { status: 400 });
+  if (roaster.length > MAX || coffeeName.length > MAX) return Response.json({ error: 'Roaster or coffee name is too long' }, { status: 400 });
   const roastDate = str(body?.roast_date);
   if (body?.roast_date != null && body.roast_date !== '' && (!/^\d{4}-\d{2}-\d{2}$/.test(roastDate) || Number.isNaN(Date.parse(roastDate)))) {
-    return json({ error: 'Roast date must be YYYY-MM-DD' }, { status: 400 });
+    return Response.json({ error: 'Roast date must be YYYY-MM-DD' }, { status: 400 });
   }
   const productUrl = str(body?.product_url).slice(0, 2000);
   const db = getDb();
@@ -30,8 +29,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     origins: getDistinctFieldValues(db, 'origin'),
     processing: getDistinctFieldValues(db, 'processing')
   }, { roastDate: roastDate || null, productUrl: productUrl || null });
-  if (found.status !== 'ok') return json(found);
+  if (found.status !== 'ok') return Response.json(found);
   // A card shows (and a pick fills) the values in the data standards' form, the same as Fill from URL.
   const beans = found.beans.map((c) => ({ ...c, fields: standardizeBeanBase(EMPTY_FILL, { id: c.id, fields: c.fields }, { db }).fields }));
-  return json({ ...found, beans });
+  return Response.json({ ...found, beans });
 };

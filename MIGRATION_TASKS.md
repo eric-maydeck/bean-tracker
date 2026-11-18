@@ -205,29 +205,29 @@ Use `Response.json(...)` and `new Response(text)` instead.
 
 #### Files to review
 
-- [ ] `src/hooks.server.ts`
-- [ ] `src/lib/server/uploadGate.ts`
-- [ ] `src/routes/api/alerts/dismiss/+server.ts`
-- [ ] `src/routes/api/alerts/mark-read/+server.ts`
-- [ ] `src/routes/api/coffees/bean-base-search/+server.ts`
-- [ ] `src/routes/api/coffees/commit-batch/+server.ts`
-- [ ] `src/routes/api/coffees/fill-from-url/+server.ts`
-- [ ] `src/routes/api/coffees/image-fill/+server.ts`
-- [ ] `src/routes/api/coffees/image-suggest/+server.ts`
-- [ ] `src/routes/api/coffees/restore-state/+server.ts`
-- [ ] `src/routes/api/coffees/standardize/+server.ts`
-- [ ] `src/routes/api/coffees/validate-batch/+server.ts`
-- [ ] `src/routes/api/gear/+server.ts`
-- [ ] `src/routes/api/gear/fill-from-url/+server.ts`
-- [ ] `src/routes/api/gear/image-suggest/+server.ts`
-- [ ] `src/routes/api/me/+server.ts`
-- [ ] `src/routes/api/recaps/seen/+server.ts`
-- [ ] `src/routes/api/shots/upload/+server.ts`
-- [ ] `src/routes/api/subscriptions/commit-batch/+server.ts`
-- [ ] `src/routes/api/subscriptions/fill-from-url/+server.ts`
-- [ ] `src/routes/api/subscriptions/validate-batch/+server.ts`
-- [ ] `src/routes/recipes/+page.server.ts`
-- [ ] `src/routes/s/+server.ts`
+- [x] `src/hooks.server.ts`
+- [x] `src/lib/server/uploadGate.ts`
+- [x] `src/routes/api/alerts/dismiss/+server.ts`
+- [x] `src/routes/api/alerts/mark-read/+server.ts`
+- [x] `src/routes/api/coffees/bean-base-search/+server.ts`
+- [x] `src/routes/api/coffees/commit-batch/+server.ts`
+- [x] `src/routes/api/coffees/fill-from-url/+server.ts`
+- [x] `src/routes/api/coffees/image-fill/+server.ts`
+- [x] `src/routes/api/coffees/image-suggest/+server.ts`
+- [x] `src/routes/api/coffees/restore-state/+server.ts`
+- [x] `src/routes/api/coffees/standardize/+server.ts`
+- [x] `src/routes/api/coffees/validate-batch/+server.ts`
+- [x] `src/routes/api/gear/+server.ts`
+- [x] `src/routes/api/gear/fill-from-url/+server.ts`
+- [x] `src/routes/api/gear/image-suggest/+server.ts`
+- [x] `src/routes/api/me/+server.ts`
+- [x] `src/routes/api/recaps/seen/+server.ts`
+- [x] `src/routes/api/shots/upload/+server.ts`
+- [x] `src/routes/api/subscriptions/commit-batch/+server.ts`
+- [x] `src/routes/api/subscriptions/fill-from-url/+server.ts`
+- [x] `src/routes/api/subscriptions/validate-batch/+server.ts`
+- [x] `src/routes/recipes/+page.server.ts`
+- [x] `src/routes/s/+server.ts`
 
 ### Move adapter-node `ORIGIN` to `paths.origin`
 
