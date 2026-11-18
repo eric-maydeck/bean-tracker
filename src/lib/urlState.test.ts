@@ -4,7 +4,7 @@ const { goto } = vi.hoisted(() => ({ goto: vi.fn(async (..._args: unknown[]) => 
 vi.mock('$app/navigation', () => ({ goto }));
 vi.mock('$app/state', () => ({ page: { state: {} } }));
 
-import { writeUrlParams } from './urlState.ts';
+import { quietNavErrors, writeUrlParams } from './urlState.ts';
 
 function at(search: string, hash = '') {
   vi.stubGlobal('location', { pathname: '/coffees', search, hash });
@@ -38,5 +38,15 @@ describe('writeUrlParams', () => {
     expect(goto.mock.calls[0][0]).toBe('/coffees?q=a&about=ai');
     writeUrlParams(new URLSearchParams(), false);
     expect(goto.mock.calls[1][0]).toBe('/coffees');
+  });
+
+  it('swallows aborted/cancelled navigations silently and warns on anything else', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    quietNavErrors(new Error('navigation aborted'));
+    quietNavErrors(new Error('navigation cancelled'));
+    expect(warn).not.toHaveBeenCalled();
+    quietNavErrors(new DOMException('flooded', 'SecurityError'));
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
   });
 });

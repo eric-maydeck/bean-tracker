@@ -1,6 +1,12 @@
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
 
+// A shallow goto superseded or vetoed by another navigation rejects with these; anything else is worth a warning.
+export function quietNavErrors(err: unknown): void {
+  if (err instanceof Error && /^navigation (aborted|cancelled)$/.test(err.message)) return;
+  console.warn('URL mirror failed', err);
+}
+
 // Mirror a page's explicit view state into the address bar without a
 // navigation or history entry. Callers pass only explicit choices; inline
 // edit state must never be part of `params`. Reads `location`, not
@@ -14,6 +20,6 @@ export function writeUrlParams(params: URLSearchParams, carryAbout = true): void
   const next = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
   if (next === `${location.pathname}${location.search}${location.hash}`) return;
   // Best-effort mirror -- browsers throw SecurityError when history calls are flooded (e.g. fast typing
-  // triggering this on every keystroke). goto is async now, so that surfaces as a rejection.
-  goto(next, { shallow: true, replace: true, state: page.state }).catch(() => {});
+  // triggering this on every keystroke). goto is async now, so that surfaces as a rejection (warned, not thrown).
+  goto(next, { shallow: true, replace: true, state: page.state }).catch(quietNavErrors);
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { quietNavErrors } from '#lib/urlState.ts';
   import Stamp from '#lib/components/Stamp.svelte';
   import Recaps from './Recaps.svelte';
   import WholeNote from './WholeNote.svelte';
@@ -159,7 +160,7 @@
     if (Object.keys(change).every((k) => (LOCAL_KEYS as readonly string[]).includes(k)) && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
       local = Object.fromEntries(LOCAL_KEYS.map((k) => [k, next[k]]));
       const qs = insightsParams(next).toString();
-      goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { shallow: true, replace: true }).catch(() => {}); // flooded history calls throw SecurityError
+      goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { shallow: true, replace: true }).catch(quietNavErrors);
       remember(qs);
       return Promise.resolve();
     }
@@ -202,6 +203,8 @@
     // (a back/forward step: SvelteKit restores the scroll itself)
     // (Previous / Next: the new tab starts at its top)
     const back = type !== 'popstate' && !pagerNav && from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url) ? scrollOf.get(tabOf(to.url)) : undefined;
+    // reset=false keeps focus on the pager link but also the old scroll, so Previous / Next scrolls to the top itself.
+    if (pagerNav) void tick().then(() => scrollTo(0, 0));
     pagerNav = false;
     if (back !== undefined) void tick().then(() => scrollTo(0, back));
     local = null;

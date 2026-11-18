@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { quietNavErrors } from '#lib/urlState.ts';
   import { onMount } from 'svelte';
   import { afterNavigate, goto } from '$app/navigation';
   import { POSTER_ID, recapHref } from '#lib/recapsUrl.ts';
@@ -50,7 +51,7 @@
         q.delete('slide');
         const qs = q.size ? `?${q}` : '';
 
-        goto(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`, { shallow: true, replace: true }).catch(() => {}); // flooded history calls throw SecurityError
+        goto(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`, { shallow: true, replace: true }).catch(quietNavErrors);
       }),
       { root: reel, rootMargin: '-50% 0px -50% 0px' }
     );

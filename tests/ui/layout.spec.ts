@@ -7725,8 +7725,11 @@ export const STATES: State[] = [
       expect([u.searchParams.get('tab'), u.searchParams.get('range')]).toEqual(['records', 'all']);
       const pager = page.locator('nav.tab-pager');
       await expect(pager.locator('.prev')).toContainText('Spend');
+      await pager.locator('.next').scrollIntoViewIfNeeded();
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
       await pager.locator('.next').click();
       await expect(row).toHaveText('View: Milestones');
+      await expect.poll(() => page.evaluate(() => scrollY), 'Next opens the new tab at its top').toBe(0);
       await expect(pager.locator('.prev')).toContainText('Records');
       await gotoReady(page, '/stats?range=all');
       await expect(pager.locator('.prev')).toHaveCount(0);

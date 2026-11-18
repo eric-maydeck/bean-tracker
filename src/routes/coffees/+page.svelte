@@ -116,6 +116,7 @@
   // Back from a coffee page (a real history back) re-expands the compact
   // row the user opened it from, so it's clear where they were.
   snapshot<number | null>({
+    id: 'coffees-expanded-row', // explicit: the default id comes from the call-site stack and changes every build
     capture: () => view === 'compact' && !editMode && typeof expandedId === 'number' ? expandedId : null,
     restore: (id) => {
       if (id != null) expandedId = id;
