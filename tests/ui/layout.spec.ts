@@ -11077,6 +11077,41 @@ export const STATES: State[] = [
     }
   },
   {
+    name: 'coffee-edit-loffee-term-change', viewports: 'two',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      const bodies: Record<string, string>[] = [];
+      await openBeanBase(page, async (route) => {
+        bodies.push(route.request().postDataJSON());
+        await reply(bodies.length > 1 ? BB_OK : { ...BB_OK, fallback: true })(route);
+      });
+      const d = dlg(page);
+      await expect(d.getByText('No match for "Ethiopia Bensa Bombe"; showing all Moonwake Coffee Roasters beans')).toBeVisible();
+      await expectDialogInViewport(page);
+      const list = d.locator('.suggest-list');
+      const before = await list.boundingBox();
+      await d.getByRole('button', { name: 'change' }).nth(1).click();
+      const input = d.getByLabel('Loffee Labs search term');
+      await expect(input).toBeVisible();
+      await expectDialogInViewport(page);
+      const open = await list.boundingBox();
+      expect(open!.y).toBeGreaterThan(before!.y);
+      await input.fill('Bensa Bombe');
+      await input.press('Enter');
+      await expect(input).toHaveCount(0);
+      await expect(d.getByText('Search: Bensa Bombe ·')).toBeVisible();
+      expect(bodies[1].coffee_name).toBe('Bensa Bombe');
+      // The term survives a roaster change.
+      await d.getByRole('button', { name: 'change' }).first().click();
+      await d.getByLabel('Loffee Labs roaster').fill('Moon Roasters');
+      await d.getByRole('button', { name: 'Search', exact: true }).click();
+      await expect(d.getByText('Loffee Labs roaster: Moonwake Coffee Roasters ·')).toBeVisible();
+      expect(bodies[2]).toMatchObject({ roaster: 'Moon Roasters', coffee_name: 'Bensa Bombe' });
+      await expect(d.getByText('No match for')).toHaveCount(0);
+      await expectDialogInViewport(page);
+    }
+  },
+  {
     name: 'coffee-edit-loffee-roaster-miss', viewports: 'two',
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
