@@ -23,7 +23,7 @@
 
   // Back is the browser's back whenever an in-app page came before (as the coffee page's Back); otherwise a plain link to the Recaps tab.
   let cameFromApp = $state(false);
-  // The reel's own replaceState (slide hash) is not an earlier page.
+  // The reel's own shallow goto (slide hash) is not an earlier page.
   afterNavigate(({ from, shallow, type }) => {
     if (shallow && type === 'goto') return;
     if (from && from.route.id !== '/recaps/[year]') cameFromApp = true;

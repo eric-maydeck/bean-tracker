@@ -4,7 +4,7 @@
   import { writeUrlParams } from '#lib/urlState.ts';
   import { aboutAiOpen } from '#lib/aboutAi.ts';
 
-  // Footer line + "How this site was built" dialog. `?about=ai` opens it; closing drops the param (replaceState).
+  // Footer line + "How this site was built" dialog. `?about=ai` opens it; closing drops the param (shallow goto).
   let { email }: { email: string | null } = $props();
 
   let dlg: HTMLDialogElement;
@@ -17,7 +17,7 @@
     return `?${p}`;
   };
   const href = $derived(aboutHref(page.url.search));
-  // `replaceState` leaves page.url stale, so refresh from `location` just before a click or focus.
+  // A shallow goto leaves page.url stale, so refresh from `location` just before a click or focus.
   const syncHref = () => (link.href = aboutHref(`${currentParams(page.url)}`));
 
   function setParam(on: boolean) {
@@ -37,9 +37,9 @@
     setParam(false);
     link.focus();
   }
-  // Follows real navigations (first load, Back/Forward onto or off ?about=ai). Our own replaceState doesn't re-run it.
+  // Follows real navigations (first load, Back/Forward onto or off ?about=ai). Our own shallow goto doesn't re-run it.
   $effect(() => {
-    // page.url re-runs this on each navigation; `location` is what it reads, because after a replaceState Back lands on an
+    // page.url re-runs this on each navigation; `location` is what it reads, because after a shallow goto Back lands on an
     // entry whose page.url is the pre-replace one (no about).
     const want = aboutAiOpen(currentParams(page.url));
     if (want && !dlg.open) dlg.showModal();

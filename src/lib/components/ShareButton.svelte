@@ -6,7 +6,7 @@
   // shared as-is. Phones get the native share sheet; elsewhere the link is
   // copied (prompt fallback where the clipboard API is unavailable, e.g.
   // plain-http LAN testing). Reads `location`, not `page.url`, which
-  // doesn't follow replaceState (see urlState.ts).
+  // doesn't follow the URL mirror (see urlState.ts).
   const SHORTEN_OVER = 60;
   // `path`: share this path (+ query) instead of the current one (a recap slide's own link).
   let { path: given }: { path?: string } = $props();

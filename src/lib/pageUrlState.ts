@@ -1,6 +1,6 @@
 // The address bar's query. On the client this reads `location`, not the
-// given `url` (SvelteKit's `page.url`): `replaceState` (see urlState.ts)
-// doesn't update `page.url`, so after any client-side replaceState that
+// given `url` (SvelteKit's `page.url`): a shallow goto (see urlState.ts)
+// doesn't update `page.url`, so after any client-side shallow goto that
 // would go stale. `typeof location` guards SSR, where there's no
 // `location` global -- there, `url` (e.g. `page.url`) is the request URL.
 // Read-only view: `page.url.searchParams` is a ReadonlyURLSearchParams in SvelteKit 3.

@@ -127,7 +127,7 @@
       if (edit) editMode = true;
       if (clone) openModal(clonePrefill(formCoffee));
     }
-    setTimeout(() => writeUrlParams(q), 0); // after afterNavigate returns: replaceState isn't allowed inside it
+    setTimeout(() => writeUrlParams(q), 0); // after afterNavigate returns: a shallow goto isn't allowed inside it
   });
   let canEdit = $derived(editMode && data.isAdmin);
   let detailImage = $derived(coffeeImage(data.coffee, `${data.coffee.coffee_name} label`));

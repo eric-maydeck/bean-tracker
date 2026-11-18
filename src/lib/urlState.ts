@@ -33,7 +33,7 @@ export function mirrorUrl(next: string): void {
 // Mirror a page's explicit view state into the address bar without a
 // navigation or history entry. Callers pass only explicit choices; inline
 // edit state must never be part of `params`. Reads `location`, not
-// `page.url`: shallow routing (replaceState) doesn't update `page.url`.
+// `page.url`: shallow routing (shallow goto) doesn't update `page.url`.
 // `about` (the site-wide "How AI was used" dialog, AiNote) isn't a page param: it is carried over from the address bar
 // unless the caller is AiNote itself (carryAbout = false).
 export function writeUrlParams(params: URLSearchParams, carryAbout = true): void {
