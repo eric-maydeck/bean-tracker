@@ -61,6 +61,13 @@
   }
 
   let matchingLines = $state<string[]>([]);
+  // The header's first line follows the current search (Loffee Labs' roaster name once matched, the term or "any"),
+  // not the form as it was when the dialog opened; the form's second line (process, roast date) stays.
+  const headerLines = $derived(
+    typedRoaster
+      ? [`${result?.status === 'ok' ? result.roaster : typedRoaster} · ${typedTerm || 'any'}`, ...matchingLines.slice(1)]
+      : matchingLines
+  );
   function open() {
     matchingLines = matching();
     override = {};
@@ -101,7 +108,7 @@
 </script>
 
 <button class="button button-secondary" type="button" bind:this={button} disabled={disabled || searching} onclick={open}>Search Loffee Labs</button>
-<SuggestSheet title="Loffee Labs matches" matching={matchingLines} onclose={closed} showFooter={!!result && !searching} bind:this={sheet}>
+<SuggestSheet title="Loffee Labs matches" matching={headerLines} onclose={closed} showFooter={!!result && !searching} bind:this={sheet}>
   {#if searching}
     <p class="text-muted fill-note suggest-status" role="status"><span class="spinner" aria-hidden="true"></span>Searching…</p>
   {:else if result}
