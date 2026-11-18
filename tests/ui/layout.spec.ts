@@ -7101,9 +7101,10 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/chart=leaderboard-origins.*#leaderboard-origins$/);
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
-      await page.mouse.move(0, 0); // kit 3 preloads a /coffees link that scrolls in under the pointer
       await page.waitForTimeout(300);
-      expect(requests.filter((u) => /__data\.json/.test(u))).toEqual([]);
+      // Only a stats refetch counts: Kit 3 hover-preloads a /coffees row link that scrolls in under
+      // the pointer during the click's scroll, so other pages' __data.json requests are expected.
+      expect(requests.filter((u) => /\/stats\/__data\.json/.test(u))).toEqual([]);
       expect(await href('leaderboard-roasters')).toContain('chart=leaderboard-roasters');
       // A reload, and a load with no hash (Share and short links drop it), land the heading under the bar.
       const url = page.url();
