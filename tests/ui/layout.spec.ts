@@ -4168,7 +4168,7 @@ export const STATES: State[] = [
       expect(lines).toHaveLength(3);
       const stacked = page.viewportSize()!.width <= 640;
       // The data credit has its own line above the AI note (user, 2026-11-16).
-      expect(lines[0]).toBe('Coffee data from Loffee Labs Bean Base');
+      expect(lines[0]).toBe('Coffee data from Loffee Labs Bean Base · Brews logged with Beanconqueror');
       // Phones stack one item per line with no separators (the links share a line, joined by one dot); wider screens run the items together.
       expect(lines[1]).toBe(stacked ? 'Built with help from Claude Code, an AI coding assistant How AI was used · Contact' : 'Built with help from Claude Code, an AI coding assistant · How AI was used · Contact');
       expect(lines[2]).toMatch(stacked ? /^v[\d.]+ Last updated: [^·]+ Last deployed: [^·]+$/ : /^v[\d.]+ · Last updated: .+ · Last deployed: [^·]+$/);
