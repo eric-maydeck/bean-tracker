@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
-import { gotoReady } from './ready';
+import { gotoReady, reloadReady, waitReady } from './ready';
 import { localToday } from '../../src/lib/server/localToday';
 import { DatabaseSync } from 'node:sqlite';
 import { truncate, writeFile, rm } from 'node:fs/promises';
@@ -229,7 +229,7 @@ test('trophy card: Edit the grinder burr size, Save, the card shows it after rel
     await dlg.getByRole('button', { name: 'Save' }).click();
     await expect(dlg.locator('form.gear-form')).toHaveCount(0);
     await expect(page).toHaveURL(/card=grinder-zp6-special$/);
-    await page.reload();
+    await reloadReady(page);
     await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('54mm');
   } finally { restore(); }
 });
@@ -380,7 +380,7 @@ test.describe('recipes', { tag: '@account' }, () => {
     await page.getByRole('button', { name: 'Add pour' }).click(); // the pour-count range widens, so Save still validates
     await page.locator('form:has(input[name="tags"])').getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByLabel('Note tags', { exact: true })).toHaveCount(0);
-    await page.reload();
+    await reloadReady(page);
     await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(page.getByLabel('Note tags', { exact: true })).toHaveValue('TJ');
     await expect(page.locator('fieldset.pour')).toHaveCount(pourCount + 1);
@@ -425,7 +425,7 @@ test.describe('recipes', { tag: '@account' }, () => {
     await p.getByLabel('Agitation').nth(2).selectOption('medium');
     await p.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(p.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
-    await page.reload();
+    await reloadReady(page);
     await expect(p.getByLabel('Word or phrase').nth(2)).toHaveValue('seed word');
     await expect(p.getByLabel('Agitation').nth(2)).toHaveValue('medium');
     await p.getByRole('button', { name: 'Add word' }).click();
@@ -433,7 +433,7 @@ test.describe('recipes', { tag: '@account' }, () => {
     await p.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(p.getByRole('alert')).toHaveText('Each word can be listed once');
     // A word saved with stray spaces is trimmed, and Cancel goes away (the form matches what was saved).
-    await page.reload();
+    await reloadReady(page);
     await p.getByRole('button', { name: 'Add word' }).click();
     await p.getByLabel('Word or phrase').nth(3).fill(' trimmed ');
     await p.getByRole('button', { name: 'Save', exact: true }).click();
@@ -496,6 +496,7 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     await expect(page).toHaveURL(new RegExp(`/recaps/${Y}$`));
     await expect(page.locator('.alert-list'), 'following the link closes the inbox').toHaveCount(0);
     await page.goBack();
+    await waitReady(page);
     await page.getByRole('button', { name: 'Dismiss' }).first().click(); // the banner's
     await expect(banner).toHaveCount(0);
     item = await inbox();
@@ -506,13 +507,13 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     await item.getByRole('button', { name: 'Dismiss' }).click(); // only dismiss removes it
     await expect(item).toHaveCount(0);
     await page.getByRole('button', { name: 'Close' }).click();
-    await page.reload();
+    await reloadReady(page);
     await bell.click();
     await expect(page.getByRole('heading', { name: 'Alerts' }), 'inbox open').toBeVisible();
     await expect(page.locator('.alert-list-item').filter({ hasText: `Your ${Y} recap is ready` }), 'not recreated').toHaveCount(0);
     await page.getByRole('button', { name: 'Close' }).click();
     await expect.poll(read(`SELECT value FROM app_meta WHERE key = ?`, key)).toEqual({ value: '1' });
-    await page.reload();
+    await reloadReady(page);
     await expect(page.locator('.recap-banner')).toHaveCount(0);
     run(`DELETE FROM app_meta WHERE key = ?`); // unseen again: still no banner over the recap itself
     await gotoReady(page, `/recaps/${Y}`);

@@ -18,5 +18,5 @@ export const GET: RequestHandler = async ({ params, url }) => {
     : to === 'product' ? coffee.product_url
     : null;
   if (!target || !/^https?:\/\//i.test(target)) error(404, 'No link');
-  redirect(302, await goTarget(target, site));
+  redirect(302, await goTarget(target, site), { external: true }); // the stored product or credit URL, validated http(s) above
 };

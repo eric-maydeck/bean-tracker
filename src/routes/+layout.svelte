@@ -337,13 +337,7 @@
                 {/if}
               </p>
 
-              <p class="alert-meta">
-                {#if alert.source !== 'recap'}
-                  {alert.source} ·
-                {/if}
-
-                <Stamp iso={alert.created_at} minute />
-              </p>
+              <p class="alert-meta">{#if alert.source !== 'recap'}{alert.source} · {/if}<Stamp iso={alert.created_at} minute /></p>
 
               <div class="alert-actions">
                 {#if alert.read_at === null}
