@@ -63,7 +63,10 @@ function elevation(v: string): Std {
 
 function harvest(v: string): Std {
   const bad = (reason: string): Std => ({ value: v, review: reason });
-  let m = /^(\d{4})(?:\/(\d{2}))?(?:\s+new crop)?$/i.exec(v);
+  // Scenery writes `Crop 25/26`; short or `crop`-prefixed seasons store as `2025/26`.
+  let m = /^(?:crop\s+)?(\d{2}|\d{4})\s*[/-]\s*(\d{2})$/i.exec(v);
+  if (m) return { value: `${m[1].length === 2 ? `20${m[1]}` : m[1]}/${m[2]}` };
+  m = /^(\d{4})(?:\/(\d{2}))?(?:\s+new crop)?$/i.exec(v);
   if (m) return { value: m[2] ? `${m[1]}/${m[2]}` : m[1] };
   if ((m = /^q([1-4])\s+(\d{4})$/i.exec(v))) return { value: `Q${m[1]} ${m[2]}` };
   if ((m = /^(early|mid|late)\s+(\d{4})$/i.exec(v))) return { value: `${titleCase(m[1].toLowerCase())} ${m[2]}` };
