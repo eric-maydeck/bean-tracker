@@ -106,7 +106,7 @@ test('household of one hides the people switch everywhere', { tag: '@stats' }, a
 });
 
 // "Coffee added!" popup: real adds (deleted afterwards), the page clock paused
-// once it shows, so its 3s (5s touch) / 2s / 400ms timings step exactly.
+// just before Save, so its 3s (5s touch) / 2s / 400ms timings step exactly.
 test.describe('coffee added popup', { tag: '@coffees' }, () => {
   test.afterAll(() => {
     const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
@@ -121,10 +121,12 @@ test.describe('coffee added popup', { tag: '@coffees' }, () => {
     await page.locator('#cost').fill('20'); // cost, weight and roast date, so the standards dialog stays shut
     await page.locator('#amount_g').fill('250');
     await page.locator('#roast_date').fill('2026-02-01');
+    // Pause before Save: the clock keeps running between reading Date.now() and pauseAt,
+    // so a target of "now" can already be in the past ("Cannot fast-forward to the past").
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     const toast = page.locator('.added-toast');
     await expect(toast).toBeVisible();
-    await page.clock.pauseAt(await page.evaluate(() => Date.now()));
     return toast;
   }
   // Headless Firefox reports `(hover: none)`; pin it so each test picks its timing.
