@@ -21,9 +21,9 @@
 </script>
 
 {#snippet who(name: string, slug: string | null, sub: string)}
-  <span class="who">
-    {#if slug}<a href="/coffees/{slug}" use:truncTip={name}><CoffeeName {name} /></a>{:else}<span class="name" use:truncTip={name}><CoffeeName {name} /></span>{/if}
-    <small use:truncTip={sub}>{sub}</small>
+  <span class="who" use:truncTip={`${name} · ${sub}`}>
+    {#if slug}<a href="/coffees/{slug}"><CoffeeName {name} /></a>{:else}<span class="name"><CoffeeName {name} /></span>{/if}
+    <small>{sub}</small>
   </span>
 {/snippet}
 

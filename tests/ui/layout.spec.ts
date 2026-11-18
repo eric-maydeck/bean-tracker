@@ -6704,15 +6704,16 @@ export const STATES: State[] = [
       };
       // A name or sub line gets a tip only while it is cut by an ellipsis (truncTip): none for text shown whole, its full text when cut.
       if (await page.evaluate(() => matchMedia('(hover: hover)').matches)) {
-        const cells = await panel.locator('.board-row .who a, .board-row .who small').evaluateAll((els) => els.map((e, i) => ({ i, cut: e.scrollWidth > e.clientWidth + 1 })));
-        const cells2 = panel.locator('.board-row .who a, .board-row .who small');
+        // One tip per row (on .who: the link's overlay covers its parts), cut when the name or the sub line is.
+        const who = panel.locator('.board-row .who');
+        const cells = await who.evaluateAll((els) => els.map((e, i) => ({ i, cut: [...e.children].some((c) => c.scrollWidth > c.clientWidth + 1) })));
         for (const want of [false, true]) {
           const c = cells.find((x) => x.cut === want);
           if (!c) continue;
-          const el = cells2.nth(c.i);
-          await el.scrollIntoViewIfNeeded();
+          const el = who.nth(c.i);
+          await el.evaluate((e) => e.scrollIntoView({ block: 'center' })); // clear of the sticky bars and bottom tabs
           await el.hover({ position: { x: 4, y: 4 } });
-          if (want) await expect(tip).toContainText((await el.innerText()).trim().slice(0, 12));
+          if (want) await expect(tip).toContainText((await el.locator('a, .name').innerText()).trim().slice(0, 12));
           else { await page.waitForTimeout(150); await expect(tip).toHaveCount(0); }
           await page.mouse.move(0, 0);
         }
@@ -6720,6 +6721,7 @@ export const STATES: State[] = [
       // Rating tip: hover on desktop, tap on phones; brew details, then a finished coffee's.
       for (const [i, want] of [[0, /Roaster[\s\S]*Brew/], [1, /Roaster[\s\S]*Brews/]] as const) {
         const val = lists.nth(i).locator('.board-row.bar .val').first();
+        await val.evaluate((e) => e.scrollIntoView({ block: 'center' }));
         if (touch()) await val.tap(); else await val.hover();
         await expect(tip).toContainText(want);
         await inView();
