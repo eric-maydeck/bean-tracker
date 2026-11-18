@@ -12,7 +12,8 @@ const bag = (o: Partial<BagFact>): BagFact => ({
   id: 1, status: 'open', purchaseDate: null, cost: null, amountG: null, roaster: 'Onyx', name: 'Kenya', slug: 'kenya', processing: null,
   origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, subscriptionId: null, ...o
 });
-const rows = (t: { rows?: string[][] }) => Object.fromEntries((t.rows ?? []).map(([l, v]) => [l, v]));
+const flat = (t: { groups?: { rows: string[][] }[] }) => (t.groups ?? []).flatMap((g) => g.rows);
+const rows = (t: { groups?: { rows: string[][] }[] }) => Object.fromEntries(flat(t).map(([l, v]) => [l, v]));
 
 describe('recent tips', () => {
   const all = [
@@ -33,8 +34,13 @@ describe('recent tips', () => {
       Filter: 'Cafec', Coffee: '18g', Water: '300g', Ratio: '1:16.7', 'Brew time': '3:05', Brew: '3 of 3', Rank: '2nd best of 3', Recipe: 'Hoffmann (modified)'
     });
   });
+  it('groups the rows under titles and leaves out an empty group', () => {
+    expect(b().tip.groups!.map((g) => g.title)).toEqual(['Coffee', 'Gear', 'Recipe', 'Rating']);
+    const only = [brew({ id: 1, rating: 7, brewIndex: 1 })];
+    expect(recent(only, [bag({})], 10, { all: only }).brews[0].tip.groups!.map((g) => g.title)).toEqual(['Coffee', 'Rating']);
+  });
   it('rating change vs the previous rated brew, signed with an ink class', () => {
-    expect(b().tip.rows).toContainEqual(['Since previous brew', '−1.0', 'ink-worse']);
+    expect(flat(b().tip)).toContainEqual(['Since previous brew', '−1.0', 'ink-worse']);
   });
   it('omits unknowns, and the change for a first brew', () => {
     const only = [brew({ id: 1, rating: 7, brewIndex: 1 })];

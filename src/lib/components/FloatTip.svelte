@@ -89,4 +89,4 @@
   });
 </script>
 
-<div bind:this={el} class="cell-tip float-tip wide" class:ruled={tip?.ruled} popover="manual" role="tooltip" style:visibility={away || dismissed ? 'hidden' : undefined}>{#if tip}<TipBody {tip} />{:else}{@render children?.()}{/if}</div>
+<div bind:this={el} class="cell-tip float-tip wide" class:wide-tip={tip?.wide} popover="manual" role="tooltip" style:visibility={away || dismissed ? 'hidden' : undefined}>{#if tip}<TipBody {tip} />{:else}{@render children?.()}{/if}</div>

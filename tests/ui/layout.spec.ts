@@ -6723,10 +6723,11 @@ export const STATES: State[] = [
         if (touch()) await val.tap(); else await val.hover();
         await expect(tip).toContainText(want);
         await inView();
-        // Dividers between rows; at desktop width no row wraps (each value is as tall as its label).
+        // Rows sit under group headers; at desktop width no row wraps (each value is as tall as its label).
         const wraps = await tip.evaluate((e) => [...e.querySelectorAll('.tip-rows dd')].filter((dd) => dd.getBoundingClientRect().height > (dd.previousElementSibling as Element).getBoundingClientRect().height + 2).map((dd) => dd.textContent));
         if (page.viewportSize()!.width >= 1280) expect(wraps).toEqual([]);
-        expect(await tip.locator('.tip-rows dd').nth(1).evaluate((e) => getComputedStyle(e).borderTopWidth)).toBe('1px');
+        expect(await tip.locator('.tip-group').count()).toBeGreaterThanOrEqual(2);
+        expect(await tip.locator('.tip-group + .tip-rows').count()).toBe(await tip.locator('.tip-group').count());
         await page.mouse.move(0, 0);
         if (touch()) await page.mouse.click(5, 5);
         await expect(tip).toHaveCount(0);
