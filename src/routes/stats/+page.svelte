@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { quietNavErrors } from '#lib/urlState.ts';
+  import { mirrorUrl } from '#lib/urlState.ts';
   import Stamp from '#lib/components/Stamp.svelte';
   import Recaps from './Recaps.svelte';
   import WholeNote from './WholeNote.svelte';
@@ -141,7 +141,7 @@
     if (Object.keys(change).every((k) => (LOCAL_KEYS as readonly string[]).includes(k)) && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
       local = Object.fromEntries(LOCAL_KEYS.map((k) => [k, next[k]]));
       const qs = insightsParams(next).toString();
-      goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { shallow: true, replace: true }).catch(quietNavErrors);
+      mirrorUrl(`${qs ? `?${qs}` : location.pathname}${hash}`);
       remember(qs);
       return Promise.resolve();
     }

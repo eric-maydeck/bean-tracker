@@ -12,7 +12,7 @@
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
   import { coffeeImage } from '#lib/coffeeImage.ts';
   import RoastBeans from '#lib/components/RoastBeans.svelte';
-  import { refreshAll, beforeNavigate, afterNavigate, snapshot } from '$app/navigation';
+  import { beforeNavigate, afterNavigate, snapshot } from '$app/navigation';
   import { page } from '$app/state';
   import CoffeeForm from '#lib/components/CoffeeForm.svelte';
   import AddedToast from '#lib/components/AddedToast.svelte';
@@ -55,7 +55,7 @@
     type SortKey,
     type SortDir
   } from '#lib/coffeeViewState.ts';
-  import { writeUrlParams } from '#lib/urlState.ts';
+  import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
   import { formatBag, formatGrams } from '#lib/grams.ts';
 
   let { data, form } = $props();
@@ -146,7 +146,7 @@
     clearTimeout(refreshTimer);
     refreshState = 'busy';
     try {
-      await refreshAll();
+      await refreshTracked();
       refreshState = 'done';
       refreshTimer = setTimeout(() => (refreshState = 'idle'), 1000);
     } catch {
@@ -187,8 +187,8 @@
       showToast(e instanceof Error ? e.message : 'Something went wrong.');
       return;
     }
-    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await refreshAll(); } });
-    await refreshAll();
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await refreshTracked(); } });
+    await refreshTracked();
   }
 
   let addedSlug = $state<string | null>(null);
@@ -197,7 +197,7 @@
   const undoAdded = $derived(addedId ? async () => {
     try {
       await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
-      await refreshAll();
+      await refreshTracked();
       showToast('Undone.');
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not undo that.');
@@ -305,11 +305,11 @@
     // anything else here) must not be misattributed to the save as a
     // whole via the generic catch-all error message.
     const toastText = coffeeToast(changes, (id) => [...data.backlog, ...data.open, ...data.archive].find((c) => c.id === id)?.coffee_name ?? 'this coffee');
-    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await refreshAll(); } } : {});
+    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await refreshTracked(); } } : {});
     if (onlyId != null) {
       saving = false;
       discardRow(onlyId);
-      await refreshAll();
+      await refreshTracked();
       return;
     }
     pending = new SvelteMap();
@@ -319,7 +319,7 @@
     editIds.clear();
     openForms.clear();
     saving = false;
-    await refreshAll();
+    await refreshTracked();
   }
 
   // A row opened by its own Edit button (not the page-level Edit): it gets

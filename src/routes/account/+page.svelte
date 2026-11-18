@@ -1,7 +1,7 @@
 <script lang="ts">
   import Stamp from '#lib/components/Stamp.svelte';
   import { enhance } from '$app/forms';
-  import { refreshAll } from '$app/navigation';
+  import { refreshTracked } from '#lib/urlState.ts';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import { labelTip } from '#lib/components/labelTip.ts';
   import Icon from '#lib/components/Icon.svelte';
@@ -26,7 +26,7 @@
           const res = await fetch(`?/${reverse}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
           const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await refreshAll();
+          await refreshTracked();
         }
       });
     };
@@ -60,7 +60,7 @@
           const res = await fetch(`?/${SETTING_ACTION[name]}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
           const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await refreshAll();
+          await refreshTracked();
         }
       });
     };
@@ -106,7 +106,7 @@
           const res = await fetch('?/updateHouseholdSize', { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
           const out = (await res.json().catch(() => null)) as { type?: string } | null;
           if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await refreshAll();
+          await refreshTracked();
         }
       });
     };

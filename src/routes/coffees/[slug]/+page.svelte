@@ -7,12 +7,12 @@
   import { untrack, onMount } from 'svelte';
   import { page } from '$app/state';
   import { bqImportRequested, cloneRequested, editRequested } from '#lib/bqImportUrl.ts';
-  import { writeUrlParams } from '#lib/urlState.ts';
+  import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
   import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '#lib/coffeeToast.ts';
   import { showToast } from '#lib/toast.svelte.ts';
   import { enhance } from '$app/forms';
   import { stay } from '#lib/stay.ts';
-  import { goto, refreshAll, beforeNavigate, afterNavigate } from '$app/navigation';
+  import { goto, beforeNavigate, afterNavigate } from '$app/navigation';
   import { browser } from '$app/env';
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
   import { coffeeImage } from '#lib/coffeeImage.ts';
@@ -66,7 +66,7 @@
   const undoAdded = $derived(addedId ? async () => {
     try {
       await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
-      await refreshAll();
+      await refreshTracked();
       showToast('Undone.');
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not undo that.');
@@ -248,7 +248,7 @@
     // not be misattributed to the save as a whole via the generic
     // catch-all error message.
     const toastText = coffeeToast(changes, () => data.coffee.coffee_name);
-    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await refreshAll(); } } : {});
+    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await refreshTracked(); } } : {});
     pending = new SvelteMap();
     editMode = false;
     saving = false;
@@ -261,7 +261,7 @@
       await goto(`/coffees/${savedSlug}`);
       return;
     }
-    await refreshAll();
+    await refreshTracked();
   }
 
   function discardChanges() {

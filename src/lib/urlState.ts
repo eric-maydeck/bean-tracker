@@ -1,10 +1,33 @@
-import { goto } from '$app/navigation';
-import { page } from '$app/state';
+import { goto, refreshAll } from '$app/navigation';
+import { navigating, page } from '$app/state';
 
-// A shallow goto superseded or vetoed by another navigation rejects with these; anything else is worth a warning.
-export function quietNavErrors(err: unknown): void {
-  if (err instanceof Error && /^navigation (aborted|cancelled)$/.test(err.message)) return;
-  console.warn('URL mirror failed', err);
+// Kit 3's shallow goto takes the navigation and invalidation tokens: it would drop a pending link tap, Back or
+// refreshAll (Kit 2's replaceState did neither). So a mirror write waits for both, keeping only the latest.
+let refreshing = 0;
+let queued: { next: string; path: string } | null = null;
+
+// refreshAll, tracked so a mirror write waits for it. Pages that mirror their state call this, not Kit's.
+export async function refreshTracked(): Promise<void> {
+  refreshing++;
+  try { await refreshAll(); } finally { refreshing--; setTimeout(flush); }
+}
+
+function flush() {
+  const q = queued;
+  queued = null;
+  if (q && q.path === location.pathname) mirrorUrl(q.next); // another page by now: the write no longer applies
+}
+
+// Replace the address bar with `next` (no navigation, no history entry), once nothing else is pending.
+export function mirrorUrl(next: string): void {
+  if (refreshing || navigating.to) {
+    queued = { next, path: location.pathname };
+    navigating.complete?.catch(() => {}).then(() => setTimeout(flush));
+    return;
+  }
+  // Best-effort mirror: browsers throw SecurityError when history calls are flooded (e.g. fast typing).
+  // goto is async, so that surfaces as a rejection (warned, not thrown). It rejects for an unresolvable route too.
+  goto(next, { shallow: true, replace: true, state: page.state }).catch((err) => console.warn('URL mirror failed', err));
 }
 
 // Mirror a page's explicit view state into the address bar without a
@@ -19,7 +42,5 @@ export function writeUrlParams(params: URLSearchParams, carryAbout = true): void
   const qs = params.toString();
   const next = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
   if (next === `${location.pathname}${location.search}${location.hash}`) return;
-  // Best-effort mirror -- browsers throw SecurityError when history calls are flooded (e.g. fast typing
-  // triggering this on every keystroke). goto is async now, so that surfaces as a rejection (warned, not thrown).
-  goto(next, { shallow: true, replace: true, state: page.state }).catch(quietNavErrors);
+  mirrorUrl(next);
 }

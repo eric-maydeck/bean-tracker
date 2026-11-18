@@ -4,7 +4,8 @@
   import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
   import { stay } from '#lib/stay.ts';
-  import { goto, refreshAll } from '$app/navigation';
+  import { goto } from '$app/navigation';
+  import { refreshTracked } from '#lib/urlState.ts';
   import { UNTRACKED_CAP, accountQuery } from '#lib/accountUrl.ts';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import CoffeeForm from '#lib/components/CoffeeForm.svelte';
@@ -53,7 +54,7 @@
 
   async function closeCreate() {
     createBean = null;
-    await refreshAll();
+    await refreshTracked();
   }
   const shown = $derived(showAll ? unmatched.beans : unmatched.beans.slice(0, UNTRACKED_CAP));
   const toggle = () => goto(accountQuery({ untracked: showAll ? undefined : 'all' }) || '/account', { replace: true, reset: false });

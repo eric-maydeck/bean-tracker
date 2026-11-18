@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { goto } = vi.hoisted(() => ({ goto: vi.fn(async (..._args: unknown[]) => {}) }));
-vi.mock('$app/navigation', () => ({ goto }));
-vi.mock('$app/state', () => ({ page: { state: {} } }));
+const { goto, refreshAll, navigating } = vi.hoisted(() => ({
+  goto: vi.fn(async (..._args: unknown[]) => {}),
+  refreshAll: vi.fn(async () => {}),
+  navigating: { to: null as object | null, complete: null as Promise<void> | null }
+}));
+vi.mock('$app/navigation', () => ({ goto, refreshAll }));
+vi.mock('$app/state', () => ({ page: { state: {} }, navigating }));
 
-import { quietNavErrors, writeUrlParams } from './urlState.ts';
+import { refreshTracked, writeUrlParams } from './urlState.ts';
 
 function at(search: string, hash = '') {
   vi.stubGlobal('location', { pathname: '/coffees', search, hash });
@@ -13,6 +17,7 @@ function at(search: string, hash = '') {
 describe('writeUrlParams', () => {
   beforeEach(() => {
     goto.mockClear();
+    navigating.to = navigating.complete = null;
     at('');
   });
 
@@ -40,13 +45,47 @@ describe('writeUrlParams', () => {
     expect(goto.mock.calls[1][0]).toBe('/coffees');
   });
 
-  it('swallows aborted/cancelled navigations silently and warns on anything else', () => {
+  it('warns when the mirror rejects (an unresolvable route)', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    quietNavErrors(new Error('navigation aborted'));
-    quietNavErrors(new Error('navigation cancelled'));
-    expect(warn).not.toHaveBeenCalled();
-    quietNavErrors(new DOMException('flooded', 'SecurityError'));
-    expect(warn).toHaveBeenCalledOnce();
+    goto.mockRejectedValueOnce(new Error('Not found'));
+    writeUrlParams(new URLSearchParams({ q: 'a' }));
+    await vi.waitFor(() => expect(warn).toHaveBeenCalledOnce());
     warn.mockRestore();
+  });
+
+  it('waits out a pending navigation, then writes only the latest', async () => {
+    let done!: () => void;
+    navigating.to = {};
+    navigating.complete = new Promise<void>((r) => (done = r));
+    writeUrlParams(new URLSearchParams({ q: 'a' }));
+    writeUrlParams(new URLSearchParams({ q: 'ab' }));
+    expect(goto).not.toHaveBeenCalled();
+    navigating.to = navigating.complete = null;
+    done();
+    await vi.waitFor(() => expect(goto).toHaveBeenCalledOnce());
+    expect(goto.mock.calls[0][0]).toBe('/coffees?q=ab');
+  });
+
+  it('drops a deferred write once the page has changed', async () => {
+    let done!: () => void;
+    navigating.to = {};
+    navigating.complete = new Promise<void>((r) => (done = r));
+    writeUrlParams(new URLSearchParams({ q: 'a' }));
+    vi.stubGlobal('location', { pathname: '/stats', search: '', hash: '' });
+    navigating.to = navigating.complete = null;
+    done();
+    await new Promise((r) => setTimeout(r, 5));
+    expect(goto).not.toHaveBeenCalled();
+  });
+
+  it('waits for a pending refresh, which a shallow goto would cancel', async () => {
+    let finish!: () => void;
+    refreshAll.mockReturnValueOnce(new Promise<void>((r) => (finish = r)));
+    const refreshing = refreshTracked();
+    writeUrlParams(new URLSearchParams({ q: 'a' }));
+    expect(goto).not.toHaveBeenCalled();
+    finish();
+    await refreshing;
+    await vi.waitFor(() => expect(goto).toHaveBeenCalledOnce());
   });
 });

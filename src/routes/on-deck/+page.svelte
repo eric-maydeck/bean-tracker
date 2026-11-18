@@ -6,14 +6,14 @@
   import { labelTip } from '#lib/components/labelTip.ts';
   import { coffeeToast, commitChanges, restoreStates } from '#lib/coffeeToast.ts';
   import type { CoffeeRow } from '#lib/types.ts';
-  import { refreshAll, afterNavigate } from '$app/navigation';
+  import { afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
   import { coffeeImage } from '#lib/coffeeImage.ts';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import { currentParams, pickOne } from '#lib/pageUrlState.ts';
   import { loadChoice, serializeChoice } from '#lib/rememberedChoice.ts';
-  import { writeUrlParams } from '#lib/urlState.ts';
+  import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
   import { formatBag } from '#lib/grams.ts';
   import ShareButton from '#lib/components/ShareButton.svelte';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
@@ -68,7 +68,7 @@
   });
 
   async function refresh() {
-    await refreshAll();
+    await refreshTracked();
   }
 
   // A tile's Open: toasts with Undo and the tile moves to Currently open.
@@ -81,8 +81,8 @@
       showToast(e instanceof Error ? e.message : 'Something went wrong.');
       return;
     }
-    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await refreshAll(); } });
-    await refreshAll();
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await refreshTracked(); } });
+    await refreshTracked();
   }
 </script>
 

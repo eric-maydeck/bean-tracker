@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance, deserialize } from '$app/forms';
-  import { goto, refreshAll } from '$app/navigation';
+  import { goto } from '$app/navigation';
+  import { refreshTracked } from '#lib/urlState.ts';
   import { page } from '$app/state';
   import { originWithFlag } from '#lib/countryFlags.ts';
   import { formatDate } from '#lib/formatDate.ts';
@@ -71,7 +72,7 @@
     for (const [k, v] of Object.entries(fields)) body.set(k, v);
     const res = deserialize(await (await fetch(`?/${action}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } })).text());
     if (res.type !== 'success') throw new Error("Couldn't undo that.");
-    await refreshAll();
+    await refreshTracked();
   }
   async function openAndBrew() {
     openError = '';
@@ -79,7 +80,7 @@
     if (res.type !== 'success') { openError = "Couldn't open this coffee"; return; }
     confirmOpen = false;
     showToast(`Coffee "${c.coffeeName}" marked as open.`, { undo: () => post('unopenCoffee') });
-    await refreshAll();
+    await refreshTracked();
     brewForm?.requestSubmit();
   }
 

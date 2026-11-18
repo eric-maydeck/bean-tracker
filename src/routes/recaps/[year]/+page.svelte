@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { quietNavErrors } from '#lib/urlState.ts';
+  import { mirrorUrl } from '#lib/urlState.ts';
   import { onMount } from 'svelte';
-  import { afterNavigate, goto } from '$app/navigation';
+  import { afterNavigate } from '$app/navigation';
   import { POSTER_ID, recapHref } from '#lib/recapsUrl.ts';
   import type { Slide as SlideT } from '#lib/server/recaps/types.ts';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
@@ -49,7 +49,7 @@
       const q = new URLSearchParams(location.search);
       q.delete('slide');
       const qs = q.size ? `?${q}` : '';
-      goto(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`, { shallow: true, replace: true }).catch(quietNavErrors);
+      mirrorUrl(`${location.pathname}${qs}${cur ? '#' + e.target.id : ''}`);
     }), { root: reel, rootMargin: '-50% 0px -50% 0px' });
     for (const s of reel.children) io.observe(s);
     return () => io.disconnect();

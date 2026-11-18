@@ -6,11 +6,11 @@
   import { enhance } from '$app/forms';
   import { browser } from '$app/env';
   import { page } from '$app/state';
-  import { refreshAll, beforeNavigate, afterNavigate } from '$app/navigation';
+  import { beforeNavigate, afterNavigate } from '$app/navigation';
   import { defaultViewForWidth } from '#lib/defaultView.ts';
   import { currentParams, pickOne } from '#lib/pageUrlState.ts';
   import { loadChoice, serializeChoice } from '#lib/rememberedChoice.ts';
-  import { writeUrlParams } from '#lib/urlState.ts';
+  import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
   import ShareButton from '#lib/components/ShareButton.svelte';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '#lib/pendingChanges.ts';
   import { SvelteMap } from 'svelte/reactivity';
@@ -274,7 +274,7 @@
     editMode = false;
     expandedId = null;
     saving = false;
-    await refreshAll();
+    await refreshTracked();
   }
 
   function discardChanges() {
