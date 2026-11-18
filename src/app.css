@@ -2864,6 +2864,18 @@ select.quick-filter-select {
   max-width: min(15rem, 100vw - 2rem);
   text-align: left;
 }
+.cell-tip.wide.ruled {
+  max-width: min(28rem, 100vw - 2rem);
+}
+.ruled .tip-rows dt,
+.ruled .tip-rows dd {
+  padding: 0.15rem 0;
+  border-top: 1px solid var(--color-border);
+}
+.ruled .tip-rows dt:first-of-type,
+.ruled .tip-rows dt:first-of-type + dd {
+  border-top: 0;
+}
 .tip-title {
   display: block;
   font-weight: 700;

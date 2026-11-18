@@ -13,9 +13,10 @@
 // `points`: labeled facts, one per line: a bold label, then a concise value that may wrap ("Before: Lotus - Light and
 // Bright (49% as of Mar 26)"); related facts merge into one point (ui-rules 36). Numbers to compare go in `rows`.
 // `groups`: titled row sets (a chart tip's current and previous period), each a bold title over its own rows.
+// `ruled`: a wider tip (rows stay on one line on desktop) with a divider between rows (Recent's rating tips).
 // A row's legend symbol: a swatch (bars; faded for a previous period) or a short line sample (lines; dashed for a previous period).
 export type Mark = { color: string; line?: boolean; dashed?: boolean; faded?: boolean };
-export type Tip = { title: string; rows?: TipRow[]; groups?: { title: string; rows: TipRow[]; marks?: (Mark | null)[] }[]; marks?: (Mark | null)[]; points?: [string, string][]; lines?: string[]; note?: string; sample?: { s: Sample; paired?: boolean }; sampleLegend?: boolean; strength?: Badge; caution?: { lines: string[]; rows: [string, string][] } };
+export type Tip = { ruled?: boolean; title: string; rows?: TipRow[]; groups?: { title: string; rows: TipRow[]; marks?: (Mark | null)[] }[]; marks?: (Mark | null)[]; points?: [string, string][]; lines?: string[]; note?: string; sample?: { s: Sample; paired?: boolean }; sampleLegend?: boolean; strength?: Badge; caution?: { lines: string[]; rows: [string, string][] } };
   // The same tip as one line, for an aria-label.
   export const tipText = (t: Tip) => {
     const st = t.caution ?? (t.sample && sampleTip(t.sample.s, t.sample.paired));

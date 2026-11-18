@@ -51,7 +51,7 @@ describe('recent tips', () => {
     const withDose = all.map((x) => ({ ...x, dose: 15, dripper: 'V60' }));
     const t = recent(withDose, [done], 10, { all: withDose, dialIn: new Set([1]), extra: () => ({ brews: new Map(), bags: new Map([[1, { farm: 'Karimikui', notes: 'good' }]]) }) }).bags[0].tip;
     expect(rows(t)).toMatchObject({
-      Roaster: 'Onyx', Origin: 'Kenya', Farm: 'Karimikui', Producer: 'Coop', Brews: '3', Consumed: '45g', Cost: '$20.00', 'Cost per 100 g': '$8.00',
+      Roaster: 'Onyx', Origin: 'Kenya', Farm: 'Karimikui', Producer: 'Coop', Brews: '3', Consumed: '45g', Cost: '$20.00', 'Cost per gram': '$0.0800/g',
       'Age at first brew': '5 days', 'Age when finished': '12 days', 'Best brew': '9.0 on 2026-09-02', 'Coffee rating': '8.5', 'Average brew': '8.0',
       'Average once dialed in': '8.5', Drippers: 'V60'
     });

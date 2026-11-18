@@ -8,7 +8,7 @@ import { mean } from './stats';
 
 // The part of TipBody's Tip these use (server modules don't import .svelte files); assignable to it.
 type TipRow = [string, string] | [string, string, string];
-export type Tip = { title: string; rows?: TipRow[]; note?: string };
+export type Tip = { ruled?: boolean; title: string; rows?: TipRow[]; note?: string };
 
 // What Recent's rating tips need beyond the facts: text the facts don't carry, read for the shown rows only.
 export type RecentExtra = {
@@ -61,6 +61,7 @@ export function brewTip(b: BrewFact, name: string | null, bag: BagFact | undefin
   const ratedAll = same.filter(rated);
   const place = rated(b) ? 1 + ratedAll.filter((o) => o.rating! > b.rating!).length : 0;
   return {
+    ruled: true,
     title: name ?? 'No coffee linked',
     rows: rows([
       row('Roaster', b.roaster ?? bag?.roaster),
@@ -95,6 +96,7 @@ export function bagTip(g: BagFact, ctx: RecentCtx, x: { farm?: string; notes?: s
   const rest = (o: BrewFact | undefined) => (o?.restDays != null && o.restDays >= 0 ? days(o.restDays) : null);
   const drippers = [...new Set(mine.flatMap((o) => o.dripper ?? []))];
   return {
+    ruled: true,
     title: g.name,
     rows: rows([
       row('Roaster', g.roaster),
@@ -104,7 +106,7 @@ export function bagTip(g: BagFact, ctx: RecentCtx, x: { farm?: string; notes?: s
       mine.length ? ['Brews', String(mine.length)] : null,
       consumed ? ['Consumed', g1(consumed)] : null,
       g.cost ? ['Cost', usd(g.cost)] : null,
-      g.cost && g.amountG ? ['Cost per 100 g', usd((g.cost / g.amountG) * 100)] : null,
+      g.cost && g.amountG ? ['Cost per gram', `$${(g.cost / g.amountG).toFixed(4)}/g`] : null,
       row('Roast date', g.purchaseDate && day(g.purchaseDate)),
       row('Age at first brew', rest(mine[0])),
       row('Age when finished', rest(mine.at(-1))),
