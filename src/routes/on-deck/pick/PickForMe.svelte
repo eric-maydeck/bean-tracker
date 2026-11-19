@@ -341,13 +341,6 @@
       {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
     </section>
 
-    <!-- below the game (a phone: below the card) -->
-    <div class="out-row" bind:this={outEl}>
-      <span class="label">Out for today:</span>
-      {#each outRow as c (c.id)}<span class="badge badge-neutral" tabindex="0" role="note" use:labelTip={outTip(c)}><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
-      <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
-    </div>
-
     <div class="side">
       {#if inlineCard}<div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
@@ -357,6 +350,13 @@
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
         {/if}
       </div>{/if}
+    </div>
+
+    <!-- after the card in the DOM (a phone: reads and tabs in the order it shows); on a desktop CSS puts it directly below the game -->
+    <div class="out-row" bind:this={outEl}>
+      <span class="label">Out for today:</span>
+      {#each outRow as c (c.id)}<span class="badge badge-neutral" tabindex="0" role="note" use:labelTip={outTip(c)}><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
+      <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
     </div>
   </div></div>
   {#if game === 'd20'}<PickBoard {board} {byId} success={successC} fail={failC} rolled={rolledN} />{/if}
@@ -396,14 +396,15 @@
 <style>
   /* one column: the game, Out for today, then the card (a phone: the game, the card, Out for today), all left-aligned; the card is as tall as
      the D20 tray (--pick-h: PickD20's 360px stage) */
-  .stage { --pick-h: 360px; margin: 0; max-width: 674px; display: grid; gap: var(--space-5) var(--space-6); align-items: start; }
+  .stage { --pick-h: 360px; margin: 0; max-width: 674px; display: grid; gap: 1.25rem var(--space-6); align-items: start; }
+  .game :global(.entry) { margin: var(--space-2) 0 0; } /* the D20's "Someone rolled" row: tight, so the whole Out row stays on a 1280x800 screen with a 20px gap above it (was 12) */
   .game { order: 1; min-width: 0; max-width: 620px; display: flex; flex-direction: column; }
   .out-row { order: 2; max-width: 620px; }
   .side { order: 3; display: flex; min-width: 0; }
   @media (max-width: 640px) { .side { order: 2; } .out-row { order: 3; } }
   .wheel-wrap { width: 100%; max-width: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); margin: 0 auto; } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
   .result { display: flex; align-self: start; width: 100%; max-width: 674px; } /* .card sizes by its container, so the width is explicit */
-  @media (max-width: 720px) { .result { width: calc(280px + 2 * var(--space-4) + 2px); max-width: 100%; } } /* the vertical card: its box hugs it */
+  @media (max-width: 720px) { .result { max-width: 480px; } } /* the vertical card: the /coffees card's width on a phone (its thumbnail the full content width) */
   .result:hover { box-shadow: var(--shadow); transform: none; } /* not clickable: no .card hover lift */
   @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
   /* the phone overlay hugs its card: little padding around it */
@@ -425,8 +426,8 @@
   /* the same layout for both games: the card beside the game (with a real gutter) only where it gets the room for its horizontal form next
      to the 620px game; narrower, it goes under the game (PickCard's own container query picks the horizontal or vertical form) */
   .stage-box { container-type: inline-size; margin-bottom: var(--space-3); }
-  @container (min-width: 1326px) { /* 620 game + 32 gutter + 674 (the card: 640px of content, padding and border): beside always means horizontal */
-    .stage { max-width: none; grid-template-columns: minmax(0, 620px) minmax(0, 1fr); }
+  @container (min-width: 1246px) { /* 540 game + 32 gutter + 674 (the card: 640px of content, padding and border): beside always means horizontal; the game column takes up to 620 */
+    .stage { max-width: none; grid-template-columns: minmax(540px, 620px) minmax(674px, 1fr); }
     .game, .out-row { grid-column: 1; }
     .game { grid-row: 1; }
     .out-row { grid-row: 2; }

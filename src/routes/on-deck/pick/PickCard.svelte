@@ -27,7 +27,7 @@
     const rest = info.drinkAfter && info.drinkBefore ? `${formatDate(info.drinkAfter)} – ${formatDate(info.drinkBefore)}` : '';
     const all: (Stat | false | '' | null | undefined)[] = [
       coffee.processing && { label: 'Processing', text: coffee.processing },
-      info.costPerGram != null && { label: 'Cost', cost: info.costPerGram, text: info.amountG != null ? ` · ${formatBag(info.amountG, info.gramsLeft)}` : '' },
+      info.costPerGram != null ? { label: 'Cost', cost: info.costPerGram, text: info.amountG != null ? ` · ${formatBag(info.amountG, info.gramsLeft)}` : '' } : info.amountG != null && { label: 'Bag', text: formatBag(info.amountG, info.gramsLeft) },
       info.roastDate && { label: 'Roasted', text: `${formatDate(info.roastDate)}${info.daysSinceRoast != null ? ` (${info.daysSinceRoast}d ago)` : ''}` },
       rest && { label: 'Rest window', text: rest },
       info.producer && { label: 'Producer', text: info.producer },
@@ -130,6 +130,7 @@
 <style>
   /* the thumbnail fills the width, so the card's padding is the same left, top and right of it */
   .pick-card { width: 280px; max-width: 100%; display: flex; flex-direction: column; }
+  .pick-card.wide { width: 100%; } /* inline: the card's whole width (the overlay's stays 280px) */
   .rest { display: flex; flex-direction: column; flex: 1; min-width: 0; }
   .card-body { margin-bottom: var(--space-3); }
   .name-row { display: flex; align-items: center; gap: var(--space-2); min-height: 1.9rem; }
