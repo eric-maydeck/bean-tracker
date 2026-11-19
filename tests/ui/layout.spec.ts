@@ -100,7 +100,7 @@ const dismissPickOverlay = async (page: Page) => {
   const modal = page.getByRole('dialog', { name: 'Pick result' });
   if (await modal.isVisible()) { await page.keyboard.press('Escape'); await expect(modal).toBeHidden(); }
 };
-// Pick for me saves through /api/pick; states never write, so the endpoint is stubbed.
+// Pick for me saves through /api/pick; states never write, so the endpoint is stubbed (pick-profile-remembered stores the rules and the selection for real, and puts them back).
 const stubPickApi = (page: Page) => page.route('**/api/pick**', (route) => route.request().method() === 'PUT' ? route.fulfill({ status: 204 }) : route.fulfill({ json: { value: null } }));
 
 interface State {
@@ -6514,6 +6514,8 @@ export const STATES: State[] = [
       await expect(panel.getByRole('radiogroup', { name: 'Crit success holds' }).getByLabel('Specific coffees')).toBeChecked();
       await expect(panel.getByLabel('Exclude specific coffees')).toBeChecked();
       await expect(save).toBeDisabled();
+      await panel.getByRole('button', { name: 'Reset to defaults' }).click(); // the selection is remembered: later states start from the defaults
+      await expect(profile).toHaveValue('');
     }
   },
   {
@@ -6571,6 +6573,81 @@ export const STATES: State[] = [
       await expect(page.locator('.shared-note')).toHaveCount(0);
       await page.getByRole('button', { name: 'Share', exact: true }).click();
       expect(await shared(), 'Reset to defaults from a shared link').toMatch(/rules=default$/);
+    }
+  },
+  {
+    // The selected profile is remembered with the last rules (it comes back only while it still holds them) and survives Close.
+    name: 'pick-profile-remembered', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      const profile = panel.getByLabel('Profile', { exact: true });
+      const opener = page.getByRole('button', { name: 'Rules', exact: true });
+      await opener.click();
+      await profile.selectOption('Shared Rules');
+      await panel.getByRole('button', { name: 'Close', exact: true }).click(); // the header Close keeps the selection
+      await expect(panel).toBeHidden();
+      await page.evaluate(() => { (window as unknown as { __s: string[] }).__s = []; navigator.share = async (d) => { (window as unknown as { __s: string[] }).__s.push(d!.url!); }; });
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await page.evaluate(() => (window as unknown as { __s: string[] }).__s.at(-1)), 'Close keeps the profile in the link').toMatch(/profile=Shared\+Rules$/);
+      await reloadReady(page);
+      await opener.click();
+      await expect(profile, 'the selection survives a reload').toHaveValue('Shared Rules');
+      await expect(panel.getByLabel('Sort')).toHaveValue('name');
+      await profile.selectOption('Other Rules');
+      await reloadReady(page);
+      await opener.click();
+      await expect(profile, 'a new pick survives a reload').toHaveValue('Other Rules');
+      await panel.getByLabel('Sort').selectOption('name'); // the rules changed since: the profile is no longer what is stored
+      await reloadReady(page);
+      await opener.click();
+      await expect(profile, 'a profile whose rules changed is not restored').toHaveValue('');
+      // Leave nothing behind: the defaults and no profile.
+      await panel.getByRole('button', { name: 'Reset to defaults' }).click();
+      await reloadReady(page);
+      await opener.click();
+      await expect(profile).toHaveValue('');
+      await expect(panel.getByLabel('Sort')).toHaveValue('urgency-desc');
+    }
+  },
+  {
+    // A click outside the desktop side bar closes it like Close (focus back on the opener), not while a dialog is open; "Change the rules" Cancel keeps the profile.
+    name: 'pick-rules-outside-click', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      const profile = panel.getByLabel('Profile', { exact: true });
+      const opener = page.getByRole('button', { name: 'Rules', exact: true });
+      const wide = (page.viewportSize()?.width ?? 0) > 640;
+      await page.getByLabel('Number someone rolled').fill('5');
+      await page.getByRole('button', { name: 'Show', exact: true }).click();
+      await dismissPickOverlay(page);
+      await page.locator('.result').getByRole('button', { name: 'Discard' }).click(); // something is out: changing the rules asks
+      await opener.click();
+      await profile.selectOption('Shared Rules');
+      const dlg = page.getByRole('dialog', { name: 'Change the rules' });
+      await expect(dlg).toBeVisible();
+      if (wide) {
+        await page.mouse.click(1200, 450); // outside the side bar, but a dialog is open
+        await expect(dlg).toBeVisible();
+      }
+      await dlg.getByRole('button', { name: 'Cancel' }).click();
+      await expect(profile, 'Cancel keeps no profile').toHaveValue('');
+      await expect(panel).toBeVisible();
+      await profile.selectOption('Shared Rules');
+      await dlg.getByRole('button', { name: /Keep today/ }).click();
+      await expect(profile).toHaveValue('Shared Rules');
+      if (wide) {
+        await panel.getByRole('heading', { name: 'Rules' }).click(); // inside the panel: stays open
+        await expect(panel).toBeVisible();
+        await page.mouse.click(1200, 450);
+        await expect(panel).toBeHidden();
+        await expect(opener).toBeFocused();
+        await opener.click();
+        await expect(profile, 'Close and a click outside keep the profile').toHaveValue('Shared Rules');
+      }
     }
   },
   { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },
@@ -13076,7 +13153,8 @@ const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   test(state.name, { tag: [routeTag(state), ...tabTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
     const s = seed();
-    if (state.name.startsWith('pick-')) await stubPickApi(page); // before the page loads: Pick saves its state on load
+    if (state.name === 'pick-profile-remembered') await page.route('**/api/pick**', (route) => route.request().method() === 'PUT' && route.request().postData()?.includes('"pick.today"') ? route.fulfill({ status: 204 }) : route.continue()); // rules and selection are really stored (a reload reads them back); today's state is not
+    else if (state.name.startsWith('pick-')) await stubPickApi(page); // before the page loads: Pick saves its state on load
     await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);
     // Flush Pick's debounced save while the stub is still up: closing the page would send it for real and leave a result behind for the next state.
@@ -13192,6 +13270,7 @@ test.describe('signed out', () => {
     await expect(note).toContainText('Other Rules');
     await page.getByRole('button', { name: 'Rules', exact: true }).click();
     await expect(rules.getByLabel('Sort')).toHaveValue('urgency-asc');
+    await expect(rules.getByLabel('Crit fail', { exact: true }), 'Other Rules keeps crit fail on; the first profile had turned it off').toBeChecked();
     await page.keyboard.press('Escape');
     await expect(rules).toBeHidden();
     await page.getByRole('button', { name: 'Use my rules' }).click();
@@ -13208,6 +13287,59 @@ test.describe('signed out', () => {
     await note.getByRole('button', { name: 'Dismiss' }).click();
     await expect(note).toHaveCount(0);
     await expect(page).not.toHaveURL(/profile=/);
+  });
+  // A visitor's own (localStorage) profile is shared as the rules themselves: `rules=<code>`; a fresh visitor opening it plays those rules.
+  test('pick-share-visitor-rules', { tag: ['@on-deck', '@two'] }, async ({ page, browser }, info) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await gotoReady(page, '/on-deck?view=pick&game=d20');
+    const stub = () => page.evaluate(() => { (window as unknown as { __s: string[] }).__s = []; navigator.share = async (d) => { (window as unknown as { __s: string[] }).__s.push(d!.url!); }; });
+    const shared = () => page.evaluate(() => (window as unknown as { __s: string[] }).__s.at(-1)!);
+    await stub();
+    await page.getByRole('button', { name: 'Share', exact: true }).click();
+    expect(await shared(), 'no profile: the default rules').toMatch(/rules=default$/);
+    const panel = page.getByRole('dialog', { name: 'Rules' });
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    await panel.getByLabel('Sort').selectOption('name');
+    await panel.getByLabel('Crit fail', { exact: true }).uncheck();
+    await panel.getByRole('button', { name: 'Save as…' }).click();
+    await panel.getByLabel('Profile name').fill('Visitor Mix');
+    await panel.locator('input[aria-label="Profile name"] ~ button').first().click();
+    await expect(panel.getByLabel('Profile', { exact: true })).toHaveValue('Visitor Mix');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Share', exact: true }).click();
+    await expect.poll(shared, 'the long link is shortened first').toMatch(/\/s\//);
+    const link = await shared();
+    // The path is long, so the link is a short /s/<code> that resolves back to the one with the rules in it.
+    expect(link, 'a short link').toMatch(/\/s\/[A-Za-z0-9_-]+$/);
+    const res = await page.request.get(link, { maxRedirects: 0 });
+    expect([301, 302, 303, 307, 308]).toContain(res.status());
+    const target = res.headers()['location'] ?? '';
+    expect(target, 'the rules ride in the link').toMatch(/view=pick&game=d20&rules=[A-Za-z0-9_-]{20,}$/);
+    expect(target).not.toMatch(/rules=default/);
+    // An edit since the save: back to the defaults link (the saved profile is not what is on screen).
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    await panel.getByLabel('Sort').selectOption('urgency-asc');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Share', exact: true }).click();
+    expect(await shared()).toMatch(/rules=default$/);
+    // A fresh visitor opens the link: the note, those rules, and nothing of theirs overwritten.
+    const ctx = await browser.newContext({ viewport: info.project.use.viewport ?? undefined, baseURL: info.project.use.baseURL });
+    try {
+      const other = await ctx.newPage();
+      await gotoReady(other, target.startsWith('http') ? target.slice(new URL(target).origin.length) : target);
+      await expect(other.locator('.shared-note')).toContainText('Playing with the “Visitor Mix” rules');
+      await other.getByRole('button', { name: 'Rules', exact: true }).click();
+      const op = other.getByRole('dialog', { name: 'Rules' });
+      await expect(op.getByLabel('Sort')).toHaveValue('name');
+      await expect(op.getByLabel('Crit fail', { exact: true })).not.toBeChecked();
+      expect(await other.evaluate(() => localStorage.getItem('pick.rules.last'))).toBeNull();
+      // A link that cannot be read: normal rules and a note.
+      await gotoReady(other, '/on-deck?view=pick&rules=not-a-real-code');
+      await expect(other.locator('.shared-note')).toContainText("That rules link couldn't be read.");
+      await checkLayout(other);
+    } finally {
+      await ctx.close();
+    }
   });
   test('account-signed-out', async ({ page }) => {
     await page.goto('/account');
