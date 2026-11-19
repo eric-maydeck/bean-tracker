@@ -66,8 +66,13 @@ function chart(t: ChartTimeline) {
 // A Stats view's thumbnail (the lower part of a page card, THUMB_H tall): app light-theme colours, nothing under 22px, no hairlines.
 // Bars are --series-11 (#c06408) on the page background; medals are the gold/silver/bronze of the text preview's emoji.
 const THUMB_H = 290;
-const BAR = '#c06408', SURFACE = '#ffffff', TILE_EDGE = 'rgba(92, 58, 36, 0.3)', // --color-surface; espresso at 30% for the tile outline
+const BAR = '#c06408',
    MEDAL_FILL = ['#f5c518', '#cfc9c1', '#d79a62'];
+// Grid tiles cycle these by position (neighbours differ): [fill, title, edge] per series colour of src/app.css (light theme), in the order
+// --series-1 blue, -4 orange, -6 green, -2 violet, -3 pink, -7 cyan. Fill = 25% of the series colour over --color-surface (#fff);
+// edge = the series colour itself; title = the series' -ink mixed 30% into --color-text (#2b211b), >= 5.8:1 on its fill (values are espresso, >= 8.6:1).
+const TILE_COLORS = [['#e9effe', '#4357a1', '#a8bffd'], ['#fef0e2', '#8b4a08', '#fdc58b'], ['#e4f6ea', '#10663a', '#92dba9'],
+  ['#f6e9f8', '#824387', '#d9a6e3'], ['#ffedf0', '#9a3948', '#ffb7c1'], ['#dff6fa', '#11646a', '#7fdcea']];
 const clipLine = { display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 const karla = { fontFamily: 'Karla', fontWeight: 700 };
 // Values are never truncated, they shrink to fit `avail` px (~0.6em a character). Like values share one size when the longest
@@ -100,11 +105,11 @@ function thumbnail(t: Thumb) {
   }
   // Up to 6 tiles, 3 across: the label (2 lines at most) over its value.
   const sizes = valueSizes(t.tiles.map((x) => x[1]), 52, 288, 30);
-  const cell = (label: string, value: string, size: number) => el('div', { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: 336, height: 133, boxSizing: 'border-box', padding: '0 21px', background: SURFACE, border: `3px solid ${TILE_EDGE}`, borderRadius: 16 }, [
-    el('div', { display: 'block', lineClamp: 2, textOverflow: 'ellipsis', ...karla, fontSize: 26, lineHeight: 1.1 }, label),
+  const cell = (label: string, value: string, size: number, [fill, title, edge]: string[]) => el('div', { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: 336, height: 133, boxSizing: 'border-box', padding: '0 21px', background: fill, border: `3px solid ${edge}`, borderRadius: 16 }, [
+    el('div', { display: 'block', lineClamp: 2, textOverflow: 'ellipsis', ...karla, color: title, fontSize: 26, lineHeight: 1.1 }, label),
     el('div', { ...clipLine, width: 288, textAlign: [...value].length * 0.6 * size > 288 ? 'left' : 'center', fontFamily: 'Lora', fontWeight: 600, fontSize: size, lineHeight: 1.15, marginTop: 6 }, value)
   ]);
-  return el('div', { display: 'flex', flexWrap: 'wrap', gap: 24, width: WIDTH, height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, t.tiles.map(([l, v], j) => cell(l, v, sizes[j])));
+  return el('div', { display: 'flex', flexWrap: 'wrap', gap: 24, width: WIDTH, height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, t.tiles.map(([l, v], j) => cell(l, v, sizes[j], TILE_COLORS[j % TILE_COLORS.length])));
 }
 
 // A page card (a page's link-preview) is always light, so it takes no tone; a recap card takes its tone.
