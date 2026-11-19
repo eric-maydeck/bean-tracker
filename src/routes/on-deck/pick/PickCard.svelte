@@ -10,8 +10,8 @@
 
   // The /coffees cards view's card (same fields, order and classes) with Brew, Discard and Open coffee under it.
   // `onclose` is set only where the card can be dismissed (the phone overlay).
-  let { coffee, result, out, brewed, busy, onbrew, ondiscard, onopen, onclose }: {
-    coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean;
+  let { coffee, result, out, brewed, busy, wide = false, onbrew, ondiscard, onopen, onclose }: {
+    coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; wide?: boolean;
     onbrew: () => void; ondiscard: () => void; onopen: () => void; onclose?: () => void;
   } = $props();
 
@@ -19,9 +19,10 @@
   const info = $derived(coffee.info);
 </script>
 
-<article class="pick-card" aria-label="Pick result">
+<article class="pick-card" class:wide aria-label="Pick result">
+  {#if coffee.image}<img class="card-thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{:else if wide}<div class="card-thumb ph" style:background-color={coffee.fill}></div>{/if}
+  <div class="rest">
   <div class="card-body">
-    {#if coffee.image}<img class="card-thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{/if}
     <!-- one line: the name truncates, a badge never wraps it or changes the height -->
     <div class="name-row">
       <h3 class="name" use:truncTip>{#if out}<s><CoffeeName name={coffee.name} /></s>{:else}<CoffeeName name={coffee.name} />{/if}</h3>
@@ -62,11 +63,24 @@
     <button type="button" class="button button-secondary" disabled={busy} onclick={onopen}>Open coffee</button>
     {#if onclose}<button type="button" class="button button-secondary" data-close disabled={busy} onclick={onclose}>Close</button>{/if}
   </div>
+  </div>
 </article>
 
 <style>
   /* the thumbnail fills the width, so the card's padding is the same left, top and right of it */
   .pick-card { width: 280px; max-width: 100%; display: flex; flex-direction: column; }
+  .rest { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  /* horizontal: the thumbnail left (the card is as tall as it), the fields and buttons right */
+  .pick-card.wide { width: 100%; }
+  .ph { display: none; } /* the no-image placeholder keeps the horizontal card's shape: desktop only */
+  @media (min-width: 641px) {
+    .pick-card.wide { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: var(--space-4); }
+    .wide .card-thumb { margin: 0; }
+    .ph { display: block; background: var(--color-bg); }
+    .wide .card-body { margin-bottom: var(--space-2); }
+    .wide .card-body :global(p) { margin: 0 0 2px; }
+    .wide .name-row { min-height: 0; }
+  }
   .card-body { margin-bottom: var(--space-3); }
   .name-row { display: flex; align-items: center; gap: var(--space-2); min-height: 1.9rem; }
   .name { margin: 0; padding: 0; border: 0; font-size: 1rem; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

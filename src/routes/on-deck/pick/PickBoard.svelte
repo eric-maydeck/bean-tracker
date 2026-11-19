@@ -30,10 +30,10 @@
 <style>
   .halves-wrap { container-type: inline-size; }
   .halves { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
-  .halves > :global(.board + .board thead) { display: none; } /* stacked: one table, one header */
+  .halves > :global(.board + .board thead) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); } /* stacked: one table, one header (still announced) */
   @container (min-width: 900px) {
     .halves { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-5); }
-    .halves > :global(.board + .board thead) { display: table-header-group; }
+    .halves > :global(.board + .board thead) { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   }
   .board { font-size: 0.85rem; table-layout: fixed; }
   .board :global(th), .board :global(td) { padding: 0.2rem var(--space-2); }

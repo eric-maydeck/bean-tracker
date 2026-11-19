@@ -291,7 +291,7 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && overlay && !dlg?.open && dismissOverlay()} />
 
 {#if ready}
-  <div class="search-row">
+  <div class="search-row game-row">
     <div class="form-field group-field">
       <span>Game</span>
       <div class="tab-group" role="group" aria-label="Game">
@@ -326,7 +326,7 @@
     <div class="side">
       {#if inlineCard}<div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
-          <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+          <PickCard wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
             onbrew={brew} ondiscard={doDiscard} onopen={openPage} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
@@ -367,10 +367,11 @@
 
 <style>
   .stage { margin: var(--space-3) 0; display: grid; gap: var(--space-4); align-items: start; }
+  .stage.d20 { margin-bottom: 0; } /* the board follows Out for today */
   .side { display: flex; min-width: 0; }
   .game { min-width: 0; display: flex; flex-direction: column; }
-  .wheel-wrap { width: 100%; max-width: 460px; margin: 0 auto; }
-  .result { display: flex; align-self: start; width: calc(280px + 2 * var(--space-4) + 2px); max-width: 100%; } /* .card sizes by its container, so the width is explicit */
+  .wheel-wrap { width: 100%; max-width: clamp(320px, 100vh - 420px, 460px); margin: 0 auto; } /* Out for today stays on screen below it (1280x800: 380px) */
+  .result { display: flex; align-self: start; width: 100%; max-width: 620px; } /* .card sizes by its container, so the width is explicit */
   .result:hover { box-shadow: var(--shadow); transform: none; } /* not clickable: no .card hover lift */
   @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
   .pick-modal { position: relative; max-width: 28rem; }
@@ -386,15 +387,21 @@
   @media (prefers-reduced-motion: reduce) { .fx i { display: none; } .fx.fail { animation: none; } }
   /* the same layout for both games: the game left, the card right with a real gutter; both columns as tall as the taller one */
   @media (min-width: 641px) {
-    .stage { grid-template-columns: minmax(0, 620px) auto; column-gap: var(--space-6); align-items: stretch; } /* one row: the card keeps its natural height, the game column fills the row with Reset today at its foot */
+    .stage { grid-template-columns: minmax(0, 620px) minmax(0, 1fr); column-gap: var(--space-6); align-items: start; }
   }
-  /* at the game column's foot, Reset today level with the card's Brew (the same size) */
-  .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: auto 0 var(--space-3); padding-top: var(--space-3); }
+  /* directly below the game */
+  .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: var(--space-3) 0; }
   .out-row .button { margin: 0; padding: 0.35rem 0.5rem; min-height: 36px; font-size: 0.85rem; }
-  @media (min-width: 641px) { .out-row { margin-bottom: calc(var(--space-4) + 1px); } } /* the card's padding and border under Brew */
   @media (max-width: 640px) { .out-row .button { min-height: 44px; } }
   .out-row .label { font-weight: 600; }
   .out-row .badge { white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
+  /* a short desktop window (1280x800): the Game label beside its buttons and no extra gaps, so Out for today stays on screen below the D20 */
+  @media (min-width: 641px) and (max-height: 860px) {
+    .game-row .group-field { flex-direction: row; align-items: center; gap: var(--space-2); }
+    .game-row { margin-bottom: var(--space-2); }
+    .stage { margin-top: 0; }
+    .out-row { margin-top: 0; }
+  }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }
   .rules-dialog h2 { padding: 0; border: 0; margin: 0 0 var(--space-2); } /* not the section heading's divider */
   .dlg-buttons { display: grid; gap: var(--space-2); }
