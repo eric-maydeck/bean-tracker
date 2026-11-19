@@ -1413,24 +1413,30 @@ nav.site-nav a[aria-current='page'] {
   .detail-actions > :first-child {
     margin-right: auto;
   }
+  /* With the status buttons present they take the gap instead: Back, status ... Import, Brew now, ... */
+  .detail-actions > .detail-back:has(+ .detail-status) {
+    margin-right: 0;
+  }
+  .detail-actions > .detail-status {
+    margin-right: auto;
+  }
 }
 
 .detail-actions ~ .chart-panel {
   margin-bottom: var(--space-4);
 }
 
-/* The status icons (admin): their own left-aligned row above the coffee name, wider than the list's narrow column. */
-.detail-status {
-  margin-bottom: var(--space-2);
-}
+/* The status icons (admin): four equal-width buttons after Back, on the left; the rest of the row stays right-aligned. */
 .detail-status .action-stack {
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: repeat(4, 4.5rem);
+  gap: var(--space-2);
 }
 .detail-status .action-row {
   display: contents;
 }
 .detail-status .button.button-icon {
-  min-width: 3.5rem;
+  min-width: 0;
   min-height: 44px;
   margin: 0;
 }
@@ -1452,6 +1458,14 @@ nav.site-nav a[aria-current='page'] {
   }
   .detail-actions > .share-button {
     order: -1;
+  }
+  /* The status buttons: their own full-width row of four equal buttons, last (under Brew now / Add / Clone / Edit). */
+  .detail-actions > .detail-status {
+    order: 1;
+    flex: 1 1 100%;
+  }
+  .detail-status .action-stack {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

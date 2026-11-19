@@ -59,14 +59,12 @@
 <div class="action-stack">
   <div class="action-row">
     {@render children?.()}
-    {#if coffee.status !== 'archive'}
-      {@render del()}
-    {:else}
-      {@render act('unarchive', 'Unarchive', 'restore')}
-    {/if}
+    {@render del()}
   </div>
-  {#if coffee.status !== 'archive'}
-    <div class="action-row">
+  <div class="action-row">
+    {#if coffee.status === 'archive'}
+      {@render act('unarchive', 'Unarchive', 'restore')}
+    {:else}
       {#if coffee.status === 'backlog'}
         {@render act('open', 'Open', 'open', '')}
         {#if coffee.frozen_start_date && !coffee.frozen_end_date}
@@ -78,7 +76,7 @@
         {@render act('unopen', 'Unopen', 'unopen')}
       {/if}
       {@render act('archive', 'Archive', 'archive')}
-    </div>
-  {/if}
+    {/if}
+  </div>
 </div>
 {/if}

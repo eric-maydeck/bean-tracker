@@ -431,6 +431,13 @@ async function expectOverlayHeader(page: Page) {
   expect(Math.abs(h.y - m.y), 'header pinned to the top of the overlay while the form is scrolled').toBeLessThanOrEqual(1);
   const buttons = modal.locator('.modal-head .button');
   expect(await buttons.count()).toBeGreaterThanOrEqual(2);
+  // Equal-size buttons spanning the form's content width: the last one's right edge is the inputs' right edge.
+  const boxes = await Promise.all((await buttons.all()).map((b) => b.boundingBox().then((r) => r!)));
+  boxes.forEach((r, i) => expect(Math.abs(r.width - boxes[0].width), `header button ${i} width ${r.width} vs ${boxes[0].width}`).toBeLessThanOrEqual(1));
+  const inputRight = await modal.locator('.modal-body input:visible, .modal-body select:visible').evaluateAll((els) => Math.max(...els.map((e) => e.getBoundingClientRect().right)));
+  const last = boxes[boxes.length - 1];
+  expect(Math.abs(last.x + last.width - inputRight), `last header button right ${last.x + last.width} vs inputs ${inputRight}`).toBeLessThanOrEqual(1);
+  expect(Math.abs(boxes[0].x - (await modal.locator('.modal-body form').boundingBox())!.x), 'first button at the form content left').toBeLessThanOrEqual(1);
   for (const b of await buttons.all()) {
     const r = (await b.boundingBox())!;
     const what = (await b.getAttribute('aria-label')) ?? (await b.innerText());
@@ -1612,18 +1619,31 @@ export const STATES: State[] = [
       const icons = row.locator('.button-icon');
       await expect(icons).toHaveCount(4);
       expect((await icons.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')!.replace(/^Un/, '').replace(/^Thaw$/, 'Freeze')))), 'slots: Delete, Open, Freeze, Archive').toEqual(['Delete', 'Open', 'Freeze', 'Archive']);
-      await expect(page.locator('.detail-actions .button-icon')).toHaveCount(0);
       const vp = page.viewportSize()!;
-      const h1 = (await page.locator('.detail-body h1').boundingBox())!;
-      for (const b of await icons.all()) {
-        const r = (await b.boundingBox())!;
+      const bx = async (l: Locator) => (await l.boundingBox())!;
+      const [icon, back, edit] = [await Promise.all((await icons.all()).map(bx)), await bx(page.locator('.detail-back')), await bx(page.locator('.detail-edit'))];
+      for (const r of icon) {
         expect(r.x + r.width).toBeLessThanOrEqual(vp.width);
         expect(r.height).toBeGreaterThanOrEqual(43.5);
         expect(r.width).toBeGreaterThanOrEqual(43.5);
-        expect(r.y + r.height, 'icons sit above the name').toBeLessThanOrEqual(h1.y + 1);
-        expect(Math.abs(r.y - (await icons.first().boundingBox())!.y), 'one row').toBeLessThanOrEqual(1);
+        expect(Math.abs(r.width - icon[0].width), 'four equal widths').toBeLessThanOrEqual(1);
+        expect(Math.abs(r.y - icon[0].y), 'one row').toBeLessThanOrEqual(1);
       }
-      expect(Math.abs((await icons.first().boundingBox())!.x - h1.x), 'left-aligned with the name').toBeLessThanOrEqual(1);
+      // In the top action row, never crowding another button: on a shared line at least the normal gap apart, else on their own line.
+      const others = await Promise.all((await page.locator('.detail-actions > .button, .detail-actions > .share-button, .detail-actions > .detail-back').all()).map(bx));
+      for (const o of others) {
+        const sameLine = Math.min(o.y + o.height, icon[0].y + icon[0].height) - Math.max(o.y, icon[0].y) > 4;
+        if (!sameLine) continue;
+        const gap = o.x >= icon[3].x + icon[3].width - 1 ? o.x - (icon[3].x + icon[3].width) : icon[0].x - (o.x + o.width);
+        expect(gap, 'gap between the status buttons and a neighbour on their line').toBeGreaterThanOrEqual(7);
+      }
+      expect(icon[0].y, 'the row holds the status buttons, not the header').toBeLessThan((await bx(page.locator('.detail-body h1'))).y);
+      if (vp.width <= 640) {
+        expect(icon[0].y, 'phone: directly under Brew / Add / Clone / Edit').toBeGreaterThan(edit.y + edit.height - 1);
+        expect(icon[0].y - (edit.y + edit.height), 'phone: one gap under them').toBeLessThanOrEqual(14);
+      } else if (icon[0].y < edit.y + edit.height) {
+        expect(icon[0].x, 'desktop: after Back').toBeGreaterThanOrEqual(back.x + back.width + 7);
+      }
       if (process.env.UI_SHOTS === 'all') await page.screenshot({ path: `.ui-test/screenshots/detail-status-${test.info().project.name}.png` });
       await checkLayout(page);
     } },
@@ -1634,6 +1654,7 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: '+ Add Coffee' }).click();
       await expect(page.getByRole('heading', { name: 'Add Coffee' })).toBeVisible();
       await expect(page.locator('.modal #coffee_name')).toHaveValue('');
+      await expectOverlayHeader(page); // Save and Cancel: two equal columns across the form's width
     }
   },
   {
@@ -2905,10 +2926,13 @@ export const STATES: State[] = [
       const un = page.getByRole('button', { name: 'Unarchive' }).first();
       await expect(un).toBeVisible();
       await expect(page.getByRole('button', { name: 'Restore', exact: true })).toHaveCount(0);
-      // Edit's Cancel and Unarchive sit side by side on one row.
+      // Edit's Cancel, Delete (enabled, like every status) and Unarchive share the one icon row, in that order.
       const row = un.locator('xpath=ancestor::*[contains(@class,"action-stack")][1]');
-      const [ub, cb] = [(await un.boundingBox())!, (await row.getByRole('button', { name: /^(Cancel|Edit)$/ }).boundingBox())!];
+      const [ub, cb, db] = [(await un.boundingBox())!, (await row.getByRole('button', { name: /^(Cancel|Edit)$/ }).boundingBox())!, (await row.getByRole('button', { name: 'Delete', exact: true }).boundingBox())!];
+      expect(Math.abs(db.y - cb.y)).toBeLessThan(4);
       expect(Math.abs(ub.y - cb.y)).toBeLessThan(4);
+      expect(db.x).toBeGreaterThan(cb.x);
+      expect(ub.x).toBeGreaterThan(db.x);
     }
   },
   {

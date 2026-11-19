@@ -332,6 +332,9 @@
 
 <div class="detail-actions">
   <a class="button button-ghost detail-back" href="/coffees" onclick={back}>&larr; Back</a>
+  {#if data.isAdmin}
+    <div class="detail-status"><CoffeeStatusActions stable coffee={data.coffee} onaction={quickAction} /></div>
+  {/if}
   <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
     Import into Bean Conqueror
   </button>
@@ -391,9 +394,6 @@
     <div class="detail-body">
       <div class="detail-header">
         <div>
-          {#if data.isAdmin}
-            <div class="detail-status"><CoffeeStatusActions stable coffee={data.coffee} onaction={quickAction} /></div>
-          {/if}
           <h1>
             <CoffeeName name={data.coffee.coffee_name} />
             {#if data.coffee.status === 'archive'}

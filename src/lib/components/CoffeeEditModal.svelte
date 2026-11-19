@@ -58,7 +58,7 @@
   <div class="modal coffee-edit-modal" role="dialog" aria-modal="true" aria-labelledby="coffee-edit-title" tabindex="-1" bind:this={dlg} {onkeydown}>
     <div class="modal-head">
       <h2 id="coffee-edit-title">{@render title()}</h2>
-      <div class="modal-head-actions">
+      <div class="modal-head-actions" class:with-status={mode === 'edit' && statusActions}>
         {#if mode === 'edit' && statusActions}{@render statusActions()}{/if}
         <div class="modal-head-buttons">
           <button class="button button-success button-solid" type="button" disabled={saving} onclick={save}>{saving ? 'Saving…' : 'Save'}</button>
@@ -103,28 +103,30 @@
     flex: 1 1 auto;
     min-width: 0;
   }
+  /* The buttons share one row as equal columns spanning the header's content width (the form's too): the four status
+     icons, Save and Cancel (edit), or just Save and Cancel (add, clone). */
   .modal-head-actions {
-    display: flex;
-    flex-wrap: wrap;
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: center;
     gap: var(--space-2);
   }
-  .modal-head-buttons {
-    display: flex;
-    gap: var(--space-2);
+  .modal-head-actions.with-status {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+  .modal-head-buttons,
+  .modal-head :global(.action-stack),
+  .modal-head :global(.action-row) {
+    display: contents;
   }
   .modal-head :global(.button) {
     margin: 0;
     min-height: 44px;
-  }
-  .modal-head :global(.button.button-icon) {
-    min-width: 3rem; /* wider than the list's icons, yet icons + Save + Cancel still share one line on a 480px phone */
-  }
-  .modal-head :global(.action-stack) {
-    flex-direction: row;
-  }
-  .modal-head :global(.action-row) {
-    display: contents;
+    min-width: 0;
+    padding-inline: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
   }
   /* No padding on the scroller itself: the header sticks flush to its top, the form pads itself. */
   .coffee-edit-modal {
@@ -132,6 +134,25 @@
   }
   .modal-body {
     padding: var(--space-4) var(--space-5) var(--space-5);
+  }
+  /* Narrow phones: tighter side padding (header and form together, so the edges still line up) and smaller button text, so six
+     44px buttons plus their gaps still fit one row (6 x 44 + 5 x 8 = 304px: a 360px screen's content width). */
+  @media (max-width: 520px) {
+    .modal-head :global(.button) {
+      font-size: 0.9rem;
+    }
+  }
+  @media (max-width: 400px) {
+    .modal-head {
+      padding-inline: var(--space-3);
+    }
+    .modal-body {
+      padding-inline: var(--space-3);
+    }
+    .modal-head :global(.button) {
+      font-size: 0.75rem;
+      padding-inline: 1px;
+    }
   }
   .coffee-edit-modal:focus {
     outline: none;
