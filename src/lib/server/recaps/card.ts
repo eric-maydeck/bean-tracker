@@ -53,8 +53,8 @@ function chart(t: ChartTimeline) {
   const top = g.shapes.map((sh) => { const p = sh.points.split(' '); return `${g.shapes[0] === sh ? 'M' : 'L'}${p[1].replace(',', ' ')} L${p[2].replace(',', ' ')}${sh.hold ? ` L${sh.hold.x1} ${sh.hold.y}` : ''}`; }).join(' ');
   const children = [
     ...g.windows.map((w) => node('rect', { x: w.x0, y: 0, width: w.x1 - w.x0, height: H, fill: BAND_FILL[Math.min(w.bloom, 2)], fillOpacity: 0.4 })),
-    node('rect', { x: 0, y: H - 4, width: WIDTH, height: 4, fill: ESPRESSO }),
     ...g.shapes.map((sh) => node('polygon', { points: sh.points, fill: KIND_FILL[sh.kind] })),
+    node('rect', { x: 0, y: H - 4, width: WIDTH, height: 4, fill: ESPRESSO }),
     node('path', { d: top, fill: 'none', stroke: ESPRESSO, strokeWidth: 4, strokeLinejoin: 'round' }),
     ...g.swirls.map((x) => node('path', { d: wave(x), fill: 'none', stroke: ESPRESSO, strokeWidth: 5, strokeLinecap: 'round', strokeLinejoin: 'round' }))
   ];
