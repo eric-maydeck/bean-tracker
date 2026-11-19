@@ -225,7 +225,7 @@
   .inset.fail .lens { border-color: #d01c1c; box-shadow: 0 0 22px #7a0a0a, inset 0 0 22px rgba(0, 0, 0, 0.7); transform: scale(1.08); }
   .inset-label { display: inline-block; margin-top: 6px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #f3ece2; background: rgba(22, 19, 15, 0.8); padding: 2px 8px; border-radius: 99px; }
   /* Primary call to action: the site's solid .button, enlarged; same width as the lens, pulses while idle (like the wheel's SPIN hub). */
-  .roll { display: block; width: 100%; min-height: 48px; margin: var(--space-3) 0 0; padding: 0 4px; pointer-events: auto; white-space: nowrap;
+  .roll { display: block; width: 100%; min-height: 48px; margin: var(--space-6) 0 0; padding: 0 4px; pointer-events: auto; white-space: nowrap;
     font-size: clamp(0.8rem, 3.4cqw, 1.3rem); font-weight: 800; letter-spacing: 0.02em; }
   .roll.idle { animation: pulse 1.8s infinite; }
   .roll:disabled { cursor: default; filter: grayscale(0.6) brightness(0.8); }
