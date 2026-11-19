@@ -2,12 +2,12 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Card } from '#lib/linkPreview.ts';
 import { KINDS, type ChartTimeline } from '#lib/pourShapes.ts';
 
-// The default preview card's text rides in its URL (/preview.png?c=…), so the URL is signed: only text a page
-// rendered gets drawn, never text someone typed into a link. No SESSION_SECRET: nothing is signed or drawn.
 // Feature flag for epic #27 (link-preview images): off in prod until the epic ships, then delete it and its checks.
 export const previewCardsOn = (): boolean => process.env.PREVIEW_CARDS === '1';
 
-const sig =(c: string, secret: string) => createHmac('sha256', secret).update(`preview-card:${c}`).digest('base64url').slice(0, 22);
+// The default preview card's text rides in its URL (/preview.png?c=…), so the URL is signed: only text a page
+// rendered gets drawn, never text someone typed into a link. No SESSION_SECRET: nothing is signed or drawn.
+const sig = (c: string, secret: string) => createHmac('sha256', secret).update(`preview-card:${c}`).digest('base64url').slice(0, 22);
 
 // SSR HTML: append the signature to each card URL PreviewMeta wrote (in an attribute, so `&amp;`).
 export function signPreviewUrls(html: string, secret = process.env.SESSION_SECRET): string {
