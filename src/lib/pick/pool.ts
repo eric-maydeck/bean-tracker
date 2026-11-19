@@ -2,6 +2,11 @@ import type { PickCoffee, PickRules } from './types';
 
 const CAP = 20;
 
+/** Bags of one coffee (same name and roaster, ignoring case and outer whitespace) are one entry in Pick for me. */
+const keyOf = (c: PickCoffee) => `${c.name.trim().toLowerCase()}\u0000${c.roaster.trim().toLowerCase()}`;
+/** The first of each key, in order. */
+const onePerCoffee = (list: PickCoffee[]) => { const seen = new Set<string>(); return list.filter((c) => { const k = keyOf(c); return !seen.has(k) && !!seen.add(k); }); };
+
 function sorter(rules: PickRules): (a: PickCoffee, b: PickCoffee) => number {
   const byName = (a: PickCoffee, b: PickCoffee) => a.name.localeCompare(b.name);
   // null urgency sorts last in both directions
@@ -34,22 +39,25 @@ export function buildPool(
   rules: PickRules,
   out: Set<number>
 ): { pool: PickCoffee[]; sittingOut: PickCoffee[] } {
-  const crit = new Set(specificIds(rules));
+  const chosen = new Set(specificIds(rules));
+  // a coffee chosen as a specific crit leaves the normal pool with all its bags
+  const critKeys = new Set(coffees.filter((c) => chosen.has(c.id)).map(keyOf));
   // includeFrozenDecaf only matters when Frozen is selected and decaf is included
   const skipFrozenDecaf = !rules.includeFrozenDecaf && rules.categories.includes('frozen') && rules.includeDecaf;
   let list = coffees
     .filter((c) => rules.categories.includes(c.category))
     .filter((c) => (c.decaf ? rules.includeDecaf && !(skipFrozenDecaf && c.category === 'frozen') : true))
-    .filter((c) => !crit.has(c.id) && !out.has(c.id))
+    .filter((c) => !critKeys.has(keyOf(c)) && !out.has(c.id))
     .sort(sorter(rules));
   if (rules.over20 === 'byHand') list = list.filter((c) => !rules.excluded.includes(c.id));
+  list = onePerCoffee(list); // the most urgent bag (the sort order) stands for the coffee: later bags take no number, count toward no cap
   return { pool: list.slice(0, CAP), sittingOut: list.slice(CAP) };
 }
 
 /** The crit coffees still in play, in `ids` order; unknown and out ids dropped. */
 export function critPool(coffees: PickCoffee[], ids: number[], out: Set<number>): PickCoffee[] {
   const byId = new Map(coffees.map((c) => [c.id, c]));
-  return ids.filter((id) => !out.has(id)).flatMap((id) => byId.get(id) ?? []);
+  return onePerCoffee(ids.filter((id) => !out.has(id)).flatMap((id) => byId.get(id) ?? []));
 }
 
 /**

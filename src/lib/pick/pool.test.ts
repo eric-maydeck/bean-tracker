@@ -126,3 +126,34 @@ describe('resolveCrits', () => {
     expect(ids(s.pool)).not.toContain(3);
   });
 });
+
+describe('bags of one coffee', () => {
+  const bag = (id: number, o: Partial<PickCoffee> = {}) => mk(id, { name: 'Kenya AA', roaster: 'Ceto', ...o });
+  it('two bags with the same name and roaster are one entry, the more urgent', () => {
+    const { pool } = buildPool([bag(1, { urgency: 5 }), bag(2, { urgency: 9 }), mk(3)], DEFAULT_RULES, new Set());
+    expect(ids(pool).sort()).toEqual([2, 3]);
+  });
+  it('case and outer whitespace variants match; another roaster stays separate', () => {
+    const cs = [bag(1, { urgency: 9 }), bag(2, { name: '  kenya aa ', roaster: 'CETO ', urgency: 8 }), bag(3, { roaster: 'Other', urgency: 7 })];
+    expect(ids(buildPool(cs, DEFAULT_RULES, new Set()).pool)).toEqual([1, 3]);
+  });
+  it('a specific crit on one bag keeps every bag of that coffee out of the normal pool', () => {
+    const r = R({ critSuccessOn: true, critSuccessMode: 'specific', critSuccess: [1] });
+    expect(ids(buildPool([bag(1), bag(2), mk(3)], r, new Set()).pool)).toEqual([3]);
+  });
+  it('two picked crit bags of one coffee are one crit entry', () => {
+    expect(ids(critPool([bag(1), bag(2)], [2, 1], new Set()))).toEqual([2]);
+  });
+  it('marking the first bag out lets the other stand for the coffee', () => {
+    const cs = [bag(1, { urgency: 9 }), bag(2, { urgency: 5 })];
+    expect(ids(buildPool(cs, DEFAULT_RULES, new Set()).pool)).toEqual([1]);
+    expect(ids(buildPool(cs, DEFAULT_RULES, new Set([1])).pool)).toEqual([2]);
+  });
+  it('the cap of 20 counts coffees, not bags', () => {
+    const cs = [...fixture.slice(0, 19), ...fixture.slice(0, 5).map((c, i) => ({ ...c, id: 100 + i, urgency: 0 })), mk(30, { urgency: 0 })];
+    const { pool, sittingOut } = buildPool(cs, DEFAULT_RULES, new Set());
+    expect(pool).toHaveLength(20);
+    expect(ids(pool)).toContain(30);
+    expect(ids(sittingOut)).toEqual([]);
+  });
+});
