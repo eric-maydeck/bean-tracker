@@ -9,8 +9,9 @@
   import type { PickCoffee, PickResult } from '#lib/pick/types.ts';
 
   // The /coffees cards view's card (same fields, order and classes) with Brew, Discard and Open coffee under it.
-  // `wide` (the inline card): the coffee page's detail as stats (producer, region, variety, ...) in place of the plain lines, filling
-  // the card's height. `onclose` is set only where the card can be dismissed (the phone overlay).
+  // `wide` (the inline card, and the result pop-up where the layout is wide): the coffee page's detail as stats (origin, roast level, producer,
+  // region, ...) in place of the plain lines, spread evenly over the card's height. `onclose` is set only where the card can be dismissed
+  // (the result pop-up).
   let { coffee, result, out, brewed, busy, wide = false, onbrew, ondiscard, onopen, onclose }: {
     coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; wide?: boolean;
     onbrew: () => void; ondiscard: () => void; onopen: () => void; onclose?: () => void;
@@ -19,13 +20,15 @@
   const locked = $derived(busy || out);
   const info = $derived(coffee.info);
 
-  // Most useful first; only what has a value; the first 8 fit the card (4 rows of 2), tasting notes get their own line.
+  // Most useful first; only what has a value; the first 10 fit the card (5 rows of 2) with the head and the tasting notes line.
   // The coffee page's labels (COFFEE_ORIGIN_LABELS) and stat styles.
-  type Stat = { label: string; text?: string; cost?: number };
+  type Stat = { label: string; text?: string; cost?: number; kind?: 'origin' | 'roast' };
   const stats = $derived.by((): Stat[] => {
     if (!info) return [];
     const rest = info.drinkAfter && info.drinkBefore ? `${formatDate(info.drinkAfter)} – ${formatDate(info.drinkBefore)}` : '';
     const all: (Stat | false | '' | null | undefined)[] = [
+      coffee.origin && { label: 'Origin', kind: 'origin' },
+      coffee.roastLevel && { label: 'Roast level', kind: 'roast' },
       coffee.processing && { label: 'Processing', text: coffee.processing },
       info.costPerGram != null ? { label: 'Cost', cost: info.costPerGram, text: info.amountG != null ? ` · ${formatBag(info.amountG, info.gramsLeft)}` : '' } : info.amountG != null && { label: 'Bag', text: formatBag(info.amountG, info.gramsLeft) },
       info.roastDate && { label: 'Roasted', text: `${formatDate(info.roastDate)}${info.daysSinceRoast != null ? ` (${info.daysSinceRoast}d ago)` : ''}` },
@@ -38,7 +41,7 @@
       info.harvestTime && { label: 'Harvest', text: info.harvestTime },
       info.certification && { label: 'Certification', text: info.certification }
     ];
-    return all.filter((s): s is Stat => !!s).slice(0, 8);
+    return all.filter((s): s is Stat => !!s).slice(0, 10);
   });
 </script>
 
@@ -48,11 +51,8 @@
   {#if coffee.category === 'frozen'}<span class="badge badge-frozen">Frozen</span>{/if}
 {/snippet}
 
-<article class="pick-card" class:wide class:noimg={!coffee.image} aria-label="Pick result">
-  {#if coffee.image}<img class="card-thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{/if}
-  <div class="rest">
-  <div class="card-body">
-  <div class="head">
+{#snippet head()}
+  <div class="head" class:full={wide}>
     <!-- one line: the name truncates, a badge never wraps it or changes the height -->
     <div class="name-row">
       <h3 class="name" use:truncTip>{#if out}<s><CoffeeName name={coffee.name} /></s>{:else}<CoffeeName name={coffee.name} />{/if}</h3>
@@ -65,40 +65,39 @@
       <p class="sub"><span class="text-muted" use:truncTip>{coffee.roaster}</span><span class="badges">{@render badges()}</span></p>
     {:else}
       <p class="text-muted">{coffee.roaster}</p>
-    {/if}
-    {#snippet origin()}{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}{/snippet}
-    {#snippet roast()}
-      <RoastBeans degrees={info?.degrees ?? 0} />
-      <span class="text-muted">{coffee.roastLevel ?? 'Roast level unknown'}</span>
-    {/snippet}
-    {#if wide}
-      <!-- origin and roast level share a line: the height goes to the detail -->
-      <p class="meta"><span class="origin" use:truncTip>{@render origin()}</span><span class="roast-row">{@render roast()}</span></p>
-    {:else}
-      <p>{@render origin()}</p>
-      <p class="roast-row">{@render roast()}</p>
+      <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
+      <p class="roast-row"><RoastBeans degrees={info?.degrees ?? 0} /><span class="text-muted">{coffee.roastLevel ?? 'Roast level unknown'}</span></p>
     {/if}
   </div>
+{/snippet}
+
+<article class="pick-card" class:wide class:noimg={!coffee.image} aria-label="Pick result">
+  {#if coffee.image}<img class="card-thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{/if}
+  <div class="rest">
+  <div class="card-body">
   {#if wide}
-    <div class="detail">
-      {#if stats.length}
-        <div class="stat-grid">
-          {#each stats as s (s.label)}
-            <div class="stat">
-              <span class="stat-label">{s.label}</span>
-              <span class="stat-value" use:truncTip>{#if s.cost != null}<Usd n={s.cost} suffix="/g" />{/if}{s.text}</span>
-            </div>
-          {/each}
-        </div>
-      {/if}
-      {#if info?.tastingNotes}
+    <!-- the head and every detail are rows of one grid: the same space between all of them -->
+    <div class="stat-grid">
+      {@render head()}
+      {#each stats as s (s.label)}
         <div class="stat">
+          <span class="stat-label">{s.label}</span>
+          {#if s.kind === 'roast'}
+            <span class="stat-value roast-row"><RoastBeans degrees={info?.degrees ?? 0} /><span use:truncTip>{coffee.roastLevel}</span></span>
+          {:else}
+            <span class="stat-value" use:truncTip>{#if s.kind === 'origin'}{originWithFlag(coffee.origin ?? '')}{:else}{#if s.cost != null}<Usd n={s.cost} suffix="/g" />{/if}{s.text}{/if}</span>
+          {/if}
+        </div>
+      {/each}
+      {#if info?.tastingNotes}
+        <div class="stat full">
           <span class="stat-label">Tasting notes</span>
-          <span class="stat-value notes" use:truncTip>{info.tastingNotes}</span>
+          <span class="stat-value" use:truncTip>{info.tastingNotes}</span>
         </div>
       {/if}
     </div>
   {:else}
+    {@render head()}
     {#if coffee.processing}<p class="text-muted">{coffee.processing}</p>{/if}
     {#if info}
       <p class="text-muted">
@@ -138,15 +137,14 @@
   .name-row .badge { flex: none; white-space: nowrap; }
   .sub { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .sub > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .meta { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-  .meta .origin { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .meta .roast-row { flex: none; }
   .badges { display: flex; gap: var(--space-1); flex: none; }
-  .detail { display: flex; flex-direction: column; gap: var(--space-2); }
-  .detail .stat-grid { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: var(--space-1) var(--space-3); }
-  .detail .stat { min-width: 0; gap: 0; }
-  .detail .stat-label { line-height: 1.2; }
-  .detail .stat-value { font-size: 0.85rem; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .head.full, .stat.full { grid-column: 1 / -1; }
+  .head.full :global(p) { margin: 0; }
+  .card-body .stat-grid { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: var(--space-2) var(--space-3); }
+  .card-body .stat { min-width: 0; gap: 0; }
+  .card-body .stat-label { line-height: 1.2; }
+  .card-body .stat-value { font-size: 0.85rem; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stat-value.roast-row { display: flex; gap: var(--space-1); }
   /* same size, close together, one aligned row at the card's foot */
   .buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-top: auto; }
   .buttons.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -160,8 +158,10 @@
     .pick-card.wide:not(.noimg) { height: calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px); }
     .pick-card.wide.noimg { display: block; }
     .wide .card-thumb { margin: 0; }
-    .wide .card-body { margin: 0 0 var(--space-2); flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-2); min-height: 0; overflow: hidden; }
-    .wide .head :global(p) { margin: 0 0 2px; }
+    .wide .card-body { margin: 0 0 var(--space-2); flex: 1; min-height: 0; overflow: hidden; }
+    /* two columns (origin left, roast level right ...); the rows spread over the height, so the space between every one of them is the same */
+    .wide .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); height: 100%; align-content: space-between; row-gap: var(--space-1); }
+    .wide .buttons.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .wide .name-row { min-height: 1.5rem; } /* a badge appearing never changes the height */
   }
 </style>
