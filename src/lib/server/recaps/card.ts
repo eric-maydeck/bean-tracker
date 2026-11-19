@@ -130,21 +130,23 @@ function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
   const node = (type: string, props: Record<string, unknown>) => ({ type, props });
   const n = t.series[0].values.length, k = t.series.length;
   const ticks = t.x ?? [];
-  const gutter = t.y ? Math.max(textW(t.y[0]), textW(t.y[1])) + 12 : 0;
+  // Data labels go only where each fits over its own bar; they replace the y labels and rules (which would repeat them).
+  const fits = (pw: number) => t.kind === 'vbars' && t.vals && t.vals.every((v) => textW(v) <= (pw - GAP * (n - 1)) / n + GAP - 4);
+  const vals = fits(WIDTH) ? t.vals! : null;
+  const y = vals ? undefined : t.y;
+  const gutter = y ? Math.max(textW(y[0]), textW(y[1])) + 12 : 0;
   const PW = WIDTH - gutter, w = (PW - GAP * (n - 1)) / n;
-  // Data labels go only where each fits over its own bar.
-  const vals = t.kind === 'vbars' && t.vals && t.vals.every((v) => textW(v) <= w + GAP - 4) ? t.vals : null;
-  const top = vals ? VAL_ROOM : t.y ? LABEL / 2 + 1 : 0, bot = ticks.length ? XROW : 0;
+  const top = vals ? VAL_ROOM : y ? LABEL / 2 + 1 : 0, bot = ticks.length ? XROW : 0;
   const legend = k > 1 ? LEGEND_H : 0, H = THUMB_H - legend - top - bot;
   const hex = (i: number, c = -1) => TOKEN_HEX[t.series[i].colors?.[c] ?? t.series[i].color];
   const kids: unknown[] = [];
   const over: unknown[] = []; // labels, absolutely placed in box coordinates
   const label = (s: string, left: number, y: number, width: number, align: 'center' | 'flex-end') => over.push(el('div', { position: 'absolute', left, top: y, width, height: LABEL, display: 'flex', justifyContent: align, alignItems: 'center', whiteSpace: 'nowrap', ...karla, fontSize: LABEL, lineHeight: 1, opacity: 0.85 }, s));
   const cx = (c: number) => gutter + (t.kind === 'vbars' ? c * (w + GAP) + w / 2 : STROKE / 2 + 1 + c * (PW - STROKE - 2) / (n - 1));
-  if (t.y) { // two faint rules (the top value and the baseline) with their labels in the gutter
+  if (y) { // two faint rules (the top value and the baseline) with their labels in the gutter
     kids.push(node('rect', { x: gutter, y: 0, width: PW, height: 2, fill: ESPRESSO, opacity: 0.15 }), node('rect', { x: gutter, y: H - 2, width: PW, height: 2, fill: ESPRESSO, opacity: 0.15 }));
-    label(t.y[1], 0, top - LABEL / 2, gutter - 8, 'flex-end');
-    label(t.y[0], 0, top + H - LABEL - 3, gutter - 8, 'flex-end'); // above the baseline, clear of the x row
+    label(y[1], 0, top - LABEL / 2, gutter - 8, 'flex-end');
+    label(y[0], 0, top + H - LABEL - 3, gutter - 8, 'flex-end'); // above the baseline, clear of the x row
   }
   if (t.kind === 'vbars') {
     const x0 = (c: number) => gutter + c * (w + GAP), bar = (x: number, y: number, bw: number, h: number, fill: string) => kids.push(node('rect', { x, y, width: bw, height: h, rx: Math.min(5, bw / 2, h / 2), fill }));

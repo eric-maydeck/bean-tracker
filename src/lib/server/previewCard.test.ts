@@ -87,6 +87,7 @@ describe('verifyCard with a thumbnail', () => {
     ['missing series', ['lines']],
     ['series not an array', ['vbars', 'x', 0]],
     ['8 ticks', ['lines', v([1, 2, 3, 4, 5, 6, 7, 8]), Array.from({ length: 8 }, (_, i) => [i, 'a']), null]],
+    ['13 bar ticks', ['vbars', v(Array(13).fill(1)), 0, Array.from({ length: 13 }, (_, i) => [i, 'a'])]],
     ['tick index out of range', ['lines', v([1, 2]), [[2, 'a']], null]],
     ['fractional tick index', ['lines', v([1, 2]), [[0.5, 'a']], null]],
     ['long tick text', ['lines', v([1, 2]), [[0, 'x'.repeat(13)]], null]],

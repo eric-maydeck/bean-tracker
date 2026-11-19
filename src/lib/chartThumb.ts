@@ -60,11 +60,11 @@ export function chartThumb(kind: 'vbars' | 'lines', series: ChartSeries[], opts:
     const colors = Array.from({ length: m }, (_, i) => { const t = opts.points![i]; return t && tokenIdx(t) >= 0 ? tokenIdx(t) : out[0].color; });
     if (colors.some((c) => c !== out[0].color)) out[0].colors = colors;
   }
-  // Ticks: <=7 evenly spread over the sampled points, first and last included, labelled by the point's source column.
+  // Ticks: bars up to 12, a label each; else <=7 evenly spread over the sampled points, first and last included, labelled by the point's source column.
   const src = (i: number) => off + (n <= MAX_POINTS ? i : kind === 'lines' ? Math.round(i * (n - 1) / (MAX_POINTS - 1)) : Math.floor(i * n / MAX_POINTS));
   const x: [number, string][] = [];
   if (opts.x) {
-    const c = Math.min(MAX_TICKS, m);
+    const c = kind === 'vbars' && m <= MAX_VALS ? m : Math.min(MAX_TICKS, m); // few bars: one label each (the card drops any that overlap)
     for (const i of new Set(Array.from({ length: c }, (_, j) => Math.round(j * (m - 1) / (c - 1))))) {
       const t = opts.x[src(i)];
       if (t && t.length <= MAX_STR) x.push([i, t]);

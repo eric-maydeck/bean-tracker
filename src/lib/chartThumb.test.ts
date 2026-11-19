@@ -92,6 +92,11 @@ describe('chartThumb labels', () => {
     const big = lab(chartThumb('lines', [{ label: 'A', values: vals(100, (i) => i) }], { x: names(100) }));
     expect(big.x!.at(-1)).toEqual([39, 'L99']);
   });
+  it('bars up to 12 label every bar, more spread to 7; lines stay at 7', () => {
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: vals(8, (i) => i + 1) }], { x: names(8) })).x).toHaveLength(8);
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: vals(24, (i) => i + 1) }], { x: names(24) })).x).toHaveLength(7);
+    expect(lab(chartThumb('lines', [{ label: 'A', values: vals(8, (i) => i + 1) }], { x: names(8) })).x).toHaveLength(7);
+  });
   it('formats y from the raw values: bars from 0, lines from the data min', () => {
     expect(lab(chartThumb('vbars', [{ label: 'A', values: [2, 300] }], { fmt })).y).toEqual(['0g', '300g']);
     expect(lab(chartThumb('lines', [{ label: 'A', values: [2, 300] }], { fmt })).y).toEqual(['2g', '300g']);

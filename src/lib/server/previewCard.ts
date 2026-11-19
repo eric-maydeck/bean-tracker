@@ -63,9 +63,10 @@ const MAX_TICKS = 7, MAX_VALS = 12, MAX_LABEL = 12;
 const short = (v: unknown): v is string => typeof v === 'string' && v.length <= MAX_LABEL;
 // The optional axis and data labels after a chart's series (null/absent = none); false when malformed.
 function decodeLabels(x: unknown, y: unknown, vals: unknown, points: number, allowVals: boolean): ThumbLabels | false {
+  const maxTicks = allowVals ? MAX_VALS : MAX_TICKS; // bars may label each of up to 12 bars
   const out: ThumbLabels = {};
   if (x != null) {
-    if (!list(x, MAX_TICKS)) return false;
+    if (!list(x, maxTicks)) return false;
     const ticks: [number, string][] = [];
     for (const t of x) {
       if (!row(t, 2) || !Number.isInteger(t[0]) || (t[0] as number) < 0 || (t[0] as number) >= points || !short(t[1])) return false;
