@@ -1,10 +1,29 @@
 import { withComputedFields, type CoffeeWithComputed } from '#lib/server/urgency.ts';
 import type { CoffeeRow } from '#lib/types.ts';
+import { coffeeImage } from '#lib/coffeeImage.ts';
+import type { PickCoffee } from '#lib/pick/types.ts';
 
 export function byUrgencyDesc(a: CoffeeWithComputed, b: CoffeeWithComputed): number {
   const au = typeof a.urgency_rating === 'number' ? a.urgency_rating : -Infinity;
   const bu = typeof b.urgency_rating === 'number' ? b.urgency_rating : -Infinity;
   return bu - au;
+}
+
+// Pick's pool input: every non-archived coffee. Frozen (started, not ended) overrides open/backlog.
+export function buildPickCoffees(rows: CoffeeRow[], today: Date): PickCoffee[] {
+  return rows.map((row) => {
+    const c = withComputedFields(row, today);
+    return {
+      id: c.id,
+      slug: c.slug,
+      name: c.coffee_name,
+      roaster: c.roaster,
+      image: coffeeImage(c, c.coffee_name)?.src ?? null,
+      category: c.frozen_start_date && !c.frozen_end_date ? 'frozen' : c.status === 'open' ? 'open' : 'backlog',
+      decaf: c.decaf === 1,
+      urgency: typeof c.urgency_rating === 'number' ? c.urgency_rating : null
+    };
+  });
 }
 
 export type CaffeineFilter = 'all' | 'caffeinated' | 'decaf';

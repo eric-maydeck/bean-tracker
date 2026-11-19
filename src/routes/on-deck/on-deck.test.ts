@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from '#lib/server/db.ts';
-import { createCoffee, getBacklogCoffees, getOpenCoffees, openCoffee, type NewCoffeeInput } from '#lib/server/coffees.ts';
-import { buildOnDeckData } from './onDeckData';
+import { createCoffee, getBacklogCoffees, getNonArchivedCoffees, getOpenCoffees, openCoffee, type NewCoffeeInput } from '#lib/server/coffees.ts';
+import { buildOnDeckData, buildPickCoffees } from './onDeckData';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
   return {
@@ -95,5 +95,27 @@ describe('buildOnDeckData', () => {
     expect(caffeinated.nextUp.every((c) => c.decaf === 0)).toBe(true);
     expect(decaf.nextUp).toHaveLength(2);
     expect(decaf.nextUp.every((c) => c.decaf === 1)).toBe(true);
+  });
+});
+
+describe('buildPickCoffees', () => {
+  const today = new Date('2026-09-17T00:00:00Z');
+
+  it('maps category, decaf and image; frozen overrides backlog, a thawed one does not', () => {
+    createCoffee(db, sampleInput({ coffee_name: 'Cold', frozen_start_date: '2026-09-01', decaf: true }));
+    createCoffee(db, sampleInput({ coffee_name: 'Thawed', frozen_start_date: '2026-08-01', frozen_end_date: '2026-08-20' }));
+    const { id } = createCoffee(db, sampleInput({ coffee_name: 'Warm', roast_date: '2026-09-05' }));
+    openCoffee(db, id);
+    const by = Object.fromEntries(buildPickCoffees(getNonArchivedCoffees(db), today).map((c) => [c.name, c]));
+    expect(by.Cold).toMatchObject({ category: 'frozen', decaf: true, image: null });
+    expect(by.Thawed.category).toBe('backlog');
+    expect(by.Warm).toMatchObject({ category: 'open', decaf: false });
+    expect(typeof by.Warm.urgency).toBe('number');
+  });
+
+  it('turns a Done urgency into null', () => {
+    createCoffee(db, sampleInput());
+    const row = { ...getNonArchivedCoffees(db)[0], drank: 1 } as ReturnType<typeof getNonArchivedCoffees>[number];
+    expect(buildPickCoffees([row], today)[0].urgency).toBeNull();
   });
 });
