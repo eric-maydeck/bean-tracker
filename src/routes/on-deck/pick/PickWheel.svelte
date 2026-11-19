@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
-  import { sliceAt } from '$lib/pick/wheel';
-  import type { WheelSlice } from '$lib/pick/types';
+  import { sliceAt } from '#lib/pick/wheel.ts';
+  import type { WheelSlice } from '#lib/pick/types.ts';
 
   let { slices, names, angle = 0, disabled = false, onspin, onresult }: {
     slices: WheelSlice[]; names: Map<number, string>; angle: number; disabled: boolean;
@@ -20,6 +20,7 @@
   let fx: HTMLCanvasElement;
   let rot = 0; // current rotation, radians
   let shimmer = 0;
+  let spinRaf = 0, shakeRaf = 0;
   let palette: string[] = [];
   let confetti: { x: number; y: number; vx: number; vy: number; life: number; r: number; c: string }[] = [];
   let kindOfBurst: 'success' | 'fail' = 'success';
@@ -115,14 +116,14 @@
 
   function settle(s: WheelSlice) {
     spinning = false;
-    if (s.kind === 'fail') { vignette = true; shake = false; requestAnimationFrame(() => (shake = true)); }
+    if (s.kind === 'fail') { vignette = true; shake = false; shakeRaf = requestAnimationFrame(() => (shake = true)); }
     if (s.kind !== 'coffee' && !reduced()) burst(s.kind);
     onresult(s, rot);
   }
 
   /** Spin to a random point inside the target slice. */
   export function spinTo(target: WheelSlice) {
-    if (spinning) return;
+    if (spinning || disabled) return;
     vignette = false; shake = false;
     const u = target.a0 + (0.1 + Math.random() * 0.8) * (target.a1 - target.a0); // wheel-space angle under the pointer
     const start = rot;
@@ -136,7 +137,7 @@
       const el = now - t0;
       if (el < dur) rot = start + (over - start) * (1 - Math.pow(1 - el / dur, 4));
       else { const t = Math.min((el - dur) / back, 1); rot = over + (end - over) * (1 - Math.pow(1 - t, 3)); }
-      if (el < dur + back) return void requestAnimationFrame(frame);
+      if (el < dur + back) return void (spinRaf = requestAnimationFrame(frame));
       rot = end % TAU;
       settle(sliceAt(slices, u));
     })(t0);
@@ -147,7 +148,7 @@
     palette = PALETTE_VARS.map((v) => cs.getPropertyValue(v).trim() || '#8a5a3b');
     let raf = 0;
     (function idle() { shimmer += 0.04; drawWheel(); drawConfetti(); raf = requestAnimationFrame(idle); })();
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); cancelAnimationFrame(spinRaf); cancelAnimationFrame(shakeRaf); };
   });
 </script>
 
