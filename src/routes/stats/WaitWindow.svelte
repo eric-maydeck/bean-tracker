@@ -5,23 +5,22 @@
   import { useEmptyLine } from './coffeeNote';
   import LabHead from './LabHead.svelte';
   import type { WaitWindow } from '#lib/server/insights/freshness.ts';
+  import { waitBars } from './waitBars';
 
   let { w, placeTip }: { w: WaitWindow; placeTip: (e: ToggleEvent) => void } = $props();
   const emptyLine = useEmptyLine();
 
   const bags = (n: number) => `${n} bag${n === 1 ? '' : 's'}`;
-  const rated = $derived(w.byWait.filter((x) => x.rating !== null));
-  // Rating axis floor, as Habits' and Consumption's rating charts: a point under the lowest bar.
-  const floor = $derived(rated.length ? Math.max(0, Math.floor(Math.min(...rated.map((x) => x.rating!))) - 1) : undefined);
+  const bars = $derived(waitBars(w));
   const windowBrews = $derived(w.window.reduce((s, x) => s + x.brews, 0));
 </script>
 
 <section class="chart-panel" data-section="brewing-rating-by-wait">
   <LabHead id="brewing-rating-by-wait" title="Rating by wait" {placeTip}
     help={['Adjusted rating of this period\'s brews, by the days a bag had rested at its first brew.', 'Freezer days are not counted.', 'It compares bags, not brews of one bag.', '', SAMPLE_HELP]} />
-  {#if rated.length}
-    <Chart type="bar" vertical labels={w.byWait.map((x) => x.label)} values={w.byWait.map((x) => x.rating)} datasetLabel="Rating" samples={w.byWait.map((x) => x.sample)}
-      yMin={floor} format={(v) => v.toFixed(1)} tipFormat={(v, i) => `${v.toFixed(1)} · ${bags(w.byWait[i].bags)}`} height={220} />
+  {#if bars}
+    <Chart type="bar" vertical labels={bars.labels} values={bars.values} datasetLabel="Rating" samples={w.byWait.map((x) => x.sample)}
+      yMin={bars.yMin} format={(v) => v.toFixed(1)} tipFormat={(v, i) => `${v.toFixed(1)} · ${bags(w.byWait[i].bags)}`} height={220} />
     <p class="chart-note">Days off roast at the bag's first brew</p>
   {:else}
     <p class="hl-empty">{emptyLine('No rated brews with a roast date in this period.')}</p>
