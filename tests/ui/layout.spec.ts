@@ -5772,21 +5772,21 @@ export const STATES: State[] = [
   { name: 'labels-consumption', path: () => '/stats?tab=consumption', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-coffees', path: () => '/coffees?status=all&view=compact', act: (page) => expectGroupsLabelled(page) },
   {
-    // Two views behind a labeled View select: only the chosen section renders; `next` is the only explicit value.
+    // Three views behind a labeled View tab group: only the chosen section renders; `next` is the only explicit value.
     name: 'on-deck-view-open', viewports: 'two',
     path: () => '/on-deck',
     act: async (page) => {
-      const view = page.getByLabel('View');
-      await expect(view).toHaveValue('open');
+      const view = page.getByRole('group', { name: 'View' });
+      await expect(view.getByRole('button', { name: 'Currently open' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('heading', { name: 'Currently open' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Next up' })).toHaveCount(0);
       await expectGroupsLabelled(page);
-      await view.selectOption('next');
+      await view.getByRole('button', { name: 'Next up' }).click();
       await expect(page).toHaveURL(/view=next/);
       await expect(page.getByRole('heading', { name: 'Currently open' })).toHaveCount(0);
       await page.getByRole('button', { name: 'Decaf' }).click();
       await expect(page).toHaveURL(/show=decaf&view=next|view=next&show=decaf/);
-      await view.selectOption('open');
+      await view.getByRole('button', { name: 'Currently open' }).click();
       await expect(page).not.toHaveURL(/view=/);
     }
   },
@@ -5794,10 +5794,28 @@ export const STATES: State[] = [
     name: 'on-deck-view-next', viewports: 'two',
     path: () => '/on-deck?view=next',
     act: async (page) => {
-      await expect(page.getByLabel('View')).toHaveValue('next');
+      await expect(page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Next up' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Currently open' })).toHaveCount(0);
       await expect(page.locator('.card').first().or(page.getByText('Backlog is empty.'))).toBeVisible();
+    }
+  },
+  {
+    // The View tabs switch views and write `view=`; Currently open is the bare URL.
+    name: 'pick-tabs', viewports: 'two',
+    path: () => '/on-deck',
+    act: async (page) => {
+      await stubPickApi(page);
+      const view = page.getByRole('group', { name: 'View' });
+      await view.getByRole('button', { name: 'Pick for me' }).click();
+      await expect(page).toHaveURL(/view=pick/);
+      await expect(page.getByRole('heading', { name: 'Pick for me' })).toBeVisible();
+      await view.getByRole('button', { name: 'Next up' }).click();
+      await expect(page).toHaveURL(/view=next/);
+      await expect(page.getByRole('heading', { name: 'Pick for me' })).toHaveCount(0);
+      await view.getByRole('button', { name: 'Currently open' }).click();
+      await expect(page).not.toHaveURL(/view=/);
+      await expectGroupsLabelled(page);
     }
   },
   {
@@ -5807,7 +5825,7 @@ export const STATES: State[] = [
     act: async (page) => {
       await stubPickApi(page);
       await expect(page.getByRole('heading', { name: 'Pick for me' })).toBeVisible();
-      await expect(page.getByLabel('View')).toHaveValue('pick');
+      await expect(page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Pick for me' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
       expect((await page.locator('.wheel').boundingBox())!.width).toBeLessThanOrEqual(561);
       await expectGroupsLabelled(page);

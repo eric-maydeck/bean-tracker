@@ -101,12 +101,12 @@
 </div>
 
 <div class="search-row">
-  <label class="form-field group-field">
+  <div class="form-field group-field">
     <span>View</span>
-    <select class="ctl-select" aria-label="View" value={view} onchange={(e) => (explicitView = e.currentTarget.value === 'next' || e.currentTarget.value === 'pick' ? e.currentTarget.value : undefined)}>
-      {#each VIEWS as v (v)}<option value={v}>{VIEW_LABEL[v]}</option>{/each}
-    </select>
-  </label>
+    <div class="tab-group" role="group" aria-label="View">
+      {#each VIEWS as v (v)}<button type="button" aria-pressed={view === v} onclick={() => (explicitView = v === 'open' ? undefined : v)}>{VIEW_LABEL[v]}</button>{/each}
+    </div>
+  </div>
   <div class="form-field group-field">
     <span>Show</span>
     <div class="tab-group" role="group" aria-label="Show">
