@@ -1,3 +1,14 @@
+# [2.2.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.1.0...v2.2.0) (2026-11-19)
+
+
+### Features
+
+* coffee add/edit opens as an overlay with status actions up top ([#127](https://github.com/eric-maydeck/bean-tracker/issues/127)) ([7945046](https://github.com/eric-maydeck/bean-tracker/commit/7945046699c6b77b91ad7fddc0670231919ef767))
+* coffee page right-hand buttons wrap right-aligned and stay top right ([#127](https://github.com/eric-maydeck/bean-tracker/issues/127)) ([dbcf233](https://github.com/eric-maydeck/bean-tracker/commit/dbcf233e334f19cc1f79e66ec42a5ed86aa57fd0))
+* coffee page status buttons icon-sized below 1126px so the action row stays one line ([#127](https://github.com/eric-maydeck/bean-tracker/issues/127)) ([d82176d](https://github.com/eric-maydeck/bean-tracker/commit/d82176decbefe4dfe3a77a54e36b95f3e276821f))
+* coffee page status icons in their own row with stable slots, wider overlay icons ([#127](https://github.com/eric-maydeck/bean-tracker/issues/127)) ([0fabee5](https://github.com/eric-maydeck/bean-tracker/commit/0fabee5f4e6d8e031dac25f064ca6ee51a182556))
+* status buttons in the coffee action row, equal-width overlay header, delete on archived ([#127](https://github.com/eric-maydeck/bean-tracker/issues/127)) ([5d01a6a](https://github.com/eric-maydeck/bean-tracker/commit/5d01a6ac03b432b93c1fac4f2f448a40c6ae87ee))
+
 # [2.1.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.0.1...v2.1.0) (2026-11-19)
 
 
