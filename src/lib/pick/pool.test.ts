@@ -1,0 +1,98 @@
+import { describe, it, expect } from 'vitest';
+import { DEFAULT_RULES } from './rules';
+import { buildPool, critPool } from './pool';
+import type { PickCoffee, PickRules } from './types';
+
+const mk = (id: number, o: Partial<PickCoffee> = {}): PickCoffee => ({
+  id, slug: `c${id}`, name: `Coffee ${String(id).padStart(2, '0')}`, roaster: 'R', image: null,
+  category: 'open', decaf: false, urgency: id, ...o
+});
+// 1..22 open (22 > 20), 23 backlog (null urgency), 24 frozen, 25 frozen decaf, 26 open decaf
+const fixture: PickCoffee[] = [
+  ...Array.from({ length: 22 }, (_, i) => mk(i + 1)),
+  mk(23, { category: 'backlog', urgency: null }),
+  mk(24, { category: 'frozen' }),
+  mk(25, { category: 'frozen', decaf: true }),
+  mk(26, { decaf: true, urgency: 50 })
+];
+const R = (o: Partial<PickRules> = {}): PickRules => ({ ...DEFAULT_RULES, ...o });
+const ids = (c: PickCoffee[]) => c.map((x) => x.id);
+
+describe('buildPool', () => {
+  it('empty input', () => {
+    expect(buildPool([], DEFAULT_RULES, new Set())).toEqual({ pool: [], sittingOut: [] });
+  });
+  it('defaults exclude frozen and decaf; cap 20, rest sit out', () => {
+    const { pool, sittingOut } = buildPool(fixture, DEFAULT_RULES, new Set());
+    expect(pool).toHaveLength(20);
+    expect(ids(pool)).not.toContain(24);
+    expect(ids(pool)).not.toContain(26);
+    expect(ids(pool)[0]).toBe(22);
+    expect(ids(sittingOut)).toEqual([2, 1, 23]);
+  });
+  it('frozen decaf skipped when skipFrozenDecaf, included when off', () => {
+    const base = R({ categories: ['frozen'], includeDecaf: true });
+    expect(ids(buildPool(fixture, { ...base, skipFrozenDecaf: true }, new Set()).pool)).toEqual([24]);
+    expect(ids(buildPool(fixture, { ...base, skipFrozenDecaf: false }, new Set()).pool).sort()).toEqual([24, 25]);
+  });
+  it('skipFrozenDecaf ignored when decaf not included', () => {
+    const r = R({ categories: ['frozen'], includeDecaf: false, skipFrozenDecaf: false });
+    expect(ids(buildPool(fixture, r, new Set()).pool)).toEqual([24]);
+  });
+  it('open decaf comes in with includeDecaf', () => {
+    const r = R({ includeDecaf: true });
+    expect(ids(buildPool(fixture, r, new Set()).pool)).toContain(26);
+  });
+  it('crit coffee absent from pool', () => {
+    const { pool } = buildPool(fixture, R({ critSuccess: [22], critFail: [21] }), new Set());
+    expect(ids(pool)).not.toContain(22);
+    expect(ids(pool)).not.toContain(21);
+  });
+  it('out coffee absent and the 21st moves up', () => {
+    const { pool, sittingOut } = buildPool(fixture, DEFAULT_RULES, new Set([22]));
+    expect(ids(pool)).not.toContain(22);
+    expect(pool).toHaveLength(20);
+    expect(ids(pool)).toContain(2);
+    expect(ids(sittingOut)).toEqual([1, 23]);
+  });
+  it('byHand drops excluded, then caps at 20 on what is left', () => {
+    const r = R({ over20: 'byHand', excluded: [22] });
+    const { pool, sittingOut } = buildPool(fixture, r, new Set());
+    expect(ids(pool)).not.toContain(22);
+    expect(pool).toHaveLength(20);
+    expect(ids(sittingOut)).toEqual([1, 23]); // 21 left after exclusion, cap trims
+  });
+  it('byHand with 20 or fewer left uses them all', () => {
+    const r = R({ over20: 'byHand', excluded: [22, 21, 20, 19] });
+    const { pool, sittingOut } = buildPool(fixture, r, new Set());
+    expect(pool).toHaveLength(19);
+    expect(sittingOut).toEqual([]);
+  });
+  it('urgency-asc, null last', () => {
+    const { pool } = buildPool(fixture, R({ sort: 'urgency-asc' }), new Set());
+    expect(ids(pool)[0]).toBe(1);
+    expect(ids(pool)).not.toContain(23);
+  });
+  it('name sort', () => {
+    const { pool } = buildPool(fixture, R({ sort: 'name' }), new Set());
+    expect(ids(pool).slice(0, 3)).toEqual([1, 2, 3]);
+  });
+  it('category sort places decaf group per categoryOrder', () => {
+    const base = R({
+      sort: 'category',
+      includeDecaf: true,
+      over20: 'byHand',
+      excluded: Array.from({ length: 18 }, (_, i) => i + 1)
+    });
+    // left: 19..22 open, 23 backlog, 26 open decaf
+    expect(ids(buildPool(fixture, base, new Set()).pool)).toEqual([22, 21, 20, 19, 23, 26]);
+    const b = { ...base, categoryOrder: ['decaf', 'backlog', 'open', 'frozen'] as PickRules['categoryOrder'] };
+    expect(ids(buildPool(fixture, b, new Set()).pool)).toEqual([26, 23, 22, 21, 20, 19]);
+  });
+});
+
+describe('critPool', () => {
+  it('drops out and unknown ids, keeps order of ids', () => {
+    expect(ids(critPool(fixture, [3, 999, 5, 7], new Set([5])))).toEqual([3, 7]);
+  });
+});
