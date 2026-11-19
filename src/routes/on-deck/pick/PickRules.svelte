@@ -141,7 +141,7 @@
             <label class="filter-value"><input type="radio" name="over20" checked={rules.over20 === 'byHand'} onchange={() => set({ over20: 'byHand' })} /> Exclude specific coffees</label>
           </div>
           {#if rules.over20 === 'byHand'}
-            <CritPicker label="Excluded coffees" requireSearch coffees={eligible} selected={rules.excluded} onchange={(ids) => set({ excluded: ids })} />
+            <CritPicker label="Excluded coffees" requireSearch coffees={eligible} known={coffees} selected={rules.excluded} onchange={(ids) => set({ excluded: ids })} />
           {/if}
         </fieldset>
 

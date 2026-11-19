@@ -153,6 +153,15 @@ describe('bags of one coffee', () => {
     const r = R({ over20: 'byHand', excluded: [2] });
     expect(ids(buildPool([bag(1, { urgency: 9 }), bag(2, { urgency: 5 }), mk(3)], r, new Set()).pool)).toEqual([3]);
   });
+  it('a crit bag marked out hands over to another bag of the same coffee', () => {
+    const cs = [bag(1, { urgency: 5 }), bag(2, { urgency: 9 }), bag(3, { urgency: 7, name: 'Other' })];
+    const r = R({ critSuccessOn: true, critSuccessMode: 'specific', critSuccess: [1] });
+    expect(ids(resolveCrits(cs, r, new Set()).success)).toEqual([2]);
+    const res = resolveCrits(cs, r, new Set([2]));
+    expect(ids(res.success)).toEqual([1]);
+    expect(ids(res.pool)).toEqual([3]);
+    expect(resolveCrits(cs, r, new Set([1, 2])).success).toEqual([]);
+  });
   it('the cap of 20 counts coffees, not bags', () => {
     const cs = [...fixture.slice(0, 19), ...fixture.slice(0, 5).map((c, i) => ({ ...c, id: 100 + i, urgency: 0 })), mk(30, { urgency: 0 })];
     const { pool, sittingOut } = buildPool(cs, DEFAULT_RULES, new Set());

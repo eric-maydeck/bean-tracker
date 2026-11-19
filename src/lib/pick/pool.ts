@@ -3,7 +3,7 @@ import type { PickCoffee, PickRules } from './types';
 const CAP = 20;
 
 /** Bags of one coffee (same name and roaster, ignoring case and outer whitespace) are one entry in Pick for me. */
-const keyOf = (c: PickCoffee) => `${c.name.trim().toLowerCase()}\u0000${c.roaster.trim().toLowerCase()}`;
+export const keyOf = (c: PickCoffee) => `${c.name.trim().toLowerCase()}\u0000${c.roaster.trim().toLowerCase()}`;
 /** The first of each key, in order. */
 const onePerCoffee = (list: PickCoffee[]) => { const seen = new Set<string>(); return list.filter((c) => { const k = keyOf(c); return !seen.has(k) && !!seen.add(k); }); };
 
@@ -58,10 +58,12 @@ export function buildPool(
   return { pool: list.slice(0, CAP), sittingOut: list.slice(CAP) };
 }
 
-/** The crit coffees still in play, in `ids` order; unknown and out ids dropped. */
+/** The crit coffees still in play, one per chosen coffee in `ids` order: its most urgent bag not marked out stands in, so a bag marked out hands over to another bag of the same coffee. */
 export function critPool(coffees: PickCoffee[], ids: number[], out: Set<number>): PickCoffee[] {
   const byId = new Map(coffees.map((c) => [c.id, c]));
-  return onePerCoffee(ids.filter((id) => !out.has(id)).flatMap((id) => byId.get(id) ?? []));
+  const keys = [...new Set(ids.flatMap((id) => byId.get(id) ?? []).map(keyOf))];
+  const live = coffees.filter((c) => !out.has(c.id)).sort(sorter({ sort: 'urgency-desc' } as PickRules));
+  return keys.flatMap((k) => live.find((c) => keyOf(c) === k) ?? []);
 }
 
 /**

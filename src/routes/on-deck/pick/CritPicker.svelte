@@ -1,16 +1,20 @@
 <script lang="ts">
   import { truncTip } from '#lib/components/labelTip.ts';
+  import { keyOf } from '#lib/pick/pool.ts';
   import type { PickCoffee } from '#lib/pick/types.ts';
 
   // A searchable multi-select: chips of the picked coffees on top (x removes), a filter box, and a list of checkboxes.
-  let { label, coffees, selected, onchange, requireSearch = false }: { requireSearch?: boolean; label: string; coffees: PickCoffee[]; selected: number[]; onchange: (ids: number[]) => void } = $props();
+  let { label, coffees, known = coffees, selected, onchange, requireSearch = false }: { requireSearch?: boolean; known?: PickCoffee[]; label: string; coffees: PickCoffee[]; selected: number[]; onchange: (ids: number[]) => void } = $props();
 
   let query = $state('');
   const byName = (a: PickCoffee, b: PickCoffee) => a.name.localeCompare(b.name);
   const sorted = $derived([...coffees].sort(byName));
   const visible = $derived(sorted.filter((c) => `${c.name} ${c.roaster}`.toLowerCase().includes(query.trim().toLowerCase())));
-  const picked = $derived(selected.flatMap((id) => coffees.find((c) => c.id === id) ?? []));
-  const toggle = (id: number, on: boolean) => onchange(on ? [...selected, id] : selected.filter((x) => x !== id));
+  // Bags of one coffee are one pick: a row is checked when any bag of its coffee is selected (`known` resolves ids this list may not show).
+  const keyById = $derived(new Map(known.map((c) => [c.id, keyOf(c)])));
+  const pickedKeys = $derived(new Set(selected.flatMap((id) => keyById.get(id) ?? [])));
+  const picked = $derived(coffees.filter((c, i) => pickedKeys.has(keyOf(c)) && coffees.findIndex((d) => keyOf(d) === keyOf(c)) === i));
+  const toggle = (c: PickCoffee, on: boolean) => onchange(on ? [...selected, c.id] : selected.filter((x) => keyById.get(x) !== keyOf(c)));
   const selectVisible = () => onchange([...new Set([...selected, ...visible.map((c) => c.id)])]);
 </script>
 
@@ -24,7 +28,7 @@
   <!-- a table-like list: the coffee left, its roaster flush right (the site's filter-value row) -->
   <ul class="list">
     {#each visible as c (c.id)}
-      <li><label class="filter-value"><input type="checkbox" checked={selected.includes(c.id)} onchange={(e) => toggle(c.id, e.currentTarget.checked)} /> <span class="nm" use:truncTip>{c.name}</span> <span class="filter-value-count roaster" use:truncTip>{c.roaster}</span></label></li>
+      <li><label class="filter-value"><input type="checkbox" checked={pickedKeys.has(keyOf(c))} onchange={(e) => toggle(c, e.currentTarget.checked)} /> <span class="nm" use:truncTip>{c.name}</span> <span class="filter-value-count roaster" use:truncTip>{c.roaster}</span></label></li>
     {:else}
       <li class="text-muted">No match.</li>
     {/each}
@@ -33,7 +37,7 @@
   {#if picked.length}
     <ul class="chips" aria-label="Picked coffees">
       {#each picked as c (c.id)}
-        <li class="chip"><span class="chip-text" use:truncTip={`${c.roaster} · ${c.name}`}>{c.roaster} · {c.name}</span><button type="button" aria-label={`Remove ${c.roaster} · ${c.name}`} onclick={() => toggle(c.id, false)}>×</button></li>
+        <li class="chip"><span class="chip-text" use:truncTip={`${c.roaster} · ${c.name}`}>{c.roaster} · {c.name}</span><button type="button" aria-label={`Remove ${c.roaster} · ${c.name}`} onclick={() => toggle(c, false)}>×</button></li>
       {/each}
     </ul>
   {/if}
