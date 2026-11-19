@@ -104,7 +104,7 @@ export function valueSizes(values: string[], size: number, avail: number, floor 
 // THUMB_TOKENS' light-theme hexes (src/app.css :root), by wire index.
 const TOKEN_HEX = ['#a8bffd', '#d9a6e3', '#ffb7c1', '#fdc58b', '#d8db80', '#92dba9', '#7fdcea', '#698dfd', '#ae57bb', '#fc7184', '#c06408', '#abac11', '#069954', '#01baca', '#d2a679', '#b0703f', '#73503a', '#a8a8a8'];
 if (TOKEN_HEX.length !== THUMB_TOKENS.length) throw new Error('TOKEN_HEX out of step with THUMB_TOKENS');
-const LEGEND_H = 40, GAP = 8, STROKE = 7, LABEL = 22, XROW = 30, VAL_ROOM = 30;
+const LEGEND_H = 40, GAP = 8, STROKE = 7, LABEL = 28, XROW = 38, VAL_ROOM = 36;
 const textW = (s: string) => Math.ceil(s.length * LABEL * 0.58); // Karla bold, generous
 // Axis tick labels left to right: the first always shows, the last wins over the ones it would touch, any other that would overlap is dropped.
 export function pickTicks(ticks: { cx: number; w: number }[], min = 10): number[] {
