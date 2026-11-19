@@ -1,4 +1,4 @@
-import type { PageData } from '../$types';
+import type { PageData } from './$types';
 import type { InsightsView } from '#lib/insightsUrl.ts';
 import type { Thumb } from '#lib/linkPreview.ts';
 
