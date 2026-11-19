@@ -1,3 +1,43 @@
+# [2.1.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.0.1...v2.1.0) (2026-11-19)
+
+
+### Bug Fixes
+
+* chart card labels bigger, 28px bold ([1fb63d0](https://github.com/eric-maydeck/bean-tracker/commit/1fb63d02f32fe362f28de609ea92886ee6cf65c0))
+* chart cards drop bar outlines, ranked bars share the chart tan ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([2c11faa](https://github.com/eric-maydeck/bean-tracker/commit/2c11faa05691ddc5223688cc7346624ee0e0fd6b))
+* chart cards drop y labels under data labels, label every bar ([7ad89ef](https://github.com/eric-maydeck/bean-tracker/commit/7ad89efb977366b483267f526471736cc6c04e0e))
+* draw chart baseline and outline over the pour fills ([#117](https://github.com/eric-maydeck/bean-tracker/issues/117)) ([1d5c27f](https://github.com/eric-maydeck/bean-tracker/commit/1d5c27f38780f690efa9bff3c4c1988e68363815))
+* habits thumbnails follow the empty period ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([e9c24c6](https://github.com/eric-maydeck/bean-tracker/commit/e9c24c6b904f9489c73cb2600b21e56866f69e94))
+* narrow data labels to vbars for tsc ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([2526da2](https://github.com/eric-maydeck/bean-tracker/commit/2526da26df1bf9093c1d5e5a530b38c9230b4d94))
+* on hand chart cards drop the period label ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([9ad6319](https://github.com/eric-maydeck/bean-tracker/commit/9ad6319d232e53945063000d6dc64f29addcd0d9))
+* ranked bars and legend swatches match the site colours ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([257cc85](https://github.com/eric-maydeck/bean-tracker/commit/257cc859fdedc668abeba445de93f3085ace4711))
+* thumb types resolve the stats page data type ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([3a1200c](https://github.com/eric-maydeck/bean-tracker/commit/3a1200cf8459f0faba0e95b675256fa11aa9f2e4))
+* thumbnail legend ellipsis, line edge trim, one label clip ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([b414974](https://github.com/eric-maydeck/bean-tracker/commit/b414974f7add25c04be9841d3494330b9420d192))
+
+
+### Features
+
+* chart cards use the site's bar colours and outlines ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([5416251](https://github.com/eric-maydeck/bean-tracker/commit/5416251bc25adfd6aa5e8044ddaad73a9b933bf7))
+* chart link cards gain axis labels, weekend bars, smoothed lines ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([37f7bbe](https://github.com/eric-maydeck/bean-tracker/commit/37f7bbe7856644911563e923f4a116ddbc18d687))
+* coffee link previews show the saved photo in a coffee card ([#122](https://github.com/eric-maydeck/bean-tracker/issues/122)) ([f552f80](https://github.com/eric-maydeck/bean-tracker/commit/f552f80ee07969ff7177556e47d73db5064ccd4c))
+* consumption and habits chart thumbnails ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([97764dc](https://github.com/eric-maydeck/bean-tracker/commit/97764dc5559f9fabc150a27c45c8e4cfcde9c811))
+* default link-preview card with the page's own text ([#116](https://github.com/eric-maydeck/bean-tracker/issues/116)) ([5e3fa64](https://github.com/eric-maydeck/bean-tracker/commit/5e3fa64e7cb047e7edfc51ede34780802e61997e))
+* draw stats thumbnail flags as their own round images ([#118](https://github.com/eric-maydeck/bean-tracker/issues/118)) ([35a7985](https://github.com/eric-maydeck/bean-tracker/commit/35a798533d7fe2b2a87c4073de18d294725a4ed7))
+* espresso page cards, lighter bloom bands, continuous chart outline ([#117](https://github.com/eric-maydeck/bean-tracker/issues/117)) ([037480d](https://github.com/eric-maydeck/bean-tracker/commit/037480de3ca28059ca3e771fba51c795d2270a20))
+* gear, water and leaderboard trend chart thumbnails ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([fa7d9cf](https://github.com/eric-maydeck/bean-tracker/commit/fa7d9cff66ed302cd13b36e27befabf3fc85ead8))
+* larger rank numbers in stats bar thumbnails ([#118](https://github.com/eric-maydeck/bean-tracker/issues/118)) ([e26850f](https://github.com/eric-maydeck/bean-tracker/commit/e26850f4ce38ff3c160f6ed9cb387404f3ae4da1))
+* light page cards with the app's chart colours and wavy swirls ([#117](https://github.com/eric-maydeck/bean-tracker/issues/117)) ([cf9c030](https://github.com/eric-maydeck/bean-tracker/commit/cf9c030426323493abe7dd79a106561ca567b861))
+* on hand and runway chart thumbnails ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([b6f9233](https://github.com/eric-maydeck/bean-tracker/commit/b6f9233bb39584060afa71395c9fecb9af22f482))
+* put link-preview cards behind the PREVIEW_CARDS flag ([#27](https://github.com/eric-maydeck/bean-tracker/issues/27)) ([9a13fbd](https://github.com/eric-maydeck/bean-tracker/commit/9a13fbd47168be985ae6664e97f1c396242b2f9f))
+* recipe link previews show the pour chart ([#117](https://github.com/eric-maydeck/bean-tracker/issues/117)) ([5fca5fb](https://github.com/eric-maydeck/bean-tracker/commit/5fca5fba62da48fc992f68c173e63341bff9859a))
+* spend and brewing chart thumbnails ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([50a32dd](https://github.com/eric-maydeck/bean-tracker/commit/50a32ddc273559b1213b8448b5653a5779769616))
+* stats chart links preview their chart ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([061e809](https://github.com/eric-maydeck/bean-tracker/commit/061e8095f672fef485c17552c15fba8337d5dfeb))
+* stats link previews show leaderboard and record thumbnails ([#118](https://github.com/eric-maydeck/bean-tracker/issues/118)) ([81d059d](https://github.com/eric-maydeck/bean-tracker/commit/81d059dd2e6dbe009fdbc38c4281a1a0c19cb6b8))
+* stats thumbnails draw country flags and cut overlong values ([#118](https://github.com/eric-maydeck/bean-tracker/issues/118)) ([f58340c](https://github.com/eric-maydeck/bean-tracker/commit/f58340c9bbf6d2ec6232ece34e7bb75799b72c78))
+* stats thumbnails fit values, show price per gram, outline tiles ([#118](https://github.com/eric-maydeck/bean-tracker/issues/118)) ([bdec90d](https://github.com/eric-maydeck/bean-tracker/commit/bdec90d6edd1e2c544625990a4a9ca67d5a1efd9))
+* tint stats grid tiles per position with muted titles ([#118](https://github.com/eric-maydeck/bean-tracker/issues/118)) ([4f68ff3](https://github.com/eric-maydeck/bean-tracker/commit/4f68ff3b7022939d65259fd473ae99ec06010288))
+* vbars and lines thumbnails for stats link preview cards ([#123](https://github.com/eric-maydeck/bean-tracker/issues/123)) ([8ff278f](https://github.com/eric-maydeck/bean-tracker/commit/8ff278f7245ac237f3bfa58202e7c9136ae3b930))
+
 ## [2.0.1](https://github.com/eric-maydeck/bean-tracker/compare/v2.0.0...v2.0.1) (2026-11-18)
 
 
