@@ -4,6 +4,8 @@ import { rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { createDb, setBrewingZone } from '../src/lib/server/db.ts';
 import { createCoffee, type NewCoffeeInput } from '../src/lib/server/coffees.ts';
+import { setUserKv } from '../src/lib/server/userKv.ts';
+import { DEFAULT_RULES } from '../src/lib/pick/rules.ts';
 import { createSubscription } from '../src/lib/server/subscriptions.ts';
 import { setRoasterImage } from '../src/lib/server/roasterImages.ts';
 import { bcTimestamp } from '../src/lib/server/beanConquerorJson.ts';
@@ -384,6 +386,9 @@ db.prepare(`INSERT INTO roaster_recipes (roaster, url, title, snippet, searched_
 // (save.spec.ts deletes the keys to test them).
 for (const { y } of db.prepare(`SELECT DISTINCT substr(bc_created_at, 1, 4) AS y FROM beanconqueror_brews WHERE bc_created_at IS NOT NULL`).all() as { y: string }[])
   if (Number(y) < priorYear + 1) for (const k of ['recap_seen', 'recap_alert']) db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`).run(`${k}_${y}`); // no banner, no inbox alert
+
+// A saved Pick for me rules profile for the shared-link state (a visitor opens ?profile=Shared+Rules): sorted by name, crit fail off.
+setUserKv(db, 'admin', 'pick.profiles', { 'Shared Rules': { ...DEFAULT_RULES, sort: 'name', critFailOn: false }, 'Other Rules': { ...DEFAULT_RULES, sort: 'urgency-asc' } });
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
   slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], labTwo: labSlugs[7], sey: sey.slug, brew: bnBags[1].slug, brewNew: bnNew.slug, big: grams.big.slug,

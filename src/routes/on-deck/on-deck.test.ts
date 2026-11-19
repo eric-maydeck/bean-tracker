@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from '#lib/server/db.ts';
-import { createCoffee, getBacklogCoffees, getOpenCoffees, openCoffee, type NewCoffeeInput } from '#lib/server/coffees.ts';
-import { buildOnDeckData } from './onDeckData';
+import { createCoffee, getBacklogCoffees, getNonArchivedCoffees, getOpenCoffees, openCoffee, type NewCoffeeInput } from '#lib/server/coffees.ts';
+import { buildOnDeckData, buildPickCoffees } from './onDeckData';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
   return {
@@ -95,5 +95,42 @@ describe('buildOnDeckData', () => {
     expect(caffeinated.nextUp.every((c) => c.decaf === 0)).toBe(true);
     expect(decaf.nextUp).toHaveLength(2);
     expect(decaf.nextUp.every((c) => c.decaf === 1)).toBe(true);
+  });
+});
+
+describe('buildPickCoffees', () => {
+  const today = new Date('2026-09-17T00:00:00Z');
+
+  it('maps category, decaf and image; frozen overrides backlog, a thawed one does not', () => {
+    createCoffee(db, sampleInput({ coffee_name: 'Cold', frozen_start_date: '2026-09-01', decaf: true }));
+    createCoffee(db, sampleInput({ coffee_name: 'Thawed', frozen_start_date: '2026-08-01', frozen_end_date: '2026-08-20' }));
+    const { id } = createCoffee(db, sampleInput({ coffee_name: 'Warm', roast_date: '2026-09-05' }));
+    openCoffee(db, id);
+    const by = Object.fromEntries(buildPickCoffees(getNonArchivedCoffees(db), today).map((c) => [c.name, c]));
+    expect(by.Cold).toMatchObject({ category: 'frozen', decaf: true, image: null, fill: null });
+    expect(by.Thawed.category).toBe('backlog');
+    expect(by.Warm).toMatchObject({ category: 'open', decaf: false });
+    expect(typeof by.Warm.urgency).toBe('number');
+  });
+
+  it('carries the /coffees card fields in info, the roast degrees from the level map', () => {
+    createCoffee(db, sampleInput({ coffee_name: 'Roasty', roast_date: '2026-09-05', roast_level: 'Light' }));
+    const c = buildPickCoffees(getNonArchivedCoffees(db), today, new Map([['Light', 2.5]]))[0];
+    expect(c.info).toMatchObject({ degrees: 2.5, roastDate: '2026-09-05', daysSinceRoast: 12, status: 'backlog' });
+    expect(buildPickCoffees(getNonArchivedCoffees(db), today)[0].info?.degrees).toBe(0);
+  });
+
+  it('carries the coffee page origin details, null where blank', () => {
+    createCoffee(db, sampleInput({ coffee_name: 'Rich', producer: 'Ana', farm: 'Finca X', variety: 'Gesha', region: 'Huila', elevation: '1900 m', harvest_time: '2026', certification: 'Organic', tasting_notes: 'Jasmine, peach' }));
+    createCoffee(db, sampleInput({ coffee_name: 'Bare', producer: '' }));
+    const by = Object.fromEntries(buildPickCoffees(getNonArchivedCoffees(db), today).map((c) => [c.name, c.info!]));
+    expect(by.Rich).toMatchObject({ producer: 'Ana', farm: 'Finca X', variety: 'Gesha', region: 'Huila', elevation: '1,900 masl', harvestTime: '2026', certification: 'Organic', tastingNotes: 'Jasmine, peach' });
+    expect(by.Bare).toMatchObject({ producer: null, farm: null, variety: null, region: null, elevation: null, harvestTime: null, certification: null, tastingNotes: null });
+  });
+
+  it('turns a Done urgency into null', () => {
+    createCoffee(db, sampleInput());
+    const row = { ...getNonArchivedCoffees(db)[0], drank: 1 } as ReturnType<typeof getNonArchivedCoffees>[number];
+    expect(buildPickCoffees([row], today)[0].urgency).toBeNull();
   });
 });

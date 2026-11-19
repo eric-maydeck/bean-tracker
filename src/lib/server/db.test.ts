@@ -45,7 +45,8 @@ describe('createDb', () => {
       'search_usage',
       'short_links',
       'slug_redirects',
-      'subscriptions'
+      'subscriptions',
+      'user_kv'
     ]);
   });
 

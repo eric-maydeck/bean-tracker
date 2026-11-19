@@ -13,12 +13,16 @@ type Label = string | Tip | null | undefined;
 export const labelTip = (node: HTMLElement, label: Label) => makeTip(node, label, false);
 // A chart mark's tip: it follows the pointer (and sits at a tap's point) instead of staying at the mark.
 export const followTip = (node: HTMLElement, label: Label) => makeTip(node, label, true);
+// The last known pointer position (any tip's pointer events set it): a scroll closes a tip only when its anchor is no longer under it.
+let ptr: { x: number; y: number } | null = null;
 function makeTip(node: HTMLElement, label: Label, follow: boolean) {
   let tip: ReturnType<typeof mount> | null = null;
   let at: { x: number; y: number } | null = null;
   const track = (e: Event) => {
     const p = e as PointerEvent;
-    if (!follow || p.clientX == null) return;
+    if (p.clientX == null) return;
+    ptr = { x: p.clientX, y: p.clientY };
+    if (!follow) return;
     at = { x: p.clientX, y: p.clientY };
   };
   let pinned = false;
@@ -34,12 +38,21 @@ function makeTip(node: HTMLElement, label: Label, follow: boolean) {
     tip = null;
     pinned = false;
     document.removeEventListener('click', away, true);
+    document.removeEventListener('scroll', scrolled, true);
+  };
+  // A scrolling element around the anchor scrolled (a list under a still pointer): the tip goes when the anchor is no longer under
+  // the pointer (the item there changed without a pointer event); otherwise FloatTip re-places it. A tap-pinned or keyboard-focus tip stays.
+  const scrolled = (e: Event) => {
+    const t = e.target;
+    if (pinned || !(t instanceof Element) || !t.contains(node) || !ptr || node.matches(':focus-visible')) return;
+    if (!node.contains(document.elementFromPoint(ptr.x, ptr.y))) close();
   };
   // Another tip dismissing this one calls onclose from inside its own effect: unmount after it.
   const closed = () => queueMicrotask(close);
   const open = () => {
     if (!tip && label) {
       tip = mount(FloatTip, { target: document.body, props: { anchor: node, tip: typeof label === 'string' ? { title: label } : label, onclose: closed, at, follow } });
+      document.addEventListener('scroll', scrolled, true);
     }
   };
   const pin = () => {

@@ -114,6 +114,8 @@ export function onDeckPreview(view: 'open' | 'next', show: 'all' | 'caffeinated'
   return { title, description: lines.length ? fitList(lines, '\n', true) : view === 'open' ? 'Nothing open right now.' : 'Backlog is empty.' };
 }
 
+export const pickPreview = (): Preview => ({ title: 'Pick for me', description: 'Spin a wheel or roll a D20 to choose what to brew next.' });
+
 // The budget is the project's documented one; adjust if Discord truncates.
 export const RECIPE_PREVIEW_MAX = DESCRIPTION_MAX;
 

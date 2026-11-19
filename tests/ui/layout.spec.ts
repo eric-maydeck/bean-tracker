@@ -11,6 +11,42 @@ import { PART, PARTS } from './viewports';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
+// The whole Out for today row, on screen without scrolling (the wheel shrinks to leave room; the D20's entry row is kept tight).
+// The worst-case horizontal card: a long name, all 10 stats with long values and long tasting notes, written into the rendered card (layout is CSS, so this
+// is the densest coffee without seeding one). Every row must end inside the body with a little margin; the grid is put back afterwards.
+async function expectDenseCardFits(card: Locator, what: string) {
+  const m = await card.locator('.card-body').evaluate((body) => {
+    const grid = body.querySelector<HTMLElement>('.stat-grid')!;
+    const saved = grid.innerHTML;
+    const cardEl = body.closest('.pick-card')!;
+    const h0 = cardEl.getBoundingClientRect().height;
+    const long = 'A very long value that cannot fit on one line of the card';
+    grid.querySelector('.name')!.textContent = long;
+    const stats = [...grid.querySelectorAll<HTMLElement>('.stat:not(.full)')];
+    const notesRow = () => grid.querySelector<HTMLElement>('.stat.full');
+    while (grid.querySelectorAll('.stat:not(.full)').length < 10) { const c = stats[0].cloneNode(true) as HTMLElement; grid.insertBefore(c, notesRow()); }
+    grid.querySelectorAll('.stat-value').forEach((v) => { v.textContent = long; });
+    let notes = notesRow();
+    if (!notes) { notes = stats[0].cloneNode(true) as HTMLElement; notes.classList.add('full'); grid.appendChild(notes); }
+    notes.querySelector('.stat-value')!.textContent = long.repeat(3);
+    const bottom = Math.max(...[...grid.children].map((c) => c.getBoundingClientRect().bottom));
+    const r = { slack: body.nextElementSibling!.getBoundingClientRect().top - bottom, grew: cardEl.getBoundingClientRect().height - h0, rows: grid.querySelectorAll('.stat:not(.full)').length, fits: body.scrollHeight <= body.clientHeight + 1 };
+    grid.innerHTML = saved;
+    return r;
+  });
+  expect(m.rows, `${what}: ten stats`).toBe(10);
+  expect(m.fits, `${what}: the densest detail fits the body`).toBe(true);
+  expect(m.grew, `${what}: the card keeps its height`).toBeLessThanOrEqual(1);
+  expect(m.slack, `${what}: the last row ends at least 4px above the buttons`).toBeGreaterThanOrEqual(4);
+}
+
+async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
+  const b = (await page.locator('.out-row').boundingBox())!;
+  const vh = page.viewportSize()!.height;
+  expect(b.y, 'Out for today on screen, no scrolling').toBeGreaterThanOrEqual(0);
+  expect(b.y + b.height, 'Out for today on screen, no scrolling').toBeLessThanOrEqual(vh);
+}
+
 
 /** Switches the /stats tab the way a user does: "☰ View: …" (or, scrolled on a phone, the short row's ☰), then the drawer link for `tab`. */
 async function pickTab(page: Page, tab: string) {
@@ -58,6 +94,14 @@ async function expectRecapTiles(page: Page, years: string[]) {
     expect((await t.boundingBox())!.height, `${y} tile is a poster, not a row`).toBeGreaterThan(180);
   }
 }
+
+// On a phone a result opens an overlay over the page; Escape dismisses it so the controls behind it can be reached.
+const dismissPickOverlay = async (page: Page) => {
+  const modal = page.getByRole('dialog', { name: 'Pick result' });
+  if (await modal.isVisible()) { await page.keyboard.press('Escape'); await expect(modal).toBeHidden(); }
+};
+// Pick for me saves through /api/pick; states never write, so the endpoint is stubbed.
+const stubPickApi = (page: Page) => page.route('**/api/pick**', (route) => route.request().method() === 'PUT' ? route.fulfill({ status: 204 }) : route.fulfill({ json: { value: null } }));
 
 interface State {
   name: string;
@@ -5975,21 +6019,21 @@ export const STATES: State[] = [
   { name: 'labels-consumption', path: () => '/stats?tab=consumption', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-coffees', path: () => '/coffees?status=all&view=compact', act: (page) => expectGroupsLabelled(page) },
   {
-    // Two views behind a labeled View select: only the chosen section renders; `next` is the only explicit value.
+    // Three views behind a labeled View tab group: only the chosen section renders; `next` is the only explicit value.
     name: 'on-deck-view-open', viewports: 'two',
     path: () => '/on-deck',
     act: async (page) => {
-      const view = page.getByLabel('View');
-      await expect(view).toHaveValue('open');
+      const view = page.getByRole('group', { name: 'View' });
+      await expect(view.getByRole('button', { name: 'Currently open' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('heading', { name: 'Currently open' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Next up' })).toHaveCount(0);
       await expectGroupsLabelled(page);
-      await view.selectOption('next');
+      await view.getByRole('button', { name: 'Next up' }).click();
       await expect(page).toHaveURL(/view=next/);
       await expect(page.getByRole('heading', { name: 'Currently open' })).toHaveCount(0);
       await page.getByRole('button', { name: 'Decaf' }).click();
       await expect(page).toHaveURL(/show=decaf&view=next|view=next&show=decaf/);
-      await view.selectOption('open');
+      await view.getByRole('button', { name: 'Currently open' }).click();
       await expect(page).not.toHaveURL(/view=/);
     }
   },
@@ -5997,10 +6041,657 @@ export const STATES: State[] = [
     name: 'on-deck-view-next', viewports: 'two',
     path: () => '/on-deck?view=next',
     act: async (page) => {
-      await expect(page.getByLabel('View')).toHaveValue('next');
+      await expect(page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Next up' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Currently open' })).toHaveCount(0);
       await expect(page.locator('.card').first().or(page.getByText('Backlog is empty.'))).toBeVisible();
+    }
+  },
+  {
+    // The View tabs switch views and write `view=`; Currently open is the bare URL.
+    name: 'pick-tabs', viewports: 'two',
+    path: () => '/on-deck',
+    act: async (page) => {
+      const view = page.getByRole('group', { name: 'View' });
+      await view.getByRole('button', { name: 'Pick for me' }).click();
+      await expect(page).toHaveURL(/view=pick/);
+      await expect(page.getByRole('heading', { name: 'Pick for me' })).toBeVisible();
+      // Every view's heading has the same divider under it.
+      await expect(page.locator('section.detail-section > h2')).toHaveCSS('border-bottom-width', '1px');
+      await view.getByRole('button', { name: 'Next up' }).click();
+      await expect(page).toHaveURL(/view=next/);
+      await expect(page.locator('section.detail-section > h2')).toHaveCSS('border-bottom-width', '1px');
+      await expect(page.getByRole('heading', { name: 'Pick for me' })).toHaveCount(0);
+      await view.getByRole('button', { name: 'Currently open' }).click();
+      await expect(page).not.toHaveURL(/view=/);
+      await expect(page.locator('section.detail-section > h2').first()).toHaveCSS('border-bottom-width', '1px');
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        const [v, s] = [(await view.boundingBox())!, (await page.getByRole('group', { name: 'Show' }).boundingBox())!];
+        expect(s.x - (v.x + v.width), 'room between View and Show').toBeGreaterThanOrEqual(23);
+      }
+      await expectGroupsLabelled(page);
+    }
+  },
+  {
+    // Pick for me: wheel by default, the rules panel opens and closes, nothing about Pick but view/game in the URL.
+    name: 'pick-wheel', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await expect(page.getByRole('heading', { name: 'Pick for me' })).toBeVisible();
+      await expect(page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Pick for me' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
+      expect((await page.locator('.wheel').boundingBox())!.width).toBeLessThanOrEqual(561);
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        const [w, r] = [(await page.locator('.wheel').boundingBox())!, (await page.locator('.result').boundingBox())!];
+        if ((page.viewportSize()?.width ?? 0) >= 1280) expect(r.x, 'wide desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
+        else expect(r.y, 'narrower desktop: the card sits under the game').toBeGreaterThan(w.y + w.height - 1);
+      } else await expect(page.locator('.result')).toBeHidden(); // phone: no placeholder, results show in the overlay
+      await expectGroupsLabelled(page);
+      const rules = page.getByRole('button', { name: 'Rules', exact: true });
+      // Rules sits on the Game buttons' row, at their height.
+      const [gb, rb] = [(await page.getByRole('group', { name: 'Game' }).getByRole('button', { name: 'Wheel' }).boundingBox())!, (await rules.boundingBox())!];
+      expect(Math.abs(gb.y - rb.y), 'Rules on the Game row').toBeLessThanOrEqual(3);
+      expect(Math.abs(gb.height - rb.height), 'same height').toBeLessThanOrEqual(3);
+      if ((page.viewportSize()?.width ?? 0) > 640) await expectOutRowOnScreen(page); // no scrolling to reach it
+      await rules.click();
+      await expect(page.getByRole('group', { name: 'Pool' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Reset to defaults' })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('button', { name: 'Reset to defaults' })).toHaveCount(0);
+      await expect(page).toHaveURL(/view=pick$/);
+    }
+  },
+  {
+    // The wheel runs one animation loop: after several spins at most one animation frame is pending at rest, and leaving the wheel leaves none.
+    // Counts every requestAnimationFrame (callback names don't survive the production build); transitions are over before sampling.
+    name: 'pick-wheel-one-loop', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' }); // short spins; the loop is the same
+      await page.evaluate(() => {
+        const w = window as unknown as { __raf: Set<number> };
+        w.__raf = new Set();
+        const [req, cancel] = [window.requestAnimationFrame.bind(window), window.cancelAnimationFrame.bind(window)];
+        window.requestAnimationFrame = (cb) => { const id = req((t) => { w.__raf.delete(id); cb(t); }); w.__raf.add(id); return id; };
+        window.cancelAnimationFrame = (id) => { w.__raf.delete(id); cancel(id); };
+      });
+      // The most frames pending at once over half a second of rest.
+      const pendingAtRest = async () => {
+        await page.waitForTimeout(1200);
+        return page.evaluate(() => new Promise<number>((done) => {
+          const w = window as unknown as { __raf: Set<number> };
+          let max = 0; const t0 = performance.now();
+          const poll = () => { max = Math.max(max, w.__raf.size); if (performance.now() - t0 < 500) setTimeout(poll, 10); else done(max); };
+          poll();
+        }));
+      };
+      for (let i = 0; i < 2; i++) {
+        await page.getByRole('button', { name: 'Spin', exact: true }).click();
+        await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled({ timeout: 15000 });
+        await dismissPickOverlay(page);
+      }
+      expect(await pendingAtRest(), 'one loop at a time, however many spins').toBeLessThanOrEqual(1);
+      await page.getByRole('button', { name: 'Currently open', exact: true }).click();
+      await expect(page.locator('.wheel')).toHaveCount(0);
+      expect(await pendingAtRest(), 'unmounting the wheel leaves no loop').toBe(0);
+    }
+  },
+  {
+    // Rules: a left side bar on desktop (the game does not move), the shared modal on a phone; Close and Escape dismiss it.
+    name: 'pick-rules-sidebar', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      const stage = page.locator('.stage');
+      const before = (await stage.boundingBox())!;
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      await expect(panel).toBeVisible();
+      const box = (await panel.boundingBox())!;
+      const vw = page.viewportSize()!.width;
+      if (vw > 640) {
+        expect(box.x, 'side bar hugs the left edge').toBeLessThanOrEqual(1);
+        expect(box.y, 'side bar starts below the site header').toBeGreaterThanOrEqual((await page.locator('nav.site-nav').boundingBox())!.height - 1);
+        expect(box.width).toBeLessThanOrEqual(420);
+        const after = (await stage.boundingBox())!;
+        expect(after.y, 'the game is not pushed down').toBe(before.y);
+        await expect(page.locator('.modal-backdrop')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      } else {
+        expect(box.width).toBeLessThanOrEqual(vw);
+        await expect(page.locator('.modal-backdrop')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      }
+      // Crits default to the coffee in the spot, both on; the highest-number option sits under crit success.
+      await expect(panel.getByLabel('Crit fail', { exact: true })).toBeChecked();
+      await expect(panel.getByLabel('The coffee in that spot (#1)')).toBeChecked();
+      await expect(panel.getByLabel('The coffee in that spot (#20)')).toBeChecked();
+      await expect(panel.getByLabel(/Highest number is crit success/)).toBeChecked();
+      // An inline row: the box sits left of the label text, on the same line.
+      const hi = panel.getByLabel(/Highest number is crit success/);
+      const hiText = panel.getByText('Highest number is crit success').first();
+      const [bx, tx] = [(await hi.boundingBox())!, (await hiText.boundingBox())!];
+      expect(bx.x + bx.width, 'box left of its label').toBeLessThanOrEqual(tx.x + 1);
+      expect(Math.abs(bx.y - tx.y), 'box on the label first line').toBeLessThan(14);
+      await panel.getByLabel('Specific coffees').last().check();
+      await expect(panel.getByLabel(/Highest number is crit success/)).toHaveCount(0);
+      await expect(panel.getByRole('button', { name: 'Select all', exact: true })).toBeVisible();
+      // Exclude specific coffees: the same searchable picker; a row has the coffee left and its roaster flush right; the chips sit under the list.
+      await panel.getByLabel('Exclude specific coffees').check();
+      const ex = panel.getByRole('group', { name: 'Excluded coffees' });
+      await expect(ex.getByLabel('Search Excluded coffees')).toBeVisible();
+      await expect(ex.getByRole('button', { name: 'Select all', exact: true }), 'no one-click exclude-everything').toBeDisabled();
+      const row = ex.locator('.list label').first();
+      await row.getByRole('checkbox').check();
+      const [rowB, nameB, roasterB] = [(await row.boundingBox())!, (await row.locator('.nm').boundingBox())!, (await row.locator('.roaster').boundingBox())!];
+      expect(roasterB.x, 'roaster right of the name').toBeGreaterThanOrEqual(nameB.x + nameB.width - 1);
+      expect(rowB.x + rowB.width - (roasterB.x + roasterB.width), 'roaster flush right').toBeLessThanOrEqual(4);
+      const [listB, chipB] = [(await ex.locator('.list').boundingBox())!, (await ex.locator('.chip').first().boundingBox())!];
+      expect(chipB.y, 'chips under the list').toBeGreaterThanOrEqual(listB.y + listB.height - 1);
+      // A chip reads "Roaster · Name"; cut short on desktop, a hover tip has the whole of it.
+      const search = ex.getByLabel('Search Excluded coffees');
+      await search.fill('Finca');
+      await ex.locator('.list label').first().getByRole('checkbox').check();
+      await search.fill('');
+      const chip = ex.locator('.chip-text').filter({ hasText: 'Finca' });
+      await expect(chip).toContainText(' · ');
+      const tipOf = page.locator('.float-tip').filter({ hasText: 'Finca El Paraíso' });
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        await chip.hover();
+        await expect(tipOf).toBeVisible();
+        // A tip over a row of a scrolling list goes when the list scrolls the row from under the pointer (it must not ride along with the old row).
+        const nm = ex.locator('.list .nm').filter({ hasText: 'Finca' });
+        await nm.hover(); // scrolls it into view first: its tip stays (the row is under the pointer)
+        await expect(tipOf).toBeVisible();
+        // scroll to the far end from where the row sits, so the row really leaves the pointer (the hover may have scrolled it to either end)
+        await ex.locator('.list').evaluate((el) => { el.scrollTop = el.scrollTop > 0 ? 0 : el.scrollHeight; });
+        await expect(tipOf).toBeHidden();
+      }
+      // Closing slides the panel out as opening slid it in (desktop; none on a phone or with reduced motion).
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        const moving = await panel.evaluate(async (el) => {
+          (el.querySelector('header button') as HTMLButtonElement).click();
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          return getComputedStyle(el).transform !== 'none';
+        });
+        expect(moving, 'the panel slides out').toBe(true);
+      } else {
+        expect((await page.locator('.rules-backdrop').boundingBox())!.y, 'phone: the modal layer covers the whole page').toBe(0);
+        await panel.getByRole('button', { name: 'Close' }).click();
+      }
+      await expect(panel).toBeHidden();
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await expect(panel).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(panel).toBeHidden();
+    }
+  },
+  {
+    // No WebGL: the note sits inside the empty tray (no extra height) and a number someone rolled still shows its coffee.
+    name: 'pick-d20-no-webgl', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.addInitScript(() => {
+        const get = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, id: string, ...rest: unknown[]) {
+          return /webgl/.test(id) ? null : (get as (...a: unknown[]) => RenderingContext | null).call(this, id, ...rest);
+        } as typeof get;
+      });
+      await page.reload();
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const hint = page.locator('.d20 .hint');
+      await expect(hint).toBeVisible({ timeout: 20000 });
+      const [hb, sb] = [(await hint.boundingBox())!, (await page.locator('.d20 .stage').boundingBox())!];
+      expect(hb.y >= sb.y && hb.y + hb.height <= sb.y + sb.height, 'the note is inside the tray').toBe(true);
+      await expect(page.getByRole('button', { name: 'Roll', exact: true })).toBeDisabled();
+      if ((page.viewportSize()?.width ?? 0) >= 1280) await expectOutRowOnScreen(page);
+      await page.getByLabel('Number someone rolled').fill('7');
+      await page.getByRole('button', { name: 'Show', exact: true }).click();
+      await expect(page.locator('.pick-modal .rolled b')).toHaveText('7');
+      await dismissPickOverlay(page);
+      await expect(page.locator('tr.rolled td.n')).toHaveText('7');
+    }
+  },
+  {
+    // The D20 view after "someone rolled 7": the board marks 7, a card shows the coffee, and game=d20 is in the URL.
+    name: 'pick-d20', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const show = page.getByRole('button', { name: 'Show', exact: true });
+      await expect(show).toBeEnabled({ timeout: 20000 });
+      // Roll sits directly under the lens at the lens's width; the entry row (input + Show) stays on one line.
+      const roll = page.getByRole('button', { name: 'Roll', exact: true });
+      const [lensBox, rollBox] = [(await page.locator('.d20 .lens').boundingBox())!, (await roll.boundingBox())!];
+      expect(rollBox.y, 'Roll below the lens').toBeGreaterThan(lensBox.y + lensBox.height - 1);
+      expect(Math.abs(rollBox.width - lensBox.width), 'Roll as wide as the lens').toBeLessThanOrEqual(10);
+      await expect(page.getByText('Someone rolled for me:')).toBeVisible();
+      const [inBox, showBox] = [(await page.getByLabel('Number someone rolled').boundingBox())!, (await show.boundingBox())!];
+      expect(Math.abs(inBox.y + inBox.height / 2 - (showBox.y + showBox.height / 2)), 'input and Show on one line').toBeLessThanOrEqual(4);
+      await page.getByLabel('Number someone rolled').fill('7');
+      await show.click();
+      await expect(page.locator('tr.rolled')).toHaveCount(1);
+      await expect(page.locator('tr.rolled td.n')).toHaveText('7');
+      // The board: 1 to 10 and 11 to 20 side by side on desktop, stacked on a phone.
+      await expect(page.locator('table.board')).toHaveCount(2);
+      await expect(page.locator('table.board').nth(0).locator('tbody tr')).toHaveCount(10);
+      await expect(page.locator('table.board').nth(1).locator('tbody tr')).toHaveCount(10);
+      const [t1, t2] = [(await page.locator('table.board').nth(0).boundingBox())!, (await page.locator('table.board').nth(1).boundingBox())!];
+      // The result opens in the pop-up at every width, with the rolled number; the inline card is what remains once it is closed.
+      await expect(page.locator('.pick-modal .rolled b'), 'the overlay shows the rolled number').toHaveText('7');
+      await expect(page.locator('.pick-modal .rolled'), 'the header reads You rolled').toContainText('You rolled');
+      await dismissPickOverlay(page);
+      await expect(page.locator('.side .last'), 'the inline card has its heading').toHaveText('Your last roll');
+      const [hb, cb0, gr] = [(await page.locator('.side .last').boundingBox())!, (await page.locator('.result').boundingBox())!, (await page.locator('.game-row').boundingBox())!];
+      expect(hb.y + hb.height - 1, 'heading above the card').toBeLessThanOrEqual(cb0.y);
+      if ((page.viewportSize()?.width ?? 0) >= 1280) {
+        expect(hb.y, 'beside the game: the heading sits in the Game row band, not off the page').toBeGreaterThanOrEqual(gr.y - 2);
+        const rb = (await page.getByRole('button', { name: 'Rules', exact: true }).boundingBox())!;
+        expect(hb.x >= rb.x + rb.width || hb.y >= rb.y + rb.height || hb.x + hb.width <= rb.x || hb.y + hb.height <= rb.y, 'the heading does not overlap the Rules button').toBe(true);
+      }
+      if ((page.viewportSize()?.width ?? 0) > 900) {
+        expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
+        await expectOutRowOnScreen(page);
+        expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the D20').toBeGreaterThan((await page.locator('.d20 .stage').boundingBox())!.x + (await page.locator('.d20 .stage').boundingBox())!.width);
+        expect(Math.abs((await page.locator('.result').boundingBox())!.y - (await page.locator('.d20 .stage').boundingBox())!.y), 'card top level with the tray top (the heading does not push it)').toBeLessThanOrEqual(2);
+        // The card is as tall as the D20 tray (an image card; one without is as tall as its content).
+        if (await page.locator('.result img').count()) expect(Math.abs((await page.locator('.result').boundingBox())!.height - (await page.locator('.d20 .stage').boundingBox())!.height), 'card as tall as the tray').toBeLessThanOrEqual(2);
+      } else {
+        expect(Math.abs(t2.x - t1.x), 'one column').toBeLessThanOrEqual(1); // stacked: one table, 1 to 20
+        expect(t2.y, 'second half under the first').toBeGreaterThan(t1.y + t1.height - 1);
+        await expect(page.getByRole('table', { name: 'D20 board, 11 to 20' }).getByRole('columnheader'), 'second header stays in the accessibility tree').toHaveCount(3);
+      }
+      await expect(page.locator('.pick-card')).toBeVisible();
+      await expect(page).toHaveURL(/game=d20/);
+      await dismissPickOverlay(page);
+      if ((page.viewportSize()?.width ?? 0) <= 640) {
+        const [cb, ob] = [(await page.locator('.result').boundingBox())!, (await page.locator('.out-row').boundingBox())!];
+        expect(ob.y, 'Out for today below the card on a phone').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
+        expect(await page.evaluate(() => !!(document.querySelector('.side')!.compareDocumentPosition(document.querySelector('.out-row')!) & Node.DOCUMENT_POSITION_FOLLOWING)), 'DOM order = visual order: the card, then Out for today').toBe(true);
+      }
+      await checkLayout(page); // D20, the board and the inline card on screen: no sideways scroll
+      await page.getByRole('button', { name: 'Wheel', exact: true }).click();
+      await expect(page).not.toHaveURL(/game=/);
+    }
+  },
+  {
+    // Discard: the name is struck through with an "Out for today" badge, Brew and Discard are disabled, Open stays enabled;
+    // the card does not move or resize.
+    name: 'pick-discard', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.getByRole('button', { name: 'Spin', exact: true }).click();
+      const card = page.locator('.pick-card');
+      await expect(card).toBeVisible();
+      const before = (await card.boundingBox())!;
+      await card.getByRole('button', { name: 'Discard' }).click();
+      await expect(card.getByText('Out for today')).toBeVisible();
+      await expect(card.locator('s')).toHaveCount(1);
+      await expect(card.getByRole('button', { name: 'Brew', exact: true })).toBeDisabled();
+      await expect(card.getByRole('button', { name: 'Discard' })).toBeDisabled();
+      await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toBeEnabled();
+      await expect(page.locator('.out-row s')).toHaveCount(1);
+      // The badge sits right of the name on the same line; the name line keeps its height.
+      const [nm, bd] = [(await card.locator('.name').boundingBox())!, (await card.getByText('Out for today').boundingBox())!];
+      expect(bd.x, 'badge right of the name').toBeGreaterThanOrEqual(nm.x + nm.width - 1);
+      expect(Math.abs(bd.y + bd.height / 2 - (nm.y + nm.height / 2)), 'badge on the name line').toBeLessThanOrEqual(6);
+      const after = (await card.boundingBox())!;
+      expect(Math.abs(after.height - before.height), 'card keeps its height').toBeLessThanOrEqual(2);
+      await dismissPickOverlay(page);
+      // The out-for-today badge's tip: name, roaster, detail and the reason.
+      await page.locator('.out-row .badge').hover();
+      await expect(page.locator('.float-tip').filter({ hasText: 'Discarded today' })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Reset today' }).click();
+      await expect(page.locator('.out-row s')).toHaveCount(0);
+    }
+  },
+  {
+    // The result card (desktop): the /coffees card's width, the coffee page's picture size, three equal buttons on one row,
+    // and the Out for today row still on screen with a result showing.
+    name: 'pick-card', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.getByRole('button', { name: 'Spin', exact: true }).click();
+      // The result opens in the pop-up at every width (Close inside); the inline card is measured once it is closed.
+      const modal = page.getByRole('dialog', { name: 'Pick result' });
+      await expect(modal.getByRole('button', { name: 'Close' })).toBeVisible();
+      await dismissPickOverlay(page);
+      if ((page.viewportSize()?.width ?? 0) <= 640) return;
+      await expect(page.locator('.side .last'), 'the wheel result has its heading').toHaveText('Your last spin');
+      const card = page.locator('.result');
+      if ((page.viewportSize()?.width ?? 0) >= 1280) expect(Math.abs((await card.boundingBox())!.y - (await page.locator('.game').boundingBox())!.y), 'card top level with the game top').toBeLessThanOrEqual(2);
+      await expect(card.locator('.pick-card')).toBeVisible();
+      expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(735);
+      await expect(card.getByRole('button', { name: 'Close' })).toHaveCount(0);
+      const img = card.locator('img');
+      if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(327); expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(1); }
+      const bs = await Promise.all(['Brew', 'Discard', 'Open coffee'].map((n) => card.getByRole('button', { name: n, exact: true }).boundingBox()));
+      for (const b of bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
+      // Horizontal card as tall as the D20 tray (360px): the square thumbnail left, the detail and the buttons right, nothing spilling out.
+      const cardBox = (await card.boundingBox())!;
+      expect(bs[0]!.y + bs[0]!.height, 'buttons inside the card').toBeLessThanOrEqual(cardBox.y + cardBox.height - 16);
+      if (await img.count()) {
+        expect(Math.abs(cardBox.height - 360), 'card as tall as the D20 tray').toBeLessThanOrEqual(2);
+        expect((await img.boundingBox())!.x + 327, 'content right of the thumbnail').toBeLessThan(bs[0]!.x + 1);
+        expect(await card.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the detail fits its height').toBe(true);
+        await expectDenseCardFits(card, 'inline card');
+      }
+      await expectOutRowOnScreen(page);
+      // The /coffees card's rows: roaster, origin, roast level, cost.
+      await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
+      // Every desktop width: the card beside the game or under it, never squeezed (no sideways scroll, no clipped button text, as tall as its thumbnail when horizontal).
+      for (const width of [800, 960, 1100, 1240, 1250, 1263, 1280, 1416]) {
+        await page.setViewportSize({ width, height: 900 });
+        await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toBeVisible();
+        const m = await page.evaluate(() => ({
+          scroll: document.documentElement.scrollWidth - innerWidth,
+          clipped: [...document.querySelectorAll<HTMLElement>('.result .buttons .button')].filter((b) => b.scrollWidth > b.clientWidth).length,
+          cardW: document.querySelector('.result')!.getBoundingClientRect().width,
+          thumb: document.querySelector('.result .card-thumb')?.getBoundingClientRect().height ?? 0,
+          cardH: document.querySelector('.result')!.getBoundingClientRect().height,
+          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid' || (document.querySelector('.pick-card')!.classList.contains('noimg') && document.querySelector('.result')!.getBoundingClientRect().width >= 674),
+          beside: document.querySelector('.result')!.getBoundingClientRect().left >= document.querySelector('.game')!.getBoundingClientRect().right,
+          outAfterCard: document.querySelector('.out-row')!.getBoundingClientRect().top >= document.querySelector('.result')!.getBoundingClientRect().bottom - 1
+        }));
+        expect(m.scroll, `no sideways scroll at ${width}`).toBeLessThanOrEqual(0);
+        expect(m.clipped, `no clipped button text at ${width}`).toBe(0);
+        expect(m.cardW, `card not squeezed at ${width}`).toBeGreaterThan(400);
+        if (width >= 1263) expect(m.beside, `the card sits beside the game at ${width} (1280 with a 15px scrollbar is still beside)`).toBe(true);
+        else expect(m.beside, `the card sits under the game at ${width}`).toBe(false);
+        if (!m.beside) expect(m.outAfterCard, `stacked: Out for today after the card, as in the DOM (tab order = visual order) at ${width}`).toBe(true);
+        if (m.beside) expect(m.horizontal, `beside the game means the horizontal card at ${width}`).toBe(true);
+        if (!m.beside) expect(m.thumb, `thumbnail within the card at ${width}`).toBeLessThanOrEqual(m.horizontal ? 327 : 281);
+        if (m.horizontal && m.thumb) expect(Math.abs(m.cardH - 360), `card as tall as the tray at ${width}`).toBeLessThanOrEqual(2);
+      }
+    }
+  },
+  {
+    // The result shows in a focused overlay at every width (Close, Escape and Brew work); the inline card stays when it is closed.
+    name: 'pick-overlay', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const spin = page.getByRole('button', { name: 'Spin', exact: true });
+      await spin.click();
+      const modal = page.getByRole('dialog', { name: 'Pick result' });
+      await expect(modal).toBeVisible();
+      // Horizontal card where the layout is wide, vertical on a phone; its detail fits (no clipping), and Tab stays inside the pop-up.
+      const wide = (page.viewportSize()?.width ?? 0) >= 1280;
+      const img = await modal.locator('.card-thumb').count(); // a coffee without a picture is content-height, not a grid
+      expect(await modal.locator('.pick-card').evaluate((e) => e.classList.contains('wide')), wide ? 'horizontal pop-up card' : 'vertical pop-up card').toBe(wide);
+      if (wide && img) expect(await modal.locator('.pick-card').evaluate((e) => getComputedStyle(e).display), 'the horizontal card is a grid').toBe('grid');
+      if (wide) {
+        expect(await modal.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the pop-up detail fits').toBe(true);
+        if (img) await expectDenseCardFits(modal.locator('.pick-card'), 'pop-up card');
+        if (img) expect(Math.abs((await modal.locator('.pick-card').boundingBox())!.height - 326), 'pop-up card height').toBeLessThanOrEqual(2);
+        expect(await modal.locator('.buttons .button').evaluateAll((bs) => bs.filter((b) => b.scrollWidth > b.clientWidth).length), 'no clipped button text in the pop-up (Open coffee fits)').toBe(0);
+      }
+      for (const key of ['Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
+        await page.keyboard.press(key);
+        expect(await page.evaluate(() => !!document.activeElement?.closest('.pick-modal')), `focus stays in the pop-up after ${key}`).toBe(true);
+      }
+      // Every button disabled (busy): Tab still cannot leave the pop-up.
+      await modal.locator('button').evaluateAll((bs) => bs.forEach((b) => b.setAttribute('disabled', '')));
+      for (const key of ['Tab', 'Shift+Tab']) {
+        await page.keyboard.press(key);
+        expect(await page.evaluate(() => !!document.activeElement?.closest('.pick-modal')), `focus stays in the pop-up with every button disabled after ${key}`).toBe(true);
+      }
+      await modal.locator('button').evaluateAll((bs) => bs.forEach((b) => b.removeAttribute('disabled')));
+      await page.keyboard.press('Escape');
+      await expect(modal).toBeHidden();
+      await expect(page.locator('.result .pick-card')).toBeVisible(); // dismissing the overlay keeps the result, inline
+      if ((page.viewportSize()?.width ?? 0) <= 640) {
+        const [cb, ob] = [(await page.locator('.result').boundingBox())!, (await page.locator('.out-row').boundingBox())!];
+        expect(ob.y, 'Out for today below the card').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
+      }
+      await spin.focus();
+      await page.keyboard.press('Enter');
+      await expect(modal).toBeVisible();
+      await modal.getByRole('button', { name: 'Close' }).click();
+      await expect(modal).toBeHidden();
+      await expect(spin, 'focus returns to Spin after Close').toBeFocused();
+      await spin.click();
+      await modal.getByRole('button', { name: 'Brew', exact: true }).click();
+      await expect(page).toHaveURL(/\/brew$/);
+      await page.goBack(); // end on the Pick page, so the layout check runs there
+      await expect(page).toHaveURL(/view=pick/);
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible();
+    }
+  },
+  {
+    // Changing rules with something out opens the dialog; Cancel puts the control back on its old value and applies nothing.
+    name: 'pick-dialog', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.getByRole('button', { name: 'Spin', exact: true }).click();
+      await page.locator('.pick-card').getByRole('button', { name: 'Discard' }).click();
+      await dismissPickOverlay(page);
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      const sort = page.getByLabel('Sort');
+      await expect(sort).toHaveValue('urgency-desc');
+      await sort.selectOption('name');
+      const dlg = page.getByRole('dialog', { name: 'Change the rules' });
+      await expect(dlg).toBeVisible();
+      await expect(dlg.getByRole('button', { name: 'Reset today and use the new rules' })).toBeVisible();
+      await expect(dlg.getByRole('heading', { name: 'Change the rules' })).toHaveCSS('border-bottom-width', '0px');
+      await expect(dlg.getByRole('button', { name: "Keep today's out list with the new rules" })).toBeVisible();
+      await dlg.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dlg).toBeHidden();
+      await expect(page.getByLabel('Sort')).toHaveValue('urgency-desc');
+      await expect(page.locator('.out-row s')).toHaveCount(1);
+      // Profiles: save the current rules as "Weekend", change the sort (keep today's out list), then load the profile back.
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      await panel.getByRole('button', { name: 'Save as…' }).click();
+      await panel.getByLabel('Profile name').fill('Weekend');
+      await panel.locator('input[aria-label="Profile name"] + button').click();
+      await expect(panel.getByLabel('Profile', { exact: true })).toHaveValue('Weekend');
+      await page.getByLabel('Sort').selectOption('name');
+      await dlg.getByRole('button', { name: "Keep today's out list with the new rules" }).click();
+      await expect(page.getByLabel('Sort')).toHaveValue('name');
+      await panel.getByLabel('Profile', { exact: true }).selectOption('');
+      await panel.getByLabel('Profile', { exact: true }).selectOption('Weekend');
+      await dlg.getByRole('button', { name: "Keep today's out list with the new rules" }).click();
+      await expect(page.getByLabel('Sort')).toHaveValue('urgency-desc');
+      // Same again, choosing to reset today: the panel stays open and shows the profile.
+      await page.getByLabel('Sort').selectOption('name');
+      await dlg.getByRole('button', { name: "Keep today's out list with the new rules" }).click();
+      await panel.getByLabel('Profile', { exact: true }).selectOption('');
+      await panel.getByLabel('Profile', { exact: true }).selectOption('Weekend');
+      await dlg.getByRole('button', { name: 'Reset today and use the new rules' }).click();
+      await expect(panel).toBeVisible();
+      await expect(page.getByLabel('Sort')).toHaveValue('urgency-desc');
+      await expect(page.locator('.out-row s')).toHaveCount(0);
+      await panel.getByRole('button', { name: 'Delete', exact: true }).click();
+      await panel.getByRole('alert').getByRole('button', { name: 'Delete' }).click();
+      await expect(panel.getByLabel('Profile', { exact: true })).toHaveValue('');
+    }
+  },
+  {
+    // Profiles: Save is for changed rules only, Save as saves under a new name (a toast confirms), Reset to defaults deselects
+    // the profile, and choosing a profile loads its rules into every control.
+    name: 'pick-profiles', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      const profile = panel.getByLabel('Profile', { exact: true });
+      const save = panel.getByRole('button', { name: 'Save', exact: true });
+      const saveAs = panel.getByRole('button', { name: 'Save as…' });
+      await expect(save).toBeDisabled();
+      await expect(saveAs).toBeEnabled();
+      await panel.getByLabel('Sort').selectOption('name');
+      await panel.getByLabel('Backlog', { exact: true }).uncheck();
+      await panel.getByLabel('Order').selectOption('evens');
+      await panel.getByLabel('Normal 1 and 20 take part in the fill').uncheck();
+      await panel.getByLabel('Include decaf', { exact: true }).check();
+      await panel.getByLabel('Repeats (a brewed coffee stays in play)').check();
+      await panel.getByLabel('Crit fail', { exact: true }).uncheck();
+      await panel.getByRole('radiogroup', { name: 'Crit success holds' }).getByLabel('Specific coffees').check();
+      await panel.getByLabel('Exclude specific coffees').check();
+      await saveAs.click();
+      await panel.getByLabel('Profile name').fill('Mine');
+      await panel.locator('input[aria-label="Profile name"] ~ button').first().click();
+      await expect(page.getByText('Saved "Mine".')).toBeVisible(); // a toast, not a line in the panel
+      await expect(panel.getByText('Saved "Mine".')).toHaveCount(0);
+      await expect(profile).toHaveValue('Mine');
+      await expect(save, 'nothing to save yet').toBeDisabled();
+      await panel.getByLabel('Sort').selectOption('urgency-asc');
+      await expect(save, 'changed rules can be saved').toBeEnabled();
+      // Revert reloads the profile's saved rules (re-picking it would fire no change event).
+      const revert = panel.getByRole('button', { name: 'Revert', exact: true });
+      await expect(revert).toBeEnabled();
+      await revert.click();
+      await expect(panel.getByLabel('Sort')).toHaveValue('name');
+      await expect(save).toBeDisabled();
+      await expect(revert).toBeDisabled();
+      // The placeholder deselects the profile: Save goes off while the rules stay.
+      await panel.getByLabel('Sort').selectOption('urgency-asc');
+      await expect(save).toBeEnabled();
+      await profile.selectOption('');
+      await expect(save).toBeDisabled();
+      await expect(panel.getByLabel('Sort')).toHaveValue('urgency-asc');
+      await profile.selectOption('Mine');
+      await expect(panel.getByLabel('Sort')).toHaveValue('name');
+      await panel.getByLabel('Sort').selectOption('urgency-asc');
+      // Reset: the defaults load, no profile is selected, Save stays off.
+      await panel.getByRole('button', { name: 'Reset to defaults' }).click();
+      await expect(profile).toHaveValue('');
+      await expect(save).toBeDisabled();
+      await expect(panel.getByLabel('Sort')).toHaveValue('urgency-desc');
+      await expect(panel.getByLabel('Backlog', { exact: true })).toBeChecked();
+      await expect(panel.getByLabel('Crit fail', { exact: true })).toBeChecked();
+      await expect(panel.getByLabel('Exclude specific coffees')).not.toBeChecked();
+      // Choosing the profile loads it into every control.
+      await profile.selectOption('Mine');
+      await expect(panel.getByLabel('Sort')).toHaveValue('name');
+      await expect(panel.getByLabel('Backlog', { exact: true })).not.toBeChecked();
+      await expect(panel.getByLabel('Order')).toHaveValue('evens');
+      await expect(panel.getByLabel('Normal 1 and 20 take part in the fill')).not.toBeChecked();
+      await expect(panel.getByLabel('Include decaf', { exact: true })).toBeChecked();
+      await expect(panel.getByLabel('Repeats (a brewed coffee stays in play)')).toBeChecked();
+      await expect(panel.getByLabel('Crit fail', { exact: true })).not.toBeChecked();
+      await expect(panel.getByRole('radiogroup', { name: 'Crit success holds' }).getByLabel('Specific coffees')).toBeChecked();
+      await expect(panel.getByLabel('Exclude specific coffees')).toBeChecked();
+      await expect(save).toBeDisabled();
+      await panel.getByRole('button', { name: 'Reset to defaults' }).click(); // the selection is remembered: later states start from the defaults
+      await expect(profile).toHaveValue('');
+    }
+  },
+  {
+    // No coffee in play: a message replaces the wheel; changing rules with nothing out needs no dialog.
+    name: 'pick-empty', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await page.getByLabel('Open', { exact: true }).uncheck();
+      await page.getByLabel('Backlog', { exact: true }).uncheck();
+      await expect(page.getByText('No coffees in play.')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeDisabled();
+      await page.getByLabel('Open', { exact: true }).check();
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
+    }
+  },
+  {
+    // The Pick view's Share link carries the loaded profile, or rules=default when none is loaded (also after Reset to defaults).
+    name: 'pick-share-link', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.evaluate(() => { (window as unknown as { __shared: string[] }).__shared = []; navigator.share = async (d) => { (window as unknown as { __shared: string[] }).__shared.push(d!.url!); }; });
+      const shared = () => page.evaluate(() => (window as unknown as { __shared: string[] }).__shared.at(-1)!);
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'no profile loaded: the default rules').toMatch(/\/on-deck\?view=pick&game=d20&rules=default$/);
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      await panel.getByLabel('Profile', { exact: true }).selectOption('Shared Rules');
+      await panel.getByLabel('Sort').selectOption('urgency-asc'); // an unsaved edit does not stop the profile riding along
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'the loaded profile').toMatch(/\/on-deck\?view=pick&game=d20&profile=Shared\+Rules$/);
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await panel.getByRole('button', { name: 'Reset to defaults' }).click();
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'after Reset to defaults').toMatch(/rules=default$/);
+      // Opened from a shared link: Share keeps that profile; picking another profile, or Reset to defaults, ends shared mode and Share follows.
+      await gotoReady(page, '/on-deck?view=pick&game=d20&profile=Shared+Rules');
+      await page.evaluate(() => { (window as unknown as { __shared: string[] }).__shared = []; navigator.share = async (d) => { (window as unknown as { __shared: string[] }).__shared.push(d!.url!); }; });
+      await expect(page.locator('.shared-note')).toContainText('Shared Rules');
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'shared profile').toMatch(/profile=Shared\+Rules$/);
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await panel.getByLabel('Profile', { exact: true }).selectOption('Other Rules');
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.shared-note'), 'picking a profile leaves shared mode').toHaveCount(0);
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'the picked profile').toMatch(/profile=Other\+Rules$/);
+      await gotoReady(page, '/on-deck?view=pick&game=d20&profile=Shared+Rules');
+      await page.evaluate(() => { (window as unknown as { __shared: string[] }).__shared = []; navigator.share = async (d) => { (window as unknown as { __shared: string[] }).__shared.push(d!.url!); }; });
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await panel.getByRole('button', { name: 'Reset to defaults' }).click();
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.shared-note')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'Reset to defaults from a shared link').toMatch(/rules=default$/);
+    }
+  },
+  {
+    // A click outside the desktop side bar closes it like Close (focus back on the opener), not while a dialog is open; "Change the rules" Cancel keeps the profile.
+    name: 'pick-rules-outside-click', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      const profile = panel.getByLabel('Profile', { exact: true });
+      const opener = page.getByRole('button', { name: 'Rules', exact: true });
+      const wide = (page.viewportSize()?.width ?? 0) > 640;
+      await page.getByLabel('Number someone rolled').fill('5');
+      await page.getByRole('button', { name: 'Show', exact: true }).click();
+      await dismissPickOverlay(page);
+      await page.locator('.result').getByRole('button', { name: 'Discard' }).click(); // something is out: changing the rules asks
+      await opener.click();
+      await profile.selectOption('Shared Rules');
+      const dlg = page.getByRole('dialog', { name: 'Change the rules' });
+      await expect(dlg).toBeVisible();
+      if (wide) {
+        await page.mouse.click(1200, 450); // outside the side bar, but a dialog is open
+        await expect(dlg).toBeVisible();
+      }
+      await dlg.getByRole('button', { name: 'Cancel' }).click();
+      await expect(profile, 'Cancel keeps no profile').toHaveValue('');
+      await expect(panel).toBeVisible();
+      await profile.selectOption('Shared Rules');
+      await dlg.getByRole('button', { name: /Keep today/ }).click();
+      await expect(profile).toHaveValue('Shared Rules');
+      if (wide) {
+        await panel.getByRole('heading', { name: 'Rules' }).click(); // inside the panel: stays open
+        await expect(panel).toBeVisible();
+        await page.mouse.click(1200, 450);
+        await expect(panel).toBeHidden();
+        await opener.click();
+        await expect(profile, 'Close and a click outside keep the profile').toHaveValue('Shared Rules');
+      }
+    }
+  },
+  {
+    // Close and Escape put focus back on the Rules opener; a click outside the side bar leaves it on what was clicked.
+    name: 'pick-rules-outside-focus', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      if ((page.viewportSize()?.width ?? 0) <= 640) return; // the click-outside close is the desktop side bar's
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      const opener = page.getByRole('button', { name: 'Rules', exact: true });
+      await opener.click();
+      await page.keyboard.press('Escape');
+      await expect(panel).toBeHidden();
+      await expect(opener).toBeFocused();
+      await opener.click();
+      const share = page.getByRole('button', { name: 'Share', exact: true }); // right of the side bar
+      await share.click();
+      await expect(panel).toBeHidden();
+      await expect(share, 'the clicked control keeps focus, not the Rules opener').toBeFocused();
     }
   },
   { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },
@@ -12506,8 +13197,11 @@ const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   test(state.name, { tag: [routeTag(state), ...tabTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
     const s = seed();
+    if (state.name.startsWith('pick-')) await stubPickApi(page); // before the page loads: Pick saves its state on load
     await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);
+    // Flush Pick's debounced save while the stub is still up: closing the page would send it for real and leave a result behind for the next state.
+    if (state.name.startsWith('pick-')) await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
     if (state.name.startsWith('insights-')) await expectStatRowsFull(page);
     await expectTipsFormatted(page);
     await expectNoTitleTips(page);
@@ -12594,6 +13288,103 @@ test.describe('signed out', () => {
     await checkLayout(page);
     expect((await page.goto('/recaps'))!.status(), '/recaps lands on the tab').toBe(200);
     await expect(page).toHaveURL(/\/stats\?tab=recaps$/);
+  });
+  // A shared Pick for me link: the visitor plays the owner's saved profile (or the defaults) for this visit and nothing of their own is overwritten.
+  test('pick-shared-profile', { tag: ['@on-deck', '@two'] }, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const note = page.locator('.shared-note');
+    const rules = page.getByRole('dialog', { name: 'Rules' });
+    await gotoReady(page, '/on-deck?view=pick&game=d20&profile=Shared+Rules');
+    await expect(note).toContainText('Playing with the “Shared Rules” rules');
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    await expect(rules.getByLabel('Sort')).toHaveValue('name'); // the shared profile's rules, not the defaults
+    await expect(rules.getByLabel('Crit fail', { exact: true })).not.toBeChecked();
+    // Editing while shared changes what is played, not what is saved: no write of the visitor's own rules.
+    await rules.getByLabel('Sort').selectOption('urgency-asc');
+    await page.keyboard.press('Escape');
+    await expect(rules).toBeHidden();
+    expect(await page.evaluate(() => localStorage.getItem('pick.rules.last')), 'nothing saved over the visitor\'s own rules').toBeNull();
+    await expect(note, 'the note stays (still the shared link)').toContainText('Shared Rules');
+    if ((page.viewportSize()?.width ?? 0) >= 1280) await expectOutRowOnScreen(page); // the note adds no height beside the game
+    await checkLayout(page);
+    // A link to another profile followed in the app plays that profile's rules.
+    await page.evaluate(() => { const a = document.createElement('a'); a.id = 'to-other'; a.href = '/on-deck?view=pick&game=d20&profile=Other+Rules'; a.textContent = 'other'; document.body.prepend(a); });
+    await page.locator('#to-other').click();
+    await expect(note).toContainText('Other Rules');
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    await expect(rules.getByLabel('Sort')).toHaveValue('urgency-asc');
+    await expect(rules.getByLabel('Crit fail', { exact: true }), 'Other Rules keeps crit fail on; the first profile had turned it off').toBeChecked();
+    await page.keyboard.press('Escape');
+    await expect(rules).toBeHidden();
+    await page.getByRole('button', { name: 'Use my rules' }).click();
+    await expect(note).toHaveCount(0);
+    await expect(page).not.toHaveURL(/profile=/);
+    await expect(page).toHaveURL(/view=pick&game=d20/);
+    // the default-rules link, and a name that is not there
+    await gotoReady(page, '/on-deck?view=pick&rules=default');
+    await expect(note).toContainText('Playing with the default rules');
+    await checkLayout(page);
+    await gotoReady(page, '/on-deck?view=pick&profile=Nope');
+    await expect(note).toContainText("That rules profile wasn't found.");
+    await checkLayout(page);
+    await note.getByRole('button', { name: 'Dismiss' }).click();
+    await expect(note).toHaveCount(0);
+    await expect(page).not.toHaveURL(/profile=/);
+  });
+  // A visitor's own (localStorage) profile is shared as the rules themselves: `rules=<code>`; a fresh visitor opening it plays those rules.
+  test('pick-share-visitor-rules', { tag: ['@on-deck', '@two'] }, async ({ page, browser }, info) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await gotoReady(page, '/on-deck?view=pick&game=d20');
+    const stub = () => page.evaluate(() => { (window as unknown as { __s: string[] }).__s = []; navigator.share = async (d) => { (window as unknown as { __s: string[] }).__s.push(d!.url!); }; });
+    const shared = () => page.evaluate(() => (window as unknown as { __s: string[] }).__s.at(-1)!);
+    await stub();
+    await page.getByRole('button', { name: 'Share', exact: true }).click();
+    expect(await shared(), 'no profile: the default rules').toMatch(/rules=default$/);
+    const panel = page.getByRole('dialog', { name: 'Rules' });
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    await panel.getByLabel('Sort').selectOption('name');
+    await panel.getByLabel('Crit fail', { exact: true }).uncheck();
+    await panel.getByRole('button', { name: 'Save as…' }).click();
+    await panel.getByLabel('Profile name').fill('Visitor Mix');
+    await panel.locator('input[aria-label="Profile name"] ~ button').first().click();
+    await expect(panel.getByLabel('Profile', { exact: true })).toHaveValue('Visitor Mix');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Share', exact: true }).click();
+    await expect.poll(shared, 'the long link is shortened first').toMatch(/\/s\//);
+    const link = await shared();
+    // The path is long, so the link is a short /s/<code> that resolves back to the one with the rules in it.
+    expect(link, 'a short link').toMatch(/\/s\/[A-Za-z0-9_-]+$/);
+    const res = await page.request.get(link, { maxRedirects: 0 });
+    expect([301, 302, 303, 307, 308]).toContain(res.status());
+    const target = res.headers()['location'] ?? '';
+    expect(target, 'the rules ride in the link').toMatch(/view=pick&game=d20&rules=[A-Za-z0-9_-]{20,}$/);
+    expect(target).not.toMatch(/rules=default/);
+    // An edit since the save: the link still carries the saved profile, like the admin path (not rules=default).
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    await panel.getByLabel('Sort').selectOption('urgency-asc');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Share', exact: true }).click();
+    await expect.poll(shared).toMatch(/\/s\//);
+    const edited = await page.request.get(await shared(), { maxRedirects: 0 });
+    expect(edited.headers()['location'] ?? '', 'the saved profile, not the defaults').toMatch(/rules=[A-Za-z0-9_-]{20,}$/);
+    // A fresh visitor opens the link: the note, those rules, and nothing of theirs overwritten.
+    const ctx = await browser.newContext({ viewport: info.project.use.viewport ?? undefined, baseURL: info.project.use.baseURL });
+    try {
+      const other = await ctx.newPage();
+      await gotoReady(other, target.startsWith('http') ? target.slice(new URL(target).origin.length) : target);
+      await expect(other.locator('.shared-note')).toContainText('Playing with the “Visitor Mix” rules');
+      await other.getByRole('button', { name: 'Rules', exact: true }).click();
+      const op = other.getByRole('dialog', { name: 'Rules' });
+      await expect(op.getByLabel('Sort')).toHaveValue('name');
+      await expect(op.getByLabel('Crit fail', { exact: true })).not.toBeChecked();
+      expect(await other.evaluate(() => localStorage.getItem('pick.rules.last'))).toBeNull();
+      // A link that cannot be read: normal rules and a note.
+      await gotoReady(other, '/on-deck?view=pick&rules=not-a-real-code');
+      await expect(other.locator('.shared-note')).toContainText("That rules link couldn't be read.");
+      await checkLayout(other);
+    } finally {
+      await ctx.close();
+    }
   });
   test('account-signed-out', async ({ page }) => {
     await page.goto('/account');
