@@ -29,8 +29,8 @@ export function buildPool(
   out: Set<number>
 ): { pool: PickCoffee[]; sittingOut: PickCoffee[] } {
   const crit = new Set([...rules.critSuccess, ...rules.critFail]);
-  // skipFrozenDecaf only matters when Frozen is selected and decaf is included
-  const skipFrozenDecaf = rules.skipFrozenDecaf && rules.categories.includes('frozen') && rules.includeDecaf;
+  // includeFrozenDecaf only matters when Frozen is selected and decaf is included
+  const skipFrozenDecaf = !rules.includeFrozenDecaf && rules.categories.includes('frozen') && rules.includeDecaf;
   let list = coffees
     .filter((c) => rules.categories.includes(c.category))
     .filter((c) => (c.decaf ? rules.includeDecaf && !(skipFrozenDecaf && c.category === 'frozen') : true))

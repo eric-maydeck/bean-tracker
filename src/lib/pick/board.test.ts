@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { fillBoard } from './board';
+import { boardMatches, fillBoard } from './board';
 import { DEFAULT_RULES } from './rules';
 import type { PickCoffee, PickRules } from './types';
 
-const coffee = (id: number): PickCoffee => ({ id, slug: `c${id}`, name: `C${id}`, roaster: 'r', image: null, category: 'open', decaf: false, urgency: null });
+const coffee = (id: number): PickCoffee => ({ id, slug: `c${id}`, name: `C${id}`, roaster: 'r', image: null, fill: null, category: 'open', decaf: false, urgency: null });
 const pool = (n: number) => Array.from({ length: n }, (_, i) => coffee(i));
 const R = (o: Partial<PickRules> = {}): PickRules => ({ ...DEFAULT_RULES, ...o });
 const ids = (b: ReturnType<typeof fillBoard>) => b.map((s) => (s.kind === 'coffee' ? s.coffeeId : s.kind));
@@ -49,5 +49,16 @@ describe('fillBoard', () => {
     expect(b.some((s) => s.kind === 'coffee')).toBe(false);
     expect(b[19].kind).toBe('success');
     expect(b[5].kind).toBe('crossed');
+  });
+});
+
+describe('boardMatches', () => {
+  const a = fillBoard(pool(3), R(), true, false, 's');
+  it('same coffees and crits match, even if reshuffled', () => {
+    expect(boardMatches(a, fillBoard(pool(3), R({ fill: 'shuffle' }), true, false, 'other'))).toBe(true);
+  });
+  it('a coffee gone, or a crit gained, does not match', () => {
+    expect(boardMatches(a, fillBoard(pool(2), R(), true, false, 's'))).toBe(false);
+    expect(boardMatches(a, fillBoard(pool(3), R(), true, true, 's'))).toBe(false);
   });
 });

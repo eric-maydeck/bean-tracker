@@ -4,7 +4,7 @@ import { buildPool, critPool } from './pool';
 import type { PickCoffee, PickRules } from './types';
 
 const mk = (id: number, o: Partial<PickCoffee> = {}): PickCoffee => ({
-  id, slug: `c${id}`, name: `Coffee ${String(id).padStart(2, '0')}`, roaster: 'R', image: null,
+  id, slug: `c${id}`, name: `Coffee ${String(id).padStart(2, '0')}`, roaster: 'R', image: null, fill: null,
   category: 'open', decaf: false, urgency: id, ...o
 });
 // 1..22 open (22 > 20), 23 backlog (null urgency), 24 frozen, 25 frozen decaf, 26 open decaf
@@ -30,13 +30,13 @@ describe('buildPool', () => {
     expect(ids(pool)[0]).toBe(22);
     expect(ids(sittingOut)).toEqual([2, 1, 23]);
   });
-  it('frozen decaf skipped when skipFrozenDecaf, included when off', () => {
+  it('frozen decaf left out unless includeFrozenDecaf', () => {
     const base = R({ categories: ['frozen'], includeDecaf: true });
-    expect(ids(buildPool(fixture, { ...base, skipFrozenDecaf: true }, new Set()).pool)).toEqual([24]);
-    expect(ids(buildPool(fixture, { ...base, skipFrozenDecaf: false }, new Set()).pool).sort()).toEqual([24, 25]);
+    expect(ids(buildPool(fixture, { ...base, includeFrozenDecaf: false }, new Set()).pool)).toEqual([24]);
+    expect(ids(buildPool(fixture, { ...base, includeFrozenDecaf: true }, new Set()).pool).sort()).toEqual([24, 25]);
   });
-  it('skipFrozenDecaf ignored when decaf not included', () => {
-    const r = R({ categories: ['frozen'], includeDecaf: false, skipFrozenDecaf: false });
+  it('includeFrozenDecaf ignored when decaf not included', () => {
+    const r = R({ categories: ['frozen'], includeDecaf: false, includeFrozenDecaf: true });
     expect(ids(buildPool(fixture, r, new Set()).pool)).toEqual([24]);
   });
   it('open decaf comes in with includeDecaf', () => {

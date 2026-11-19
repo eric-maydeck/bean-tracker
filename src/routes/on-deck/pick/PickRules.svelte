@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { Category, Fill, Iteration, PickCoffee, PickRules, SortGroup, SortRule } from '#lib/pick/types.ts';
 
-  let { rules, coffees, eligible, admin, hasSaved, open, ontoggle, onchange, onsave, onload, onreset, note }: {
+  let { rules, coffees, eligible, admin, hasSaved, open, ontoggle, onchange, onsave, onload, onreset, note, locked }: {
     rules: PickRules; coffees: PickCoffee[]; eligible: PickCoffee[]; admin: boolean; hasSaved: boolean; open: boolean;
     ontoggle: (open: boolean) => void; onchange: (next: PickRules) => void;
-    onsave: () => void; onload: () => void; onreset: () => void; note: string;
+    onsave: () => void; onload: () => void; onreset: () => void; note: string; locked: boolean;
   } = $props();
 
   const CATEGORIES: [Category, string][] = [['open', 'Open'], ['backlog', 'Backlog'], ['frozen', 'Frozen']];
@@ -44,7 +44,7 @@
 <section class="rules" aria-label="Rules">
   <button type="button" class="button button-secondary toggle" aria-expanded={open} onclick={() => ontoggle(!open)}>Rules</button>
   {#if open}
-    <div class="body">
+    <fieldset class="body" disabled={locked}>
       <fieldset>
         <legend>Pool</legend>
         <div class="line">
@@ -54,7 +54,7 @@
         </div>
         <div class="line">
           <label><input type="checkbox" checked={rules.includeDecaf} onchange={(e) => set({ includeDecaf: e.currentTarget.checked })} /> Include decaf</label>
-          <label><input type="checkbox" checked={rules.skipFrozenDecaf} disabled={!rules.includeDecaf} onchange={(e) => set({ skipFrozenDecaf: e.currentTarget.checked })} /> Leave out frozen decaf</label>
+          <label class="sub"><input type="checkbox" checked={rules.includeFrozenDecaf} disabled={!rules.includeDecaf} onchange={(e) => set({ includeFrozenDecaf: e.currentTarget.checked })} /> Include frozen decaf</label>
         </div>
         <label class="field">Sort
           <select class="ctl-select" value={rules.sort} onchange={(e) => set({ sort: e.currentTarget.value as SortRule })}>
@@ -117,12 +117,13 @@
         <button type="button" class="button button-secondary" onclick={onreset}>Reset to defaults</button>
         <span class="text-muted note" role="status">{note}</span>
       </div>
-    </div>
+    </fieldset>
   {/if}
 </section>
 
 <style>
   .rules { margin: var(--space-3) 0; }
+  fieldset.body { border: 0; padding: 0; margin: var(--space-3) 0 0; min-width: 0; }
   .body { margin-top: var(--space-3); display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-items: start; }
   .body .actions { grid-column: 1 / -1; }
   fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-3); margin: 0; display: grid; gap: var(--space-2); min-width: 0; }
@@ -135,6 +136,7 @@
   .order { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1); }
   .order li { display: flex; gap: var(--space-2); align-items: center; }
   .order span { min-width: 5rem; }
+  .sub { margin-left: var(--space-5); }
   summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
   .note { min-width: 0; }
   @media (max-width: 640px) { .rules :global(.ctl-select) { width: 100%; } }

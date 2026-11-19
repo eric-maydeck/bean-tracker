@@ -10,7 +10,7 @@ export interface PickRules {
   v: 1;
   categories: Category[];
   includeDecaf: boolean;
-  skipFrozenDecaf: boolean;
+  includeFrozenDecaf: boolean; // sub-option of includeDecaf
   sort: SortRule;
   categoryOrder: SortGroup[]; // all four, user order
   over20: Over20;
@@ -25,7 +25,7 @@ export interface PickRules {
 
 export interface PickCoffee {
   id: number; slug: string; name: string; roaster: string;
-  image: string | null; category: Category; decaf: boolean; urgency: number | null;
+  image: string | null; fill: string | null; category: Category; decaf: boolean; urgency: number | null;
 }
 
 export type Slot = { n: number; kind: 'coffee'; coffeeId: number }

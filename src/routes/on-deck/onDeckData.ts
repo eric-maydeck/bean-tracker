@@ -19,6 +19,7 @@ export function buildPickCoffees(rows: CoffeeRow[], today: Date): PickCoffee[] {
       name: c.coffee_name,
       roaster: c.roaster,
       image: coffeeImage(c, c.coffee_name)?.src ?? null,
+      fill: coffeeImage(c, c.coffee_name)?.fill ?? null,
       category: c.frozen_start_date && !c.frozen_end_date ? 'frozen' : c.status === 'open' ? 'open' : 'backlog',
       decaf: c.decaf === 1,
       urgency: typeof c.urgency_rating === 'number' ? c.urgency_rating : null

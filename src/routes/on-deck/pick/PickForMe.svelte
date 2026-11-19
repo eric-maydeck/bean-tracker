@@ -2,9 +2,9 @@
   import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { buildPool, critPool } from '#lib/pick/pool.ts';
-  import { fillBoard } from '#lib/pick/board.ts';
+  import { boardMatches, fillBoard } from '#lib/pick/board.ts';
   import { DEFAULT_RULES, rulesDiffer } from '#lib/pick/rules.ts';
-  import { discard, markBrewed, outIds, resetDay } from '#lib/pick/today.ts';
+  import { discard, markBrewed, resetDay } from '#lib/pick/today.ts';
   import { sliceAt, wheelSlices } from '#lib/pick/wheel.ts';
   import type { Game, PickCoffee, PickResult, PickRules, PickToday, Slot, WheelSlice } from '#lib/pick/types.ts';
   import PickBoard from './PickBoard.svelte';
@@ -72,7 +72,7 @@
     saveToday(admin, $state.snapshot(today));
   });
 
-  const out = $derived(outIds(today));
+  const out = $derived(new Set(today.out));
   const pool = $derived(buildPool(coffees, rules, out));
   const successC = $derived(critPool(coffees, rules.critSuccess, out));
   const failC = $derived(critPool(coffees, rules.critFail, out));
@@ -83,10 +83,12 @@
     return [...all.pool, ...all.sittingOut];
   });
   const computeBoard = (): Slot[] => fillBoard(pool.pool, rules, successC.length > 0, failC.length > 0, `${today.date}:${today.out.join(',')}`);
-  const board = $derived(today.board ?? computeBoard());
+  // A stored board holds only while it still matches a fresh deal (a coffee archived or opened mid-day invalidates it).
+  const fresh = $derived(computeBoard());
+  const board = $derived(today.board && boardMatches(today.board, fresh) ? today.board : fresh);
   // Snapshot the board so Shuffle and Random look the same after leaving and coming back.
   $effect(() => {
-    if (ready && today.board === null) today.board = untrack(computeBoard);
+    if (ready && board !== untrack(() => today.board)) today.board = board;
   });
 
   const result = $derived(today.result);
@@ -194,9 +196,13 @@
     }
   }
   async function load() {
-    const r = await fetchSaved();
-    note = r ? 'Loaded.' : 'Nothing saved yet.';
-    if (r) edit(r);
+    try {
+      const r = await fetchSaved();
+      note = r ? 'Loaded.' : 'Nothing saved yet.';
+      if (r) edit(r);
+    } catch {
+      note = "Couldn't load.";
+    }
   }
 </script>
 
@@ -210,7 +216,7 @@
   </div>
 
   {#key rev}
-  <PickRulesPanel {rules} {coffees} {eligible} {admin} {hasSaved} open={today.panelOpen} {note}
+  <PickRulesPanel {rules} {coffees} {eligible} {admin} {hasSaved} open={today.panelOpen} {note} locked={busy}
     ontoggle={(o) => (today.panelOpen = o)} onchange={edit} onsave={save} onload={load} onreset={() => edit(DEFAULT_RULES)} />
   {/key}
 

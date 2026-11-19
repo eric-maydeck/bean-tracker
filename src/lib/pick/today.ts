@@ -62,7 +62,3 @@ export function markBrewed(t: PickToday, id: number, rules: PickRules): PickToda
 export function resetDay(t: PickToday): PickToday {
 	return { ...t, out: [], brewed: [], board: null, result: null };
 }
-
-export function outIds(t: PickToday): Set<number> {
-	return new Set(t.out);
-}

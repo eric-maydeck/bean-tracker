@@ -63,13 +63,10 @@ export function saveToday(admin: boolean, t: PickToday): void {
   timer = setTimeout(flushToday, 300);
 }
 
+/** The saved rules, or null when none are saved. Throws when the server can't be reached. */
 export async function fetchSaved(): Promise<PickRules | null> {
-  try {
-    const res = await fetch('/api/pick?key=pick.rules.saved');
-    if (!res.ok) return null;
-    const { value } = await res.json();
-    return value == null ? null : parseRules(value);
-  } catch {
-    return null;
-  }
+  const res = await fetch('/api/pick?key=pick.rules.saved');
+  if (!res.ok) throw new Error(`Load failed (${res.status})`);
+  const { value } = await res.json();
+  return value == null ? null : parseRules(value);
 }

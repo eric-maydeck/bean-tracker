@@ -11,9 +11,9 @@
 </script>
 
 <article class="pick-card card" aria-label="Pick result">
-  {#if coffee.image}<img class="thumb" src={coffee.image} alt="" />{/if}
+  {#if coffee.image}<img class="thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{/if}
   <div class="info">
-    <h2 class="name">
+    <h3 class="name">
       {#if result.n}<span class="num">{result.n}</span>{/if}
       {#if out}<s><CoffeeName name={coffee.name} /></s>{:else}<CoffeeName name={coffee.name} />{/if}
       <span class="badges">
@@ -22,7 +22,7 @@
       {#if out}<span class="badge badge-neutral">Out for today</span>{/if}
       {#if brewed && !out}<span class="badge badge-fresh">Brewed today</span>{/if}
       </span>
-    </h2>
+    </h3>
     <p class="text-muted">{coffee.roaster}</p>
     <div class="buttons">
       <button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>
@@ -36,7 +36,7 @@
 
 <style>
   .pick-card { display: flex; gap: var(--space-4); align-items: flex-start; margin: var(--space-3) 0; }
-  .thumb { width: 84px; height: 104px; object-fit: cover; border-radius: var(--radius); flex-shrink: 0; }
+  .thumb { width: 84px; height: 104px; object-fit: contain; border-radius: var(--radius); flex-shrink: 0; }
   .info { min-width: 0; flex: 1; }
   .name { margin: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
   .badges { display: contents; }

@@ -32,6 +32,11 @@ describe('pick rules', () => {
     expect(r.critSuccess).toEqual([5, 6]);
     expect(r.critFail).toEqual([7]);
   });
+  it('maps the old skipFrozenDecaf field', () => {
+    expect(parseRules({ skipFrozenDecaf: true }).includeFrozenDecaf).toBe(false);
+    expect(parseRules({ skipFrozenDecaf: false }).includeFrozenDecaf).toBe(true);
+    expect(parseRules({ skipFrozenDecaf: false, includeFrozenDecaf: false }).includeFrozenDecaf).toBe(false);
+  });
   it('rulesDiffer', () => {
     expect(rulesDiffer(DEFAULT_RULES, { ...DEFAULT_RULES, sort: 'name' })).toBe(true);
     expect(rulesDiffer(DEFAULT_RULES, { ...DEFAULT_RULES, excluded: [1] })).toBe(true);

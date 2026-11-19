@@ -8,7 +8,7 @@
 
 <ol class="board" aria-label="D20 board">
   {#each board as s (s.n)}
-    <li class="tile {s.kind}" class:rolled={rolled === s.n} title={label(s)} aria-label={`${s.n}: ${label(s)}`}>
+    <li class="tile {s.kind}" class:rolled={rolled === s.n} aria-label={`${s.n}: ${label(s)}`}>
       <b>{s.n}</b><span>{label(s)}</span>
     </li>
   {/each}

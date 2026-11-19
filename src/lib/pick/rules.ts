@@ -11,7 +11,7 @@ export const DEFAULT_RULES: PickRules = {
   v: 1,
   categories: ['open', 'backlog'],
   includeDecaf: false,
-  skipFrozenDecaf: true,
+  includeFrozenDecaf: false,
   sort: 'urgency-desc',
   categoryOrder: ['open', 'backlog', 'frozen', 'decaf'],
   over20: 'first20',
@@ -42,7 +42,8 @@ export function parseRules(raw: unknown): PickRules {
     v: 1,
     categories: cats,
     includeDecaf: bool(r.includeDecaf, DEFAULT_RULES.includeDecaf),
-    skipFrozenDecaf: bool(r.skipFrozenDecaf, DEFAULT_RULES.skipFrozenDecaf),
+    // the old field was the inverse (skipFrozenDecaf); keep saved rules working
+    includeFrozenDecaf: typeof r.includeFrozenDecaf === 'boolean' ? r.includeFrozenDecaf : typeof r.skipFrozenDecaf === 'boolean' ? !r.skipFrozenDecaf : DEFAULT_RULES.includeFrozenDecaf,
     sort: oneOf(r.sort, SORTS, DEFAULT_RULES.sort),
     categoryOrder: orderOk ? (order as SortGroup[]) : [...DEFAULT_RULES.categoryOrder],
     over20: oneOf(r.over20, OVER20, DEFAULT_RULES.over20),
@@ -56,7 +57,7 @@ export function parseRules(raw: unknown): PickRules {
   };
 }
 
-/** Every rule field but `v` changes the pool or the board. */
+/** Every rule field changes the pool or the board. */
 export function rulesDiffer(a: PickRules, b: PickRules): boolean {
-  return JSON.stringify({ ...a, v: 1 }) !== JSON.stringify({ ...b, v: 1 });
+  return JSON.stringify(a) !== JSON.stringify(b);
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { freshToday, parseToday, todayFor, discard, markBrewed, resetDay, outIds } from './today';
+import { freshToday, parseToday, todayFor, discard, markBrewed, resetDay } from './today';
 import { DEFAULT_RULES } from './rules';
 
 describe('pick today state', () => {
@@ -50,6 +50,5 @@ describe('pick today state', () => {
 		const t = { ...freshToday('d', 'd20'), out: [1], brewed: [1], panelOpen: true, board: [], result: { coffeeId: 1, via: 'normal' as const } };
 		const r = resetDay(t);
 		expect(r).toMatchObject({ out: [], brewed: [], board: null, result: null, game: 'd20', panelOpen: true });
-		expect([...outIds(t)]).toEqual([1]);
 	});
 });

@@ -107,7 +107,7 @@ describe('buildPickCoffees', () => {
     const { id } = createCoffee(db, sampleInput({ coffee_name: 'Warm', roast_date: '2026-09-05' }));
     openCoffee(db, id);
     const by = Object.fromEntries(buildPickCoffees(getNonArchivedCoffees(db), today).map((c) => [c.name, c]));
-    expect(by.Cold).toMatchObject({ category: 'frozen', decaf: true, image: null });
+    expect(by.Cold).toMatchObject({ category: 'frozen', decaf: true, image: null, fill: null });
     expect(by.Thawed.category).toBe('backlog');
     expect(by.Warm).toMatchObject({ category: 'open', decaf: false });
     expect(typeof by.Warm.urgency).toBe('number');

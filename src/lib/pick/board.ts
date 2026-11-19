@@ -41,3 +41,9 @@ export function fillBoard(pool: PickCoffee[], rules: PickRules, hasSuccess: bool
   }
   return all.map((n) => slots.get(n) ?? { n, kind: 'crossed' });
 }
+
+/** A stored board stays valid while the same coffees are in play and the crit/crossed slots sit where a fresh deal puts them. */
+export function boardMatches(stored: Slot[], fresh: Slot[]): boolean {
+  const key = (b: Slot[]) => JSON.stringify([b.map((s) => (s.kind === 'coffee' ? 'c' : s.kind)), [...new Set(b.flatMap((s) => (s.kind === 'coffee' ? [s.coffeeId] : [])))].sort((x, y) => x - y)]);
+  return key(stored) === key(fresh);
+}
