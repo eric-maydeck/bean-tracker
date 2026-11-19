@@ -5842,9 +5842,40 @@ export const STATES: State[] = [
       await rules.click();
       await expect(page.getByRole('group', { name: 'Pool' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Reset to defaults' })).toBeVisible();
-      await rules.click();
+      await page.keyboard.press('Escape');
       await expect(page.getByRole('button', { name: 'Reset to defaults' })).toHaveCount(0);
       await expect(page).toHaveURL(/view=pick$/);
+    }
+  },
+  {
+    // Rules: a left side bar on desktop (the game does not move), the shared modal on a phone; Close and Escape dismiss it.
+    name: 'pick-rules-sidebar', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await stubPickApi(page);
+      const stage = page.locator('.stage');
+      const before = (await stage.boundingBox())!;
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      await expect(panel).toBeVisible();
+      const box = (await panel.boundingBox())!;
+      const vw = page.viewportSize()!.width;
+      if (vw > 640) {
+        expect(box.x, 'side bar hugs the left edge').toBeLessThanOrEqual(1);
+        expect(box.width).toBeLessThanOrEqual(420);
+        const after = (await stage.boundingBox())!;
+        expect(after.y, 'the game is not pushed down').toBe(before.y);
+        await expect(page.locator('.modal-backdrop')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      } else {
+        expect(box.width).toBeLessThanOrEqual(vw);
+        await expect(page.locator('.modal-backdrop')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+      }
+      await panel.getByRole('button', { name: 'Close' }).click();
+      await expect(panel).toBeHidden();
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await expect(panel).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(panel).toBeHidden();
     }
   },
   {
@@ -5926,6 +5957,9 @@ export const STATES: State[] = [
       await spin.click();
       await modal.getByRole('button', { name: 'Brew', exact: true }).click();
       await expect(page).toHaveURL(/\/brew$/);
+      await page.goBack(); // end on the Pick page, so the layout check runs there
+      await expect(page).toHaveURL(/view=pick/);
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeVisible();
     }
   },
   {

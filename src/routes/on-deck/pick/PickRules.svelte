@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Category, Fill, Iteration, PickCoffee, PickRules, SortGroup, SortRule } from '#lib/pick/types.ts';
+  import CritPicker from './CritPicker.svelte';
 
   let { rules, coffees, eligible, admin, hasSaved, open, ontoggle, onchange, onsave, onload, onreset, note, locked }: {
     rules: PickRules; coffees: PickCoffee[]; eligible: PickCoffee[]; admin: boolean; hasSaved: boolean; open: boolean;
@@ -21,123 +22,125 @@
     [o[i], o[i + d]] = [o[i + d], o[i]];
     set({ categoryOrder: o });
   };
-  // A coffee sits in at most one crit: ticking it in one list unticks it in the other.
-  const setCrit = (which: 'critSuccess' | 'critFail', id: number, on: boolean) => {
+  // A coffee sits in at most one crit: picking it in one list drops it from the other.
+  const setCrit = (which: 'critSuccess' | 'critFail', ids: number[]) => {
     const other = which === 'critSuccess' ? 'critFail' : 'critSuccess';
-    set({ [which]: toggled(rules[which], id, on), [other]: rules[other].filter((x) => x !== id) });
+    set({ [which]: ids, [other]: rules[other].filter((x) => !ids.includes(x)) });
   };
-  const byName = (a: PickCoffee, b: PickCoffee) => a.name.localeCompare(b.name);
-  const sorted = $derived([...coffees].sort(byName));
+
+  // Escape closes the panel, unless a dialog (the rule-change confirm) is on top of it.
+  const onkey = (e: KeyboardEvent) => e.key === 'Escape' && open && !document.querySelector('dialog[open]') && ontoggle(false);
 </script>
 
-{#snippet critList(which: 'critSuccess' | 'critFail', label: string)}
-  <details class="crit">
-    <summary>{label} ({rules[which].length})</summary>
-    <ul class="checks">
-      {#each sorted as c (c.id)}
-        <li><label><input type="checkbox" checked={rules[which].includes(c.id)} onchange={(e) => setCrit(which, c.id, e.currentTarget.checked)} /> {c.name}</label></li>
-      {/each}
-    </ul>
-  </details>
-{/snippet}
+<svelte:window onkeydown={onkey} />
 
-<section class="rules" aria-label="Rules">
-  <button type="button" class="button button-secondary toggle" aria-expanded={open} onclick={() => ontoggle(!open)}>Rules</button>
-  {#if open}
-    <fieldset class="body" disabled={locked}>
-      <fieldset>
-        <legend>Pool</legend>
-        <div class="line">
-          {#each CATEGORIES as [k, label] (k)}
-            <label><input type="checkbox" checked={rules.categories.includes(k)} onchange={(e) => toggleCategory(k, e.currentTarget.checked)} /> {label}</label>
-          {/each}
-        </div>
-        <div class="line">
+<button type="button" class="button button-secondary toggle" aria-expanded={open} onclick={() => ontoggle(!open)}>Rules</button>
+
+{#if open}
+  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Escape is handled on the window) -->
+  <div class="modal-backdrop rules-backdrop" onclick={(e) => e.target === e.currentTarget && window.innerWidth <= 640 && ontoggle(false)}>
+    <section class="modal rules-panel" role="dialog" aria-label="Rules">
+      <header class="bar">
+        <h3>Rules</h3>
+        <button type="button" class="button button-secondary" onclick={() => ontoggle(false)}>Close</button>
+      </header>
+      <fieldset class="body" disabled={locked}>
+        <fieldset>
+          <legend>Pool</legend>
+          <div class="line">
+            {#each CATEGORIES as [k, label] (k)}
+              <label><input type="checkbox" checked={rules.categories.includes(k)} onchange={(e) => toggleCategory(k, e.currentTarget.checked)} /> {label}</label>
+            {/each}
+          </div>
           <label><input type="checkbox" checked={rules.includeDecaf} onchange={(e) => set({ includeDecaf: e.currentTarget.checked })} /> Include decaf</label>
           <label class="sub"><input type="checkbox" checked={rules.includeFrozenDecaf} disabled={!rules.includeDecaf} onchange={(e) => set({ includeFrozenDecaf: e.currentTarget.checked })} /> Include frozen decaf</label>
-        </div>
-        <label class="field">Sort
-          <select class="ctl-select" value={rules.sort} onchange={(e) => set({ sort: e.currentTarget.value as SortRule })}>
-            {#each SORTS as [k, label] (k)}<option value={k}>{label}</option>{/each}
-          </select>
-        </label>
-        {#if rules.sort === 'category'}
-          <ol class="order" aria-label="Category order">
-            {#each rules.categoryOrder as g, i (g)}
-              <li>
-                <span>{GROUP_LABEL[g]}</span>
-                <button type="button" class="button button-secondary" disabled={i === 0} aria-label={`Move ${GROUP_LABEL[g]} up`} onclick={() => move(i, -1)}>Up</button>
-                <button type="button" class="button button-secondary" disabled={i === rules.categoryOrder.length - 1} aria-label={`Move ${GROUP_LABEL[g]} down`} onclick={() => move(i, 1)}>Down</button>
-              </li>
-            {/each}
-          </ol>
-        {/if}
-        <div class="line" role="radiogroup" aria-label="More than 20 coffees">
-          <label><input type="radio" name="over20" checked={rules.over20 === 'first20'} onchange={() => set({ over20: 'first20' })} /> First 20</label>
-          <label><input type="radio" name="over20" checked={rules.over20 === 'byHand'} onchange={() => set({ over20: 'byHand' })} /> Exclude by hand</label>
-        </div>
-        {#if rules.over20 === 'byHand'}
-          <ul class="checks" aria-label="Eligible coffees">
-            {#each eligible as c (c.id)}
-              <li><label><input type="checkbox" checked={!rules.excluded.includes(c.id)} onchange={(e) => set({ excluded: toggled(rules.excluded, c.id, !e.currentTarget.checked) })} /> {c.name}</label></li>
-            {/each}
-          </ul>
-        {/if}
-      </fieldset>
+          <label class="field">Sort
+            <select class="ctl-select" value={rules.sort} onchange={(e) => set({ sort: e.currentTarget.value as SortRule })}>
+              {#each SORTS as [k, label] (k)}<option value={k}>{label}</option>{/each}
+            </select>
+          </label>
+          {#if rules.sort === 'category'}
+            <ol class="order" aria-label="Category order">
+              {#each rules.categoryOrder as g, i (g)}
+                <li>
+                  <span>{GROUP_LABEL[g]}</span>
+                  <button type="button" class="button button-secondary" disabled={i === 0} aria-label={`Move ${GROUP_LABEL[g]} up`} onclick={() => move(i, -1)}>Up</button>
+                  <button type="button" class="button button-secondary" disabled={i === rules.categoryOrder.length - 1} aria-label={`Move ${GROUP_LABEL[g]} down`} onclick={() => move(i, 1)}>Down</button>
+                </li>
+              {/each}
+            </ol>
+          {/if}
+          <div class="line" role="radiogroup" aria-label="More than 20 coffees">
+            <label><input type="radio" name="over20" checked={rules.over20 === 'first20'} onchange={() => set({ over20: 'first20' })} /> First 20</label>
+            <label><input type="radio" name="over20" checked={rules.over20 === 'byHand'} onchange={() => set({ over20: 'byHand' })} /> Exclude specific coffees</label>
+          </div>
+          {#if rules.over20 === 'byHand'}
+            <ul class="checks" aria-label="Eligible coffees">
+              {#each eligible as c (c.id)}
+                <li><label><input type="checkbox" checked={!rules.excluded.includes(c.id)} onchange={(e) => set({ excluded: toggled(rules.excluded, c.id, !e.currentTarget.checked) })} /> <span>{c.name}</span> <span class="text-muted">{c.roaster}</span></label></li>
+              {/each}
+            </ul>
+          {/if}
+        </fieldset>
 
-      <fieldset>
-        <legend>Crits</legend>
-        {@render critList('critSuccess', 'Critical success (gold, 20)')}
-        {@render critList('critFail', 'Critical fail (black, 1)')}
-      </fieldset>
+        <fieldset>
+          <legend>Crits</legend>
+          <CritPicker label="Critical success (gold, 20)" {coffees} selected={rules.critSuccess} onchange={(ids) => setCrit('critSuccess', ids)} />
+          <CritPicker label="Critical fail (black, 1)" {coffees} selected={rules.critFail} onchange={(ids) => setCrit('critFail', ids)} />
+        </fieldset>
 
-      <fieldset>
-        <legend>D20 numbering</legend>
-        <label class="field">Order
-          <select class="ctl-select" value={rules.iteration} onchange={(e) => set({ iteration: e.currentTarget.value as Iteration })}>
-            {#each ITERATIONS as [k, label] (k)}<option value={k}>{label}</option>{/each}
-          </select>
-        </label>
-        <label class="field">Fewer coffees than numbers
-          <select class="ctl-select" value={rules.fill} onchange={(e) => set({ fill: e.currentTarget.value as Fill })}>
-            {#each FILLS as [k, label] (k)}<option value={k}>{label}</option>{/each}
-          </select>
-        </label>
-        <div class="line">
+        <fieldset>
+          <legend>D20 numbering</legend>
+          <label class="field">Order
+            <select class="ctl-select" value={rules.iteration} onchange={(e) => set({ iteration: e.currentTarget.value as Iteration })}>
+              {#each ITERATIONS as [k, label] (k)}<option value={k}>{label}</option>{/each}
+            </select>
+          </label>
+          <label class="field">Fewer coffees than numbers
+            <select class="ctl-select" value={rules.fill} onchange={(e) => set({ fill: e.currentTarget.value as Fill })}>
+              {#each FILLS as [k, label] (k)}<option value={k}>{label}</option>{/each}
+            </select>
+          </label>
           <label><input type="checkbox" checked={rules.fillEnds} onchange={(e) => set({ fillEnds: e.currentTarget.checked })} /> Normal 1 and 20 take part in the fill</label>
           <label><input type="checkbox" checked={rules.repeats} onchange={(e) => set({ repeats: e.currentTarget.checked })} /> Repeats (a brewed coffee stays in play)</label>
-        </div>
-      </fieldset>
+        </fieldset>
 
-      <div class="line actions">
-        {#if admin}
-          <button type="button" class="button button-secondary" onclick={onsave}>Save</button>
-          <button type="button" class="button button-secondary" disabled={!hasSaved} onclick={onload}>Load</button>
-        {/if}
-        <button type="button" class="button button-secondary" onclick={onreset}>Reset to defaults</button>
+        <div class="actions">
+          {#if admin}
+            <button type="button" class="button button-secondary" onclick={onsave}>Save</button>
+            <button type="button" class="button button-secondary" disabled={!hasSaved} onclick={onload}>Load</button>
+          {/if}
+          <button type="button" class="button button-secondary" onclick={onreset}>Reset to defaults</button>
+        </div>
         <span class="text-muted note" role="status">{note}</span>
-      </div>
-    </fieldset>
-  {/if}
-</section>
+      </fieldset>
+    </section>
+  </div>
+{/if}
 
 <style>
-  .rules { margin: var(--space-3) 0; }
-  fieldset.body { border: 0; padding: 0; margin: var(--space-3) 0 0; min-width: 0; }
-  .body { margin-top: var(--space-3); display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); align-items: start; }
-  .body .actions { grid-column: 1 / -1; }
-  fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-3); margin: 0; display: grid; gap: var(--space-2); min-width: 0; }
+  /* Desktop: a left side bar over the page (no backdrop, the game stays usable). Phone: the shared centred modal. */
+  .bar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+  .bar h3 { margin: 0; }
+  @media (min-width: 641px) {
+    .rules-backdrop { background: none; justify-content: flex-start; align-items: stretch; padding: 0; pointer-events: none; }
+    .rules-panel { pointer-events: auto; width: min(26rem, 90vw); max-height: none; height: 100%; border-radius: 0 var(--radius) var(--radius) 0; box-shadow: var(--shadow-hover); border-right: 1px solid var(--color-border); animation: slide-in 0.2s ease-out; }
+  }
+  @keyframes slide-in { from { transform: translateX(-100%); } }
+  @media (prefers-reduced-motion: reduce) { .rules-panel { animation: none; } }
+  fieldset.body { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: var(--space-2); }
+  fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); margin: 0; display: grid; gap: var(--space-1); min-width: 0; }
   legend { font-weight: 600; padding: 0 var(--space-2); }
-  .line { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center; }
-  label { display: inline-flex; gap: var(--space-2); align-items: center; min-height: 44px; }
+  .line { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); align-items: center; }
+  label { display: inline-flex; gap: var(--space-2); align-items: center; min-height: 30px; }
   .field { display: grid; gap: var(--space-1); min-height: 0; }
+  .sub { margin-left: var(--space-5); }
   .checks { list-style: none; margin: 0; padding: 0; max-height: 14rem; overflow: auto; }
-  .checks label { min-height: 36px; }
+  .checks label { align-items: baseline; }
   .order { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1); }
   .order li { display: flex; gap: var(--space-2); align-items: center; }
   .order span { min-width: 5rem; }
-  .sub { margin-left: var(--space-5); }
-  summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
-  .note { min-width: 0; }
-  @media (max-width: 640px) { .rules :global(.ctl-select) { width: 100%; } }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-1); justify-content: flex-start; }
+  .note:empty { display: none; }
+  @media (max-width: 640px) { label { min-height: 44px; } .rules-panel :global(.ctl-select) { width: 100%; } .actions :global(.button), .bar :global(.button), .order :global(.button) { min-height: 44px; } }
 </style>
