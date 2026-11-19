@@ -6551,6 +6551,26 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Share', exact: true }).click();
       expect(await shared(), 'after Reset to defaults').toMatch(/rules=default$/);
+      // Opened from a shared link: Share keeps that profile; picking another profile, or Reset to defaults, ends shared mode and Share follows.
+      await gotoReady(page, '/on-deck?view=pick&game=d20&profile=Shared+Rules');
+      await page.evaluate(() => { (window as unknown as { __shared: string[] }).__shared = []; navigator.share = async (d) => { (window as unknown as { __shared: string[] }).__shared.push(d!.url!); }; });
+      await expect(page.locator('.shared-note')).toContainText('Shared Rules');
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'shared profile').toMatch(/profile=Shared\+Rules$/);
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await panel.getByLabel('Profile', { exact: true }).selectOption('Other Rules');
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.shared-note'), 'picking a profile leaves shared mode').toHaveCount(0);
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'the picked profile').toMatch(/profile=Other\+Rules$/);
+      await gotoReady(page, '/on-deck?view=pick&game=d20&profile=Shared+Rules');
+      await page.evaluate(() => { (window as unknown as { __shared: string[] }).__shared = []; navigator.share = async (d) => { (window as unknown as { __shared: string[] }).__shared.push(d!.url!); }; });
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await panel.getByRole('button', { name: 'Reset to defaults' }).click();
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.shared-note')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'Reset to defaults from a shared link').toMatch(/rules=default$/);
     }
   },
   { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },
@@ -13158,10 +13178,22 @@ test.describe('signed out', () => {
     await page.getByRole('button', { name: 'Rules', exact: true }).click();
     await expect(rules.getByLabel('Sort')).toHaveValue('name'); // the shared profile's rules, not the defaults
     await expect(rules.getByLabel('Crit fail', { exact: true })).not.toBeChecked();
+    // Editing while shared changes what is played, not what is saved: no write of the visitor's own rules.
+    await rules.getByLabel('Sort').selectOption('urgency-asc');
     await page.keyboard.press('Escape');
     await expect(rules).toBeHidden();
     expect(await page.evaluate(() => localStorage.getItem('pick.rules.last')), 'nothing saved over the visitor\'s own rules').toBeNull();
+    await expect(note, 'the note stays (still the shared link)').toContainText('Shared Rules');
+    if ((page.viewportSize()?.width ?? 0) >= 1280) await expectOutRowOnScreen(page); // the note adds no height beside the game
     await checkLayout(page);
+    // A link to another profile followed in the app plays that profile's rules.
+    await page.evaluate(() => { const a = document.createElement('a'); a.id = 'to-other'; a.href = '/on-deck?view=pick&game=d20&profile=Other+Rules'; a.textContent = 'other'; document.body.prepend(a); });
+    await page.locator('#to-other').click();
+    await expect(note).toContainText('Other Rules');
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    await expect(rules.getByLabel('Sort')).toHaveValue('urgency-asc');
+    await page.keyboard.press('Escape');
+    await expect(rules).toBeHidden();
     await page.getByRole('button', { name: 'Use my rules' }).click();
     await expect(note).toHaveCount(0);
     await expect(page).not.toHaveURL(/profile=/);

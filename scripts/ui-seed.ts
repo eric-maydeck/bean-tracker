@@ -388,7 +388,7 @@ for (const { y } of db.prepare(`SELECT DISTINCT substr(bc_created_at, 1, 4) AS y
   if (Number(y) < priorYear + 1) for (const k of ['recap_seen', 'recap_alert']) db.prepare(`INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, '1')`).run(`${k}_${y}`); // no banner, no inbox alert
 
 // A saved Pick for me rules profile for the shared-link state (a visitor opens ?profile=Shared+Rules): sorted by name, crit fail off.
-setUserKv(db, 'admin', 'pick.profiles', { 'Shared Rules': { ...DEFAULT_RULES, sort: 'name', critFailOn: false } });
+setUserKv(db, 'admin', 'pick.profiles', { 'Shared Rules': { ...DEFAULT_RULES, sort: 'name', critFailOn: false }, 'Other Rules': { ...DEFAULT_RULES, sort: 'urgency-asc' } });
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
   slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], labTwo: labSlugs[7], sey: sey.slug, brew: bnBags[1].slug, brewNew: bnNew.slug, big: grams.big.slug,

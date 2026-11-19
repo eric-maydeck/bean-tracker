@@ -25,6 +25,8 @@
     pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; profiles: unknown; savedRules: unknown; todayState: unknown };
     admin: boolean; game: Game; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; defaultRules?: boolean };
   } = $props();
+  // Who the shared rules are: a change of it (another profile=, or none) re-seeds the rules; a missing profile plays the visitor's own.
+  const sharedKey = $derived(shared && 'rules' in shared ? `p:${shared.name}` : shared && 'defaults' in shared ? 'defaults' : '');
   const sharedRules = $derived(shared && 'rules' in shared ? shared.rules : shared && 'defaults' in shared ? DEFAULT_RULES : null);
   // While shared rules are in play nothing is saved over the visitor's (or admin's) own rules; today's state still saves.
   const ownRules = () => loadRules(admin, admin ? pick.rulesLast : null);
@@ -110,13 +112,21 @@
   onDestroy(flushToday);
 
   // Use my rules (the shared ones dropped from the URL): back to the saved own rules.
-  let wasShared = untrack(() => !!sharedRules);
+  // Another shared profile (a link followed in the app) re-seeds with its rules. Leaving by picking or saving a profile keeps what the user just set.
+  let wasKey = untrack(() => sharedKey);
+  let leftShared = false;
   $effect(() => {
-    const now = !!sharedRules;
-    if (!ready || now === wasShared) return;
-    wasShared = now;
-    untrack(() => { rules = ownRules(); selected = ''; rev++; today = { ...today, board: null }; });
+    const key = sharedKey;
+    if (!ready || key === wasKey) return;
+    wasKey = key;
+    untrack(() => {
+      if (leftShared) { leftShared = false; return; }
+      rules = sharedRules ?? ownRules(); selected = ''; rev++; today = { ...today, board: null };
+    });
   });
+  // A profile picked, saved or reset to defaults while shared rules are in play ends shared mode (the note goes), keeping the new rules.
+  let leaving = false; // a profile pick or Reset to defaults is under way: it ends shared mode once its rules apply (not on a cancelled dialog)
+  const leaveShared = () => { if (!shared) return; if (sharedKey) leftShared = true; onunshare(); };
   // Share carries the loaded profile (its saved version), else the default rules; visitors have no saved profiles of the owner's.
   $effect(() => {
     shareRules = !ready ? undefined : shared && 'rules' in shared ? { profile: shared.name } : shared && 'defaults' in shared ? { defaultRules: true } : admin && selected && profiles[selected] ? { profile: selected } : { defaultRules: true };
@@ -274,12 +284,13 @@
   const openPage = () => resultCoffee && goto(`/coffees/${resultCoffee.slug}`);
 
   function apply(next: PickRules, reset: boolean) {
+    if (leaving) { leaving = false; leaveShared(); }
     rules = next;
     today = reset ? resetDay(today) : { ...today, board: null };
-    if (!sharedRules) saveRules(admin, 'pick.rules.last', next).catch(() => {});
+    if (!sharedRules || leftShared) saveRules(admin, 'pick.rules.last', next).catch(() => {});
   }
   function edit(next: PickRules) {
-    if (!rulesDiffer(rules, next)) return;
+    if (!rulesDiffer(rules, next)) { if (leaving) { leaving = false; leaveShared(); } return; }
     if (today.out.length === 0) return apply(next, false);
     pendingRules = next;
     chosen = false;
@@ -293,13 +304,14 @@
   }
   function onDialogClose() {
     pendingRules = null;
-    if (!chosen) { rev++; selected = selBefore; } // Cancel or Escape: the controls go back to the unchanged rules
+    if (!chosen) { leaving = false; rev++; selected = selBefore; } // Cancel or Escape: the controls go back to the unchanged rules
   }
   function pickProfile(name: string) {
     if (!name) { selected = ''; return; } // the placeholder: no profile, Save off
     if (!profiles[name]) return;
     selBefore = selected;
     selected = name;
+    leaving = true;
     edit(profiles[name]);
   }
   // Write the whole map; the local copy changes only when the save went through.
@@ -308,6 +320,7 @@
       await saveProfiles(admin, next);
       profiles = next;
       selected = sel;
+      if (sel) leaveShared();
       showToast(msg);
       return true;
     } catch {
@@ -324,6 +337,7 @@
   function resetRules() {
     selBefore = selected;
     selected = '';
+    leaving = true;
     edit(DEFAULT_RULES);
   }
   const saveProfile = () => selected ? storeProfiles({ ...profiles, [selected]: $state.snapshot(rules) }, `Saved "${selected}".`) : Promise.resolve(false);
@@ -352,13 +366,13 @@
     <PickRulesPanel {rules} {coffees} {eligible} names={Object.keys(profiles).sort((a, b) => a.localeCompare(b))} {selected} {canSave} open={panelOpen} locked={busy}
       ontoggle={(o) => (panelOpen = o)} onchange={edit} onpick={pickProfile} onsave={saveProfile} onsaveas={saveProfileAs} ondelete={deleteProfile} onreset={resetRules} onrevert={revertProfile} />
     {/key}
+    {#if shared}
+      <p class="shared-note" role="status">
+        <span>{#if 'missing' in shared}That rules profile wasn't found.{:else if 'defaults' in shared}Playing with the default rules.{:else}Playing with the “{shared.name}” rules.{/if}</span>
+        <button type="button" class="button button-secondary" onclick={onunshare}>{'missing' in shared ? 'Dismiss' : 'Use my rules'}</button>
+      </p>
+    {/if}
   </div>
-  {#if shared}
-    <p class="shared-note" role="status">
-      <span>{#if 'missing' in shared}That rules profile wasn't found.{:else if 'defaults' in shared}Playing with the default rules.{:else}Playing with the “{shared.name}” rules.{/if}</span>
-      <button type="button" class="button button-secondary" onclick={onunshare}>{'missing' in shared ? 'Dismiss' : 'Use my rules'}</button>
-    </p>
-  {/if}
 
   <div class="stage-box"><div class="stage" class:d20={game === 'd20'} bind:this={stageEl}>
     <section class="game" aria-label={game === 'd20' ? 'D20' : 'Wheel'}>
@@ -494,9 +508,9 @@
   .game-row .group-field { flex-direction: row; align-items: center; gap: var(--space-2); }
   .game-row { margin-bottom: var(--space-2); }
   /* the callout look (a tinted panel); the button sits right of the text and wraps below it on a narrow screen */
-  .shared-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-warm); border-radius: var(--radius); background: color-mix(in srgb, var(--color-warm) 12%, transparent); max-width: 620px; }
-  .shared-note .button { margin: 0; padding: 0.35rem 0.75rem; min-height: 36px; }
-  @media (max-width: 640px) { .shared-note .button { min-height: 44px; } }
+  .shared-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0; padding: 0 0 0 var(--space-3); min-width: 0; border: 1px solid var(--color-warm); border-radius: var(--radius); background: color-mix(in srgb, var(--color-warm) 12%, transparent); }
+  .shared-note .button { margin: 0; padding: 0 0.75rem; min-height: 36px; }
+  @media (max-width: 640px) { .shared-note { flex: 1 1 100%; padding: 0 0 0 var(--space-3); } .shared-note .button { min-height: 44px; } }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }
   .rules-dialog h2 { padding: 0; border: 0; margin: 0 0 var(--space-2); } /* not the section heading's divider */
   .dlg-buttons { display: grid; gap: var(--space-2); }
