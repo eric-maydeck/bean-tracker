@@ -6102,6 +6102,38 @@ export const STATES: State[] = [
     }
   },
   {
+    // The wheel runs one animation loop: after several spins only one of its frames is ever pending, and leaving the wheel leaves none.
+    name: 'pick-wheel-one-loop', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.evaluate(() => {
+        const w = window as unknown as { __raf: { pending: Set<number>; max: number } };
+        w.__raf = { pending: new Set(), max: 0 };
+        const [req, cancel] = [window.requestAnimationFrame.bind(window), window.cancelAnimationFrame.bind(window)];
+        window.requestAnimationFrame = (cb) => {
+          if (cb.name !== 'tick') return req(cb); // the wheel's loop only (three.js and transitions have their own)
+          const id = req((t) => { w.__raf.pending.delete(id); cb(t); });
+          w.__raf.pending.add(id);
+          w.__raf.max = Math.max(w.__raf.max, w.__raf.pending.size);
+          return id;
+        };
+        window.cancelAnimationFrame = (id) => { w.__raf.pending.delete(id); cancel(id); };
+      });
+      const stats = () => page.evaluate(() => { const r = (window as unknown as { __raf: { pending: Set<number>; max: number } }).__raf; return { pending: r.pending.size, max: r.max }; });
+      for (let i = 0; i < 3; i++) {
+        await page.getByRole('button', { name: 'Spin', exact: true }).click();
+        await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled({ timeout: 15000 });
+        await dismissPickOverlay(page);
+      }
+      const s = await stats();
+      expect(s.max, 'the wheel loop was observed').toBeGreaterThanOrEqual(1);
+      expect(s.max, 'one loop at a time, however many spins').toBe(1);
+      await page.getByRole('group', { name: 'Game' }).getByRole('button', { name: 'D20' }).click();
+      await expect(page.locator('.wheel')).toHaveCount(0);
+      expect((await stats()).pending, 'unmounting the wheel leaves no loop').toBe(0);
+    }
+  },
+  {
     // Rules: a left side bar on desktop (the game does not move), the shared modal on a phone; Close and Escape dismiss it.
     name: 'pick-rules-sidebar', viewports: 'two',
     path: () => '/on-deck?view=pick',
@@ -6599,10 +6631,12 @@ export const STATES: State[] = [
       await reloadReady(page);
       await opener.click();
       await expect(profile, 'a new pick survives a reload').toHaveValue('Other Rules');
-      await panel.getByLabel('Sort').selectOption('name'); // the rules changed since: the profile is no longer what is stored
+      await panel.getByLabel('Sort').selectOption('name'); // unsaved edits on top of the profile
       await reloadReady(page);
       await opener.click();
-      await expect(profile, 'a profile whose rules changed is not restored').toHaveValue('');
+      await expect(profile, 'the profile is still selected after unsaved edits, so Save stays available').toHaveValue('Other Rules');
+      await expect(panel.getByLabel('Sort')).toHaveValue('name');
+      await expect(panel.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
       // Leave nothing behind: the defaults and no profile.
       await panel.getByRole('button', { name: 'Reset to defaults' }).click();
       await reloadReady(page);
@@ -6644,10 +6678,29 @@ export const STATES: State[] = [
         await expect(panel).toBeVisible();
         await page.mouse.click(1200, 450);
         await expect(panel).toBeHidden();
-        await expect(opener).toBeFocused();
         await opener.click();
         await expect(profile, 'Close and a click outside keep the profile').toHaveValue('Shared Rules');
       }
+    }
+  },
+  {
+    // Close and Escape put focus back on the Rules opener; a click outside the side bar leaves it on what was clicked.
+    name: 'pick-rules-outside-focus', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      if ((page.viewportSize()?.width ?? 0) <= 640) return; // the click-outside close is the desktop side bar's
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      const opener = page.getByRole('button', { name: 'Rules', exact: true });
+      await opener.click();
+      await page.keyboard.press('Escape');
+      await expect(panel).toBeHidden();
+      await expect(opener).toBeFocused();
+      await opener.click();
+      const share = page.getByRole('button', { name: 'Share', exact: true }); // right of the side bar
+      await share.click();
+      await expect(panel).toBeHidden();
+      await expect(share, 'the clicked control keeps focus, not the Rules opener').toBeFocused();
     }
   },
   { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },
@@ -13316,12 +13369,14 @@ test.describe('signed out', () => {
     const target = res.headers()['location'] ?? '';
     expect(target, 'the rules ride in the link').toMatch(/view=pick&game=d20&rules=[A-Za-z0-9_-]{20,}$/);
     expect(target).not.toMatch(/rules=default/);
-    // An edit since the save: back to the defaults link (the saved profile is not what is on screen).
+    // An edit since the save: the link still carries the saved profile, like the admin path (not rules=default).
     await page.getByRole('button', { name: 'Rules', exact: true }).click();
     await panel.getByLabel('Sort').selectOption('urgency-asc');
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Share', exact: true }).click();
-    expect(await shared()).toMatch(/rules=default$/);
+    await expect.poll(shared).toMatch(/\/s\//);
+    const edited = await page.request.get(await shared(), { maxRedirects: 0 });
+    expect(edited.headers()['location'] ?? '', 'the saved profile, not the defaults').toMatch(/rules=[A-Za-z0-9_-]{20,}$/);
     // A fresh visitor opens the link: the note, those rules, and nothing of theirs overwritten.
     const ctx = await browser.newContext({ viewport: info.project.use.viewport ?? undefined, baseURL: info.project.use.baseURL });
     try {
