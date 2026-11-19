@@ -30,7 +30,9 @@ export function buildPickCoffees(rows: CoffeeRow[], today: Date, degrees: Map<st
         degrees: (c.roast_level && degrees.get(c.roast_level)) || 0,
         costPerGram: c.cost_per_gram, amountG: c.amount_g, gramsLeft: c.grams_left ?? null,
         roastDate: c.roast_date, daysSinceRoast: c.days_since_roast, drinkAfter: c.drink_after, drinkBefore: c.drink_before,
-        status: c.status
+        status: c.status,
+        producer: c.producer || null, farm: c.farm || null, variety: c.variety || null, region: c.region || null,
+        elevation: c.elevation || null, harvestTime: c.harvest_time || null, certification: c.certification || null, tastingNotes: c.tasting_notes || null
       }
     };
   });

@@ -34,6 +34,9 @@ export interface CoffeeInfo {
   degrees: number; costPerGram: number | null; amountG: number | null; gramsLeft: number | null;
   roastDate: string | null; daysSinceRoast: number | null; drinkAfter: string | null; drinkBefore: string | null;
   status: 'open' | 'backlog' | 'archive';
+  // the coffee page's origin details (null = not set)
+  producer: string | null; farm: string | null; variety: string | null; region: string | null;
+  elevation: string | null; harvestTime: string | null; certification: string | null; tastingNotes: string | null;
 }
 
 export interface PickCoffee {

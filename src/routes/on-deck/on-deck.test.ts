@@ -120,6 +120,14 @@ describe('buildPickCoffees', () => {
     expect(buildPickCoffees(getNonArchivedCoffees(db), today)[0].info?.degrees).toBe(0);
   });
 
+  it('carries the coffee page origin details, null where blank', () => {
+    createCoffee(db, sampleInput({ coffee_name: 'Rich', producer: 'Ana', farm: 'Finca X', variety: 'Gesha', region: 'Huila', elevation: '1900 m', harvest_time: '2026', certification: 'Organic', tasting_notes: 'Jasmine, peach' }));
+    createCoffee(db, sampleInput({ coffee_name: 'Bare', producer: '' }));
+    const by = Object.fromEntries(buildPickCoffees(getNonArchivedCoffees(db), today).map((c) => [c.name, c.info!]));
+    expect(by.Rich).toMatchObject({ producer: 'Ana', farm: 'Finca X', variety: 'Gesha', region: 'Huila', elevation: '1,900 masl', harvestTime: '2026', certification: 'Organic', tastingNotes: 'Jasmine, peach' });
+    expect(by.Bare).toMatchObject({ producer: null, farm: null, variety: null, region: null, elevation: null, harvestTime: null, certification: null, tastingNotes: null });
+  });
+
   it('turns a Done urgency into null', () => {
     createCoffee(db, sampleInput());
     const row = { ...getNonArchivedCoffees(db)[0], drank: 1 } as ReturnType<typeof getNonArchivedCoffees>[number];
