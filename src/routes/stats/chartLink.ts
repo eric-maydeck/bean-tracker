@@ -140,6 +140,7 @@ export function insightsPreview(v: PreviewInput): Preview {
   const chart = v.chart ?? '';
   const board = BOARDS.find((b) => chart === `leaderboard-${b}`);
   // A board linked in its Over time view draws lines; the List view falls through to #118's bars. The text stays the page's own.
+  // An Over time view with no drawable thumb (timed is null) falls back to the List bars below.
   const timed = board && v.ctx && leaderboardTimeThumb(v.ctx, board);
   if (timed) return { ...pagePreview(v), card: statsCard(timed.title, v.period, timed.thumb) };
   const all = board && v.boards?.[board];

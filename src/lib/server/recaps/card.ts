@@ -136,8 +136,8 @@ function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
   }
   return [
     ...(k > 1 ? [el('div', { display: 'flex', alignItems: 'center', height: LEGEND_H, flexShrink: 0, overflow: 'hidden', ...karla, fontSize: 28 },
-      t.series.map((s, i) => el('div', { display: 'flex', alignItems: 'center', marginRight: 32, whiteSpace: 'nowrap' }, [
-        el('div', { width: 26, height: 26, borderRadius: 6, marginRight: 10, flexShrink: 0, background: hex(i) }), el('div', { display: 'block' }, s.label)])))] : []),
+      t.series.map((s, i) => el('div', { display: 'flex', alignItems: 'center', marginRight: 32, whiteSpace: 'nowrap', maxWidth: WIDTH / k - 32, minWidth: 0, flexShrink: 1 }, [
+        el('div', { width: 26, height: 26, borderRadius: 6, marginRight: 10, flexShrink: 0, background: hex(i) }), el('div', { ...clipLine, minWidth: 0 }, s.label)])))] : []),
     node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { display: 'flex', flexShrink: 0 }, children: kids })
   ];
 }

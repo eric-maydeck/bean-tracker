@@ -5,6 +5,7 @@ export interface ChartSeries { label: string; values: (number | null)[]; color?:
 
 const MAX_POINTS = 40, MAX_SERIES = 3;
 const tokenIdx = (t: string) => THUMB_TOKENS.indexOf(t.replace(/^var\(|\)$/g, '') as never);
+const clip = (s: string) => (s.length > 80 ? s.slice(0, 79) + '…' : s);
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
 // A chart's shape for a link-preview card: overlays dropped, <=3 series, <=40 points, ints 0..100 (see Global Constraints, #123).
@@ -13,13 +14,20 @@ export function chartThumb(kind: 'vbars' | 'lines', series: ChartSeries[], opts:
   // Chart.svelte's palette size: the first series plus every non-dashed one after it.
   const paletteCount = 1 + series.slice(1).filter((s) => !s.dashed).length;
   let kept = series.map((s, i) => ({ s, i })).filter(({ s }) => !s.faded && !s.dashed && !s.trend)
-    .map(({ s, i }) => ({ label: s.label, values: s.values, color: s.color && tokenIdx(s.color) >= 0 ? tokenIdx(s.color) : tokenIdx(seriesToken(i % 14, paletteCount)) }));
+    .map(({ s, i }) => ({ label: clip(s.label), values: s.values.map((v) => (v != null && Number.isFinite(v) ? v : null)), color: s.color && tokenIdx(s.color) >= 0 ? tokenIdx(s.color) : tokenIdx(seriesToken(i % 14, paletteCount)) }));
   if (!kept.length) return null;
   if (stacked && kept.length > MAX_SERIES) {
     const rest = kept.slice(MAX_SERIES - 1), len = Math.max(...rest.map((r) => r.values.length));
     const sum = Array.from({ length: len }, (_, k) => { const v = rest.map((r) => r.values[k]).filter((x): x is number => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; });
     kept = [...kept.slice(0, MAX_SERIES - 1), { label: 'Other', values: sum, color: tokenIdx('--series-other') }];
   } else kept = kept.slice(0, MAX_SERIES);
+  if (kind === 'lines') { // drop leading and trailing columns where every kept series is null
+    const live = (k: number) => kept.some((c) => c.values[k] != null), len = Math.max(...kept.map((c) => c.values.length));
+    let a = 0, b = len;
+    while (a < b && !live(a)) a++;
+    while (b > a && !live(b - 1)) b--;
+    kept = kept.map((c) => ({ ...c, values: Array.from({ length: b - a }, (_, k) => c.values[a + k] ?? null) }));
+  }
   if (kept.length === 1) kept[0].color = tokenIdx('--series-11');
 
   const n = Math.max(...kept.map((k) => k.values.length));

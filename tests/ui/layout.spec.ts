@@ -7699,6 +7699,22 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
+  { name: 'insights-consumption-chart-bought-anchor', path: () => '/stats?tab=consumption#consumption-chart-bought',
+    act: async (page) => {
+      // The heading links to itself; loading the hash puts it just under the sticky bar.
+      await expect(page.locator('#consumption-chart-bought a')).toHaveAttribute('href', /chart=consumption-chart-bought.*#consumption-chart-bought$/);
+      const gap = () => anchorGap(page, 'consumption-chart-bought');
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
+  { name: 'insights-consumption-chart-on-hand-anchor', path: () => '/stats?tab=consumption#consumption-chart-on-hand',
+    act: async (page) => {
+      // The heading links to itself; loading the hash puts it just under the sticky bar.
+      await expect(page.locator('#consumption-chart-on-hand a')).toHaveAttribute('href', /chart=consumption-chart-on-hand.*#consumption-chart-on-hand$/);
+      const gap = () => anchorGap(page, 'consumption-chart-on-hand');
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
   { name: 'insights-records-soup', viewports: 'two', path: () => '/stats?tab=records&brewer=soup',
     act: async (page) => expect(page.getByRole('button', { name: 'Soup', pressed: true })).toBeVisible() },
   { name: 'insights-records-compare', path: () => '/stats?tab=records&range=1w&compare=1' },

@@ -101,6 +101,17 @@ describe('endpoint', () => {
   });
 });
 
+describe('thumbnail legend', () => {
+  it('long series names are clipped with an ellipsis and every entry renders', async () => {
+    const values = [10, 40, 80, 30];
+    const thumb = { kind: 'vbars' as const, series: ['x'.repeat(60), 'y'.repeat(60), 'Other'].map((label, color) => ({ label, color, values })) };
+    const input = { big: 'Water', label: 'Stats', year: 0, cover: true, page: true, thumb } as never;
+    const svg = await cardSvg(input);
+    expect(svg).toContain('<svg'); // text is outlined to paths, so the ellipsis shows only in the PNG
+    expect((await sharp(await cardPng(svg)).metadata()).format).toBe('png');
+  });
+});
+
 describe('valueSizes', () => {
   it('fitting values keep the default size', () => expect(valueSizes(['9.2', '41 days'], 52, 288)).toEqual([52, 52]));
   it('a small step down for the longest applies to every value', () =>

@@ -46,6 +46,15 @@ describe('chartThumb', () => {
     expect(out(chartThumb('lines', [{ label: 'A', values: [1, null, 3] }]))[0].values).toEqual([0, null, 100]);
     expect(out(chartThumb('vbars', [{ label: 'A', values: [1, null, 3] }]))[0].values).toEqual([33, 0, 100]);
   });
+  it('lines trim all-null edges, vbars do not', () => {
+    expect(out(chartThumb('lines', [{ label: 'A', values: [null, 1, 2, null] }]))[0].values).toHaveLength(2);
+    expect(out(chartThumb('vbars', [{ label: 'A', values: [null, 1, 2, null] }]))[0].values).toHaveLength(4);
+  });
+  it('clips labels to 80 and maps non-finite values to null', () => {
+    const r = out(chartThumb('vbars', [{ label: 'x'.repeat(100), values: [NaN, 1, Infinity, 2] }]))[0];
+    expect(r.label).toHaveLength(80);
+    expect(r.values.every((v) => v != null && Number.isFinite(v))).toBe(true);
+  });
   it('lines scale from data min, or yMin', () => {
     expect(out(chartThumb('lines', [{ label: 'A', values: [6, 8, 10] }]))[0].values).toEqual([0, 50, 100]);
     expect(out(chartThumb('lines', [{ label: 'A', values: [6, 8, 10] }], { yMin: 0 }))[0].values).toEqual([60, 80, 100]);

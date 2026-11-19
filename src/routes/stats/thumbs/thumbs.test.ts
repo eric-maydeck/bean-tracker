@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { boardTimeLines } from '../multiLine';
 import { ERAS_THUMBS } from './eras';
-import { LEADERBOARD_THUMBS } from './leaderboards';
+import { leaderboardTimeThumb } from './leaderboards';
 import type { ThumbCtx } from '../thumbTypes';
 
 const row = (label: string, value: number, bags = 3) => ({ key: label, label, value, bags, brews: 9 }) as never;
@@ -50,10 +50,10 @@ describe('eras thumbs', () => {
 describe('leaderboard thumbs', () => {
   const data = { boards: { dripper: rows }, boardSeries: { dripper: sr } };
   it('leaderboard list view keeps bars (null here)', () => {
-    expect(LEADERBOARD_THUMBS['leaderboard-dripper'](ctx(data, { rank: 'rating', low: [], open: [] }))).toBeNull();
+    expect(leaderboardTimeThumb(ctx(data, { rank: 'rating', low: [], open: [] }), 'dripper')).toBeNull();
   });
   it('time view draws lines titled by the board', () => {
-    const t = LEADERBOARD_THUMBS['leaderboard-dripper'](ctx(data, { rank: 'rating', low: [], open: [], views: { dripper: 'time' } }))!;
+    const t = leaderboardTimeThumb(ctx(data, { rank: 'rating', low: [], open: [], views: { dripper: 'time' } }), 'dripper')!;
     expect(t.title).toBe('Dripper');
     expect(t.thumb.kind).toBe('lines');
   });
