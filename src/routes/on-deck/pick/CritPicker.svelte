@@ -33,7 +33,7 @@
   {#if picked.length}
     <ul class="chips" aria-label="Picked coffees">
       {#each picked as c (c.id)}
-        <li class="chip"><span class="chip-text" use:truncTip={`${c.name} · ${c.roaster}`}>{c.name} · {c.roaster}</span><button type="button" aria-label={`Remove ${c.name}`} onclick={() => toggle(c.id, false)}>×</button></li>
+        <li class="chip"><span class="chip-text" use:truncTip={`${c.roaster} · ${c.name}`}>{c.roaster} · {c.name}</span><button type="button" aria-label={`Remove ${c.name}`} onclick={() => toggle(c.id, false)}>×</button></li>
       {/each}
     </ul>
   {/if}

@@ -178,7 +178,7 @@
           <div class="actions">
             <button type="button" class="button button-success" disabled={!canSave} onclick={onsave}>Save</button>
             <button type="button" class="button button-danger" disabled={!canSave} onclick={onrevert}>Revert</button>
-            <button type="button" class="button button-secondary" onclick={() => (step = 'naming')}>Save as…</button>
+            <button type="button" class="button button-success" onclick={() => (step = 'naming')}>Save as…</button>
             <button type="button" class="button button-danger" disabled={!selected} onclick={() => (step = 'delete')}>Delete</button>
             <button type="button" class="button button-ghost wide" onclick={onreset}>Reset to defaults</button>
           </div>
