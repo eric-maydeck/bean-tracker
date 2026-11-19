@@ -34,8 +34,11 @@
   let closeEl: HTMLButtonElement | undefined = $state();
   let top = $state(0);
   let wasOpen = false;
+  let byOutside = false;
+  let panelEl: HTMLElement | undefined = $state();
+  let phone = $state(false); // the phone overlay is a modal: aria-modal and Tab kept inside; the desktop side bar is not
   // The side bar (desktop) starts under the site header, which scrolls away with the page; a phone's modal is centred.
-  const measure = () => (top = window.innerWidth > 640 ? Math.max(0, document.querySelector('nav.site-nav')?.getBoundingClientRect().bottom ?? 0) : 0);
+  const measure = () => (phone = window.innerWidth <= 640, top = window.innerWidth > 640 ? Math.max(0, document.querySelector('nav.site-nav')?.getBoundingClientRect().bottom ?? 0) : 0);
   // It slides out as it slid in; no motion on a phone or with reduced motion.
   const slide = () => ({ x: -416, duration: matchMedia('(min-width: 641px) and (prefers-reduced-motion: no-preference)').matches ? 200 : 0 });
   $effect(() => {
@@ -48,7 +51,8 @@
       return () => (removeEventListener('scroll', measure), removeEventListener('resize', measure));
     } else if (wasOpen) {
       wasOpen = false;
-      toggleEl?.focus();
+      if (byOutside) byOutside = false; // a click outside leaves focus on what was clicked
+      else toggleEl?.focus();
     }
   });
 
@@ -76,14 +80,25 @@
   const setOn = (which: 'critSuccess' | 'critFail', v: boolean) => set(which === 'critSuccess' ? { critSuccessOn: v } : { critFailOn: v });
   const setMode = (which: 'critSuccess' | 'critFail', v: CritMode) => set(which === 'critSuccess' ? { critSuccessMode: v } : { critFailMode: v });
 
-  // Escape closes the panel, unless a dialog (the rule-change confirm) is on top of it.
   // A click outside the desktop side bar closes it like Close (the opener returns focus). Not on the opener itself (it toggles), inside a popup or tooltip, or while a dialog is open; a phone's overlay has its own backdrop click.
   const onOutside = (e: MouseEvent) => {
     if (!open || window.innerWidth <= 640 || !(e.target instanceof Element) || !e.target.isConnected) return;
     if (e.target.closest('.rules-panel, .float-tip, .modal-backdrop, dialog') || toggleEl?.contains(e.target) || document.querySelector('dialog[open]')) return;
+    byOutside = true;
     ontoggle(false);
   };
-  const onkey = (e: KeyboardEvent) => e.key === 'Escape' && open && !document.querySelector('dialog[open]') && ontoggle(false);
+  // Escape closes the panel; on a phone Tab and Shift+Tab stay inside it (the same trap as the result pop-up), unless a dialog is on top.
+  function onkey(e: KeyboardEvent) {
+    if (!open || document.querySelector('dialog[open]')) return;
+    if (e.key === 'Escape') return ontoggle(false);
+    if (e.key !== 'Tab' || !phone || !panelEl) return;
+    const els = [...panelEl.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled])')].filter((el) => el.offsetParent);
+    const [first, last] = [els[0], els[els.length - 1]];
+    if (!first || !last) return;
+    if (!panelEl.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
 </script>
 
 {#snippet crit(label: string, which: 'critSuccess' | 'critFail', spot: string)}
@@ -111,7 +126,7 @@
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Escape is handled on the window) -->
   <div class="modal-backdrop rules-backdrop" style:top="{top}px" onclick={(e) => e.target === e.currentTarget && window.innerWidth <= 640 && ontoggle(false)}>
-    <section class="modal rules-panel" role="dialog" aria-label="Rules" in:fly={slide()} out:fly={slide()}>
+    <section class="modal rules-panel" role="dialog" aria-modal={phone ? 'true' : undefined} aria-label="Rules" bind:this={panelEl} in:fly={slide()} out:fly={slide()}>
       <header class="bar">
         <h3>Rules</h3>
         <button type="button" class="button button-secondary" bind:this={closeEl} onclick={() => ontoggle(false)}>Close</button>
