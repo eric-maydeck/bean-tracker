@@ -33,18 +33,19 @@
   {#if picked.length}
     <ul class="chips" aria-label="Picked coffees">
       {#each picked as c (c.id)}
-        <li class="chip">{c.name}<button type="button" aria-label={`Remove ${c.name}`} onclick={() => toggle(c.id, false)}>×</button></li>
+        <li class="chip"><span class="chip-text" use:truncTip={`${c.name} · ${c.roaster}`}>{c.name} · {c.roaster}</span><button type="button" aria-label={`Remove ${c.name}`} onclick={() => toggle(c.id, false)}>×</button></li>
       {/each}
     </ul>
   {/if}
 </div>
 
 <style>
-  .picker { display: grid; gap: var(--space-2); min-width: 0; }
+  .picker { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); min-width: 0; }
   .head { font-weight: 600; }
   .chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1); }
-  .chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 0 0 var(--space-2); border-radius: 999px; background: color-mix(in srgb, var(--color-accent) 18%, transparent); font-size: 0.85rem; }
-  .chip button { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; min-width: 28px; min-height: 28px; }
+  .chip { max-width: 100%; display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 0 0 var(--space-2); border-radius: 999px; background: color-mix(in srgb, var(--color-accent) 18%, transparent); font-size: 0.85rem; }
+  .chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip button { flex: none; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; min-width: 28px; min-height: 28px; }
   .search { box-sizing: border-box; margin-bottom: 0; }
   .bulk { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
   .bulk :global(.button) { margin: 0; justify-content: center; }
