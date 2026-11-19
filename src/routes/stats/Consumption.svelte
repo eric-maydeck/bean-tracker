@@ -2,7 +2,7 @@
   import type { Trend } from '#lib/insightsUrl.ts';
   import type { ConsumptionTab } from '#lib/server/insights/consumption.ts';
   import type { JumpLink } from './JumpNav.svelte';
-  const TITLE: Record<Trend, string> = { brews: 'Brews over time', water: 'Water over time', rating: 'Rating over time' };
+  import { TITLE } from './consumptionSeries';
   export function jumpLinks(t: ConsumptionTab, trend: Trend | undefined): JumpLink[] {
     const empty = t.buckets.length === 0;
     return [!empty && ['consumption-chart-brewed', trend ? TITLE[trend] : 'Brewed over time'], !empty && ['consumption-chart-bought', 'Bought vs brewed'], !empty && ['consumption-chart-on-hand', 'On hand over time'], !empty && (t.timeToOpen.toOpen.n > 0 || t.timeToOpen.daysOpen.n > 0) && ['consumption-time-to-open', 'Time to open']];
@@ -18,6 +18,7 @@
   import { formatGrams } from '#lib/grams.ts';
   import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '#lib/insightsUrl.ts';
   import HeadingAnchor from './HeadingAnchor.svelte';
+  import { consumptionCharts } from './consumptionSeries';
   import ChartToggle from './ChartToggle.svelte';
   import TimeToOpen from './TimeToOpen.svelte';
 
@@ -33,9 +34,6 @@
   const g = $derived(unit === 'grams');
   const empty = $derived(t.buckets.length === 0);
   const note = $derived(t.buckets.some((b) => b.partial) ? ` · * partial ${t.by}` : '');
-  // Grams axes switch to kg from 10 kg so ticks stay short; `k` is the divisor for one chart.
-  const kOf = (...vs: readonly (number | null)[][]) => (g && Math.max(0, ...vs.flat().map((v) => v ?? 0)) >= 10000 ? 1000 : 1);
-  const div = (vs: readonly (number | null)[], k: number) => vs.map((v) => (v === null ? null : v / k));
   const axis = (k: number) => (g ? (k === 1 ? 'g' : 'kg') : '');
   // Per day / per brew day: bars are rates (decimals); Total: whole counts.
   const avg = $derived(agg !== 'total');
@@ -49,34 +47,12 @@
   const measures = $derived(TRENDS.map(([v, name]) => [v ?? 'unit', v ? name : CAP(unit)] as const));
   const NOUN: Record<Trend, string> = { brews: 'Brews', water: 'Litres of water poured', rating: 'Mean rating' };
   const from = $derived(trend === 'rating' ? t.ratingFrom : 0);
-  // compareBrewed lines up with brewed by index only (a clipped previous window can be shorter):
-  // pad/slice it to brewed's buckets. A compare window with no data adds no series.
-  const compare = $derived(t.compareBrewed ? t.brewed.map((_, i) => t.compareBrewed![i] ?? null) : null);
-  const k1 = $derived(trend ? 1 : kOf(t.brewed, compare ?? [], [t.compareAverage]));
-  const k2 = $derived(kOf(t.bought, t.brewed));
-  const k3 = $derived(kOf(t.backlog));
-  const series1 = $derived([
-    ...(compare?.some((v) => v)
-      ? [{ label: compareLabel, values: div(compare, k1), faded: true, names: t.compareTitles ?? undefined }]
-      : !t.compareBrewed && t.compareAverage
-        ? [{ label: `${compareLabel} (avg)`, values: t.brewed.map(() => t.compareAverage! / k1), dashed: true, names: t.brewed.map(() => compareDates) }]
-        : []),
-    ...(t.trendLine ? [{ label: t.trendLabel!, values: div(t.trendLine, k1), trend: true }] : [])
-  ]);
-  // The rating line: its buckets start at the calibration date under Calibrated ratings (Leaderboards' Over time does too).
-  const ratingValues = $derived(t.brewed.slice(from));
-  const ratingSeries = $derived(
-    compare?.some((v) => v) ? [{ label: compareLabel, values: compare.slice(from), faded: true, names: t.compareTitles?.slice(from) }]
-    : !t.compareBrewed && t.compareAverage ? [{ label: `${compareLabel} (avg)`, values: ratingValues.map(() => t.compareAverage!), dashed: true, names: ratingValues.map(() => compareDates) }] : []
-  );
-  const ratingFloor = $derived.by(() => {
-    const lo = Math.min(...[ratingValues, ...ratingSeries.map((x) => x.values)].flat().filter((v): v is number => v !== null));
-    return Number.isFinite(lo) ? Math.max(0, Math.floor(lo) - 1) : undefined;
-  });
+  const ch = $derived(consumptionCharts(t, { unit, trend, agg, periodLabel, compareLabel, compareDates }));
+  const k1 = $derived(ch.brewed.k), k2 = $derived(ch.bought.k), k3 = $derived(ch.onHand.k);
+  const ratingValues = $derived(ch.brewed.values);
   const noRatings = $derived(!ratingValues.some((v) => v !== null));
   // Average: every bar is a per-day rate, whatever the bucket; Per brew day: a rate per day with a brew.
   const unitNote = $derived(agg === 'total' ? `per ${t.by}` : `${agg === 'brewday' ? 'per brew day' : 'per day'}${t.by === 'day' ? '' : `, averaged by ${t.by}`}`);
-  const brewedLabel = $derived(g ? 'Brewed' : 'Finished');
   const emptyLine = useEmptyLine();
 </script>
 
@@ -135,28 +111,28 @@
         {#if noRatings}
           <p class="hl-empty">{emptyLine('No rated brews in this period.')}</p>
         {:else}
-          <Chart type="line" labels={t.labels.slice(from)} values={ratingValues} datasetLabel={periodLabel} series={ratingSeries} legend
-            dashGaps yMin={ratingFloor} format={fmtRating} height={260} />
+          <Chart type="line" labels={ch.brewed.labels} values={ratingValues} datasetLabel={periodLabel} series={ch.brewed.series} legend
+            dashGaps yMin={ch.brewed.yMin} format={fmtRating} height={260} />
         {/if}
         {@render nwNote(`Mean rating per ${t.by}${from ? ` from ${t.labels[from]}` : ''}`, `${note}${ratingValues.some((v) => v === null) ? ' · Dashed: no rated brews' : ''}`)}
       {:else}
-        <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={periodLabel} series={series1} legend integer={(!g || !!trend) && !avg && trend !== 'water'}
+        <Chart type="bar" vertical labels={t.labels} values={ch.brewed.values} datasetLabel={periodLabel} series={ch.brewed.series} legend integer={(!g || !!trend) && !avg && trend !== 'water'}
           format={trend === 'brews' ? fmtBrews : trend === 'water' ? fmtWater : fmt(k1)} unit={trend === 'water' ? 'L' : trend ? '' : axis(k1)} height={260} />
         {@render nwNote(`${trend ? NOUN[trend] : g ? 'Grams brewed' : 'Bags finished'} ${unitNote}`, note)}
         {#if !g && !trend}{@render whole()}{/if}
       {/if}
     </section>
     <section class="chart-panel">
-      <h2 id="consumption-chart-bought">Bought vs brewed</h2>
-      <Chart type="bar" vertical labels={t.labels} values={div(t.bought, k2)} datasetLabel="Bought"
-        series={[{ label: brewedLabel, values: div(t.brewed, k2) }]} legend integer={!g && !avg} format={fmt(k2)} unit={axis(k2)} height={260} />
+      <HeadingAnchor id="consumption-chart-bought">Bought vs brewed</HeadingAnchor>
+      <Chart type="bar" vertical labels={t.labels} values={ch.bought.values} datasetLabel="Bought"
+        series={ch.bought.series} legend integer={!g && !avg} format={fmt(k2)} unit={axis(k2)} height={260} />
       {@render nwNote(`${g ? 'Grams' : 'Bags'} ${unitNote}`, note)}
       {@render whole()}
     </section>
   </div>
   <section class="chart-panel">
-    <h2 id="consumption-chart-on-hand">On hand over time</h2>
-    <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
+    <HeadingAnchor id="consumption-chart-on-hand">On hand over time</HeadingAnchor>
+    <Chart type="line" labels={t.labels} values={ch.onHand.values} datasetLabel="On hand" integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
     {@render nwNote(`${g ? 'Grams left' : 'Bags'} on hand at the end of each ${t.by}`, note)}
     {@render whole()}
   </section>
