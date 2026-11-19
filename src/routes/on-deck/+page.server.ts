@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '#lib/server/db.ts';
 import { localToday, localTodayDate } from '#lib/server/localToday.ts';
 import { getOpenCoffees, getBacklogCoffees, getNonArchivedCoffees } from '#lib/server/coffees.ts';
+import { getRoastLevels } from '#lib/server/roastLevels.ts';
 import { getUserKv } from '#lib/server/userKv.ts';
 import { buildOnDeckData, buildPickCoffees } from './onDeckData';
 
@@ -13,7 +14,7 @@ export const load: PageServerLoad = ({ locals }) => {
   return {
     ...buildOnDeckData(getOpenCoffees(db), getBacklogCoffees(db), today),
     pick: {
-      coffees: buildPickCoffees(getNonArchivedCoffees(db), today),
+      coffees: buildPickCoffees(getNonArchivedCoffees(db), today, new Map(getRoastLevels(db).map((r) => [r.roast_level, r.degrees_of_roast]))),
       today: localToday(),
       rulesLast: kv('pick.rules.last'),
       profiles: kv('pick.profiles'),

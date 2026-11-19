@@ -10,7 +10,7 @@ export function byUrgencyDesc(a: CoffeeWithComputed, b: CoffeeWithComputed): num
 }
 
 // Pick's pool input: every non-archived coffee. Frozen (started, not ended) overrides open/backlog.
-export function buildPickCoffees(rows: CoffeeRow[], today: Date): PickCoffee[] {
+export function buildPickCoffees(rows: CoffeeRow[], today: Date, degrees: Map<string, number> = new Map()): PickCoffee[] {
   return rows.map((row) => {
     const c = withComputedFields(row, today);
     return {
@@ -25,7 +25,13 @@ export function buildPickCoffees(rows: CoffeeRow[], today: Date): PickCoffee[] {
       urgency: typeof c.urgency_rating === 'number' ? c.urgency_rating : null,
       origin: c.origin ?? null,
       roastLevel: c.roast_level ?? null,
-      processing: c.processing ?? null
+      processing: c.processing ?? null,
+      info: {
+        degrees: (c.roast_level && degrees.get(c.roast_level)) || 0,
+        costPerGram: c.cost_per_gram, amountG: c.amount_g, gramsLeft: c.grams_left ?? null,
+        roastDate: c.roast_date, daysSinceRoast: c.days_since_roast, drinkAfter: c.drink_after, drinkBefore: c.drink_before,
+        status: c.status
+      }
     };
   });
 }

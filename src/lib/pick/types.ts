@@ -29,10 +29,18 @@ export interface PickRules {
   repeats: boolean;
 }
 
+/** What the /coffees card shows beyond the basics. */
+export interface CoffeeInfo {
+  degrees: number; costPerGram: number | null; amountG: number | null; gramsLeft: number | null;
+  roastDate: string | null; daysSinceRoast: number | null; drinkAfter: string | null; drinkBefore: string | null;
+  status: 'open' | 'backlog' | 'archive';
+}
+
 export interface PickCoffee {
   id: number; slug: string; name: string; roaster: string;
   image: string | null; fill: string | null; category: Category; decaf: boolean; urgency: number | null;
   origin: string | null; roastLevel: string | null; processing: string | null; // the result card and the out-for-today tip
+  info?: CoffeeInfo; // the rest of the /coffees card's fields
 }
 
 export type Slot = { n: number; kind: 'coffee'; coffeeId: number }

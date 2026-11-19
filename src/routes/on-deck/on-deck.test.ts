@@ -113,6 +113,13 @@ describe('buildPickCoffees', () => {
     expect(typeof by.Warm.urgency).toBe('number');
   });
 
+  it('carries the /coffees card fields in info, the roast degrees from the level map', () => {
+    createCoffee(db, sampleInput({ coffee_name: 'Roasty', roast_date: '2026-09-05', roast_level: 'Light' }));
+    const c = buildPickCoffees(getNonArchivedCoffees(db), today, new Map([['Light', 2.5]]))[0];
+    expect(c.info).toMatchObject({ degrees: 2.5, roastDate: '2026-09-05', daysSinceRoast: 12, status: 'backlog' });
+    expect(buildPickCoffees(getNonArchivedCoffees(db), today)[0].info?.degrees).toBe(0);
+  });
+
   it('turns a Done urgency into null', () => {
     createCoffee(db, sampleInput());
     const row = { ...getNonArchivedCoffees(db)[0], drank: 1 } as ReturnType<typeof getNonArchivedCoffees>[number];
