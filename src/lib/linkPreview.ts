@@ -6,7 +6,20 @@ import { originWithFlag } from './countryFlags';
 import { glue, unitGap } from './unitGap';
 import type { Recap } from './server/recaps/recap';
 
-export interface Preview { title: string; description: string; image?: { src: string; alt: string } | null }
+// `card`: the text of the default image card (/preview.png) when there's no image; else derived from the title.
+export interface Card { big: string; label: string }
+export interface Preview { title: string; description: string; image?: { src: string; alt: string } | null; card?: Card }
+
+// "Stats: Roasters" -> big "Roasters", label "Stats"; a title without "Page: " is big alone.
+export function previewCard(p: Preview): Card {
+  if (p.card) return p.card;
+  const i = p.title.indexOf(': ');
+  return i < 0 ? { big: p.title, label: '' } : { big: p.title.slice(i + 2), label: p.title.slice(0, i) };
+}
+
+// base64url of [big, label] (UTF-8): no characters that need escaping in a URL or an HTML attribute. The server signs it (server/previewCard.ts).
+export const encodeCard = (c: Card): string =>
+  btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify([c.big, c.label])))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 export const DESCRIPTION_MAX = 300;
 
@@ -41,7 +54,7 @@ export function coffeePreview(
     c.amount_g != null && formatBag(c.amount_g, c.grams_left != null && c.grams_left < c.amount_g ? c.grams_left : null),
     c.roast_date && `Roasted ${c.roast_date}`
   ]);
-  return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image };
+  return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image, card: { big: c.coffee_name, label: c.roaster ?? '' } };
 }
 
 export function waterPreview(w: { mode: Mode; tip: Tip; recipe: string; ml: number; drops: Drops; gh: number; kh: number; target?: { gh: number; kh: number }; idealMl?: number[] }): Preview {
@@ -76,18 +89,18 @@ export function recipePreview(r: { name: string; description: string; steps: str
   const stats = join([plural(r.n, 'brew'), r.avgRating != null && `avg ${f1(r.avgRating)}`, r.brewTime && `most brews took ${r.brewTime}`]);
   const rest = [r.steps, r.tempNotes, stats].filter(Boolean) as string[];
   const all = [r.description, ...rest].filter(Boolean).join('\n');
-  return { title: r.name, description: all.length <= RECIPE_PREVIEW_MAX ? all : fitList(rest, '\n', false, RECIPE_PREVIEW_MAX) };
+  return { title: r.name, description: all.length <= RECIPE_PREVIEW_MAX ? all : fitList(rest, '\n', false, RECIPE_PREVIEW_MAX), card: { big: r.name, label: 'Recipes' } };
 }
 
 export function recipesPreview(names: string[]): Preview {
   if (!names.length) return { title: 'Recipes', description: 'No saved recipes.' };
-  return { title: 'Recipes', description: fitList([plural(names.length, 'recipe'), ...names], '\n', true) };
+  return { title: 'Recipes', description: fitList([plural(names.length, 'recipe'), ...names], '\n', true), card: { big: 'Recipes', label: plural(names.length, 'recipe') } };
 }
 
 export function subscriptionsPreview(subs: Pick<SubscriptionRow, 'roaster_service' | 'subscription_name'>[]): Preview {
   if (!subs.length) return { title: 'Subscriptions', description: 'No subscriptions.' };
   const lines = subs.map((s) => join([s.roaster_service, s.subscription_name]));
-  return { title: 'Subscriptions', description: fitList([plural(subs.length, 'subscription'), ...lines], '\n', true) };
+  return { title: 'Subscriptions', description: fitList([plural(subs.length, 'subscription'), ...lines], '\n', true), card: { big: 'Subscriptions', label: plural(subs.length, 'subscription') } };
 }
 
 const STATUS_LABEL: Record<StatusTab, string> = { backlog: 'Backlog', open: 'Open', archive: 'Archive', all: 'All' };
@@ -95,7 +108,7 @@ const STATUS_LABEL: Record<StatusTab, string> = { backlog: 'Backlog', open: 'Ope
 export function coffeesPreview(v: { count: number; grams: number; status: StatusTab[]; query: string; chips: string[] }): Preview {
   const q = v.query.trim();
   const lines = [v.status.map((s) => STATUS_LABEL[s]).join(' + '), join([...v.chips, q && `“${q}”`]), join([plural(v.count, 'coffee'), formatGrams(v.grams)])];
-  return { title: 'Coffee Collection', description: fitList(lines.filter(Boolean), '\n', false) };
+  return { title: 'Coffee Collection', description: fitList(lines.filter(Boolean), '\n', false), card: { big: 'Coffee Collection', label: plural(v.count, 'coffee') } };
 }
 
 // A recap link: the cover (bare URL, an unknown slide) or one slide, with its card image (server/recaps/card.ts).

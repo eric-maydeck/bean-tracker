@@ -1,9 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { absoluteImage, type Preview } from '#lib/linkPreview.ts';
+  import { absoluteImage, encodeCard, previewCard, type Preview } from '#lib/linkPreview.ts';
 
   let { preview }: { preview: Preview } = $props();
-  let image = $derived(preview.image ? absoluteImage(preview.image.src, page.url.origin) : null);
+  // A page without a usable image (none, or a data: URI) gets a card with its own text (src/routes/preview.png;
+  // hooks.server.ts signs the URL in the SSR HTML). Behind the PREVIEW_CARDS flag (server/previewCard.ts) until epic #27 ships.
+  let own = $derived(preview.image && absoluteImage(preview.image.src, page.url.origin));
+  let image = $derived(own ? { src: own, alt: preview.image?.alt ?? '' }
+    : page.data.previewCards ? { src: `${page.url.origin}/preview.png?c=${encodeCard(previewCard(preview))}`, alt: preview.title } : null);
 </script>
 
 <svelte:head>
@@ -12,8 +16,8 @@
   <meta property="og:description" content={preview.description} />
   <meta property="og:url" content={page.url.origin + page.url.pathname + page.url.search} />
   {#if image}
-    <meta property="og:image" content={image} />
-    <meta property="og:image:alt" content={preview.image?.alt ?? ''} />
+    <meta property="og:image" content={image.src} />
+    <meta property="og:image:alt" content={image.alt} />
   {/if}
   <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
 </svelte:head>

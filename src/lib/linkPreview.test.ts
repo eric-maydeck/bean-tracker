@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recap } from './server/recaps/recap';
-import { DESCRIPTION_MAX, recapPreview, RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, plural, subscriptionsPreview, waterPreview } from './linkPreview';
+import { DESCRIPTION_MAX, recapPreview, RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, plural, subscriptionsPreview, waterPreview, previewCard, encodeCard } from './linkPreview';
 
 const kenya = { roaster: 'The Picky Chemist', coffee_name: 'Kenya AA Inoi Kianderi', origin: 'Kenya', processing: 'Washed', amount_g: 250, roast_date: '2026-10-03' };
 
@@ -36,7 +36,7 @@ describe('plural', () => {
 
 describe('coffeePreview', () => {
   it('builds title and description', () => {
-    expect(coffeePreview(kenya, null)).toEqual({ title: 'Kenya AA Inoi Kianderi', description: 'The Picky Chemist\n🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03', image: null });
+    expect(coffeePreview(kenya, null)).toEqual({ title: 'Kenya AA Inoi Kianderi', description: 'The Picky Chemist\n🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03', image: null, card: { big: 'Kenya AA Inoi Kianderi', label: 'The Picky Chemist' } });
   });
   it('skips missing fields', () => {
     expect(coffeePreview({ ...kenya, origin: null, processing: '  ', amount_g: null, roast_date: null }, null).description).toBe('The Picky Chemist');
@@ -113,7 +113,7 @@ describe('subscriptionsPreview', () => {
   ];
   it('one roaster · name line per subscription, no status', () => {
     expect(subscriptionsPreview(subs)).toEqual({
-      title: 'Subscriptions',
+      title: 'Subscriptions', card: { big: 'Subscriptions', label: '3 subscriptions' },
       description: [
         '3 subscriptions',
         'A Very Long Roaster Service Name · Explorer Series: Origins of the World',
@@ -134,7 +134,7 @@ describe('subscriptionsPreview', () => {
 describe('coffeesPreview', () => {
   it('status, then filters, then count and weight', () => {
     expect(coffeesPreview({ count: 99, grams: 11300, status: ['backlog', 'open'], query: '', chips: ['Caffeinated only', 'Not frozen'] })).toEqual({
-      title: 'Coffee Collection', description: 'Backlog + Open\nCaffeinated only · Not frozen\n99 coffees · 11.3kg'
+      title: 'Coffee Collection', card: { big: 'Coffee Collection', label: '99 coffees' }, description: 'Backlog + Open\nCaffeinated only · Not frozen\n99 coffees · 11.3kg'
     });
   });
   it('skips the filters line when there are none; keeps the search', () => {
@@ -145,7 +145,7 @@ describe('coffeesPreview', () => {
 
 describe('recipesPreview', () => {
   it('lists recipe names, or says there are none', () => {
-    expect(recipesPreview(['A', 'B'])).toEqual({ title: 'Recipes', description: '2 recipes\nA\nB' });
+    expect(recipesPreview(['A', 'B'])).toEqual({ title: 'Recipes', description: '2 recipes\nA\nB', card: { big: 'Recipes', label: '2 recipes' } });
     expect(recipesPreview([]).description).toBe('No saved recipes.');
   });
 });
@@ -153,7 +153,7 @@ describe('recipesPreview', () => {
 describe('recipePreview', () => {
   const base = { name: 'Floral', description: 'Two blooms · ~1:16', steps: '0:00 - bloom\n0:45 - pour', tempNotes: '93°C · rinse', n: 311, avgRating: 7.1 };
   it('lists the one-liner, steps, temperature and notes, then the brew stats', () => {
-    expect(recipePreview(base)).toEqual({ title: 'Floral', description: 'Two blooms · ~1:16\n0:00 - bloom\n0:45 - pour\n93°C · rinse\n311 brews · avg 7.1' });
+    expect(recipePreview(base)).toEqual({ title: 'Floral', description: 'Two blooms · ~1:16\n0:00 - bloom\n0:45 - pour\n93°C · rinse\n311 brews · avg 7.1', card: { big: 'Floral', label: 'Recipes' } });
     expect(recipePreview({ ...base, tempNotes: null }).description).toBe('Two blooms · ~1:16\n0:00 - bloom\n0:45 - pour\n311 brews · avg 7.1');
     expect(recipePreview({ ...base, steps: '', tempNotes: null, n: 1, avgRating: null }).description).toBe('Two blooms · ~1:16\n1 brew');
   });
@@ -196,5 +196,18 @@ describe('recapPreview', () => {
     expect(recapPreview(r, 'streak').image!.src).toBe('/recaps/2026/card/streak.png');
     expect(recapPreview({ ...r, preview: true }, undefined).image!.src).toBe('/recaps/2026/card/cover.png?preview=1');
     expect(recapPreview(r, 'poster').image!.src).toBe('/recaps/2026/card/poster.png');
+  });
+});
+
+describe('previewCard', () => {
+  it('splits "Page: Thing" into big and label; an explicit card wins', () => {
+    expect(previewCard({ title: 'Stats: Roasters', description: '' })).toEqual({ big: 'Roasters', label: 'Stats' });
+    expect(previewCard({ title: 'Coffee Collection', description: '' })).toEqual({ big: 'Coffee Collection', label: '' });
+    expect(previewCard({ title: 'X', description: '', card: { big: 'A', label: 'B' } })).toEqual({ big: 'A', label: 'B' });
+  });
+  it('encodeCard: URL-safe base64 of UTF-8 text', () => {
+    const c = encodeCard({ big: 'Café · 🇰🇪', label: 'Señor/+' });
+    expect(c).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(JSON.parse(Buffer.from(c, 'base64url').toString('utf8'))).toEqual(['Café · 🇰🇪', 'Señor/+']);
   });
 });
