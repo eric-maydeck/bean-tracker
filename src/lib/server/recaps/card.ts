@@ -67,8 +67,7 @@ function chart(t: ChartTimeline) {
 // A Stats view's thumbnail (the lower part of a page card, THUMB_H tall): app light-theme colours, nothing under 22px, no hairlines.
 // Bars are --series-11 (#c06408) on the page background; medals are the gold/silver/bronze of the text preview's emoji.
 const THUMB_H = 290;
-const BAR = '#c06408',
-   MEDAL_FILL = ['#f5c518', '#cfc9c1', '#d79a62'];
+const MEDAL_FILL = ['#f5c518', '#cfc9c1', '#d79a62'];
 // Grid tiles cycle these by position (neighbours differ): [fill, title, edge] per series colour of src/app.css (light theme), in the order
 // --series-1 blue, -4 orange, -6 green, -2 violet, -3 pink, -7 cyan. Fill = 25% of the series colour over --color-surface (#fff);
 // edge = the series colour itself; title = the series' -ink mixed 30% into --color-text (#2b211b), >= 5.8:1 on its fill (values are espresso, >= 8.6:1).
@@ -106,7 +105,7 @@ const TOKEN_HEX = ['#a8bffd', '#d9a6e3', '#ffb7c1', '#fdc58b', '#d8db80', '#92db
 if (TOKEN_HEX.length !== THUMB_TOKENS.length) throw new Error('TOKEN_HEX out of step with THUMB_TOKENS');
 const LEGEND_H = 40, GAP = 8, STROKE = 7, LABEL = 28, XROW = 38, VAL_ROOM = 36;
 // The page's soft bar fill (colour at b3 alpha) over the card background; bars get its --slice-line outline (INK), 2px at 1200 wide.
-const soft = (hex: string) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.7 + parseInt(CREAM.slice(i, i + 2), 16) * 0.3).toString(16).padStart(2, '0')).join('');
+const soft = (hex: string, a = 0.7) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * a + parseInt(CREAM.slice(i, i + 2), 16) * (1 - a)).toString(16).padStart(2, '0')).join('');
 const textW = (s: string) => Math.ceil(s.length * LABEL * 0.58); // Karla bold, generous
 // Axis tick labels left to right: the first always shows, the last wins over the ones it would touch, any other that would overlap is dropped.
 export function pickTicks(ticks: { cx: number; w: number }[], min = 10): number[] {
@@ -178,7 +177,7 @@ function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
   return [
     ...(k > 1 ? [el('div', { display: 'flex', alignItems: 'center', height: LEGEND_H, flexShrink: 0, overflow: 'hidden', ...karla, fontSize: 28 },
       t.series.map((s, i) => el('div', { display: 'flex', alignItems: 'center', marginRight: 32, whiteSpace: 'nowrap', maxWidth: WIDTH / k - 32, minWidth: 0, flexShrink: 1 }, [
-        el('div', { width: 26, height: 26, borderRadius: 6, marginRight: 10, flexShrink: 0, background: hex(i) }), el('div', { ...clipLine, minWidth: 0 }, s.label)])))] : []),
+        el('div', { width: 26, height: 26, boxSizing: 'border-box', borderRadius: 6, marginRight: 10, flexShrink: 0, background: soft(hex(i)), border: `2px solid ${INK}` }), el('div', { ...clipLine, minWidth: 0 }, s.label)])))] : []),
     el('div', { display: 'flex', position: 'relative', width: WIDTH, height: top + H + bot, flexShrink: 0 }, [
       node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { position: 'absolute', left: 0, top }, children: kids }),
       ...over
@@ -192,7 +191,8 @@ function thumbnail(t: Thumb) {
     return box(t.rows.map(([label, value, frac], i) => el('div', { display: 'flex', alignItems: 'center', height: THUMB_H / 5, ...karla, fontSize: 30 }, [
       el('div', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 50, height: 50, borderRadius: 25, marginRight: 14, flexShrink: 0, fontSize: 34, background: !t.plain && i < 3 ? MEDAL_FILL[i] : 'transparent' }, String(i + 1)),
       named(label, 40, { ...clipLine, width: 380, flexShrink: 0 }),
-      el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, background: BAR, borderRadius: 6 })),
+      el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, boxSizing: 'border-box', background: soft('#8a5a3b', 0.28), // the page's leaderboard value bar: --map-high at --bar-alpha (28%) over the page background
+     border: `2px solid ${INK}`, borderRadius: 6 })),
       el('div', { display: 'flex', justifyContent: 'flex-end', width: 150, flexShrink: 0, whiteSpace: 'nowrap', fontSize: sizes[i] }, value)
     ])));
   }
