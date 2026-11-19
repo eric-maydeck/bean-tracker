@@ -66,7 +66,7 @@
   }
 
   // One slice in wheel space (origin at the hub, no rotation applied here).
-  function drawSlice(ctx: CanvasRenderingContext2D, i: number, s: WheelSlice, veneer: string[]) {
+  function drawSlice(ctx: CanvasRenderingContext2D, i: number, s: WheelSlice, tone = '') {
     const wedge = () => { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, s.a0, s.a1); ctx.closePath(); };
     const mid = (s.a0 + s.a1) / 2;
     ctx.save(); wedge();
@@ -76,7 +76,7 @@
       g.addColorStop(0, '#8a6214'); g.addColorStop(Math.min(0.9, 0.2 + t * 0.6), '#fff2b8'); g.addColorStop(1, '#b8862b'); ctx.fillStyle = g;
     } else if (s.kind === 'fail') {
       const g = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, R); g.addColorStop(0, '#000'); g.addColorStop(0.7, '#1a0000'); g.addColorStop(1, '#7a0a0a'); ctx.fillStyle = g;
-    } else ctx.fillStyle = veneer[0];
+    } else ctx.fillStyle = tone;
     ctx.fill();
     if (s.kind === 'coffee') { // veneer grain: faint arcs across the wedge
       ctx.save(); ctx.clip();
@@ -90,30 +90,26 @@
     ctx.strokeStyle = s.kind === 'success' ? '#ffe08a' : s.kind === 'fail' ? '#d01c1c' : '#1d120a';
     ctx.lineWidth = s.kind === 'coffee' ? 2 : 2.5; ctx.stroke();
     ctx.rotate(mid);
-    if (s.kind === 'coffee') {
-      // same rule for every wedge: along the centre radius from a fixed gap outside the hub, top of the text toward the wedge's counter-clockwise side
-      ctx.fillStyle = veneer[1]; ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-      ctx.fillText(labels[i], LABEL_START, 0);
-    } else if (s.kind === 'success') {
+    if (s.kind === 'success') {
       ctx.fillStyle = '#fff8dc'; star(ctx, R - 26, 0, 10); ctx.fillStyle = 'rgba(255,255,255,.9)'; star(ctx, R - 60 - 8 * Math.sin(shimmer * 1.7), 0, 4);
-    } else skull(ctx, R - 26, 0, 12);
+    } else if (s.kind === 'fail') skull(ctx, R - 26, 0, 12);
     ctx.restore();
   }
 
-  // Everything that never changes while the wheel turns (the veneer wedges with their grain and labels, the fail wedge) is
-  // painted once per slices/names/size change; each frame only rotates that picture and draws the shimmering gold wedge.
+  // The veneer wedges with their grain and the fail wedge never change while the wheel turns: painted once per
+  // slices/size change. Each frame rotates that picture, then draws the shimmering gold wedge and the labels (as text:
+  // a rotated bitmap would blur them at rest).
   let face: HTMLCanvasElement | null = null;
   let faceKey: unknown[] = [];
   function paintFace(k: number) {
-    if (face && faceKey[0] === slices && faceKey[1] === names && faceKey[2] === k) return;
+    if (face && faceKey[0] === slices && faceKey[1] === k) return;
     face ??= document.createElement('canvas');
-    faceKey = [slices, names, k];
+    faceKey = [slices, k];
     face.width = face.height = Math.round(BASE * k);
     const ctx = face.getContext('2d')!;
     ctx.setTransform(k, 0, 0, k, (BASE / 2) * k, (BASE / 2) * k);
-    layoutLabels(ctx);
     let ci = 0;
-    for (const [i, s] of slices.entries()) if (s.kind !== 'success') drawSlice(ctx, i, s, s.kind === 'coffee' ? VENEER[ci++ % VENEER.length] : []);
+    for (const [i, s] of slices.entries()) if (s.kind !== 'success') drawSlice(ctx, i, s, s.kind === 'coffee' ? VENEER[ci++ % VENEER.length][0] : '');
   }
 
   function drawWheel() {
@@ -126,7 +122,15 @@
     ctx.clearRect(0, 0, BASE, BASE);
     ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
     ctx.drawImage(face!, -BASE / 2, -BASE / 2, BASE, BASE);
-    for (const [i, s] of slices.entries()) if (s.kind === 'success') drawSlice(ctx, i, s, []);
+    layoutLabels(ctx);
+    ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    let ci = 0;
+    for (const [i, s] of slices.entries()) {
+      if (s.kind === 'success') drawSlice(ctx, i, s);
+      if (s.kind !== 'coffee') continue;
+      // same rule for every wedge: along the centre radius from a fixed gap outside the hub, top of the text toward the wedge's counter-clockwise side
+      ctx.save(); ctx.rotate((s.a0 + s.a1) / 2); ctx.fillStyle = VENEER[ci++ % VENEER.length][1]; ctx.fillText(labels[i], LABEL_START, 0); ctx.restore();
+    }
     ctx.restore();
     ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, 7); ctx.lineWidth = 10; ctx.strokeStyle = '#b8862b'; ctx.stroke(); // brass rim
     for (let i = 0; i < 24; i++) { const a = (i * Math.PI) / 12; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6), 2.5, 0, 7); ctx.fillStyle = '#fff2b8'; ctx.fill(); }
@@ -209,7 +213,7 @@
 
   onMount(() => {
     kick();
-    return () => { cancelAnimationFrame(raf); cancelAnimationFrame(shakeRaf); };
+    return () => { cancelAnimationFrame(raf); cancelAnimationFrame(shakeRaf); if (face) face.width = face.height = 0; }; // free the cached bitmap
   });
 </script>
 
