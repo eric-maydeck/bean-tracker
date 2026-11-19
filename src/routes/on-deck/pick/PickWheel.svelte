@@ -127,7 +127,7 @@
   // Render only while something moves: a spin, confetti, or the gold shimmer.
   let raf = 0;
   let spin: { start: number; over: number; end: number; t0: number; u: number } | null = null;
-  const hasSuccess = () => slices.some((s) => s.kind === 'success');
+  const hasSuccess = () => !reduced() && slices.some((s) => s.kind === 'success');
   function tick(now: number) {
     raf = 0;
     if (spin) {
