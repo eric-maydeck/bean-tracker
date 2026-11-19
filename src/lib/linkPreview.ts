@@ -8,7 +8,13 @@ import { KINDS, type ChartTimeline } from './pourShapes';
 import type { Recap } from './server/recaps/recap';
 
 // `card`: the text of the default image card (/preview.png) when there's no image; else derived from the title.
-export interface Card { big: string; label: string; timeline?: ChartTimeline }
+// `thumb`: a small picture of a Stats view under the title (server/recaps/card.ts): top-5 bars (label, value, 0..1 length;
+// `plain`: no medals, as Lowest first), one record tile (value, holder, date line), or a grid of up to 6 tiles (label, value).
+export type Thumb =
+  | { kind: 'bars'; rows: [string, string, number][]; plain?: boolean }
+  | { kind: 'tile'; value: string; holder: string; date?: string }
+  | { kind: 'grid'; tiles: [string, string][] };
+export interface Card { big: string; label: string; timeline?: ChartTimeline; thumb?: Thumb }
 export interface Preview { title: string; description: string; image?: { src: string; alt: string } | null; card?: Card }
 
 // "Stats: Roasters" -> big "Roasters", label "Stats"; a title without "Page: " is big alone.
@@ -18,15 +24,17 @@ export function previewCard(p: Preview): Card {
   return i < 0 ? { big: p.title, label: '' } : { big: p.title.slice(i + 2), label: p.title.slice(0, i) };
 }
 
-// base64url of [big, label, timeline?] (UTF-8): no characters that need escaping in a URL or an HTML attribute. The server signs
+// base64url of [big, label, timeline?, thumb?] (UTF-8; a thumb with no timeline has null in the timeline's place): no characters that need escaping in a URL or an HTML attribute. The server signs
 // it (server/previewCard.ts). The timeline is compact: pours [startS, durationS, grams, kind index], swirls, totalS, windows [startS, targetS, bloom].
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const wire = (t: ChartTimeline) => [
   t.pours.map((p) => [r1(p.startS), r1(p.durationS), r1(p.grams), KINDS.indexOf(p.kind)]),
   t.swirls.map(r1), r1(t.totalS), (t.windows ?? []).map((w) => [r1(w.startS), r1(w.targetS), w.bloom])
 ];
+const wireThumb = (t: Thumb) => t.kind === 'bars' ? ['bars', t.rows.map(([l, v, f]) => [l, v, Math.round(f * 1000) / 1000]), t.plain ? 1 : 0]
+  : t.kind === 'tile' ? ['tile', t.value, t.holder, t.date ?? ''] : ['grid', t.tiles];
 export const encodeCard = (c: Card): string =>
-  btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(c.timeline?.pours.length ? [c.big, c.label, wire(c.timeline)] : [c.big, c.label]))))
+  btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify([c.big, c.label, ...(c.thumb ? [c.timeline?.pours.length ? wire(c.timeline) : null, wireThumb(c.thumb)] : c.timeline?.pours.length ? [wire(c.timeline)] : [])]))))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 export const DESCRIPTION_MAX = 300;

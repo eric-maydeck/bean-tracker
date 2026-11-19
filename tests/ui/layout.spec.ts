@@ -1966,6 +1966,11 @@ export const STATES: State[] = [
         expect(t.description.length).toBeLessThanOrEqual(300);
         expect(t['og:url']).toBe(origin + path);
       }
+      // A leaderboard link's card carries its thumbnail in the signed URL and renders.
+      const t = await previewTags(page, '/stats?tab=leaderboards&range=all&chart=leaderboard-origins');
+      expect(t['og:image']).toMatch(new RegExp(`^${origin}/preview\\.png\\?c=[\\w-]+&s=[\\w-]+$`));
+      const img = await page.request.get(t['og:image']);
+      expect([img.status(), img.headers()['content-type']]).toEqual([200, 'image/png']);
     } },
   { name: 'coffee-detail-no-like', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 import { localToday } from '#lib/server/localToday.ts';
 vi.mock('node:fs', async (orig) => { const a = await orig<typeof import('node:fs')>(); return { ...a, unlinkSync: vi.fn(a.unlinkSync) }; });
-import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard } from './card';
+import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard, valueSizes } from './card';
 
 const dir = mkdtempSync(join(tmpdir(), 'card-'));
 process.env.DB_PATH = join(dir, 't.db');
@@ -98,5 +98,33 @@ describe('endpoint', () => {
     const b = Buffer.from(await ((await call(cur - 1, 'total', '?people=person')) as Response).arrayBuffer());
     expect(b.equals(a)).toBe(true);
     expect(existsSync(cardsRoot())).toBe(true);
+  });
+});
+
+describe('valueSizes', () => {
+  it('fitting values keep the default size', () => expect(valueSizes(['9.2', '41 days'], 52, 288)).toEqual([52, 52]));
+  it('a small step down for the longest applies to every value', () =>
+    expect(valueSizes(['9.2', 'x'.repeat(10)], 52, 288)).toEqual([48, 48]));
+  it('a big step down shrinks that value alone', () => {
+    const [a, b] = valueSizes(['9.2', 'x'.repeat(30)], 52, 288);
+    expect([a, b]).toEqual([52, 22]);
+  });
+  it('never goes under 22', () => expect(valueSizes(['x'.repeat(200)], 52, 288)).toEqual([22]));
+  it('an unreasonably long text stops at the floor, short values are not held back', () =>
+    expect(valueSizes(['9.2', 'x'.repeat(50)], 52, 288, 30)).toEqual([52, 30]));
+  it('short and numeric values never reach the floor', () => expect(valueSizes(['$0.09/g', '41 days', '1kg'], 52, 288, 30)).toEqual([52, 52, 52]));
+});
+
+describe('flag emoji on a card', () => {
+  it('draws a flag image instead of tofu', async () => {
+    const thumb = { kind: 'bars' as const, rows: [['\u{1F1EA}\u{1F1F9} Ethiopia', '8.4', 1]] as [string, string, number][] };
+    const svg = await cardSvg({ big: 'Origins', label: 'Stats', year: 0, cover: true, page: true, thumb });
+    expect(svg).toContain('data:image/svg+xml;base64,');
+  });
+  it('cuts an unreasonably long grid value with an ellipsis and keeps short ones whole', async () => {
+    const grid = (v: string) => cardSvg({ big: 'Money', label: 'Stats', year: 0, cover: true, page: true, thumb: { kind: 'grid', tiles: [['A', v]] } });
+    // Text is drawn as paths: two values cut to the same visible text draw identically, two short ones differ.
+    expect(await grid('x'.repeat(50))).toBe(await grid('x'.repeat(100)));
+    expect(await grid('xxxxx')).not.toBe(await grid('xxxxxxx'));
   });
 });

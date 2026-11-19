@@ -3,11 +3,13 @@ import { dirname, join } from 'node:path';
 import satori from 'satori';
 import sharp from 'sharp';
 import { glue } from '#lib/unitGap.ts';
+import { FLAG_SVG } from './flags';
 import karlaLatin from './fonts/karla-latin-700-normal.woff?inline';
 import karlaExt from './fonts/karla-latin-ext-700-normal.woff?inline';
 import loraLatin from './fonts/lora-latin-600-normal.woff?inline';
 import loraExt from './fonts/lora-latin-ext-600-normal.woff?inline';
 import { pourShapes, type ChartTimeline } from '#lib/pourShapes.ts';
+import type { Thumb } from '#lib/linkPreview.ts';
 import type { Tone } from './types';
 
 export const CARD = { width: 1200, height: 630 };
@@ -61,24 +63,89 @@ function chart(t: ChartTimeline) {
   return node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { display: 'flex', flexShrink: 0, marginBottom: 24 }, children });
 }
 
+// A Stats view's thumbnail (the lower part of a page card, THUMB_H tall): app light-theme colours, nothing under 22px, no hairlines.
+// Bars are --series-11 (#c06408) on the page background; medals are the gold/silver/bronze of the text preview's emoji.
+const THUMB_H = 290;
+const BAR = '#c06408',
+   MEDAL_FILL = ['#f5c518', '#cfc9c1', '#d79a62'];
+// Grid tiles cycle these by position (neighbours differ): [fill, title, edge] per series colour of src/app.css (light theme), in the order
+// --series-1 blue, -4 orange, -6 green, -2 violet, -3 pink, -7 cyan. Fill = 25% of the series colour over --color-surface (#fff);
+// edge = the series colour itself; title = the series' -ink mixed 30% into --color-text (#2b211b), >= 5.8:1 on its fill (values are espresso, >= 8.6:1).
+const TILE_COLORS = [['#e9effe', '#4357a1', '#a8bffd'], ['#fef0e2', '#8b4a08', '#fdc58b'], ['#e4f6ea', '#10663a', '#92dba9'],
+  ['#f6e9f8', '#824387', '#d9a6e3'], ['#ffedf0', '#9a3948', '#ffb7c1'], ['#dff6fa', '#11646a', '#7fdcea']];
+// A name that starts with a flag emoji ("🇪🇹 Ethiopia", from originWithFlag) draws that flag as its own round image (the vendored
+// circle-flags SVG, flags.ts) `flag` px wide, centred on the line, then the name, which truncates after it. No network, no emoji font.
+const FLAG_START = /^([\u{1F1E6}-\u{1F1FF}]{2}) /u;
+const flagUri = (emoji: string) => {
+  const svg = FLAG_SVG[String.fromCharCode(...[...emoji].map((c) => c.codePointAt(0)! - 0x1f1e6 + 97))];
+  return svg && `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+};
+function named(text: string, flag: number, style: Record<string, unknown>) {
+  const m = FLAG_START.exec(text), uri = m && flagUri(m[1]);
+  if (!uri) return el('div', style, text);
+  return el('div', { ...style, display: 'flex', alignItems: 'center', whiteSpace: 'normal' }, [
+    { type: 'img', props: { src: uri, width: flag, height: flag, style: { flexShrink: 0, marginRight: 10 } } },
+    el('div', { ...clipLine, flexGrow: 1, minWidth: 0 }, text.slice(m![0].length))
+  ]);
+}
+const clipLine = { display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const karla = { fontFamily: 'Karla', fontWeight: 700 };
+// Values are never truncated, they shrink to fit `avail` px (~0.6em a character). Like values share one size when the longest
+// only needs a small step down (VALUE_STEP: at least 80% of the default); a bigger step shrinks that value alone, so one long
+// value doesn't make the rest look small. Never under `floor` (22px, or 30px for the grid, still legible at ~500px wide): a
+// value that still doesn't fit there (an unreasonably long text, e.g. a grind setting) is cut with an ellipsis by the renderer.
+const VALUE_STEP = 0.8;
+export function valueSizes(values: string[], size: number, avail: number, floor = 22): number[] {
+  const need = values.map((v) => Math.max(floor, Math.min(size, Math.floor(avail / (0.6 * Math.max(1, [...v].length))))));
+  const least = Math.min(...need);
+  return least >= size * VALUE_STEP ? need.map(() => least) : need;
+}
+function thumbnail(t: Thumb) {
+  const box = (children: unknown) => el('div', { display: 'flex', flexDirection: 'column', height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, children);
+  if (t.kind === 'bars') {
+    const sizes = valueSizes(t.rows.map((r) => r[1]), 30, 150);
+    return box(t.rows.map(([label, value, frac], i) => el('div', { display: 'flex', alignItems: 'center', height: THUMB_H / 5, ...karla, fontSize: 30 }, [
+      el('div', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 50, height: 50, borderRadius: 25, marginRight: 14, flexShrink: 0, fontSize: 34, background: !t.plain && i < 3 ? MEDAL_FILL[i] : 'transparent' }, String(i + 1)),
+      named(label, 40, { ...clipLine, width: 380, flexShrink: 0 }),
+      el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, background: BAR, borderRadius: 6 })),
+      el('div', { display: 'flex', justifyContent: 'flex-end', width: 150, flexShrink: 0, whiteSpace: 'nowrap', fontSize: sizes[i] }, value)
+    ])));
+  }
+  if (t.kind === 'tile') {
+    return box([
+      el('div', { display: 'block', whiteSpace: 'nowrap', fontFamily: 'Lora', fontWeight: 600, fontSize: valueSizes([t.value], 150, WIDTH)[0], lineHeight: 1.1 }, t.value),
+      named(t.holder, 44, { ...clipLine, ...karla, fontSize: 44, marginTop: 8 }),
+      ...(t.date ? [el('div', { ...clipLine, ...karla, fontSize: 34, marginTop: 6, opacity: 0.85 }, t.date)] : [])
+    ]);
+  }
+  // Up to 6 tiles, 3 across: the label (2 lines at most) over its value.
+  const sizes = valueSizes(t.tiles.map((x) => x[1]), 52, 288, 30);
+  const cell = (label: string, value: string, size: number, [fill, title, edge]: string[]) => el('div', { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: 336, height: 133, boxSizing: 'border-box', padding: '0 21px', background: fill, border: `3px solid ${edge}`, borderRadius: 16 }, [
+    el('div', { display: 'block', lineClamp: 2, textOverflow: 'ellipsis', ...karla, color: title, fontSize: 26, lineHeight: 1.1 }, label),
+    el('div', { ...clipLine, width: 288, textAlign: [...value].length * 0.6 * size > 288 ? 'left' : 'center', fontFamily: 'Lora', fontWeight: 600, fontSize: size, lineHeight: 1.15, marginTop: 6 }, value)
+  ]);
+  return el('div', { display: 'flex', flexWrap: 'wrap', gap: 24, width: WIDTH, height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, t.tiles.map(([l, v], j) => cell(l, v, sizes[j], TILE_COLORS[j % TILE_COLORS.length])));
+}
+
 // A page card (a page's link-preview) is always light, so it takes no tone; a recap card takes its tone.
 type CardIn = { big: string; label: string; year: number; dark?: false; cover?: true } &
-  ({ tone: Tone; page?: undefined; timeline?: undefined } | { page: true; tone?: undefined; timeline?: ChartTimeline });
+  ({ tone: Tone; page?: undefined; timeline?: undefined; thumb?: undefined } | { page: true; tone?: undefined; timeline?: ChartTimeline; thumb?: Thumb });
 export async function cardSvg(c: CardIn): Promise<string> {
   const color = c.page ? ESPRESSO : fg(c.tone);
   // "Roaster · Coffee" (a bag): two lines, the roaster smaller above the coffee name. `page` (a page's link-preview card) keeps big as one text, with a larger label and footer.
   const [rn, cn] = !c.page && c.big.includes(' · ') ? c.big.split(' · ', 2) : [null, c.big];
   // A page card keeps fixed sizes (cards side by side look alike): one headline size, a smaller step only for very long text.
-  const bigSize = fit(cn, c.page ? ([...cn].length <= 40 ? 96 : 72) : cardFontSize(rn ? (rn.length > cn.length ? rn : cn) : cn, 'big'));
+  const bigSize = fit(cn, c.thumb ? 76 : c.page ? ([...cn].length <= 40 ? 96 : 72) : cardFontSize(rn ? (rn.length > cn.length ? rn : cn) : cn, 'big'));
   const bigStyle = { fontFamily: 'Lora', fontWeight: 600, lineHeight: 1.05, display: 'block', lineClamp: 2 };
-  const lblSize = fit(c.label, c.page ? 52 : cardFontSize(c.label, 'label'));
+  const lblSize = fit(c.label, c.thumb ? 38 : c.page ? 52 : cardFontSize(c.label, 'label'));
   const tree = el('div', { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: CARD.width, height: CARD.height, padding: PAD, boxSizing: 'border-box', background: c.page ? CREAM : BG[c.tone], color }, [
-    el('div', { display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center' }, [
+    el('div', { display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: c.thumb ? 'flex-start' : 'center' }, [
       ...(rn ? [el('div', { ...bigStyle, fontSize: Math.round(bigSize * 0.55), opacity: 0.85, marginBottom: 12 }, glue(rn))] : []),
-      el('div', { ...bigStyle, fontSize: bigSize }, glue(cn)),
-      el('div', { fontFamily: 'Karla', fontWeight: 700, fontSize: lblSize, lineHeight: 1.2, marginTop: 20, display: 'block', lineClamp: 2, textOverflow: 'ellipsis' }, glue(c.label))
+      el('div', { ...bigStyle, fontSize: bigSize, ...(c.thumb && { lineClamp: 1 }) }, glue(cn)),
+      el('div', { fontFamily: 'Karla', fontWeight: 700, fontSize: lblSize, lineHeight: 1.2, marginTop: c.thumb ? 8 : 20, display: 'block', lineClamp: c.thumb ? 1 : 2, textOverflow: 'ellipsis' }, glue(c.label))
     ]),
     ...(c.page && c.timeline?.pours.length ? [chart(c.timeline)] : []),
+    ...(c.page && c.thumb ? [thumbnail(c.thumb)] : []),
     el('div', { display: 'flex', justifyContent: 'space-between', fontFamily: 'Karla', fontWeight: 700, fontSize: c.page ? 40 : 30, opacity: 0.85 }, [
       el('div', {}, c.cover ? '' : `${c.year} in coffee`), el('div', {}, 'Bean Tracker')
     ])
