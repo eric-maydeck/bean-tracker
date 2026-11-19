@@ -154,9 +154,10 @@ describe('insightsPreview chart thumbnails', () => {
     ['brewing-best', { brewing: { bestAt: [{ label: '#1', bags: 2 }, { label: '#2', bags: 1 }, { label: '#3', bags: 1 }] } }, 'Brews until dialed', 'vbars'],
     ['gear-eras', { gear: { eras: { x: ['a', 'b', 'c'], lines: [{ label: 'V60', values: [60, 50, 40] }, { label: 'Kalita', values: [40, 50, 60] }], other: [] } } }, 'Gear usage over time', 'vbars']
   ])('%s link adds its card', (chart, data, big, kind) => {
-    const r = insightsPreview({ ...page, chart, ctx: ctx(data) });
-    expect(r.card).toMatchObject({ big, label: 'Stats · All time', thumb: { kind } });
-    expect(r.description).toBe(insightsPreview({ ...page, chart }).description);
+    const pg = { ...page, tab: chart.split('-')[0] as never };
+    const r = insightsPreview({ ...pg, chart, ctx: ctx(data) });
+    expect(r.card).toMatchObject({ big, label: chart.startsWith('onhand-') ? 'Stats' : 'Stats · All time', thumb: { kind } });
+    expect(r.description).toBe(insightsPreview({ ...pg, chart }).description);
   });
   it('leaderboard time view draws lines under the page text; List view keeps bars', () => {
     const sr = { by: 'month', labels: ['Jan', 'Feb', 'Mar'], titles: [], lines: [{ label: 'Sey', values: [1, 2, 3] }, { label: 'Onyx', values: [3, 2, 1] }] };

@@ -121,7 +121,8 @@ function ranked(header: string, rows: { value: string; name: string }[], plain =
 }
 // The page card (server/recaps/card.ts): the view's name big, "Stats · period" under it, and the thumbnail. Text is capped at 80 (verifyCard).
 const clip = (s: string) => (s.length > 80 ? s.slice(0, 79) + '…' : s);
-const statsCard = (big: string, period: string, thumb: Thumb): Card => ({ big, label: `Stats · ${period}`, thumb });
+// On hand has no time range, so its cards say just "Stats" (#123).
+const statsCard = (big: string, v: PreviewInput, thumb: Thumb): Card => ({ big, label: v.tab === 'onhand' ? 'Stats' : `Stats · ${v.period}`, thumb });
 // Top 5 bars, as long as value ÷ largest (by size, so a negative "vs like coffees" gap still draws).
 export function bars(rows: { value: number; text: string; name: string }[], plain: boolean): Thumb {
   const top = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9);
@@ -142,7 +143,7 @@ export function insightsPreview(v: PreviewInput): Preview {
   // A board linked in its Over time view draws lines; the List view falls through to #118's bars. The text stays the page's own.
   // An Over time view with no drawable thumb (timed is null) falls back to the List bars below.
   const timed = board && v.ctx && leaderboardTimeThumb(v.ctx, board);
-  if (timed) return { ...pagePreview(v), card: statsCard(timed.title, v.period, timed.thumb) };
+  if (timed) return { ...pagePreview(v), card: statsCard(timed.title, v, timed.thumb) };
   const all = board && v.boards?.[board];
   const rows = all && board && v.low?.includes(board) ? lowFirst(board, all) : all;
   // The board shows under this rank (hidden by rank=like, or unranked: spend/$ per g on a non-bag board).
@@ -155,25 +156,25 @@ export function insightsPreview(v: PreviewInput): Preview {
     return {
       title: `Stats: ${BOARD_TITLE[board]}`,
       description: ranked(header, items, lowest),
-      card: statsCard(BOARD_TITLE[board], v.period, bars(rows.map((r, i) => ({ value: r.value, text: items[i].value, name: items[i].name })), lowest))
+      card: statsCard(BOARD_TITLE[board], v, bars(rows.map((r, i) => ({ value: r.value, text: items[i].value, name: items[i].name })), lowest))
     };
   }
   const rec = v.records;
   if (rec && chart === 'records-top-coffees' && rec.topCoffees.length) {
     const items = rec.topCoffees.map((c) => ({ value: c.mean.toFixed(1), name: holderRow(c.holder) }));
-    return { title: 'Stats: Top coffees', description: ranked(`Avg rating · ${v.period}`, items), card: statsCard('Top coffees', v.period, bars(items.map((x, i) => ({ value: rec.topCoffees[i].mean, text: x.value, name: x.name })), false)) };
+    return { title: 'Stats: Top coffees', description: ranked(`Avg rating · ${v.period}`, items), card: statsCard('Top coffees', v, bars(items.map((x, i) => ({ value: rec.topCoffees[i].mean, text: x.value, name: x.name })), false)) };
   }
   // Roaster and coffee only: the brewer and filter would leave room for 3 rows, not 5 (user, 2026-10-25).
   if (rec && chart === 'records-top-brews' && rec.topBrews.length) {
     const items = rec.topBrews.map((b) => ({ value: b.rating.toFixed(1), name: [b.roaster, b.holder.label].filter(Boolean).join(' · ') }));
-    return { title: 'Stats: Top brews', description: ranked(`Rating · ${v.period}`, items), card: statsCard('Top brews', v.period, bars(items.map((x, i) => ({ value: rec.topBrews[i].rating, text: x.value, name: x.name })), false)) };
+    return { title: 'Stats: Top brews', description: ranked(`Rating · ${v.period}`, items), card: statsCard('Top brews', v, bars(items.map((x, i) => ({ value: rec.topBrews[i].rating, text: x.value, name: x.name })), false)) };
   }
   const section = rec?.sections.find((s) => chart === `records-${s.key}`);
   if (section?.tiles.length) {
     const prefix = `${v.period}\n`;
     const items = section.tiles.map((t) => `${t.label} · ${recordValue(t, t.fmt)}`);
     const grid: Thumb = { kind: 'grid', tiles: section.tiles.slice(0, 6).map((t) => [clip(thumbLabel(t.label, t.fmt)), clip(thumbValue(t, t.fmt))]) };
-    return { title: `Stats: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length), card: statsCard(RECORD_TITLE[section.key], v.period, grid) };
+    return { title: `Stats: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length), card: statsCard(RECORD_TITLE[section.key], v, grid) };
   }
   const tile = rec?.sections.flatMap((s) => s.tiles).find((t) => chart === recordAnchor(t.key));
   if (tile) {
@@ -184,11 +185,11 @@ export function insightsPreview(v: PreviewInput): Preview {
     ].filter(Boolean) as string[];
     const date = isDateHolder(tile.holder);
     const thumb: Thumb = { kind: 'tile', value: clip(thumbValue(tile, tile.fmt)), holder: clip(date ? holderName(tile.holder) : tile.key === 'leastOrigin' ? originWithFlag(tile.holder.label) : holderRow(tile.holder)), ...(!date && tile.holder.date && { date: tile.holder.date }) };
-    return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false), card: statsCard(thumbLabel(tile.label, tile.fmt), v.period, thumb) };
+    return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false), card: statsCard(thumbLabel(tile.label, tile.fmt), v, thumb) };
   }
   const page = pagePreview(v);
   const t = v.ctx && thumbFor(chart)?.(v.ctx);
-  return t ? { ...page, card: statsCard(t.title, v.period, t.thumb) } : page;
+  return t ? { ...page, card: statsCard(t.title, v, t.thumb) } : page;
 }
 
 function pagePreview(v: PreviewInput): Preview {
