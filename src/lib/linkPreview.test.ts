@@ -52,6 +52,14 @@ describe('coffeePreview', () => {
     expect(line(null)).toBe('🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03');
     expect(line(undefined)).toBe('🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03');
   });
+  it('PREVIEW_CARDS on: always the card, with a saved photo only', () => {
+    const src = `/img/coffees/${'a'.repeat(64)}.webp`;
+    const saved = coffeePreview(kenya, { src, alt: 'x', fill: '#e6ddd2' }, true);
+    expect([saved.image, saved.card?.coffee]).toEqual([null, { photo: { src, fill: '#e6ddd2' } }]);
+    const remote = coffeePreview(kenya, { src: 'https://o/a.webp', alt: 'x', fill: '#e6ddd2' }, true);
+    expect([remote.image, remote.card?.coffee]).toEqual([null, {}]);
+    expect(coffeePreview(kenya, null).card?.coffee).toBeUndefined();
+  });
   it('formats kg and passes the image', () => {
     const image = { src: 'https://o/a.webp', alt: 'x' };
     const p = coffeePreview({ ...kenya, amount_g: 1500 }, image);

@@ -1819,7 +1819,7 @@ export const STATES: State[] = [
       await expect(page.locator('[data-testid="favorite-grind"]')).toHaveCount(0);
       await expect(page.getByText('Recommended rest')).toBeVisible();
     } },
-  // Link previews: the coffee page's SSR tags (text from coffeePreview; no image or a data: one gives the default card).
+  // Link previews: the coffee page's SSR tags (text from coffeePreview; the coffee card, with the saved photo when there's a local copy).
   { name: 'link-preview-coffee', viewports: 'two', path: (s) => `/coffees/${s.slugs.long}`,
     act: async (page, s) => {
       const origin = new URL(page.url()).origin;
@@ -1839,7 +1839,7 @@ export const STATES: State[] = [
       expect([img.status(), img.headers()['content-type']]).toEqual([200, 'image/png']);
       for (const slug of [s.slugs.wide, s.slugs.frozen]) {
         const d = await previewTags(page, `/coffees/${slug}`);
-        expect(d['og:image'], 'a data: image gives the default card').toMatch(/\/preview\.png\?c=[\w-]+&s=[\w-]+$/);
+        expect(d['og:image'], 'no local photo copy still gives the coffee card').toMatch(/\/preview\.png\?c=[\w-]+&s=[\w-]+$/);
         expect(d['twitter:card']).toBe('summary_large_image');
       }
       expect(await page.title()).toBe(`Bean Tracker - ${s.names.long}`);

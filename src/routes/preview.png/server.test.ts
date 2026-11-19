@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import sharp from 'sharp';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { encodeCard } from '#lib/linkPreview.ts';
 import { signPreviewUrls } from '#lib/server/previewCard.ts';
 import { GET } from './+server';
@@ -44,6 +47,24 @@ describe('/preview.png', () => {
     const res = await get(html.match(/\?(.*)"/)![1].replace('&amp;', '&'));
     const meta = await sharp(Buffer.from(await res.arrayBuffer())).metadata();
     expect([res.headers.get('content-type'), meta.width, meta.height]).toEqual(['image/png', 1200, 630]);
+  });
+
+  it('draws a coffee card with its saved photo, and the card without it when the file is gone', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pc-'));
+    vi.stubEnv('DB_PATH', join(dir, 'db.sqlite'));
+    const file = `${'b'.repeat(64)}.webp`;
+    mkdirSync(join(dir, 'images', 'coffees'), { recursive: true });
+    writeFileSync(join(dir, 'images', 'coffees', file), await sharp({ create: { width: 300, height: 500, channels: 3, background: '#336699' } }).webp({ lossless: true }).toBuffer());
+    const png = async (name: string) => {
+      const html = signPreviewUrls(`<meta content="http://x/preview.png?c=${encodeCard({ big: 'Kamwangi AA', label: 'Sey', coffee: { photo: { src: `/img/coffees/${name}`, fill: '#e6ddd2' } } })}">`);
+      const res = await get(html.match(/\?(.*)"/)![1].replace('&amp;', '&'));
+      return sharp(Buffer.from(await res.arrayBuffer()));
+    };
+    // The photo's blue shows in the right-hand box; with no file, that spot is the cream background.
+    const at = async (img: ReturnType<typeof sharp>) => [...(await img.extract({ left: 928, top: 240, width: 1, height: 1 }).raw().toBuffer())].slice(0, 3);
+    expect(await at(await png(file))).toEqual([0x33, 0x66, 0x99]);
+    expect(await at(await png(`${'c'.repeat(64)}.webp`))).toEqual([0xfa, 0xf7, 0xf2]);
+    rmSync(dir, { recursive: true });
   });
 
   it('404s unsigned or tampered text', async () => {

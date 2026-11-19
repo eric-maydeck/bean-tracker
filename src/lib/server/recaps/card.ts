@@ -37,7 +37,7 @@ export function cardFontSize(text: string, kind: 'big' | 'label'): number {
 
 const WIDTH = CARD.width - 2 * PAD;
 // A word never breaks mid-word: shrink below the step until the longest word fits one line (~0.62em per char, Lora caps).
-const fit = (text: string, size: number) => Math.max(24, Math.min(size, Math.floor(WIDTH / (0.62 * Math.max(1, ...text.split(/\s+/).map((w) => [...w].length))))));
+const fit = (text: string, size: number, width = WIDTH) => Math.max(24, Math.min(size, Math.floor(width / (0.62 * Math.max(1, ...text.split(/\s+/).map((w) => [...w].length))))));
 const el = (type: string, style: Record<string, unknown>, children?: unknown) => ({ type, props: { style, children } });
 
 // A recipe's pour chart on a page card (the PourTimeline shapes), in card-legible colours: solid fills, no hairlines, bold swirls.
@@ -129,8 +129,27 @@ function thumbnail(t: Thumb) {
 
 // A page card (a page's link-preview) is always light, so it takes no tone; a recap card takes its tone.
 type CardIn = { big: string; label: string; year: number; dark?: false; cover?: true } &
-  ({ tone: Tone; page?: undefined; timeline?: undefined; thumb?: undefined } | { page: true; tone?: undefined; timeline?: ChartTimeline; thumb?: Thumb });
+  ({ tone: Tone; page?: undefined; timeline?: undefined; thumb?: undefined } | { page: true; tone?: undefined; timeline?: ChartTimeline; thumb?: Thumb; coffee?: { photo?: { src: string; fill: string } } });
+// A coffee card: the name from the top (a smaller step for a longer name, then cut), the roaster at the bottom, always smaller than
+// the name; Bean Tracker small in the corner. With a photo, the photo full height on the right on the image's backdrop, the text beside it.
+// ponytail: roaster is one line (cut), so the name's line cap needs no measuring.
+export const PHOTO_W = 400, PHOTO_H = CARD.height - 2 * PAD;
+const PHOTO_GAP = 48;
+function coffeeCard(big: string, label: string, photo?: { src: string; fill: string }) {
+  const w = photo ? WIDTH - PHOTO_W - PHOTO_GAP : WIDTH, size = fit(big, [...big].length <= 40 ? 96 : 72, w);
+  return el('div', { display: 'flex', width: CARD.width, height: CARD.height, padding: PAD, boxSizing: 'border-box', background: CREAM, color: ESPRESSO, gap: PHOTO_GAP, position: 'relative' }, [
+    el('div', { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: w }, [
+      el('div', { fontFamily: 'Lora', fontWeight: 600, lineHeight: 1.05, display: 'block', lineClamp: size > 72 ? 4 : 5, fontSize: size }, glue(big)),
+      el('div', { fontFamily: 'Lora', fontWeight: 600, fontSize: Math.min(60, size - 12), lineHeight: 1.2, ...clipLine }, glue(label))
+    ]),
+    ...(photo ? [el('div', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: PHOTO_W, height: PHOTO_H, flexShrink: 0, background: photo.fill, borderRadius: 16, overflow: 'hidden' },
+      { type: 'img', props: { src: photo.src, width: PHOTO_W, height: PHOTO_H, style: { objectFit: 'contain' } } })] : []),
+    el('div', { position: 'absolute', right: 32, bottom: 18, fontFamily: 'Karla', fontWeight: 700, fontSize: 30, opacity: 0.85 }, 'Bean Tracker')
+  ]);
+}
+
 export async function cardSvg(c: CardIn): Promise<string> {
+  if (c.page && c.coffee) return satori(coffeeCard(c.big, c.label, c.coffee.photo) as never, { width: CARD.width, height: CARD.height, fonts: FONTS });
   const color = c.page ? ESPRESSO : fg(c.tone);
   // "Roaster · Coffee" (a bag): two lines, the roaster smaller above the coffee name. `page` (a page's link-preview card) keeps big as one text, with a larger label and footer.
   const [rn, cn] = !c.page && c.big.includes(' · ') ? c.big.split(' · ', 2) : [null, c.big];
