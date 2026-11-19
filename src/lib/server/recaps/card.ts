@@ -24,6 +24,7 @@ const BG: Record<Tone, string> = {
   teal: '#2f7d6b', amber: '#e8a95c', violet: '#6a5acd', gold: '#a2600a', ink: '#2b211b', cream: '#f2ebe1'
 };
 const INK = '#2b211b', CREAM = '#faf7f2';
+const ESPRESSO = '#5c3a24'; // --color-label: a page card's text and chart lines, on the app's page background
 const fg = (t: Tone) => (t === 'sun' || t === 'amber' || t === 'cream' ? INK : CREAM);
 
 export function cardFontSize(text: string, kind: 'big' | 'label'): number {
@@ -39,7 +40,7 @@ const el = (type: string, style: Record<string, unknown>, children?: unknown) =>
 
 // A recipe's pour chart on a page card (the PourTimeline shapes), in card-legible colours: solid fills, no hairlines, bold swirls.
 // Colours are the light theme's own (src/app.css): --fill-bloom = 50% mix of --series-4 and --series-11, --fill-fast = 75% --series-8 + white,
-// --series-5 (medium), --series-6 (slow); bands --series-9, -7, -3 at --band-opacity 0.6. Swirls are wavy ink lines.
+// --series-5 (medium), --series-6 (slow); bands --series-9, -7, -3 (a step lighter than the page's 0.6). Lines and swirls are espresso.
 const CHART_H = 130;
 const KIND_FILL = { bloom: '#df954a', fast: '#8faafe', medium: '#d8db80', slow: '#92dba9' };
 const BAND_FILL = ['#ae57bb', '#7fdcea', '#ffb7c1'];
@@ -48,20 +49,23 @@ const wave = (x: number) => Array.from({ length: CHART_H / 2 + 1 }, (_, i) => `$
 function chart(t: ChartTimeline) {
   const g = pourShapes(t, WIDTH, CHART_H), H = CHART_H;
   const node = (type: string, props: Record<string, unknown>) => ({ type, props });
+  // One outline along the top of every pour's ramp and the holds between them, so it reads as a single line with no gaps at the joins.
+  const top = g.shapes.map((sh) => { const p = sh.points.split(' '); return `${g.shapes[0] === sh ? 'M' : 'L'}${p[1].replace(',', ' ')} L${p[2].replace(',', ' ')}${sh.hold ? ` L${sh.hold.x1} ${sh.hold.y}` : ''}`; }).join(' ');
   const children = [
-    ...g.windows.map((w) => node('rect', { x: w.x0, y: 0, width: w.x1 - w.x0, height: H, fill: BAND_FILL[Math.min(w.bloom, 2)], fillOpacity: 0.6 })),
-    node('rect', { x: 0, y: H - 4, width: WIDTH, height: 4, fill: INK }),
-    ...g.shapes.flatMap((sh) => [
-      ...(sh.hold ? [node('rect', { x: sh.hold.x0, y: sh.hold.y - 2, width: sh.hold.x1 - sh.hold.x0, height: 4, fill: INK })] : []),
-      node('polygon', { points: sh.points, fill: KIND_FILL[sh.kind] })
-    ]),
-    ...g.swirls.map((x) => node('path', { d: wave(x), fill: 'none', stroke: INK, strokeWidth: 5, strokeLinecap: 'round', strokeLinejoin: 'round' }))
+    ...g.windows.map((w) => node('rect', { x: w.x0, y: 0, width: w.x1 - w.x0, height: H, fill: BAND_FILL[Math.min(w.bloom, 2)], fillOpacity: 0.4 })),
+    node('rect', { x: 0, y: H - 4, width: WIDTH, height: 4, fill: ESPRESSO }),
+    ...g.shapes.map((sh) => node('polygon', { points: sh.points, fill: KIND_FILL[sh.kind] })),
+    node('path', { d: top, fill: 'none', stroke: ESPRESSO, strokeWidth: 4, strokeLinejoin: 'round' }),
+    ...g.swirls.map((x) => node('path', { d: wave(x), fill: 'none', stroke: ESPRESSO, strokeWidth: 5, strokeLinecap: 'round', strokeLinejoin: 'round' }))
   ];
   return node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { display: 'flex', flexShrink: 0, marginBottom: 24 }, children });
 }
 
-export async function cardSvg(c: { big: string; label: string; year: number; tone: Tone; dark?: false; cover?: true; page?: true; timeline?: ChartTimeline }): Promise<string> {
-  const color = c.page ? INK : fg(c.tone); // a page card is light: the app's page background, ink text
+// A page card (a page's link-preview) is always light, so it takes no tone; a recap card takes its tone.
+type CardIn = { big: string; label: string; year: number; dark?: false; cover?: true } &
+  ({ tone: Tone; page?: undefined; timeline?: undefined } | { page: true; tone?: undefined; timeline?: ChartTimeline });
+export async function cardSvg(c: CardIn): Promise<string> {
+  const color = c.page ? ESPRESSO : fg(c.tone);
   // "Roaster · Coffee" (a bag): two lines, the roaster smaller above the coffee name. `page` (a page's link-preview card) keeps big as one text, with a larger label and footer.
   const [rn, cn] = !c.page && c.big.includes(' · ') ? c.big.split(' · ', 2) : [null, c.big];
   // A page card keeps fixed sizes (cards side by side look alike): one headline size, a smaller step only for very long text.

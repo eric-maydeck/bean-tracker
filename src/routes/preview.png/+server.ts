@@ -14,7 +14,7 @@ export const GET: RequestHandler = async ({ url }) => {
   if (!card) error(404, 'Not found');
   let png = cache.get(c!);
   if (!png) {
-    png = await cardPng(await cardSvg({ ...card, year: 0, tone: 'brown', cover: true, page: true }));
+    png = await cardPng(await cardSvg({ ...card, year: 0, cover: true, page: true }));
     if (cache.size >= 200) cache.delete(cache.keys().next().value!);
     cache.set(c!, png);
   }
