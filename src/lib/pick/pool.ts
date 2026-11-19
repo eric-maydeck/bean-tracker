@@ -34,6 +34,9 @@ const specificIds = (rules: PickRules): number[] => [
   ...(rules.critFailOn && rules.critFailMode === 'specific' ? rules.critFail : [])
 ];
 
+/** Out for today is per coffee: every bag of a coffee that has a bag out is out (Discard removes the coffee, another bag does not stand in). */
+const outKeysOf = (coffees: PickCoffee[], out: Set<number>) => new Set(coffees.filter((c) => out.has(c.id)).map(keyOf));
+
 export function buildPool(
   coffees: PickCoffee[],
   rules: PickRules,
@@ -42,12 +45,13 @@ export function buildPool(
   const chosen = new Set(specificIds(rules));
   // a coffee chosen as a specific crit leaves the normal pool with all its bags
   const critKeys = new Set(coffees.filter((c) => chosen.has(c.id)).map(keyOf));
+  const outKeys = outKeysOf(coffees, out);
   // includeFrozenDecaf only matters when Frozen is selected and decaf is included
   const skipFrozenDecaf = !rules.includeFrozenDecaf && rules.categories.includes('frozen') && rules.includeDecaf;
   let list = coffees
     .filter((c) => rules.categories.includes(c.category))
     .filter((c) => (c.decaf ? rules.includeDecaf && !(skipFrozenDecaf && c.category === 'frozen') : true))
-    .filter((c) => !critKeys.has(keyOf(c)) && !out.has(c.id))
+    .filter((c) => !critKeys.has(keyOf(c)) && !outKeys.has(keyOf(c)))
     .sort(sorter(rules));
   if (rules.over20 === 'byHand') {
     // the Excluded list shows one row per coffee, so excluding a bag excludes every bag of it
@@ -58,11 +62,12 @@ export function buildPool(
   return { pool: list.slice(0, CAP), sittingOut: list.slice(CAP) };
 }
 
-/** The crit coffees still in play, one per chosen coffee in `ids` order: its most urgent bag not marked out stands in, so a bag marked out hands over to another bag of the same coffee. */
+/** The crit coffees still in play, one per chosen coffee in `ids` order (its most urgent bag); a coffee that is out for today is dropped. */
 export function critPool(coffees: PickCoffee[], ids: number[], out: Set<number>): PickCoffee[] {
   const byId = new Map(coffees.map((c) => [c.id, c]));
   const keys = [...new Set(ids.flatMap((id) => byId.get(id) ?? []).map(keyOf))];
-  const live = coffees.filter((c) => !out.has(c.id)).sort(sorter({ sort: 'urgency-desc' } as PickRules));
+  const outKeys = outKeysOf(coffees, out);
+  const live = coffees.filter((c) => !outKeys.has(keyOf(c))).sort(sorter({ sort: 'urgency-desc' } as PickRules));
   return keys.flatMap((k) => live.find((c) => keyOf(c) === k) ?? []);
 }
 

@@ -144,21 +144,22 @@ describe('bags of one coffee', () => {
   it('two picked crit bags of one coffee are one crit entry', () => {
     expect(ids(critPool([bag(1), bag(2)], [2, 1], new Set()))).toEqual([2]);
   });
-  it('marking the first bag out lets the other stand for the coffee', () => {
-    const cs = [bag(1, { urgency: 9 }), bag(2, { urgency: 5 })];
-    expect(ids(buildPool(cs, DEFAULT_RULES, new Set()).pool)).toEqual([1]);
-    expect(ids(buildPool(cs, DEFAULT_RULES, new Set([1])).pool)).toEqual([2]);
+  it('out for today is per coffee: a bag out takes every bag of the coffee out, none stands in', () => {
+    const cs = [bag(1, { urgency: 9 }), bag(2, { urgency: 5 }), mk(3)];
+    expect(ids(buildPool(cs, DEFAULT_RULES, new Set()).pool).sort()).toEqual([1, 3]);
+    expect(ids(buildPool(cs, DEFAULT_RULES, new Set([1])).pool)).toEqual([3]);
+    expect(ids(buildPool(cs, DEFAULT_RULES, new Set([2])).pool)).toEqual([3]); // the less urgent bag, the same
   });
   it('excluding one bag by hand leaves no bag of that coffee in the pool', () => {
     const r = R({ over20: 'byHand', excluded: [2] });
     expect(ids(buildPool([bag(1, { urgency: 9 }), bag(2, { urgency: 5 }), mk(3)], r, new Set()).pool)).toEqual([3]);
   });
-  it('a crit bag marked out hands over to another bag of the same coffee', () => {
+  it('a crit coffee that is out for today is gone, not replaced by another bag', () => {
     const cs = [bag(1, { urgency: 5 }), bag(2, { urgency: 9 }), bag(3, { urgency: 7, name: 'Other' })];
     const r = R({ critSuccessOn: true, critSuccessMode: 'specific', critSuccess: [1] });
     expect(ids(resolveCrits(cs, r, new Set()).success)).toEqual([2]);
     const res = resolveCrits(cs, r, new Set([2]));
-    expect(ids(res.success)).toEqual([1]);
+    expect(res.success).toEqual([]);
     expect(ids(res.pool)).toEqual([3]);
     expect(resolveCrits(cs, r, new Set([1, 2])).success).toEqual([]);
   });
