@@ -151,12 +151,17 @@
         LS = lens.clientWidth; insetRenderer.setSize(LS, LS);
         dirty = true;
       }
+      for (const c of [renderer.domElement, insetRenderer.domElement]) { // render-on-demand: redraw after a lost context returns
+        const redraw = () => { dirty = true; };
+        c.addEventListener('webglcontextrestored', redraw); undo.push(() => c.removeEventListener('webglcontextrestored', redraw));
+      }
       const ro = new ResizeObserver(applySize); ro.observe(stage); ro.observe(lens);
       undo.push(() => ro.disconnect());
 
       // Restore a resting die and lens with no animation.
       if (pose) {
         die.position.fromArray(pose.pos); die.quaternion.fromArray(pose.quat);
+        die.position.y = DR * 0.7947; // resting on a face at this tray's die size, whatever size it was saved at
         die.position.x = Math.max(-(TX - DR), Math.min(TX - DR, die.position.x)); die.position.z = Math.max(-(TZ - DR), Math.min(TZ - DR, die.position.z));
         lensAngle = pose.lensAngle; mats[num.indexOf(pose.sym)].emissive.set(glow(pose.sym)); setLens(pose.sym);
       }
@@ -208,7 +213,7 @@
 </div>
 
 <style>
-  .d20 { container-type: inline-size; }
+  .d20 { container-type: inline-size; width: 100%; min-width: 0; }
   .stage { position: relative; width: 100%; height: 360px; border-radius: var(--radius); overflow: hidden; background: #1b1712; }
   .inset { position: absolute; z-index: 1; top: 12px; left: 12px; width: clamp(104px, 26cqw, 168px); text-align: center; pointer-events: none; }
   .lens { width: 100%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #241b12; border: 4px solid #6b5640;
@@ -220,8 +225,8 @@
   .inset.fail .lens { border-color: #d01c1c; box-shadow: 0 0 22px #7a0a0a, inset 0 0 22px rgba(0, 0, 0, 0.7); transform: scale(1.08); }
   .inset-label { display: inline-block; margin-top: 6px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #f3ece2; background: rgba(22, 19, 15, 0.8); padding: 2px 8px; border-radius: 99px; }
   /* Primary call to action: same width as the lens, pulses while idle (like the wheel's SPIN hub). */
-  .roll { display: block; width: 100%; min-height: 48px; margin-top: 8px; padding: 0 var(--space-2); pointer-events: auto; cursor: pointer; white-space: nowrap;
-    font: inherit; font-size: clamp(1rem, 4.4cqw, 1.3rem); font-weight: 800; letter-spacing: 0.04em; border-radius: var(--radius);
+  .roll { display: block; width: 100%; min-height: 48px; margin-top: 8px; padding: 0 4px; pointer-events: auto; cursor: pointer; white-space: nowrap;
+    font: inherit; font-size: clamp(0.8rem, 3.4cqw, 1.3rem); font-weight: 800; letter-spacing: 0.02em; border-radius: var(--radius);
     border: 2px solid var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); box-shadow: var(--shadow); }
   .roll.idle { animation: pulse 1.8s infinite; }
   .roll:hover:not(:disabled) { filter: brightness(1.12); }
