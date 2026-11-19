@@ -9,7 +9,7 @@ import karlaExt from './fonts/karla-latin-ext-700-normal.woff?inline';
 import loraLatin from './fonts/lora-latin-600-normal.woff?inline';
 import loraExt from './fonts/lora-latin-ext-600-normal.woff?inline';
 import { pourShapes, type ChartTimeline } from '#lib/pourShapes.ts';
-import type { Thumb } from '#lib/linkPreview.ts';
+import { THUMB_TOKENS, type Thumb } from '#lib/linkPreview.ts';
 import type { Tone } from './types';
 
 export const CARD = { width: 1200, height: 630 };
@@ -100,6 +100,47 @@ export function valueSizes(values: string[], size: number, avail: number, floor 
   const least = Math.min(...need);
   return least >= size * VALUE_STEP ? need.map(() => least) : need;
 }
+// THUMB_TOKENS' light-theme hexes (src/app.css :root), by wire index.
+const TOKEN_HEX = ['#a8bffd', '#d9a6e3', '#ffb7c1', '#fdc58b', '#d8db80', '#92dba9', '#7fdcea', '#698dfd', '#ae57bb', '#fc7184', '#c06408', '#abac11', '#069954', '#01baca', '#d2a679', '#b0703f', '#73503a', '#a8a8a8'];
+if (TOKEN_HEX.length !== THUMB_TOKENS.length) throw new Error('TOKEN_HEX out of step with THUMB_TOKENS');
+const LEGEND_H = 40, GAP = 8, STROKE = 7;
+// A shape-only chart (vbars / lines, chartThumb.ts): a legend row (more than one series) over the plot, which fills the rest of the box.
+function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
+  const node = (type: string, props: Record<string, unknown>) => ({ type, props });
+  const H = THUMB_H - (t.series.length > 1 ? LEGEND_H : 0), n = t.series[0].values.length, k = t.series.length;
+  const hex = (i: number) => TOKEN_HEX[t.series[i].color];
+  const kids: unknown[] = [];
+  if (t.kind === 'vbars') {
+    const w = (WIDTH - GAP * (n - 1)) / n, x0 = (c: number) => c * (w + GAP), bar = (x: number, y: number, bw: number, h: number, fill: string) => kids.push(node('rect', { x, y, width: bw, height: h, rx: Math.min(5, bw / 2, h / 2), fill }));
+    for (let c = 0; c < n; c++) {
+      if (t.stacked) {
+        let top = H;
+        t.series.forEach((s, i) => { const h = (s.values[c] ?? 0) / 100 * H; if (h > 0) { top -= h; bar(x0(c), top, w, h, hex(i)); } });
+      } else {
+        t.series.forEach((s, i) => { const h = Math.max(3, (s.values[c] ?? 0) / 100 * H); bar(x0(c) + i * w / k, H - h, w / k, h, hex(i)); });
+      }
+    }
+  } else {
+    const pad = STROKE / 2 + 1;
+    t.series.forEach((s, i) => {
+      let d = '', pen = false;
+      s.values.forEach((v, c) => {
+        if (v == null) { pen = false; return; }
+        const x = (pad + c * (WIDTH - 2 * pad) / (n - 1)).toFixed(1), y = (H - pad - v / 100 * (H - 2 * pad)).toFixed(1);
+        d += `${pen ? 'L' : 'M'}${x} ${y} `;
+        if (!pen && (s.values[c + 1] ?? null) == null) d += `L${x} ${y} `; // a lone point: a dot (round cap)
+        pen = true;
+      });
+      kids.push(node('path', { d, fill: 'none', stroke: hex(i), strokeWidth: STROKE, strokeLinecap: 'round', strokeLinejoin: 'round' }));
+    });
+  }
+  return [
+    ...(k > 1 ? [el('div', { display: 'flex', alignItems: 'center', height: LEGEND_H, flexShrink: 0, overflow: 'hidden', ...karla, fontSize: 28 },
+      t.series.map((s, i) => el('div', { display: 'flex', alignItems: 'center', marginRight: 32, whiteSpace: 'nowrap' }, [
+        el('div', { width: 26, height: 26, borderRadius: 6, marginRight: 10, flexShrink: 0, background: hex(i) }), el('div', { display: 'block' }, s.label)])))] : []),
+    node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { display: 'flex', flexShrink: 0 }, children: kids })
+  ];
+}
 function thumbnail(t: Thumb) {
   const box = (children: unknown) => el('div', { display: 'flex', flexDirection: 'column', height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, children);
   if (t.kind === 'bars') {
@@ -111,6 +152,7 @@ function thumbnail(t: Thumb) {
       el('div', { display: 'flex', justifyContent: 'flex-end', width: 150, flexShrink: 0, whiteSpace: 'nowrap', fontSize: sizes[i] }, value)
     ])));
   }
+  if (t.kind === 'vbars' || t.kind === 'lines') return box(chartShape(t));
   if (t.kind === 'tile') {
     return box([
       el('div', { display: 'block', whiteSpace: 'nowrap', fontFamily: 'Lora', fontWeight: 600, fontSize: valueSizes([t.value], 150, WIDTH)[0], lineHeight: 1.1 }, t.value),

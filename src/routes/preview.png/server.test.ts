@@ -41,7 +41,9 @@ describe('/preview.png', () => {
   it.each([
     ['bars', { kind: 'bars' as const, rows: [['Sey', '8.7', 1], ['A very long roaster name that will not fit on one line at all', '8.0', 0.7]] as [string, string, number][] }],
     ['tile', { kind: 'tile' as const, value: '9.2', holder: 'Test Roaster · Lab Bag 3', date: '2026-08-01' }],
-    ['grid', { kind: 'grid' as const, tiles: [['Best bag', '9.2'], ['Best day', '$9.30 / 100g']] as [string, string][] }]
+    ['grid', { kind: 'grid' as const, tiles: [['Best bag', '9.2'], ['Best day', '$9.30 / 100g']] as [string, string][] }],
+    ['vbars', { kind: 'vbars' as const, stacked: true, series: [['Light', 0], ['Medium', 3], ['Other', 17]].map(([label, color], i) => ({ label: label as string, color: color as number, values: [10 + i, 20, 30, 15, 5, 25, 40, 12].map((v) => Math.round((v + i * 5) / 2.5)) })) }],
+    ['lines', { kind: 'lines' as const, series: [{ label: 'Brewed', color: 14, values: [10, 40, null, 80, 60, 100] }, { label: 'Bought', color: 16, values: [30, 30, 50, 20, 90, 70] }] }]
   ])('draws a Stats card with a %s thumbnail: 1200×630', async (_n, thumb) => {
     const html = signPreviewUrls(`<meta content="http://x/preview.png?c=${encodeCard({ big: 'Roasters', label: 'Stats · All time', thumb })}">`);
     const res = await get(html.match(/\?(.*)"/)![1].replace('&amp;', '&'));
