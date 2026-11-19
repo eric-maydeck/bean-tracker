@@ -165,7 +165,7 @@
     if (e.key !== 'Tab' || !modalEl) return;
     const els = [...modalEl.querySelectorAll<HTMLElement>('button:not([disabled])')];
     const [first, last] = [els[0], els[els.length - 1]];
-    if (!first || !last) return;
+    if (!first || !last) { e.preventDefault(); modalEl.focus(); return; } // every button disabled (busy): focus stays on the dialog itself
     if (!modalEl.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
     else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
@@ -380,7 +380,7 @@
           {#if result.via === 'success'}{#each CONFETTI as c, i (i)}<i style:left="{c.left}%" style:animation-delay="{c.delay}s" style:animation-duration="{c.dur}s" style:background={c.color}></i>{/each}{/if}
         </div>
       {/if}
-      <div class="modal pick-modal {result.via}" class:horizontal={!narrow} role="dialog" aria-modal="true" aria-label="Pick result" bind:this={modalEl}>
+      <div class="modal pick-modal {result.via}" class:horizontal={!narrow} role="dialog" aria-modal="true" aria-label="Pick result" tabindex="-1" bind:this={modalEl}>
         {#if game === 'd20' && result.n}
           <p class="rolled {result.via}" aria-live="polite">You rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
         {/if}

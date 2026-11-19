@@ -10,7 +10,7 @@
 
   // The /coffees cards view's card (same fields, order and classes) with Brew, Discard and Open coffee under it.
   // `wide` (the inline card, and the result pop-up where the layout is wide): the coffee page's detail as stats (origin, roast level, producer,
-  // region, ...) in place of the plain lines, spread evenly over the card's height. `onclose` is set only where the card can be dismissed
+  // region, ...) in place of the plain lines, one fixed gap between rows. `onclose` is set only where the card can be dismissed
   // (the result pop-up).
   let { coffee, result, out, brewed, busy, wide = false, onbrew, ondiscard, onopen, onclose }: {
     coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; wide?: boolean;
@@ -20,28 +20,27 @@
   const locked = $derived(busy || out);
   const info = $derived(coffee.info);
 
-  // Most useful first; only what has a value; the first 10 fit the card (5 rows of 2) with the head and the tasting notes line.
+  // Most useful first; only what has a value; the first 8 (4 rows of 2) fit the card with the head, the tasting notes line and one fixed gap between all of them.
   // The coffee page's labels (COFFEE_ORIGIN_LABELS) and stat styles.
   type Stat = { label: string; text?: string; cost?: number; kind?: 'origin' | 'roast' };
   const stats = $derived.by((): Stat[] => {
-    if (!info) return [];
-    const rest = info.drinkAfter && info.drinkBefore ? `${formatDate(info.drinkAfter)} – ${formatDate(info.drinkBefore)}` : '';
+    const rest = info?.drinkAfter && info.drinkBefore ? `${formatDate(info.drinkAfter)} – ${formatDate(info.drinkBefore)}` : '';
     const all: (Stat | false | '' | null | undefined)[] = [
       coffee.origin && { label: 'Origin', kind: 'origin' },
       coffee.roastLevel && { label: 'Roast level', kind: 'roast' },
       coffee.processing && { label: 'Processing', text: coffee.processing },
-      info.costPerGram != null ? { label: 'Cost', cost: info.costPerGram, text: info.amountG != null ? ` · ${formatBag(info.amountG, info.gramsLeft)}` : '' } : info.amountG != null && { label: 'Bag', text: formatBag(info.amountG, info.gramsLeft) },
-      info.roastDate && { label: 'Roasted', text: `${formatDate(info.roastDate)}${info.daysSinceRoast != null ? ` (${info.daysSinceRoast}d ago)` : ''}` },
+      info && (info.costPerGram != null ? { label: 'Cost', cost: info.costPerGram, text: info.amountG != null ? ` · ${formatBag(info.amountG, info.gramsLeft)}` : '' } : info.amountG != null && { label: 'Bag', text: formatBag(info.amountG, info.gramsLeft) }),
+      info?.roastDate && { label: 'Roasted', text: `${formatDate(info.roastDate)}${info.daysSinceRoast != null ? ` (${info.daysSinceRoast}d ago)` : ''}` },
       rest && { label: 'Rest window', text: rest },
-      info.producer && { label: 'Producer', text: info.producer },
-      info.region && { label: 'Region', text: info.region },
-      info.variety && { label: 'Variety', text: info.variety },
-      info.elevation && { label: 'Elevation', text: info.elevation },
-      info.farm && { label: 'Farm', text: info.farm },
-      info.harvestTime && { label: 'Harvest', text: info.harvestTime },
-      info.certification && { label: 'Certification', text: info.certification }
+      info?.producer && { label: 'Producer', text: info.producer },
+      info?.region && { label: 'Region', text: info.region },
+      info?.variety && { label: 'Variety', text: info.variety },
+      info?.elevation && { label: 'Elevation', text: info.elevation },
+      info?.farm && { label: 'Farm', text: info.farm },
+      info?.harvestTime && { label: 'Harvest', text: info.harvestTime },
+      info?.certification && { label: 'Certification', text: info.certification }
     ];
-    return all.filter((s): s is Stat => !!s).slice(0, 10);
+    return all.filter((s): s is Stat => !!s).slice(0, 8);
   });
 </script>
 
@@ -140,7 +139,7 @@
   .badges { display: flex; gap: var(--space-1); flex: none; }
   .head.full, .stat.full { grid-column: 1 / -1; }
   .head.full :global(p) { margin: 0; }
-  .card-body .stat-grid { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: var(--space-2) var(--space-3); }
+  .card-body .stat-grid { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: var(--space-3); }
   .card-body .stat { min-width: 0; gap: 0; }
   .card-body .stat-label { line-height: 1.2; }
   .card-body .stat-value { font-size: 0.85rem; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -159,8 +158,8 @@
     .pick-card.wide.noimg { display: block; }
     .wide .card-thumb { margin: 0; }
     .wide .card-body { margin: 0 0 var(--space-2); flex: 1; min-height: 0; overflow: hidden; }
-    /* two columns (origin left, roast level right ...); the rows spread over the height, so the space between every one of them is the same */
-    .wide .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); height: 100%; align-content: space-between; row-gap: var(--space-1); }
+    /* two columns (origin left, roast level right ...); one fixed gap between every row, the slack (a sparse coffee) goes above the buttons */
+    .wide .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; row-gap: var(--space-3); }
     .wide .buttons.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .wide .name-row { min-height: 1.5rem; } /* a badge appearing never changes the height */
   }
