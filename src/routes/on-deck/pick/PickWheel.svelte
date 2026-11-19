@@ -167,19 +167,30 @@
   let raf = 0;
   let spin: { start: number; over: number; end: number; t0: number; u: number } | null = null;
   const hasSuccess = () => !reduced() && slices.some((s) => s.kind === 'success');
+  let drawn = 0;
+  let want = false; // a redraw was asked for (kick), not just the shimmer's next step
+  // ponytail: the idle gold shimmer redraws about 12 times a second (the same speed, in steps), not 60; a spin or confetti draws every frame.
+  const IDLE_MS = 80;
   function tick(now: number) {
     raf = 0;
+    if (!wheel || !fx) return; // unmounted
+    const idle = !spin && !confetti.length;
+    if (idle && !want && now - drawn < IDLE_MS) return void schedule();
+    want = false;
+    if (idle) shimmer += 0.04 * Math.min((now - drawn) / (1000 / 60), 8);
+    drawn = now;
     if (spin) {
       const el = now - spin.t0, dur = 5200, back = 450;
       if (el < dur) rot = spin.start + (spin.over - spin.start) * (1 - Math.pow(1 - el / dur, 4));
       else rot = spin.over + (spin.end - spin.over) * (1 - Math.pow(1 - Math.min((el - dur) / back, 1), 3));
       if (el >= dur + back) { const { end, u } = spin; spin = null; rot = end % TAU; settle(sliceAt(slices, u)); }
     }
-    if (hasSuccess()) shimmer += 0.04;
+    if (!idle && hasSuccess()) shimmer += 0.04;
     drawWheel(); drawConfetti();
-    if (spin || confetti.length || hasSuccess()) raf = requestAnimationFrame(tick);
+    if (spin || confetti.length || hasSuccess()) schedule(); // one loop: settle() may already have scheduled the next frame
   }
-  const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
+  const schedule = () => { if (!raf) raf = requestAnimationFrame(tick); };
+  const kick = () => { want = true; schedule(); };
   $effect(() => { void [slices, names, angle, width]; kick(); });
   // The oak board under the wheel, repainted at its own size so the grain and the brass inlay never stretch.
   $effect(() => {

@@ -140,12 +140,14 @@
       const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
       const tmpQ = new THREE.Quaternion();
       let dirty = true; // render both views only while something moves, plus one frame after any change
+      let looping = false; // the animation loop is off while the die rests: `wake` turns it back on (a roll, a resize, a restored context)
+      function wake() { dirty = true; if (!looping) { looping = true; renderer.setAnimationLoop(step); } }
       let play: { frames: Float32Array[]; sym: Quaternion; t0: number; n: number } | null = null;
 
       function finish(now: number, n: number) {
         light(n);
         setLens(n);
-        play = null; rolling = false; again = false; dirty = true;
+        play = null; rolling = false; again = false; wake();
         if (resizePending) applySize();
         let to = uprightAngle(); while (to - lensAngle > Math.PI) to -= 2 * Math.PI; while (to - lensAngle < -Math.PI) to += 2 * Math.PI;
         if (reduced()) { lensAngle = to; turn = null; } else turn = { from: lensAngle, to, t0: now };
@@ -160,6 +162,7 @@
         const n = forced ?? top;
         play = { frames, sym: new THREE.Quaternion().fromArray(symmetry(n, top)), t0: performance.now(), n };
         rolling = true; again = false; lensClass = ''; lensLabel = 'Top of die';
+        wake();
         turn = { from: lensAngle, to: 0, t0: performance.now() };
         if (reduced()) { const f = frames[frames.length - 1]; die.position.set(f[0], f[1], f[2]); die.quaternion.copy(tmpQ.set(f[3], f[4], f[5], f[6])).multiply(play.sym); finish(performance.now(), n); }
       };
@@ -178,10 +181,10 @@
         die.scale.setScalar(DR / DR0);
         die.position.set(die.position.x * TX / old.TX, die.position.y * DR / old.DR, die.position.z); // ponytail: scaling keeps the resting die inside the new tray; exact only for x/y
         LS = lens.clientWidth; insetRenderer.setSize(LS, LS);
-        dirty = true;
+        wake();
       }
       for (const c of [renderer.domElement, insetRenderer.domElement]) { // render-on-demand: redraw after a lost context returns
-        const redraw = () => { dirty = true; };
+        const redraw = () => wake();
         c.addEventListener('webglcontextrestored', redraw); undo.push(() => c.removeEventListener('webglcontextrestored', redraw));
       }
       const ro = new ResizeObserver(applySize); ro.observe(stage); ro.observe(lens);
@@ -195,18 +198,19 @@
         lensAngle = pose.lensAngle; light(pose.sym); setLens(pose.sym);
       }
 
-      renderer.setAnimationLoop((now) => {
+      const step = (now: number) => {
         if (play) {
           const i = Math.max(0, Math.min(Math.floor((now - play.t0) / (1000 / 60)), play.frames.length - 1)), f = play.frames[i];
           die.position.set(f[0], f[1], f[2]); die.quaternion.copy(tmpQ.set(f[3], f[4], f[5], f[6])).multiply(play.sym);
           if (now - play.t0 > RESTART_MS && !again) again = true;
           if (i === play.frames.length - 1) finish(now, play.n);
         }
-        if (!play && !turn && !dirty) return;
+        if (!play && !turn && !dirty) { looping = false; renderer.setAnimationLoop(null); return; } // at rest: no frames at all until the next wake
         dirty = false;
         renderer.render(scene, camera);
         aimCloseCam(now); insetRenderer.render(scene, closeCam);
-      });
+      };
+      wake();
       ready = true;
       undo.push(() => {
         sun.shadow.map?.dispose();
