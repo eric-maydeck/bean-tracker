@@ -3,15 +3,17 @@
 
   let { board, byId, success, fail, rolled }: { board: Slot[]; byId: Map<number, PickCoffee>; success: PickCoffee[]; fail: PickCoffee[]; rolled: number | null } = $props();
 
+  let width = $state(0);
+  const two = $derived(width >= 900);
   const join = (cs: PickCoffee[], f: (c: PickCoffee) => string) => cs.map(f).join(', ');
   const coffeeOf = (s: Slot): PickCoffee[] => (s.kind === 'coffee' ? [byId.get(s.coffeeId)].filter((c): c is PickCoffee => !!c) : s.kind === 'success' ? success : s.kind === 'fail' ? fail : []);
   const label = (s: Slot) => (s.kind === 'crossed' ? 'Roll again' : join(coffeeOf(s), (c) => c.name));
 </script>
 
-<!-- 1 to 10 and 11 to 20 side by side on desktop (one column on a phone: the tables stack) -->
-<div class="halves">
-  {#each [board.slice(0, 10), board.slice(10)] as half, h (h)}
-    <table class="data-table board" aria-label={h ? 'D20 board, 11 to 20' : 'D20 board, 1 to 10'}>
+<!-- 1 to 10 and 11 to 20 side by side where there is room (900px of width); otherwise one table, 1 to 20 -->
+<div class="halves" bind:clientWidth={width}>
+  {#each two ? [board.slice(0, 10), board.slice(10)] : [board] as half, h (h)}
+    <table class="data-table board" aria-label={two ? (h ? 'D20 board, 11 to 20' : 'D20 board, 1 to 10') : 'D20 board'}>
       <colgroup><col class="c-n" /><col class="c-name" /><col class="c-roaster" /></colgroup>
       <thead><tr><th scope="col">#</th><th scope="col">Coffee</th><th scope="col">Roaster</th></tr></thead>
       <tbody>
@@ -28,9 +30,7 @@
 </div>
 
 <style>
-  .halves { display: grid; gap: var(--space-3); align-items: start; }
-  @media (min-width: 641px) { .halves { grid-template-columns: 1fr 1fr; } }
-  @media (max-width: 640px) { .halves table:last-child thead { display: none; } }
+  .halves { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: var(--space-5); align-items: start; }
   .board { font-size: 0.85rem; table-layout: fixed; }
   .board :global(th), .board :global(td) { padding: 0.2rem var(--space-2); }
   .board tbody tr:nth-child(even) { background: color-mix(in srgb, var(--color-text-muted) 7%, transparent); }

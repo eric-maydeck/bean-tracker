@@ -367,12 +367,15 @@
 
 <style>
   .stage { margin: var(--space-3) 0; display: grid; gap: var(--space-4); align-items: start; }
-  .side { display: grid; gap: var(--space-3); min-width: 0; }
-  .game { min-width: 0; }
-  .wheel-wrap { max-width: 400px; margin: 0 auto; }
-  .result { max-width: 24rem; }
+  .side { display: flex; min-width: 0; }
+  .game { min-width: 0; display: flex; flex-direction: column; }
+  .wheel-wrap { width: 100%; max-width: 460px; margin: 0 auto; }
+  .result { display: flex; width: calc(280px + 2 * var(--space-4) + 2px); max-width: 100%; } /* .card sizes by its container, so the width is explicit */
+  .result :global(.pick-card) { align-self: stretch; } /* Brew sits at the card's foot, level with Reset today */
+  .result.empty { align-self: start; }
   @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
   .pick-modal { position: relative; max-width: 28rem; }
+  .pick-modal :global(.pick-card) { margin: 0 auto; }
   .pick-modal.success { box-shadow: 0 0 0 3px #ffe08a, 0 0 32px #d4a73a; }
   .pick-modal.fail { box-shadow: 0 0 0 3px #d01c1c, 0 0 32px #7a0a0a; }
   .fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -382,12 +385,15 @@
   @keyframes fall { to { transform: translateY(105vh) rotate(540deg); opacity: 0; } }
   @keyframes fade-in { from { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .fx i { display: none; } .fx.fail { animation: none; } }
-  /* the card sits beside the game on desktop: wheel left, or a narrower die area with the board under the card */
+  /* the same layout for both games: the game left, the card right with a real gutter; both columns as tall as the taller one */
   @media (min-width: 641px) {
-    .stage { grid-template-columns: minmax(0, 400px) minmax(0, 1fr); }
-    .stage.d20 { grid-template-columns: minmax(0, 620px) minmax(0, 1fr); }
+    .stage { grid-template-columns: minmax(0, 620px) auto; column-gap: var(--space-6); align-items: stretch; }
   }
-  .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: var(--space-3) 0; }
+  /* at the game column's foot, Reset today level with the card's Brew (the same size) */
+  .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: auto 0 var(--space-3); padding-top: var(--space-3); }
+  .out-row .button { margin: 0; padding: 0.35rem 0.5rem; min-height: 36px; font-size: 0.85rem; }
+  @media (min-width: 641px) { .out-row { margin-bottom: calc(var(--space-4) + 1px); } } /* the card's padding and border under Brew */
+  @media (max-width: 640px) { .out-row .button { min-height: 44px; } }
   .out-row .label { font-weight: 600; }
   .out-row .badge { white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }
