@@ -17,8 +17,9 @@
   import { formatBag } from '#lib/grams.ts';
   import ShareButton from '#lib/components/ShareButton.svelte';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
-  import { onDeckPreview } from '#lib/linkPreview.ts';
-  import { onDeckParams, parseOnDeckView, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
+  import { onDeckPreview, pickPreview } from '#lib/linkPreview.ts';
+  import PickForMe from './pick/PickForMe.svelte';
+  import { onDeckParams, parseGame, parseOnDeckView, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
 
   let { data } = $props();
 
@@ -35,6 +36,8 @@
   let explicit = $state<Show | undefined>(pickOne(currentParams(page.url), 'show', SHOW_VALUES));
   // The Currently open / Next up view: URL only (never remembered), and only `next` is explicit.
   let explicitView = $state<'next' | 'pick' | undefined>(parseOnDeckView(currentParams(page.url)));
+  // The Pick for me game: only `d20` is explicit (the wheel is the default).
+  let explicitGame = $state<'d20' | undefined>(parseGame(currentParams(page.url)));
   let view = $derived<OnDeckView>(explicitView ?? 'open');
   let loaded = $state(false);
   let filter = $derived(explicit ?? 'all');
@@ -50,6 +53,7 @@
       explicit = fromUrl;
     }
     explicitView = parseOnDeckView(currentParams(page.url));
+    explicitGame = parseGame(currentParams(page.url));
     loaded = true;
   });
 
@@ -59,7 +63,7 @@
 
   $effect(() => {
     if (!loaded) return;
-    writeUrlParams(onDeckParams({ show: explicit, view: explicitView }));
+    writeUrlParams(onDeckParams({ show: explicit, view: explicitView, game: explicitGame }));
     try {
       if (explicit) localStorage.setItem(STORAGE_KEY, serializeChoice(explicit, Date.now()));
     } catch {
@@ -89,7 +93,7 @@
 <svelte:head>
   <title>Bean Tracker - On Deck</title>
 </svelte:head>
-<PreviewMeta preview={onDeckPreview(view === 'next' ? 'next' : 'open', filter, view === 'next' ? current.nextUp : current.open)} />
+<PreviewMeta preview={view === 'pick' ? pickPreview() : onDeckPreview(view === 'next' ? 'next' : 'open', filter, view === 'next' ? current.nextUp : current.open)} />
 
 <div class="toolbar">
   <h1>On Deck</h1>
@@ -213,5 +217,10 @@
         {/each}
       </section>
     {/if}
+  </section>
+{:else}
+  <section>
+    <h2>Pick for me</h2>
+    <PickForMe pick={data.pick} admin={page.data.isAdmin} game={explicitGame ?? 'wheel'} ongame={(g) => (explicitGame = g === 'd20' ? 'd20' : undefined)} />
   </section>
 {/if}

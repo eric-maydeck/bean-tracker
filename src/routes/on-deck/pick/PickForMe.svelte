@@ -1,0 +1,228 @@
+<script lang="ts">
+  import { onDestroy, onMount, untrack } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { buildPool, critPool } from '#lib/pick/pool.ts';
+  import { fillBoard } from '#lib/pick/board.ts';
+  import { DEFAULT_RULES, rulesDiffer } from '#lib/pick/rules.ts';
+  import { discard, markBrewed, outIds, resetDay } from '#lib/pick/today.ts';
+  import { sliceAt, wheelSlices } from '#lib/pick/wheel.ts';
+  import type { Game, PickCoffee, PickResult, PickRules, PickToday, Slot, WheelSlice } from '#lib/pick/types.ts';
+  import PickBoard from './PickBoard.svelte';
+  import PickCard from './PickCard.svelte';
+  import PickD20 from './PickD20.svelte';
+  import PickRulesPanel from './PickRules.svelte';
+  import PickWheel from './PickWheel.svelte';
+  import { fetchSaved, flushToday, loadRules, loadToday, saveRules, saveToday } from './store';
+
+  let { pick, admin, game, ongame }: {
+    pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; hasSaved: boolean; todayState: unknown };
+    admin: boolean; game: Game; ongame: (g: Game) => void;
+  } = $props();
+
+  const coffees = untrack(() => pick.coffees);
+  const byId = new Map(coffees.map((c) => [c.id, c]));
+  const names = new Map(coffees.map((c) => [c.id, c.name]));
+
+  // Admins start from the server's values; visitors' live in localStorage, so they load after mount.
+  let ready = $state(untrack(() => admin));
+  let rules = $state<PickRules>(untrack(() => (admin ? loadRules(true, pick.rulesLast) : DEFAULT_RULES)));
+  let today = $state<PickToday>(untrack(() => loadToday(admin, admin ? pick.todayState : null, pick.today)));
+  let hasSaved = $state(untrack(() => pick.hasSaved));
+  let busy = $state(false);
+  let rollAgain = $state(false);
+  let announce = $state('');
+  let note = $state('');
+  let pendingRules = $state<PickRules | null>(null);
+  let wheel = $state<PickWheel>();
+  let d20 = $state<PickD20>();
+  let dlg: HTMLDialogElement;
+
+  onMount(() => {
+    if (admin) return;
+    rules = loadRules(false, null);
+    today = loadToday(false, null, pick.today);
+    ready = true;
+  });
+  onDestroy(flushToday);
+
+  $effect(() => {
+    if (!ready) return;
+    saveToday(admin, $state.snapshot(today));
+  });
+
+  const out = $derived(outIds(today));
+  const pool = $derived(buildPool(coffees, rules, out));
+  const successC = $derived(critPool(coffees, rules.critSuccess, out));
+  const failC = $derived(critPool(coffees, rules.critFail, out));
+  const slices = $derived(wheelSlices(pool.pool, successC.length > 0, failC.length > 0));
+  const empty = $derived(slices.length === 0);
+  const eligible = $derived.by(() => {
+    const all = buildPool(coffees, { ...rules, over20: 'first20' }, out);
+    return [...all.pool, ...all.sittingOut];
+  });
+  const computeBoard = (): Slot[] => fillBoard(pool.pool, rules, successC.length > 0, failC.length > 0, `${today.date}:${today.out.join(',')}`);
+  const board = $derived(today.board ?? computeBoard());
+  // Snapshot the board so Shuffle and Random look the same after leaving and coming back.
+  $effect(() => {
+    if (ready && today.board === null) today.board = untrack(computeBoard);
+  });
+
+  const result = $derived(today.result);
+  const resultCoffee = $derived(result ? byId.get(result.coffeeId) : undefined);
+  const outRow = $derived(today.out.flatMap((id) => byId.get(id) ?? []));
+  const TAU = Math.PI * 2;
+  const critFor = (n: number) => {
+    const k = board[n - 1]?.kind;
+    return k === 'success' || k === 'fail' ? k : null;
+  };
+  const rolledN = $derived(game === 'd20' ? (result?.n ?? null) : null);
+
+  const any = <T,>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)];
+  function land(r: PickResult) {
+    busy = false;
+    today.result = r;
+    announce = `Picked ${names.get(r.coffeeId) ?? ''}`;
+  }
+  function again() {
+    busy = false;
+    rollAgain = true;
+    announce = 'Roll again';
+  }
+
+  function spin() {
+    if (busy || empty || !wheel) return;
+    rollAgain = false;
+    busy = true;
+    wheel.spinTo(sliceAt(slices, Math.random() * TAU));
+  }
+  function wheelResult(s: WheelSlice, angle: number) {
+    today.wheelAngle = angle;
+    if (s.kind === 'coffee') return land({ coffeeId: s.coffeeId!, via: 'normal' });
+    const c = any(s.kind === 'success' ? successC : failC);
+    if (c) land({ coffeeId: c.id, via: s.kind });
+    else busy = false;
+  }
+  function d20Result(n: number, pose: PickToday['d20Pose']) {
+    today.d20Pose = pose;
+    const s = board[n - 1];
+    const c = s?.kind === 'coffee' ? byId.get(s.coffeeId) : s?.kind === 'success' ? any(successC) : s?.kind === 'fail' ? any(failC) : undefined;
+    if (!c || !s) return again();
+    land({ coffeeId: c.id, via: s.kind === 'coffee' ? 'normal' : (s.kind as 'success' | 'fail'), n });
+  }
+  function startD20() {
+    rollAgain = false;
+    busy = true;
+  }
+
+  function setGame(g: Game) {
+    if (g === game) return;
+    busy = false;
+    rollAgain = false;
+    today.game = g;
+    ongame(g);
+  }
+
+  function brew() {
+    if (!resultCoffee) return;
+    today = markBrewed(today, resultCoffee.id, rules);
+    saveToday(admin, $state.snapshot(today));
+    flushToday();
+    goto(`/coffees/${resultCoffee.slug}/brew`);
+  }
+  const doDiscard = () => resultCoffee && (today = discard(today, resultCoffee.id));
+  const openPage = () => resultCoffee && goto(`/coffees/${resultCoffee.slug}`);
+  const spinAgain = () => (game === 'd20' ? d20?.roll() : spin());
+  const close = () => (today.result = null);
+
+  function apply(next: PickRules, reset: boolean) {
+    rules = next;
+    today = reset ? resetDay(today) : { ...today, board: null };
+    saveRules(admin, 'pick.rules.last', next).catch(() => {});
+  }
+  function edit(next: PickRules) {
+    if (!rulesDiffer(rules, next)) return;
+    if (today.out.length === 0) return apply(next, false);
+    pendingRules = next;
+    dlg.showModal();
+  }
+  function choose(reset: boolean) {
+    const next = pendingRules;
+    dlg.close();
+    if (next) apply(next, reset);
+  }
+  async function save() {
+    try {
+      await saveRules(admin, 'pick.rules.saved', rules);
+      hasSaved = true;
+      note = 'Saved.';
+    } catch {
+      note = 'Could not save.';
+    }
+  }
+  async function load() {
+    const r = await fetchSaved();
+    note = r ? 'Loaded.' : 'Nothing saved yet.';
+    if (r) edit(r);
+  }
+</script>
+
+{#if ready}
+  <div class="form-field group-field">
+    <span>Game</span>
+    <div class="tab-group" role="group" aria-label="Game">
+      <button type="button" aria-pressed={game === 'wheel'} onclick={() => setGame('wheel')}>Wheel</button>
+      <button type="button" aria-pressed={game === 'd20'} onclick={() => setGame('d20')}>D20</button>
+    </div>
+  </div>
+
+  <PickRulesPanel {rules} {coffees} {eligible} {admin} {hasSaved} open={today.panelOpen} {note}
+    ontoggle={(o) => (today.panelOpen = o)} onchange={edit} onsave={save} onload={load} onreset={() => edit(DEFAULT_RULES)} />
+
+  <section class="game" aria-label={game === 'd20' ? 'D20' : 'Wheel'}>
+    {#if empty && game === 'wheel'}
+      <p class="text-muted">No coffees in play. Change the rules or reset today.</p>
+    {:else if game === 'wheel'}
+      <div class="wheel-wrap">
+        <PickWheel bind:this={wheel} {slices} {names} angle={today.wheelAngle} disabled={empty} onspin={spin} onresult={wheelResult} />
+      </div>
+    {:else}
+      {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
+      <PickD20 bind:this={d20} pose={today.d20Pose} disabled={empty} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
+      <PickBoard {board} {names} rolled={rolledN} />
+    {/if}
+    {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
+  </section>
+
+  <div class="out-row">
+    <span class="label">Out for today:</span>
+    {#each outRow as c (c.id)}<span class="badge badge-neutral"><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
+    <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
+  </div>
+
+  {#if result && resultCoffee}
+    <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+      againLabel={game === 'd20' ? 'Roll again' : 'Spin again'} onbrew={brew} ondiscard={doDiscard} onopen={openPage} onagain={spinAgain} onclose={close} />
+  {/if}
+
+  <div class="sr-only" aria-live="polite">{announce}</div>
+
+  <dialog class="rules-dialog" aria-labelledby="pick-dlg-title" bind:this={dlg} onclose={() => (pendingRules = null)}>
+    <h2 id="pick-dlg-title">Change the rules</h2>
+    <p>Something is already out for today.</p>
+    <div class="dlg-buttons">
+      <button type="button" class="button" onclick={() => choose(true)}>Reset today and use the new rules</button>
+      <button type="button" class="button button-secondary" onclick={() => choose(false)}>Keep today's out list with the new rules</button>
+      <button type="button" class="button button-secondary" onclick={() => dlg.close()}>Cancel</button>
+    </div>
+  </dialog>
+{/if}
+
+<style>
+  .game { margin: var(--space-3) 0; }
+  .wheel-wrap { max-width: 560px; margin: 0 auto; }
+  .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: var(--space-3) 0; }
+  .out-row .label { font-weight: 600; }
+  .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }
+  .dlg-buttons { display: grid; gap: var(--space-2); }
+  .dlg-buttons :global(.button) { min-height: 44px; }
+</style>

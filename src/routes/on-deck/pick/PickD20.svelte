@@ -3,11 +3,12 @@
   import type { Mesh, MeshStandardMaterial, Quaternion, WebGLRenderer } from 'three';
   import type { D20Pose } from '#lib/pick/types.ts';
 
-  let { pose, disabled, onresult, critFor, onfail }: {
+  let { pose, disabled, onresult, critFor, onfail, onstart }: {
     pose: D20Pose | null;
     disabled: boolean;
     onresult: (n: number, pose: D20Pose) => void;
     onfail?: () => void;
+    onstart?: () => void;
     critFor: (n: number) => 'success' | 'fail' | null;
   } = $props();
 
@@ -122,6 +123,7 @@
 
       doRoll = (forced) => {
         if (disabled || (play && performance.now() - play.t0 < RESTART_MS)) return;
+        onstart?.();
         mats.forEach((m) => m.emissive.set(0));
         const { frames, top } = simulate(Math.random, { w: W, h: H });
         const n = forced ?? top;
