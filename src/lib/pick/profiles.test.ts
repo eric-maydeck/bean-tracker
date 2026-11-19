@@ -29,17 +29,15 @@ describe('pick profiles', () => {
 describe('restoreSelected', () => {
   const mine = { ...DEFAULT_RULES, sort: 'name' as const };
   const profiles = { Mine: mine, Other: DEFAULT_RULES };
-  it('keeps a profile that exists and whose rules equal the restored rules', () => {
-    expect(restoreSelected('Mine', profiles, mine)).toBe('Mine');
-    expect(restoreSelected('Other', profiles, DEFAULT_RULES)).toBe('Other');
+  it('keeps a profile that exists, whatever the restored rules are (unsaved edits keep Save available)', () => {
+    expect(restoreSelected('Mine', profiles)).toBe('Mine');
+    expect(restoreSelected('Other', profiles)).toBe('Other');
   });
-  it('drops it when the rules changed since, or the profile was renamed or deleted', () => {
-    expect(restoreSelected('Mine', profiles, { ...mine, includeDecaf: true })).toBe('');
-    expect(restoreSelected('Mine', profiles, DEFAULT_RULES)).toBe('');
-    expect(restoreSelected('Mine', { Renamed: mine }, mine)).toBe('');
-    expect(restoreSelected('Mine', {}, mine)).toBe('');
+  it('drops it when the profile was renamed or deleted', () => {
+    expect(restoreSelected('Mine', { Renamed: mine })).toBe('');
+    expect(restoreSelected('Mine', {})).toBe('');
   });
   it('treats nothing stored, garbage and prototype names as no selection', () => {
-    for (const v of [null, undefined, '', 5, {}, ['Mine'], '__proto__', 'constructor', 'toString']) expect(restoreSelected(v, profiles, mine)).toBe('');
+    for (const v of [null, undefined, '', 5, {}, ['Mine'], '__proto__', 'constructor', 'toString']) expect(restoreSelected(v, profiles)).toBe('');
   });
 });

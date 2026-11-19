@@ -1,4 +1,4 @@
-import { parseRules, rulesDiffer } from './rules';
+import { parseRules } from './rules';
 import type { PickRules } from './types';
 
 export type Profiles = Record<string, PickRules>;
@@ -27,9 +27,9 @@ export function parseProfiles(raw: unknown, legacySaved: unknown = null): Profil
 }
 
 /**
- * The profile that was selected last time, kept only while it still holds: the profile exists (not renamed or deleted) and
- * its saved rules equal the rules restored with it. Anything else (stale, garbage, not a string) is no selection.
+ * The profile that was selected last time, kept while it still exists (not renamed or deleted), even when the restored rules
+ * have unsaved edits on top of it (Save and Revert stay available). Anything else, garbage included, is no selection.
  */
-export function restoreSelected(stored: unknown, profiles: Profiles, rules: PickRules): string {
-  return typeof stored === 'string' && Object.hasOwn(profiles, stored) && !rulesDiffer(profiles[stored], rules) ? stored : '';
+export function restoreSelected(stored: unknown, profiles: Profiles): string {
+  return typeof stored === 'string' && Object.hasOwn(profiles, stored) ? stored : '';
 }

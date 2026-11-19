@@ -30,11 +30,13 @@ export function parseRulesCode(p: URLSearchParams): string | undefined {
   const v = p.get('rules')?.trim();
   return v && v.length <= MAX_RULES_CODE && v.toLowerCase() !== 'default' && /^[A-Za-z0-9_-]+$/.test(v) ? v : undefined;
 }
-export function encodeRulesLink(name: string, rules: PickRules): string {
+/** The code for a link, or null when it would be longer than the decoder accepts (the share then falls back to the default rules). */
+export function encodeRulesLink(name: string, rules: PickRules): string | null {
   const diff = Object.fromEntries(Object.entries(rules).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify((DEFAULT_RULES as unknown as Record<string, unknown>)[k])));
   let bin = '';
   new TextEncoder().encode(JSON.stringify({ n: name, r: diff })).forEach((b) => (bin += String.fromCharCode(b)));
-  return btoa(bin).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+  const code = btoa(bin).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+  return code.length <= MAX_RULES_CODE ? code : null;
 }
 /** The profile name and the validated rules (per-field fallback to the defaults) a code carries, or null when it cannot be read. */
 export function decodeRulesLink(code: string): { name: string; rules: PickRules } | null {

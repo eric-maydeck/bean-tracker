@@ -42,7 +42,7 @@
   let today = $state<PickToday>(untrack(() => loadToday(admin, admin ? pick.todayState : null, pick.today)));
   let profiles = $state<Profiles>(untrack(() => (admin ? loadProfiles(true, pick.profiles, pick.savedRules) : {})));
   // The profile the rules came from (a base: further edits do not change it until Save). Remembered with the last rules; it comes back only while that profile still holds those rules.
-  let selected = $state(untrack(() => (admin && !sharedRules ? restoreSelected(pick.selectedProfile, profiles, rules) : '')));
+  let selected = $state(untrack(() => (admin && !sharedRules ? restoreSelected(pick.selectedProfile, profiles) : '')));
   let storedSel = untrack(() => selected);
   let selBefore = '';
   let busy = $state(false);
@@ -91,7 +91,7 @@
       rules = untrack(() => sharedRules) ?? loadRules(false, null);
       today = loadToday(false, null, pick.today);
       profiles = loadProfiles(false, null, null);
-      selected = untrack(() => (sharedRules ? '' : restoreSelected(loadSelected(false, null), profiles, rules)));
+      selected = untrack(() => (sharedRules ? '' : restoreSelected(loadSelected(false, null), profiles)));
       storedSel = selected;
       ready = true;
     }
@@ -126,7 +126,7 @@
     wasKey = key;
     untrack(() => {
       if (leftShared) { leftShared = false; return; }
-      rules = sharedRules ?? ownRules(); selected = sharedRules ? '' : restoreSelected(loadSelected(admin, pick.selectedProfile), profiles, rules); rev++; today = { ...today, board: null };
+      rules = sharedRules ?? ownRules(); selected = sharedRules ? '' : restoreSelected(loadSelected(admin, pick.selectedProfile), profiles); rev++; today = { ...today, board: null };
     });
   });
   // A profile picked, saved or reset to defaults while shared rules are in play ends shared mode (the note goes), keeping the new rules.
@@ -138,12 +138,13 @@
     if (!ready || sharedKey) return;
     untrack(() => { if (sel !== storedSel) { storedSel = sel; saveSelected(admin, sel).catch(() => {}); } });
   });
+  const visitorCode = (name: string) => { const code = encodeRulesLink(name, profiles[name]); return code ? { rulesCode: code } : { defaultRules: true }; }; // too many picks for a link: the defaults
   // Share carries the loaded profile (its saved version), else the default rules; visitors have no saved profiles of the owner's.
   $effect(() => {
     shareRules = !ready ? undefined
       : shared && 'rules' in shared ? (shared.code ? { rulesCode: shared.code } : { profile: shared.name })
       : shared && 'defaults' in shared ? { defaultRules: true }
-      : selected && profiles[selected] ? (admin ? { profile: selected } : !rulesDiffer(profiles[selected], rules) ? { rulesCode: encodeRulesLink(selected, rules) } : { defaultRules: true }) // a visitor's profile is only theirs: the link carries the rules, if unchanged
+      : selected && profiles[selected] ? (admin ? { profile: selected } : visitorCode(selected)) // the saved profile either way; a visitor's is only theirs, so the link carries its rules
       : { defaultRules: true };
   });
 

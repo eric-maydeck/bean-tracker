@@ -54,11 +54,11 @@ describe('on-deck view param', () => {
   });
   it('rules code: round trip keeps name (unicode too) and rules, stays small, and is not "default"', () => {
     const rules = { ...DEFAULT_RULES, sort: 'name' as const, critFailOn: false, excluded: [3, 9], critSuccess: [4], critSuccessMode: 'specific' as const };
-    const code = encodeRulesLink('Café ☕ rules', rules);
+    const code = encodeRulesLink('Café ☕ rules', rules)!;
     expect(code).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(code.length).toBeLessThan(400);
     expect(decodeRulesLink(code)).toEqual({ name: 'Café ☕ rules', rules });
-    expect(decodeRulesLink(encodeRulesLink('A', DEFAULT_RULES))).toEqual({ name: 'A', rules: DEFAULT_RULES });
+    expect(decodeRulesLink(encodeRulesLink('A', DEFAULT_RULES)!)).toEqual({ name: 'A', rules: DEFAULT_RULES });
     expect(parseRulesCode(p(`rules=${code}`))).toBe(code);
     expect(parseRulesCode(p('rules=default'))).toBeUndefined();
     expect(parseRulesCode(p('rules=DEFAULT'))).toBeUndefined();
@@ -69,6 +69,12 @@ describe('on-deck view param', () => {
     expect(onDeckParams({ view: 'pick', rulesCode: code, defaultRules: true }).toString()).toBe(`view=pick&rules=${code}`);
     expect(onDeckParams({ view: 'pick', profile: 'A', rulesCode: code }).toString()).toBe('view=pick&profile=A');
     expect(onDeckParams({ view: 'next', rulesCode: code }).toString()).toBe('view=next');
+  });
+  it('rules code: one that would be over the cap is not made', () => {
+    const many = { ...DEFAULT_RULES, excluded: Array.from({ length: 600 }, (_, i) => 1000 + i) };
+    expect(encodeRulesLink('A', many)).toBeNull();
+    const fits = { ...DEFAULT_RULES, excluded: Array.from({ length: 20 }, (_, i) => 1000 + i) };
+    expect(encodeRulesLink('A', fits)!.length).toBeLessThanOrEqual(MAX_RULES_CODE);
   });
   it('rules code: untrusted input is refused or repaired, never thrown', () => {
     const b64 = (s: string) => btoa(s).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
