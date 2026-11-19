@@ -109,6 +109,14 @@ CREATE TABLE IF NOT EXISTS app_meta (
   value TEXT
 );
 
+CREATE TABLE IF NOT EXISTS user_kv (
+  user_id TEXT NOT NULL,
+  key TEXT NOT NULL,
+  value TEXT NOT NULL,      -- JSON
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, key)
+);
+
 CREATE TABLE IF NOT EXISTS alerts (
   id INTEGER PRIMARY KEY,
   source TEXT NOT NULL,
