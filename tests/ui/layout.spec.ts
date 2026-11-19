@@ -5985,7 +5985,11 @@ export const STATES: State[] = [
       await expect(page.locator('.side .last'), 'the inline card has its heading').toHaveText('Your last roll');
       const [hb, cb0, gr] = [(await page.locator('.side .last').boundingBox())!, (await page.locator('.result').boundingBox())!, (await page.locator('.game-row').boundingBox())!];
       expect(hb.y + hb.height - 1, 'heading above the card').toBeLessThanOrEqual(cb0.y);
-      if ((page.viewportSize()?.width ?? 0) >= 1280) expect(hb.y, 'beside the game: the heading sits in the Game row band, not off the page').toBeGreaterThanOrEqual(gr.y - 2);
+      if ((page.viewportSize()?.width ?? 0) >= 1280) {
+        expect(hb.y, 'beside the game: the heading sits in the Game row band, not off the page').toBeGreaterThanOrEqual(gr.y - 2);
+        const rb = (await page.getByRole('button', { name: 'Rules', exact: true }).boundingBox())!;
+        expect(hb.x >= rb.x + rb.width || hb.y >= rb.y + rb.height || hb.x + hb.width <= rb.x || hb.y + hb.height <= rb.y, 'the heading does not overlap the Rules button').toBe(true);
+      }
       if ((page.viewportSize()?.width ?? 0) > 900) {
         expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
         await expectOutRowOnScreen(page);
@@ -6116,15 +6120,25 @@ export const STATES: State[] = [
       await expect(modal).toBeVisible();
       // Horizontal card where the layout is wide, vertical on a phone; its detail fits (no clipping), and Tab stays inside the pop-up.
       const wide = (page.viewportSize()?.width ?? 0) >= 1280;
-      expect(await modal.locator('.pick-card').evaluate((e) => getComputedStyle(e).display === 'grid'), wide ? 'horizontal pop-up card' : 'vertical pop-up card').toBe(wide);
+      const img = await modal.locator('.card-thumb').count(); // a coffee without a picture is content-height, not a grid
+      expect(await modal.locator('.pick-card').evaluate((e) => e.classList.contains('wide')), wide ? 'horizontal pop-up card' : 'vertical pop-up card').toBe(wide);
+      if (wide && img) expect(await modal.locator('.pick-card').evaluate((e) => getComputedStyle(e).display), 'the horizontal card is a grid').toBe('grid');
       if (wide) {
         expect(await modal.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the pop-up detail fits').toBe(true);
-        expect(Math.abs((await modal.locator('.pick-card').boundingBox())!.height - 326), 'pop-up card height').toBeLessThanOrEqual(2);
+        if (img) expect(Math.abs((await modal.locator('.pick-card').boundingBox())!.height - 326), 'pop-up card height').toBeLessThanOrEqual(2);
+        expect(await modal.locator('.buttons .button').evaluateAll((bs) => bs.filter((b) => b.scrollWidth > b.clientWidth).length), 'no clipped button text in the pop-up (Open coffee fits)').toBe(0);
       }
       for (const key of ['Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
         await page.keyboard.press(key);
         expect(await page.evaluate(() => !!document.activeElement?.closest('.pick-modal')), `focus stays in the pop-up after ${key}`).toBe(true);
       }
+      // Every button disabled (busy): Tab still cannot leave the pop-up.
+      await modal.locator('button').evaluateAll((bs) => bs.forEach((b) => b.setAttribute('disabled', '')));
+      for (const key of ['Tab', 'Shift+Tab']) {
+        await page.keyboard.press(key);
+        expect(await page.evaluate(() => !!document.activeElement?.closest('.pick-modal')), `focus stays in the pop-up with every button disabled after ${key}`).toBe(true);
+      }
+      await modal.locator('button').evaluateAll((bs) => bs.forEach((b) => b.removeAttribute('disabled')));
       await page.keyboard.press('Escape');
       await expect(modal).toBeHidden();
       await expect(page.locator('.result .pick-card')).toBeVisible(); // dismissing the overlay keeps the result, inline
