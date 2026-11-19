@@ -34,12 +34,21 @@ function makeTip(node: HTMLElement, label: Label, follow: boolean) {
     tip = null;
     pinned = false;
     document.removeEventListener('click', away, true);
+    document.removeEventListener('scroll', scrolled, true);
+  };
+  // A hover tip goes when a scrolling element around its anchor scrolls (a list under a still pointer): the item under the
+  // pointer changes without a pointer event, and the tip would otherwise ride along with the old one. The page's own scroll
+  // keeps its tip (it re-places itself); a tap-pinned tip stays until a tap elsewhere.
+  const scrolled = (e: Event) => {
+    const t = e.target;
+    if (!pinned && t instanceof Element && t.contains(node)) close();
   };
   // Another tip dismissing this one calls onclose from inside its own effect: unmount after it.
   const closed = () => queueMicrotask(close);
   const open = () => {
     if (!tip && label) {
       tip = mount(FloatTip, { target: document.body, props: { anchor: node, tip: typeof label === 'string' ? { title: label } : label, onclose: closed, at, follow } });
+      document.addEventListener('scroll', scrolled, true);
     }
   };
   const pin = () => {
