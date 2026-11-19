@@ -104,7 +104,7 @@ export function valueSizes(values: string[], size: number, avail: number, floor 
 const TOKEN_HEX = ['#a8bffd', '#d9a6e3', '#ffb7c1', '#fdc58b', '#d8db80', '#92dba9', '#7fdcea', '#698dfd', '#ae57bb', '#fc7184', '#c06408', '#abac11', '#069954', '#01baca', '#d2a679', '#b0703f', '#73503a', '#a8a8a8'];
 if (TOKEN_HEX.length !== THUMB_TOKENS.length) throw new Error('TOKEN_HEX out of step with THUMB_TOKENS');
 const LEGEND_H = 40, GAP = 8, STROKE = 7, LABEL = 28, XROW = 38, VAL_ROOM = 36;
-// The page's soft bar fill (colour at b3 alpha) over the card background; bars get its --slice-line outline (INK), 2px at 1200 wide.
+// The page's soft bar fill (colour at b3 alpha) over the card background.
 const soft = (hex: string, a = 0.7) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * a + parseInt(CREAM.slice(i, i + 2), 16) * (1 - a)).toString(16).padStart(2, '0')).join('');
 const textW = (s: string) => Math.ceil(s.length * LABEL * 0.58); // Karla bold, generous
 // Axis tick labels left to right: the first always shows, the last wins over the ones it would touch, any other that would overlap is dropped.
@@ -150,7 +150,7 @@ function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
     label(y[0], 0, top + H - LABEL - 3, gutter - 8, 'flex-end'); // above the baseline, clear of the x row
   }
   if (t.kind === 'vbars') {
-    const x0 = (c: number) => gutter + c * (w + GAP), bar = (x: number, y: number, bw: number, h: number, fill: string) => kids.push(node('rect', { x, y, width: bw, height: h, rx: Math.min(5, bw / 2, h / 2), fill: soft(fill), stroke: INK, strokeWidth: 2 }));
+    const x0 = (c: number) => gutter + c * (w + GAP), bar = (x: number, y: number, bw: number, h: number, fill: string) => kids.push(node('rect', { x, y, width: bw, height: h, rx: Math.min(5, bw / 2, h / 2), fill: soft(fill) }));
     for (let c = 0; c < n; c++) {
       let topY = H;
       if (t.stacked) {
@@ -158,7 +158,7 @@ function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
       } else {
         t.series.forEach((s, i) => { const h = Math.max(3, (s.values[c] ?? 0) / 100 * H); topY = Math.min(topY, H - h); bar(x0(c) + i * w / k, H - h, w / k, h, hex(i, c)); });
       }
-      if (vals) label(vals[c], x0(c) - GAP / 2, top + topY - LABEL - 6, w + GAP, 'center');
+      if (vals) label(vals[c], x0(c) - GAP / 2, top + topY - LABEL - 4, w + GAP, 'center');
     }
   } else {
     const pad = STROKE / 2 + 1;
@@ -177,7 +177,7 @@ function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
   return [
     ...(k > 1 ? [el('div', { display: 'flex', alignItems: 'center', height: LEGEND_H, flexShrink: 0, overflow: 'hidden', ...karla, fontSize: 28 },
       t.series.map((s, i) => el('div', { display: 'flex', alignItems: 'center', marginRight: 32, whiteSpace: 'nowrap', maxWidth: WIDTH / k - 32, minWidth: 0, flexShrink: 1 }, [
-        el('div', { width: 26, height: 26, boxSizing: 'border-box', borderRadius: 6, marginRight: 10, flexShrink: 0, background: soft(hex(i)), border: `2px solid ${INK}` }), el('div', { ...clipLine, minWidth: 0 }, s.label)])))] : []),
+        el('div', { width: 26, height: 26, borderRadius: 6, marginRight: 10, flexShrink: 0, background: soft(hex(i)) }), el('div', { ...clipLine, minWidth: 0 }, s.label)])))] : []),
     el('div', { display: 'flex', position: 'relative', width: WIDTH, height: top + H + bot, flexShrink: 0 }, [
       node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { position: 'absolute', left: 0, top }, children: kids }),
       ...over
@@ -191,8 +191,7 @@ function thumbnail(t: Thumb) {
     return box(t.rows.map(([label, value, frac], i) => el('div', { display: 'flex', alignItems: 'center', height: THUMB_H / 5, ...karla, fontSize: 30 }, [
       el('div', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 50, height: 50, borderRadius: 25, marginRight: 14, flexShrink: 0, fontSize: 34, background: !t.plain && i < 3 ? MEDAL_FILL[i] : 'transparent' }, String(i + 1)),
       named(label, 40, { ...clipLine, width: 380, flexShrink: 0 }),
-      el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, boxSizing: 'border-box', background: soft('#8a5a3b', 0.28), // the page's leaderboard value bar: --map-high at --bar-alpha (28%) over the page background
-     border: `2px solid ${INK}`, borderRadius: 6 })),
+      el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, background: soft('#d2a679'), borderRadius: 6 })),
       el('div', { display: 'flex', justifyContent: 'flex-end', width: 150, flexShrink: 0, whiteSpace: 'nowrap', fontSize: sizes[i] }, value)
     ])));
   }
