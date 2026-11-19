@@ -668,7 +668,7 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
   const STILL = 'Still'; // seeded so a typed "STILL" proposes the site's spelling
   const EDIT = 'Std Edit Me';
   const PIXEL = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#c2185b"/></svg>');
-  const CREATE = 'form[action="?/create"]';
+  const MODAL = '.coffee-edit-modal'; // the add/clone/edit overlay; its Save sits in the sticky header
 
   const withDb = <T>(fn: (d: DatabaseSync) => T): T => {
     const d = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
@@ -699,12 +699,13 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
     await page.locator('#amount_g').fill(amount);
     await page.locator('#roast_date').fill(date);
   };
-  const saveAdd = (page: Page) => page.locator(CREATE).getByRole('button', { name: 'Save', exact: true }).click();
+  const saveAdd = (page: Page) => page.locator(MODAL).getByRole('button', { name: 'Save', exact: true }).click();
   const dialog = (page: Page) => page.locator('dialog.sd-dialog[open]');
   const dsave = (page: Page) => dialog(page).getByRole('button', { name: 'Save', exact: true });
   const openEdit = async (page: Page) => {
     await gotoReady(page, '/coffees?status=all&view=cards');
     await page.locator('.card').filter({ hasText: EDIT }).getByRole('button', { name: 'Edit', exact: true }).click();
+    await expect(page.locator(MODAL)).toBeVisible();
   };
 
   for (const [T, viewport] of [['P', { width: 480, height: 909 }], ['D', { width: 1280, height: 800 }]] as const) {
@@ -781,19 +782,18 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
       test('edit: changing only the name never prompts about stored values', async ({ page }) => {
         await openEdit(page);
         await page.locator('#coffee_name').fill(`Std Edited ${T}`);
-        await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+        await page.locator(MODAL).getByRole('button', { name: 'Save', exact: true }).click();
         await expect.poll(() => coffeeRow(`Std Edited ${T}`)()?.variety).toBe('SL34 / SL28');
         await expect(dialog(page)).toHaveCount(0);
         withDb((d) => d.prepare(`UPDATE coffees SET coffee_name = ? WHERE coffee_name = ?`).run(EDIT, `Std Edited ${T}`));
       });
 
       test('clone: only fields changed from the source are checked', async ({ page }) => {
-        await openEdit(page);
-        await expect(page.locator('#variety')).toHaveValue('SL34 / SL28');
-        await page.locator('#coffee_name').fill(`Std Clone ${T}`); // typed in the edit form, carried into the clone
-        await page.locator('form:has(#slug)').getByRole('button', { name: 'Clone', exact: true }).click();
-        await expect(page.locator(`${CREATE} #variety`)).toHaveValue('SL34 / SL28');
-        await page.locator(`${CREATE} #roaster`).fill(ROASTER);
+        await gotoReady(page, '/coffees?status=all&view=cards');
+        await page.locator('.card').filter({ hasText: EDIT }).getByRole('button', { name: 'Clone', exact: true }).click();
+        await expect(page.locator(`${MODAL} #variety`)).toHaveValue('SL34 / SL28');
+        await page.locator(`${MODAL} #coffee_name`).fill(`Std Clone ${T}`);
+        await page.locator(`${MODAL} #roaster`).fill(ROASTER);
         await saveAdd(page);
         await expect.poll(() => coffeeRow(`Std Clone ${T}`)()?.variety).toBe('SL34 / SL28');
         await expect(dialog(page)).toHaveCount(0);
@@ -870,7 +870,7 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
           await page.locator('#product_url').fill(URL_);
           await page.getByRole('button', { name: 'Fill from page' }).click();
           await expect(page.locator('#producer')).toHaveValue('Ana - Finca Rosa');
-          await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+          await page.locator(MODAL).getByRole('button', { name: 'Save', exact: true }).click();
           await expect.poll(() => saved.length).toBe(1);
           expect(saved[0]).toContain('producer');
           await dialog(page).getByRole('button', { name: 'Cancel' }).click(); // nothing saves
