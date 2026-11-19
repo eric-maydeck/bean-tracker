@@ -8,26 +8,34 @@
   const label = (s: Slot) => (s.kind === 'crossed' ? 'Roll again' : join(coffeeOf(s), (c) => c.name));
 </script>
 
-<table class="data-table board" aria-label="D20 board">
-  <colgroup><col class="c-n" /><col class="c-name" /><col class="c-roaster" /></colgroup>
-  <thead><tr><th scope="col">#</th><th scope="col">Coffee</th><th scope="col">Roaster</th></tr></thead>
-  <tbody>
-    {#each board as s (s.n)}
-      <tr class={s.kind} class:rolled={rolled === s.n} aria-label={`${s.n}: ${label(s)}`}>
-        <td class="n">{s.n}</td>
-        <td class="name">{#if s.kind === 'success'}<span class="badge badge-warm">Crit success</span>{:else if s.kind === 'fail'}<span class="badge badge-urgent">Crit fail</span>{/if}<span class="txt">{label(s)}</span></td>
-        <td class="roaster">{join(coffeeOf(s), (c) => c.roaster)}</td>
-      </tr>
-    {/each}
-  </tbody>
-</table>
+<!-- 1 to 10 and 11 to 20 side by side on desktop (one column on a phone: the tables stack) -->
+<div class="halves">
+  {#each [board.slice(0, 10), board.slice(10)] as half, h (h)}
+    <table class="data-table board" aria-label={h ? 'D20 board, 11 to 20' : 'D20 board, 1 to 10'}>
+      <colgroup><col class="c-n" /><col class="c-name" /><col class="c-roaster" /></colgroup>
+      <thead><tr><th scope="col">#</th><th scope="col">Coffee</th><th scope="col">Roaster</th></tr></thead>
+      <tbody>
+        {#each half as s (s.n)}
+          <tr class={s.kind} class:rolled={rolled === s.n} aria-label={`${s.n}: ${label(s)}`}>
+            <td class="n">{s.n}</td>
+            <td class="name">{#if s.kind === 'success'}<span class="badge badge-warm">Crit success</span>{:else if s.kind === 'fail'}<span class="badge badge-urgent">Crit fail</span>{/if}<span class="txt">{label(s)}</span></td>
+            <td class="roaster">{join(coffeeOf(s), (c) => c.roaster)}</td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  {/each}
+</div>
 
 <style>
+  .halves { display: grid; gap: var(--space-3); align-items: start; }
+  @media (min-width: 641px) { .halves { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 640px) { .halves table:last-child thead { display: none; } }
   .board { font-size: 0.85rem; table-layout: fixed; }
   .board :global(th), .board :global(td) { padding: 0.2rem var(--space-2); }
   .board tbody tr:nth-child(even) { background: color-mix(in srgb, var(--color-text-muted) 7%, transparent); }
-  .c-n { width: 2.6rem; }
-  .c-roaster { width: 34%; }
+  .c-n { width: 2.2rem; }
+  .c-roaster { width: 38%; }
   .n { font-variant-numeric: tabular-nums; font-weight: 600; }
   .name, .roaster { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .name .badge { margin-right: var(--space-2); font-size: 0.7rem; padding: 0.05rem 0.4rem; }

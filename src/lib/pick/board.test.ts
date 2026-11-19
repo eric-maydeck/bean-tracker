@@ -3,7 +3,7 @@ import { boardMatches, fillBoard } from './board';
 import { DEFAULT_RULES } from './rules';
 import type { PickCoffee, PickRules } from './types';
 
-const coffee = (id: number): PickCoffee => ({ id, slug: `c${id}`, name: `C${id}`, roaster: 'r', image: null, fill: null, category: 'open', decaf: false, urgency: null });
+const coffee = (id: number): PickCoffee => ({ id, slug: `c${id}`, name: `C${id}`, roaster: 'r', image: null, fill: null, category: 'open', decaf: false, urgency: null, origin: null, roastLevel: null, processing: null });
 const pool = (n: number) => Array.from({ length: n }, (_, i) => coffee(i));
 const R = (o: Partial<PickRules> = {}): PickRules => ({ ...DEFAULT_RULES, ...o });
 const ids = (b: ReturnType<typeof fillBoard>) => b.map((s) => (s.kind === 'coffee' ? s.coffeeId : s.kind));

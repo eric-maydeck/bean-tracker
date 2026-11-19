@@ -5,7 +5,7 @@ import type { PickCoffee, PickRules } from './types';
 
 const mk = (id: number, o: Partial<PickCoffee> = {}): PickCoffee => ({
   id, slug: `c${id}`, name: `Coffee ${String(id).padStart(2, '0')}`, roaster: 'R', image: null, fill: null,
-  category: 'open', decaf: false, urgency: id, ...o
+  category: 'open', decaf: false, urgency: id, origin: null, roastLevel: null, processing: null, ...o
 });
 // 1..22 open (22 > 20), 23 backlog (null urgency), 24 frozen, 25 frozen decaf, 26 open decaf
 const fixture: PickCoffee[] = [

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { sliceAt, wheelSlices } from './wheel';
 import type { PickCoffee } from './types';
 
-const coffee = (id: number): PickCoffee => ({ id, slug: `c${id}`, name: `C${id}`, roaster: 'r', image: null, fill: null, category: 'open', decaf: false, urgency: null });
+const coffee = (id: number): PickCoffee => ({ id, slug: `c${id}`, name: `C${id}`, roaster: 'r', image: null, fill: null, category: 'open', decaf: false, urgency: null, origin: null, roastLevel: null, processing: null });
 const pool = (n: number) => Array.from({ length: n }, (_, i) => coffee(i));
 const TAU = Math.PI * 2;
 

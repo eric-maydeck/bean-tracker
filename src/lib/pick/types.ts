@@ -32,6 +32,7 @@ export interface PickRules {
 export interface PickCoffee {
   id: number; slug: string; name: string; roaster: string;
   image: string | null; fill: string | null; category: Category; decaf: boolean; urgency: number | null;
+  origin: string | null; roastLevel: string | null; processing: string | null; // the result card and the out-for-today tip
 }
 
 export type Slot = { n: number; kind: 'coffee'; coffeeId: number }

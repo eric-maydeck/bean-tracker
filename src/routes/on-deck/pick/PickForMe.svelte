@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
+  import { labelTip } from '#lib/components/labelTip.ts';
+  import { originWithFlag } from '#lib/countryFlags.ts';
+  import { showToast } from '#lib/toast.svelte.ts';
   import { buildPool, resolveCrits } from '#lib/pick/pool.ts';
   import { boardMatches, fillBoard } from '#lib/pick/board.ts';
   import { DEFAULT_RULES, rulesDiffer } from '#lib/pick/rules.ts';
@@ -34,7 +37,6 @@
   let busy = $state(false);
   let rollAgain = $state(false);
   let announce = $state('');
-  let note = $state('');
   let pendingRules = $state<PickRules | null>(null);
   let wheel = $state<PickWheel>();
   let dlg: HTMLDialogElement;
@@ -114,6 +116,13 @@
   const result = $derived(today.result);
   const resultCoffee = $derived(result ? byId.get(result.coffeeId) : undefined);
   const outRow = $derived(today.out.flatMap((id) => byId.get(id) ?? []));
+  // The out-for-today badge's tip: who it is, a detail line as on the /coffees card, and why it is out.
+  const outTip = (c: PickCoffee) => ({
+    title: c.name,
+    lines: [c.roaster, [c.origin ? originWithFlag(c.origin) : null, c.processing].filter(Boolean).join(' · '), today.brewed.includes(c.id) ? 'Brewed today' : 'Discarded today'].filter(Boolean)
+  });
+  // Save is for a loaded profile whose rules have changed since.
+  const canSave = $derived(!!selected && !!profiles[selected] && rulesDiffer(profiles[selected], rules));
   const TAU = Math.PI * 2;
   const critFor = (n: number) => {
     const k = board[n - 1]?.kind;
@@ -213,7 +222,6 @@
   }
   const doDiscard = () => resultCoffee && (today = discard(today, resultCoffee.id));
   const openPage = () => resultCoffee && goto(`/coffees/${resultCoffee.slug}`);
-  const close = () => (today.result = null);
 
   function apply(next: PickRules, reset: boolean) {
     rules = next;
@@ -235,7 +243,7 @@
   }
   function onDialogClose() {
     pendingRules = null;
-    if (!chosen) { rev++; note = ''; selected = selBefore; } // Cancel or Escape: the controls go back to the unchanged rules
+    if (!chosen) { rev++; selected = selBefore; } // Cancel or Escape: the controls go back to the unchanged rules
   }
   function pickProfile(name: string) {
     if (!profiles[name]) return;
@@ -249,12 +257,17 @@
       await saveProfiles(admin, next);
       profiles = next;
       selected = sel;
-      note = msg;
+      showToast(msg);
       return true;
     } catch {
-      note = "Couldn't save.";
+      showToast("Couldn't save.");
       return false;
     }
+  }
+  function resetRules() {
+    selBefore = selected;
+    selected = '';
+    edit(DEFAULT_RULES);
   }
   const saveProfile = () => selected ? storeProfiles({ ...profiles, [selected]: $state.snapshot(rules) }, `Saved "${selected}".`) : Promise.resolve(false);
   function saveProfileAs(raw: string): Promise<boolean> {
@@ -270,18 +283,19 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && overlay && !dlg?.open && dismissOverlay()} />
 
 {#if ready}
-  <div class="form-field group-field">
-    <span>Game</span>
-    <div class="tab-group" role="group" aria-label="Game">
-      <button type="button" aria-pressed={game === 'wheel'} onclick={() => setGame('wheel')}>Wheel</button>
-      <button type="button" aria-pressed={game === 'd20'} onclick={() => setGame('d20')}>D20</button>
+  <div class="search-row">
+    <div class="form-field group-field">
+      <span>Game</span>
+      <div class="tab-group" role="group" aria-label="Game">
+        <button type="button" aria-pressed={game === 'wheel'} onclick={() => setGame('wheel')}>Wheel</button>
+        <button type="button" aria-pressed={game === 'd20'} onclick={() => setGame('d20')}>D20</button>
+      </div>
     </div>
+    {#key rev}
+    <PickRulesPanel {rules} {coffees} {eligible} names={Object.keys(profiles).sort((a, b) => a.localeCompare(b))} {selected} {canSave} open={today.panelOpen} locked={busy}
+      ontoggle={(o) => (today.panelOpen = o)} onchange={edit} onpick={pickProfile} onsave={saveProfile} onsaveas={saveProfileAs} ondelete={deleteProfile} onreset={resetRules} />
+    {/key}
   </div>
-
-  {#key rev}
-  <PickRulesPanel {rules} {coffees} {eligible} names={Object.keys(profiles).sort((a, b) => a.localeCompare(b))} {selected} open={today.panelOpen} {note} locked={busy}
-    ontoggle={(o) => (today.panelOpen = o)} onchange={edit} onpick={pickProfile} onsave={saveProfile} onsaveas={saveProfileAs} ondelete={deleteProfile} onreset={() => edit(DEFAULT_RULES)} />
-  {/key}
 
   <div class="stage" class:d20={game === 'd20'}>
     <section class="game" aria-label={game === 'd20' ? 'D20' : 'Wheel'}>
@@ -294,26 +308,26 @@
       {/if}
       {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
       {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
+    <div class="out-row">
+      <span class="label">Out for today:</span>
+      {#each outRow as c (c.id)}<span class="badge badge-neutral" tabindex="0" role="note" use:labelTip={outTip(c)}><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
+      <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
+    </div>
     </section>
 
     <div class="side">
       {#if inlineCard}<div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
           <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
-            onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={close} />
+            onbrew={brew} ondiscard={doDiscard} onopen={openPage} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
         {/if}
       </div>{/if}
-      {#if game === 'd20'}<PickBoard {board} {byId} success={successC} fail={failC} rolled={rolledN} />{/if}
     </div>
   </div>
+  {#if game === 'd20'}<PickBoard {board} {byId} success={successC} fail={failC} rolled={rolledN} />{/if}
 
-  <div class="out-row">
-    <span class="label">Out for today:</span>
-    {#each outRow as c (c.id)}<span class="badge badge-neutral"><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
-    <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
-  </div>
 
   {#if overlay && result && resultCoffee}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Escape is handled on the window) -->
@@ -347,8 +361,8 @@
   .stage { margin: var(--space-3) 0; display: grid; gap: var(--space-4); align-items: start; }
   .side { display: grid; gap: var(--space-3); min-width: 0; }
   .game { min-width: 0; }
-  .wheel-wrap { max-width: 560px; margin: 0 auto; }
-  .result { min-height: 7.5rem; }
+  .wheel-wrap { max-width: 400px; margin: 0 auto; }
+  .result { max-width: 24rem; }
   @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
   .pick-modal { position: relative; max-width: 28rem; }
   .pick-modal.success { box-shadow: 0 0 0 3px #ffe08a, 0 0 32px #d4a73a; }
@@ -362,7 +376,7 @@
   @media (prefers-reduced-motion: reduce) { .fx i { display: none; } .fx.fail { animation: none; } }
   /* the card sits beside the game on desktop: wheel left, or a narrower die area with the board under the card */
   @media (min-width: 641px) {
-    .stage { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); }
+    .stage { grid-template-columns: minmax(0, 400px) minmax(0, 1fr); }
     .stage.d20 { grid-template-columns: minmax(0, 620px) minmax(0, 1fr); }
   }
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: var(--space-3) 0; }
