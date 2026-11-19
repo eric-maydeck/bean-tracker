@@ -44,8 +44,7 @@
   let chosen = false; // A or B picked; otherwise a closed dialog is a cancel
   let rev = $state(0); // bumped on cancel so the panel re-reads `rules`
   let restored = false;
-  let phone = $state(false);
-  let shown = $state(false); // phone overlay: opens ~1.5s after a fresh result lands, never for a restored one
+  let shown = $state(false); // result overlay (every width): opens ~1.5s after a fresh result lands, never for a restored one
   let landing = $state(false); // between the landing and the overlay: the inline card waits too
   let modalEl: HTMLDivElement | undefined = $state();
   let prevFocus: HTMLElement | null = null;
@@ -83,15 +82,11 @@
       profiles = loadProfiles(false, null, null);
       ready = true;
     }
-    const mq = matchMedia('(max-width: 640px)');
-    const onMq = () => (phone = mq.matches);
-    onMq();
-    mq.addEventListener('change', onMq);
     const hide = () => flushToday();
     const vis = () => document.visibilityState === 'hidden' && flushToday();
     addEventListener('pagehide', hide);
     document.addEventListener('visibilitychange', vis);
-    return () => { mq.removeEventListener('change', onMq); clearTimeout(showTimer); removeEventListener('pagehide', hide); document.removeEventListener('visibilitychange', vis); };
+    return () => { clearTimeout(showTimer); removeEventListener('pagehide', hide); document.removeEventListener('visibilitychange', vis); };
   });
 
   // Coming back: the URL's game wins; with none, today's last game returns. After that the URL drives `today.game`.
@@ -153,8 +148,8 @@
     return k === 'success' || k === 'fail' ? k : null;
   };
   // Not while the Rules modal is open: one Escape then closes only the top layer.
-  const overlay = $derived(phone && shown && !!result && !panelOpen);
-  const inlineCard = $derived(!(phone && (landing || overlay)));
+  const overlay = $derived(shown && !!result && !panelOpen);
+  const inlineCard = $derived(!(landing || overlay)); // the card waits for the pop-up and returns when it closes
   // The highlighted row must still match the board (it is redrawn when a coffee goes out or the rules change).
   const rolledN = $derived.by(() => {
     const n = game === 'd20' ? result?.n : undefined;
@@ -342,14 +337,17 @@
     </section>
 
     <div class="side">
-      {#if inlineCard}<div class="result card" class:empty={!(result && resultCoffee)}>
+      {#if inlineCard}
+        {#if result && resultCoffee}<h3 class="last">{game === 'd20' ? 'Your last roll' : 'Your last spin'}</h3>{/if}
+        <div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
           <PickCard wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
             onbrew={brew} ondiscard={doDiscard} onopen={openPage} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
         {/if}
-      </div>{/if}
+        </div>
+      {/if}
     </div>
 
     <!-- after the card in the DOM and on screen when stacked; beside, the grid puts it directly below the game -->
@@ -399,13 +397,14 @@
   .stage { --pick-h: 360px; margin: 0; max-width: 674px; display: grid; gap: 1.25rem var(--space-6); align-items: start; }
   .game { min-width: 0; max-width: 620px; display: flex; flex-direction: column; }
   .out-row { max-width: 620px; }
-  .side { display: flex; min-width: 0; }
+  .side { display: flex; flex-direction: column; min-width: 0; }
+  .last { margin: 0 0 var(--space-2); font-size: 1rem; } /* beside the game: level with the tray's top, the card under it */
   .wheel-wrap { width: 100%; max-width: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); margin: 0 auto; } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
   .result { display: flex; align-self: start; width: 100%; max-width: 674px; } /* .card sizes by its container, so the width is explicit */
   @media (max-width: 720px) { .result { max-width: 480px; } } /* the vertical card: the /coffees card's width on a phone (its thumbnail the full content width) */
   .result:hover { box-shadow: var(--shadow); transform: none; } /* not clickable: no .card hover lift */
   @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
-  /* the phone overlay hugs its card: little padding around it */
+  /* the result pop-up (every width) hugs its card: little padding around it */
   .pick-modal { position: relative; width: auto; max-width: 100%; padding: var(--space-3); }
   .pick-modal :global(.pick-card) { margin: 0 auto; }
   .rolled { margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
@@ -415,7 +414,8 @@
   .rolled.success, .rolled.fail { position: relative; overflow: hidden; padding: var(--space-3) var(--space-2); border-radius: var(--radius); }
   .rolled.success { color: #ffe08a; background: radial-gradient(ellipse 70% 80% at 50% 62%, rgba(255, 208, 77, 0.55), transparent 70%), #2a1d05; box-shadow: 0 0 22px rgba(255, 208, 77, 0.45); }
   .rolled.success b { color: transparent; background: linear-gradient(100deg, #b8860b 0%, #ffe08a 35%, #fff6d0 50%, #ffd04d 65%, #b8860b 100%) 40% 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 8px rgba(255, 208, 77, 0.7)); animation: shimmer 2.4s linear infinite; }
-  .rolled.success::before, .rolled.success::after { content: '\2726'; position: absolute; color: #fff6d0; text-shadow: 0 0 6px #ffd04d; animation: twinkle 1.6s ease-in-out infinite; }
+  @media (forced-colors: active) { .rolled.success b { color: CanvasText; background: none; filter: none; } .rolled.fail b { color: CanvasText; text-shadow: none; } } /* the gold is a background clip: system colours instead */
+  .rolled.success::before, .rolled.success::after { content: '\2726'; content: '\2726' / ''; position: absolute; color: #fff6d0; text-shadow: 0 0 6px #ffd04d; animation: twinkle 1.6s ease-in-out infinite; }
   .rolled.success::before { top: 22%; left: 20%; font-size: 1.1rem; }
   .rolled.success::after { bottom: 12%; right: 18%; font-size: 0.8rem; animation-delay: 0.8s; }
   .rolled.fail { color: #f3b4b4; background: radial-gradient(ellipse 70% 80% at 50% 62%, rgba(208, 28, 28, 0.5), transparent 70%), #150303; box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.85), 0 0 18px rgba(122, 10, 10, 0.6); animation: shake 0.5s 1; }
