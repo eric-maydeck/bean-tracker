@@ -1,6 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { BAG_BOARDS, BOARDS, LIKE_BOARDS, MON, lowFirst, type Board, type Rank, type Tab } from '#lib/insightsUrl.ts';
-import { DESCRIPTION_MAX, fitList, plural, type Preview } from '#lib/linkPreview.ts';
+import { DESCRIPTION_MAX, fitList, plural, type Card, type Preview, type Thumb } from '#lib/linkPreview.ts';
 import { originWithFlag } from '#lib/countryFlags.ts';
 import { formatGrams } from '#lib/grams.ts';
 import { clock12 } from '#lib/hours.ts';
@@ -111,6 +111,14 @@ function ranked(header: string, rows: { value: string; name: string }[], plain =
   const items = rows.slice(0, 5).map((r, i) => `${(!plain && MEDAL[i]) || `${i + 1}.`} ${r.value} · ${r.name}`);
   return prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length);
 }
+// The page card (server/recaps/card.ts): the view's name big, "Stats · period" under it, and the thumbnail. Text is capped at 80 (verifyCard).
+const clip = (s: string) => (s.length > 80 ? s.slice(0, 79) + '…' : s);
+const statsCard = (big: string, period: string, thumb: Thumb): Card => ({ big, label: `Stats · ${period}`, thumb });
+// Top 5 bars, as long as value ÷ largest (by size, so a negative "vs like coffees" gap still draws).
+function bars(rows: { value: number; text: string; name: string }[], plain: boolean): Thumb {
+  const top = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9);
+  return { kind: 'bars', rows: rows.slice(0, 5).map((r) => [clip(r.name), clip(r.text), Math.abs(r.value) / top]), ...(plain && { plain }) };
+}
 const holderRow = (h: Holder) => [h.sub, h.label].filter(Boolean).join(' · ');
 
 export function insightsPreview(v: PreviewInput): Preview {
@@ -124,24 +132,30 @@ export function insightsPreview(v: PreviewInput): Preview {
     const whole = (v.rank === 'spend' || v.rank === 'ppg') && wholeUsd(rows.map((r) => r.value));
     const lowest = !!v.low?.includes(board);
     const header = `${v.rank === 'rating' ? 'Avg rating' : RANK_LABEL[v.rank]} · ${v.period}${lowest ? ' · lowest first' : ''}`;
+    const items = rows.map((r) => ({ value: boardValue(r.value, v.rank, v.perPerson, whole), name: board === 'origins' ? originWithFlag(r.label) : r.label }));
     return {
       title: `Stats: ${BOARD_TITLE[board]}`,
-      description: ranked(header, rows.map((r) => ({ value: boardValue(r.value, v.rank, v.perPerson, whole), name: board === 'origins' ? originWithFlag(r.label) : r.label })), lowest)
+      description: ranked(header, items, lowest),
+      // Flags are emoji, which the card font can't draw: the thumbnail names the country alone.
+      card: statsCard(BOARD_TITLE[board], v.period, bars(rows.map((r, i) => ({ value: r.value, text: items[i].value, name: r.label })), lowest))
     };
   }
   const rec = v.records;
   if (rec && chart === 'records-top-coffees' && rec.topCoffees.length) {
-    return { title: 'Stats: Top coffees', description: ranked(`Avg rating · ${v.period}`, rec.topCoffees.map((c) => ({ value: c.mean.toFixed(1), name: holderRow(c.holder) }))) };
+    const items = rec.topCoffees.map((c) => ({ value: c.mean.toFixed(1), name: holderRow(c.holder) }));
+    return { title: 'Stats: Top coffees', description: ranked(`Avg rating · ${v.period}`, items), card: statsCard('Top coffees', v.period, bars(items.map((x, i) => ({ value: rec.topCoffees[i].mean, text: x.value, name: x.name })), false)) };
   }
   // Roaster and coffee only: the brewer and filter would leave room for 3 rows, not 5 (user, 2026-10-25).
   if (rec && chart === 'records-top-brews' && rec.topBrews.length) {
-    return { title: 'Stats: Top brews', description: ranked(`Rating · ${v.period}`, rec.topBrews.map((b) => ({ value: b.rating.toFixed(1), name: [b.roaster, b.holder.label].filter(Boolean).join(' · ') }))) };
+    const items = rec.topBrews.map((b) => ({ value: b.rating.toFixed(1), name: [b.roaster, b.holder.label].filter(Boolean).join(' · ') }));
+    return { title: 'Stats: Top brews', description: ranked(`Rating · ${v.period}`, items), card: statsCard('Top brews', v.period, bars(items.map((x, i) => ({ value: rec.topBrews[i].rating, text: x.value, name: x.name })), false)) };
   }
   const section = rec?.sections.find((s) => chart === `records-${s.key}`);
   if (section?.tiles.length) {
     const prefix = `${v.period}\n`;
     const items = section.tiles.map((t) => `${t.label} · ${recordValue(t, t.fmt)}`);
-    return { title: `Stats: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length) };
+    const grid: Thumb = { kind: 'grid', tiles: section.tiles.slice(0, 6).map((t) => [clip(t.label), clip(recordValue(t, t.fmt))]) };
+    return { title: `Stats: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length), card: statsCard(RECORD_TITLE[section.key], v.period, grid) };
   }
   const tile = rec?.sections.flatMap((s) => s.tiles).find((t) => chart === recordAnchor(t.key));
   if (tile) {
@@ -150,7 +164,9 @@ export function insightsPreview(v: PreviewInput): Preview {
       v.period, recordValue(tile, tile.fmt), isDateHolder(tile.holder) ? tile.holder.label : holderRow(tile.holder),
       !isDateHolder(tile.holder) && tile.holder.date, tile.ties.length > 0 && `Tied with ${tile.ties.length} more`
     ].filter(Boolean) as string[];
-    return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false) };
+    const date = isDateHolder(tile.holder);
+    const thumb: Thumb = { kind: 'tile', value: clip(recordValue(tile, tile.fmt)), holder: clip(date ? holderName(tile.holder) : holderRow(tile.holder)), ...(!date && tile.holder.date && { date: tile.holder.date }) };
+    return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false), card: statsCard(tile.label, v.period, thumb) };
   }
   return {
     title: `Stats: ${v.tabLabel}`,

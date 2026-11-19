@@ -8,6 +8,7 @@ import karlaExt from './fonts/karla-latin-ext-700-normal.woff?inline';
 import loraLatin from './fonts/lora-latin-600-normal.woff?inline';
 import loraExt from './fonts/lora-latin-ext-600-normal.woff?inline';
 import { pourShapes, type ChartTimeline } from '#lib/pourShapes.ts';
+import type { Thumb } from '#lib/linkPreview.ts';
 import type { Tone } from './types';
 
 export const CARD = { width: 1200, height: 630 };
@@ -61,24 +62,57 @@ function chart(t: ChartTimeline) {
   return node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { display: 'flex', flexShrink: 0, marginBottom: 24 }, children });
 }
 
+// A Stats view's thumbnail (the lower part of a page card, THUMB_H tall): app light-theme colours, nothing under 22px, no hairlines.
+// Bars are --series-11 (#c06408) on the page background; medals are the gold/silver/bronze of the text preview's emoji.
+const THUMB_H = 290;
+const BAR = '#c06408', SURFACE = '#ffffff', MEDAL_FILL = ['#f5c518', '#cfc9c1', '#d79a62'];
+const clipLine = { display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const karla = { fontFamily: 'Karla', fontWeight: 700 };
+function thumbnail(t: Thumb) {
+  const box = (children: unknown) => el('div', { display: 'flex', flexDirection: 'column', height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, children);
+  if (t.kind === 'bars') {
+    return box(t.rows.map(([label, value, frac], i) => el('div', { display: 'flex', alignItems: 'center', height: THUMB_H / 5, ...karla, fontSize: 30 }, [
+      el('div', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 22, marginRight: 16, flexShrink: 0, fontSize: 26, background: !t.plain && i < 3 ? MEDAL_FILL[i] : 'transparent' }, String(i + 1)),
+      el('div', { ...clipLine, width: 380, flexShrink: 0 }, label),
+      el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, background: BAR, borderRadius: 6 })),
+      el('div', { ...clipLine, width: 140, flexShrink: 0, textAlign: 'right' }, value)
+    ])));
+  }
+  if (t.kind === 'tile') {
+    const n = [...t.value].length;
+    return box([
+      el('div', { ...clipLine, fontFamily: 'Lora', fontWeight: 600, fontSize: n <= 8 ? 150 : n <= 14 ? 108 : 72, lineHeight: 1.1 }, t.value),
+      el('div', { ...clipLine, ...karla, fontSize: 44, marginTop: 8 }, t.holder),
+      ...(t.date ? [el('div', { ...clipLine, ...karla, fontSize: 34, marginTop: 6, opacity: 0.85 }, t.date)] : [])
+    ]);
+  }
+  // Up to 6 tiles, 3 across: the label (2 lines at most) over its value.
+  const cell = (label: string, value: string) => el('div', { display: 'flex', flexDirection: 'column', justifyContent: 'center', width: 336, height: 133, boxSizing: 'border-box', padding: '0 24px', background: SURFACE, borderRadius: 16 }, [
+    el('div', { display: 'block', lineClamp: 2, textOverflow: 'ellipsis', ...karla, fontSize: 26, lineHeight: 1.1 }, label),
+    el('div', { ...clipLine, fontFamily: 'Lora', fontWeight: 600, fontSize: [...value].length <= 8 ? 52 : 40, lineHeight: 1.15, marginTop: 6 }, value)
+  ]);
+  return el('div', { display: 'flex', flexWrap: 'wrap', gap: 24, width: WIDTH, height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, t.tiles.map(([l, v]) => cell(l, v)));
+}
+
 // A page card (a page's link-preview) is always light, so it takes no tone; a recap card takes its tone.
 type CardIn = { big: string; label: string; year: number; dark?: false; cover?: true } &
-  ({ tone: Tone; page?: undefined; timeline?: undefined } | { page: true; tone?: undefined; timeline?: ChartTimeline });
+  ({ tone: Tone; page?: undefined; timeline?: undefined; thumb?: undefined } | { page: true; tone?: undefined; timeline?: ChartTimeline; thumb?: Thumb });
 export async function cardSvg(c: CardIn): Promise<string> {
   const color = c.page ? ESPRESSO : fg(c.tone);
   // "Roaster · Coffee" (a bag): two lines, the roaster smaller above the coffee name. `page` (a page's link-preview card) keeps big as one text, with a larger label and footer.
   const [rn, cn] = !c.page && c.big.includes(' · ') ? c.big.split(' · ', 2) : [null, c.big];
   // A page card keeps fixed sizes (cards side by side look alike): one headline size, a smaller step only for very long text.
-  const bigSize = fit(cn, c.page ? ([...cn].length <= 40 ? 96 : 72) : cardFontSize(rn ? (rn.length > cn.length ? rn : cn) : cn, 'big'));
+  const bigSize = fit(cn, c.thumb ? 76 : c.page ? ([...cn].length <= 40 ? 96 : 72) : cardFontSize(rn ? (rn.length > cn.length ? rn : cn) : cn, 'big'));
   const bigStyle = { fontFamily: 'Lora', fontWeight: 600, lineHeight: 1.05, display: 'block', lineClamp: 2 };
-  const lblSize = fit(c.label, c.page ? 52 : cardFontSize(c.label, 'label'));
+  const lblSize = fit(c.label, c.thumb ? 38 : c.page ? 52 : cardFontSize(c.label, 'label'));
   const tree = el('div', { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: CARD.width, height: CARD.height, padding: PAD, boxSizing: 'border-box', background: c.page ? CREAM : BG[c.tone], color }, [
-    el('div', { display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center' }, [
+    el('div', { display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: c.thumb ? 'flex-start' : 'center' }, [
       ...(rn ? [el('div', { ...bigStyle, fontSize: Math.round(bigSize * 0.55), opacity: 0.85, marginBottom: 12 }, glue(rn))] : []),
-      el('div', { ...bigStyle, fontSize: bigSize }, glue(cn)),
-      el('div', { fontFamily: 'Karla', fontWeight: 700, fontSize: lblSize, lineHeight: 1.2, marginTop: 20, display: 'block', lineClamp: 2, textOverflow: 'ellipsis' }, glue(c.label))
+      el('div', { ...bigStyle, fontSize: bigSize, ...(c.thumb && { lineClamp: 1 }) }, glue(cn)),
+      el('div', { fontFamily: 'Karla', fontWeight: 700, fontSize: lblSize, lineHeight: 1.2, marginTop: c.thumb ? 8 : 20, display: 'block', lineClamp: c.thumb ? 1 : 2, textOverflow: 'ellipsis' }, glue(c.label))
     ]),
     ...(c.page && c.timeline?.pours.length ? [chart(c.timeline)] : []),
+    ...(c.page && c.thumb ? [thumbnail(c.thumb)] : []),
     el('div', { display: 'flex', justifyContent: 'space-between', fontFamily: 'Karla', fontWeight: 700, fontSize: c.page ? 40 : 30, opacity: 0.85 }, [
       el('div', {}, c.cover ? '' : `${c.year} in coffee`), el('div', {}, 'Bean Tracker')
     ])

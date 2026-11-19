@@ -36,3 +36,37 @@ describe('verifyCard with a timeline', () => {
     expect(check(['A', 'B', t])).toBeNull();
   });
 });
+
+describe('verifyCard with a thumbnail', () => {
+  const bars = { kind: 'bars' as const, rows: [['Kenya', '8.1', 1], ['Peru', '7.0', 0.5]] as [string, string, number][] };
+  const thumbs = [bars, { ...bars, plain: true }, { kind: 'tile' as const, value: '9.2', holder: 'Lab', date: '2026-08-01' }, { kind: 'tile' as const, value: '9.2', holder: 'Lab' }, { kind: 'grid' as const, tiles: [['Best bag', '9.2']] as [string, string][] }];
+  it.each(thumbs.map((t, i) => [`${t.kind} #${i}`, t] as const))('round-trips %s', (_n, thumb) => {
+    const html = signPreviewUrls(`x/preview.png?c=${encodeCard({ big: 'A', label: 'B', thumb })}"`, S);
+    const [, c, s] = html.match(/c=([\w-]+)&amp;s=([\w-]+)/)!;
+    expect(verifyCard(c, s, S)).toEqual({ big: 'A', label: 'B', thumb });
+  });
+  it('keeps a timeline beside a thumbnail', () => {
+    const timeline = { pours: [{ startS: 0, durationS: 10, grams: 50, kind: 'bloom' as const }], swirls: [], totalS: 90, windows: [] };
+    const c = encodeCard({ big: 'A', label: 'B', timeline, thumb: bars });
+    expect(verifyCard(c, sign(c), S)).toMatchObject({ timeline: { totalS: 90 }, thumb: bars });
+  });
+  const long = 'x'.repeat(81);
+  it.each([
+    ['unknown kind', ['pie', []]],
+    ['not an array', 'bars'],
+    ['no rows', ['bars', [], 0]],
+    ['too many rows', ['bars', Array.from({ length: 6 }, () => ['a', '1', 0.5]), 0]],
+    ['fraction over 1', ['bars', [['a', '1', 1.5]], 0]],
+    ['negative fraction', ['bars', [['a', '1', -0.1]], 0]],
+    ['long label', ['bars', [[long, '1', 0.5]], 0]],
+    ['non-string value', ['bars', [['a', 1, 0.5]], 0]],
+    ['short row', ['bars', [['a', '1']], 0]],
+    ['long tile holder', ['tile', '1', long, '']],
+    ['tile without date slot', ['tile', '1', 'a']],
+    ['too many tiles', ['grid', Array.from({ length: 7 }, () => ['a', '1'])]],
+    ['long tile label', ['grid', [[long, '1']]]],
+    ['bad tile', ['grid', [['a']]]]
+  ])('rejects %s', (_n, th) => {
+    expect(check(['A', 'B', null, th])).toBeNull();
+  });
+});
