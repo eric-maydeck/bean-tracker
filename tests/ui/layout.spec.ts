@@ -6071,7 +6071,7 @@ export const STATES: State[] = [
       // The /coffees card's rows: roaster, origin, roast level, cost.
       await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
       // Every desktop width: the card beside the game or under it, never squeezed (no sideways scroll, no clipped button text, as tall as its thumbnail when horizontal).
-      for (const width of [800, 960, 1100, 1240, 1250, 1278, 1280, 1416]) {
+      for (const width of [800, 960, 1100, 1240, 1250, 1263, 1280, 1416]) {
         await page.setViewportSize({ width, height: 900 });
         await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toBeVisible();
         const m = await page.evaluate(() => ({
@@ -6081,12 +6081,15 @@ export const STATES: State[] = [
           thumb: document.querySelector('.result .card-thumb')?.getBoundingClientRect().height ?? 0,
           cardH: document.querySelector('.result')!.getBoundingClientRect().height,
           horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid' || (document.querySelector('.pick-card')!.classList.contains('noimg') && document.querySelector('.result')!.getBoundingClientRect().width >= 674),
-          beside: document.querySelector('.result')!.getBoundingClientRect().left >= document.querySelector('.game')!.getBoundingClientRect().right
+          beside: document.querySelector('.result')!.getBoundingClientRect().left >= document.querySelector('.game')!.getBoundingClientRect().right,
+          outAfterCard: document.querySelector('.out-row')!.getBoundingClientRect().top >= document.querySelector('.result')!.getBoundingClientRect().bottom - 1
         }));
         expect(m.scroll, `no sideways scroll at ${width}`).toBeLessThanOrEqual(0);
         expect(m.clipped, `no clipped button text at ${width}`).toBe(0);
         expect(m.cardW, `card not squeezed at ${width}`).toBeGreaterThan(400);
-        if (width >= 1280) expect(m.beside, `the card sits beside the game at ${width}`).toBe(true);
+        if (width >= 1263) expect(m.beside, `the card sits beside the game at ${width} (1280 with a 15px scrollbar is still beside)`).toBe(true);
+        else expect(m.beside, `the card sits under the game at ${width}`).toBe(false);
+        if (!m.beside) expect(m.outAfterCard, `stacked: Out for today after the card, as in the DOM (tab order = visual order) at ${width}`).toBe(true);
         if (m.beside) expect(m.horizontal, `beside the game means the horizontal card at ${width}`).toBe(true);
         if (!m.beside) expect(m.thumb, `thumbnail within the card at ${width}`).toBeLessThanOrEqual(m.horizontal ? 327 : 281);
         if (m.horizontal && m.thumb) expect(Math.abs(m.cardH - 360), `card as tall as the tray at ${width}`).toBeLessThanOrEqual(2);
