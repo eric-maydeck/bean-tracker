@@ -13,7 +13,7 @@
   {#each [board.slice(0, 10), board.slice(10)] as half, h (h)}
     <table class="data-table board" aria-label={h ? 'D20 board, 11 to 20' : 'D20 board, 1 to 10'}>
       <colgroup><col class="c-n" /><col class="c-name" /><col class="c-roaster" /></colgroup>
-      <thead><tr><th scope="col">#</th><th scope="col">Coffee</th><th scope="col">Roaster</th></tr></thead>
+      <thead><tr><th scope="col"><span class="hd">#</span></th><th scope="col"><span class="hd">Coffee</span></th><th scope="col"><span class="hd">Roaster</span></th></tr></thead>
       <tbody>
         {#each half as s (s.n)}
           <tr class={s.kind} class:rolled={rolled === s.n} aria-label={`${s.n}: ${label(s)}`}>
@@ -30,10 +30,13 @@
 <style>
   .halves-wrap { container-type: inline-size; }
   .halves { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
-  .halves > :global(.board + .board thead) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); } /* stacked: one table, one header (still announced) */
+  /* stacked: one table, one visible header; the second keeps its column headers for a screen reader (sr-only text in a zero-height row) */
+  .halves > :global(.board + .board th) { padding: 0; border: 0; height: 0; line-height: 0; }
+  .halves > :global(.board + .board .hd) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   @container (min-width: 900px) {
     .halves { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-5); }
-    .halves > :global(.board + .board thead) { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+    .halves > :global(.board + .board th) { padding: 0.2rem var(--space-2); border-bottom: 1px solid var(--color-border); height: auto; line-height: inherit; }
+    .halves > :global(.board + .board .hd) { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   }
   .board { font-size: 0.85rem; table-layout: fixed; }
   .board :global(th), .board :global(td) { padding: 0.2rem var(--space-2); }

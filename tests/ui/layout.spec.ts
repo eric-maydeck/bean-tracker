@@ -5982,7 +5982,7 @@ export const STATES: State[] = [
       } else {
         expect(Math.abs(t2.x - t1.x), 'one column').toBeLessThanOrEqual(1); // stacked: one table, 1 to 20
         expect(t2.y, 'second half under the first').toBeGreaterThan(t1.y + t1.height - 1);
-        expect((await page.locator('table.board').nth(1).locator('thead').boundingBox())!.height, 'second header sr-only').toBeLessThanOrEqual(2);
+        await expect(page.getByRole('table', { name: 'D20 board, 11 to 20' }).getByRole('columnheader'), 'second header stays in the accessibility tree').toHaveCount(3);
         await expectOutRowOnScreen(page);
       }
       await expect(page.locator('.pick-card')).toBeVisible();
@@ -6054,6 +6054,23 @@ export const STATES: State[] = [
       await expectOutRowOnScreen(page);
       // The /coffees card's rows: roaster, origin, roast level, cost.
       await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
+      // Every desktop width: the card beside the game or under it, never squeezed (no sideways scroll, no clipped button text, as tall as its thumbnail when horizontal).
+      for (const width of [800, 960, 1100, 1280, 1416]) {
+        await page.setViewportSize({ width, height: 900 });
+        await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toBeVisible();
+        const m = await page.evaluate(() => ({
+          scroll: document.documentElement.scrollWidth - innerWidth,
+          clipped: [...document.querySelectorAll<HTMLElement>('.result .buttons .button')].filter((b) => b.scrollWidth > b.clientWidth).length,
+          cardW: document.querySelector('.result')!.getBoundingClientRect().width,
+          thumb: document.querySelector('.result .card-thumb')?.getBoundingClientRect().height ?? 0,
+          cardH: document.querySelector('.result')!.getBoundingClientRect().height,
+          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid'
+        }));
+        expect(m.scroll, `no sideways scroll at ${width}`).toBeLessThanOrEqual(0);
+        expect(m.clipped, `no clipped button text at ${width}`).toBe(0);
+        expect(m.cardW, `card not squeezed at ${width}`).toBeGreaterThan(400);
+        if (m.horizontal && m.thumb) expect(m.cardH, `card as tall as its thumbnail + padding at ${width}`).toBeLessThanOrEqual(m.thumb + 2 * 16 + 2 + 3);
+      }
     }
   },
   {

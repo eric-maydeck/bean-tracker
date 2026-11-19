@@ -19,8 +19,8 @@
   const info = $derived(coffee.info);
 </script>
 
-<article class="pick-card" class:wide aria-label="Pick result">
-  {#if coffee.image}<img class="card-thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{:else if wide}<div class="card-thumb ph" style:background-color={coffee.fill}></div>{/if}
+<article class="pick-card" class:wide class:noimg={!coffee.image} aria-label="Pick result">
+  {#if coffee.image}<img class="card-thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{/if}
   <div class="rest">
   <div class="card-body">
     <!-- one line: the name truncates, a badge never wraps it or changes the height -->
@@ -72,14 +72,15 @@
   .rest { display: flex; flex-direction: column; flex: 1; min-width: 0; }
   /* horizontal: the thumbnail left (the card is as tall as it), the fields and buttons right */
   .pick-card.wide { width: 100%; }
-  .ph { display: none; } /* the no-image placeholder keeps the horizontal card's shape: desktop only */
-  @media (min-width: 641px) {
-    .pick-card.wide { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: var(--space-4); }
+  /* the card's own width decides (it sits beside the game or under it): thumbnail left once there is room for the fields beside it,
+     the thumbnail shrinking with the column (never over 260px) so the card stays as tall as it; below that, the vertical card */
+  @container card (min-width: 540px) {
+    .pick-card.wide { display: grid; grid-template-columns: minmax(0, min(260px, 46%)) minmax(0, 1fr); gap: var(--space-4); }
+    .pick-card.wide.noimg { display: block; } /* no image: the fields alone, no empty block */
     .wide .card-thumb { margin: 0; }
-    .ph { display: block; background: var(--color-bg); }
     .wide .card-body { margin-bottom: var(--space-2); }
     .wide .card-body :global(p) { margin: 0 0 2px; }
-    .wide .name-row { min-height: 0; }
+    .wide .name-row { min-height: 1.5rem; } /* a badge appearing never changes the height */
   }
   .card-body { margin-bottom: var(--space-3); }
   .name-row { display: flex; align-items: center; gap: var(--space-2); min-height: 1.9rem; }

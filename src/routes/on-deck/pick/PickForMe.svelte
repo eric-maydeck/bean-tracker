@@ -49,6 +49,14 @@
   let landing = $state(false); // between the landing and the overlay: the inline card waits too
   let modalEl: HTMLDivElement | undefined = $state();
   let prevFocus: HTMLElement | null = null;
+  // The wheel is as big as leaves Out for today on screen below it (never over 460px or under 320px): measured from the stage's top.
+  let vh = $state(900);
+  let stageEl: HTMLElement | undefined = $state();
+  let stageTop = $state(340);
+  const OUT_ROW_H = 36; // ponytail: the out row's button height; it wraps to more lines only with many out coffees (then it scrolls)
+  const wheelMax = $derived(Math.round(Math.max(320, Math.min(460, vh - stageTop - OUT_ROW_H - 4))));
+  const measure = () => { vh = innerHeight; if (stageEl) stageTop = stageEl.getBoundingClientRect().top + scrollY; };
+  $effect(() => { game; ready; tick().then(measure); });
   let showTimer: ReturnType<typeof setTimeout> | undefined;
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const CONFETTI = Array.from({ length: 28 }, (_, i) => ({ left: (i * 37) % 100, delay: (i % 7) * 0.12, dur: 1.6 + (i % 5) * 0.3, color: ['#ffe08a', '#ffd04d', '#fff6d0', '#c9952c'][i % 4] }));
@@ -288,7 +296,7 @@
   }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && overlay && !dlg?.open && dismissOverlay()} />
+<svelte:window onresize={measure} onkeydown={(e) => e.key === 'Escape' && overlay && !dlg?.open && dismissOverlay()} />
 
 {#if ready}
   <div class="search-row game-row">
@@ -305,10 +313,10 @@
     {/key}
   </div>
 
-  <div class="stage" class:d20={game === 'd20'}>
+  <div class="stage-box"><div class="stage" class:d20={game === 'd20'} bind:this={stageEl}>
     <section class="game" aria-label={game === 'd20' ? 'D20' : 'Wheel'}>
       {#if game === 'wheel'}
-        <div class="wheel-wrap">
+        <div class="wheel-wrap" style:--wheel-max="{wheelMax}px">
           <PickWheel bind:this={wheel} {slices} {names} angle={today.wheelAngle} disabled={empty} onspin={spin} onresult={wheelResult} />
         </div>
       {:else}
@@ -333,7 +341,7 @@
         {/if}
       </div>{/if}
     </div>
-  </div>
+  </div></div>
   {#if game === 'd20'}<PickBoard {board} {byId} success={successC} fail={failC} rolled={rolledN} />{/if}
 
 
@@ -366,11 +374,10 @@
 {/if}
 
 <style>
-  .stage { margin: var(--space-3) 0; display: grid; gap: var(--space-4); align-items: start; }
-  .stage.d20 { margin-bottom: 0; } /* the board follows Out for today */
+  .stage { margin: 0; display: grid; gap: var(--space-4); align-items: start; }
   .side { display: flex; min-width: 0; }
   .game { min-width: 0; display: flex; flex-direction: column; }
-  .wheel-wrap { width: 100%; max-width: clamp(320px, 100vh - 420px, 460px); margin: 0 auto; } /* Out for today stays on screen below it (1280x800: 380px) */
+  .wheel-wrap { width: 100%; max-width: var(--wheel-max, 460px); margin: 0 auto; }
   .result { display: flex; align-self: start; width: 100%; max-width: 620px; } /* .card sizes by its container, so the width is explicit */
   .result:hover { box-shadow: var(--shadow); transform: none; } /* not clickable: no .card hover lift */
   @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
@@ -385,23 +392,21 @@
   @keyframes fall { to { transform: translateY(105vh) rotate(540deg); opacity: 0; } }
   @keyframes fade-in { from { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .fx i { display: none; } .fx.fail { animation: none; } }
-  /* the same layout for both games: the game left, the card right with a real gutter; both columns as tall as the taller one */
-  @media (min-width: 641px) {
+  /* the same layout for both games: the card beside the game (with a real gutter) only where it gets at least ~560px next to the
+     620px game; narrower, it goes under the game (still horizontal if it fits: PickCard's own container query) */
+  .stage-box { container-type: inline-size; margin-bottom: var(--space-3); }
+  @container (min-width: 1204px) {
     .stage { grid-template-columns: minmax(0, 620px) minmax(0, 1fr); column-gap: var(--space-6); align-items: start; }
   }
   /* directly below the game */
-  .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: var(--space-3) 0; }
+  .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: 0; }
   .out-row .button { margin: 0; padding: 0.35rem 0.5rem; min-height: 36px; font-size: 0.85rem; }
   @media (max-width: 640px) { .out-row .button { min-height: 44px; } }
   .out-row .label { font-weight: 600; }
   .out-row .badge { white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
-  /* a short desktop window (1280x800): the Game label beside its buttons and no extra gaps, so Out for today stays on screen below the D20 */
-  @media (min-width: 641px) and (max-height: 860px) {
-    .game-row .group-field { flex-direction: row; align-items: center; gap: var(--space-2); }
-    .game-row { margin-bottom: var(--space-2); }
-    .stage { margin-top: 0; }
-    .out-row { margin-top: 0; }
-  }
+  /* compact: the Game label beside its buttons, tight gaps, so Out for today stays on screen */
+  .game-row .group-field { flex-direction: row; align-items: center; gap: var(--space-2); }
+  .game-row { margin-bottom: var(--space-2); }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }
   .rules-dialog h2 { padding: 0; border: 0; margin: 0 0 var(--space-2); } /* not the section heading's divider */
   .dlg-buttons { display: grid; gap: var(--space-2); }
