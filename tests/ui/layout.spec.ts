@@ -6055,7 +6055,7 @@ export const STATES: State[] = [
       // The /coffees card's rows: roaster, origin, roast level, cost.
       await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
       // Every desktop width: the card beside the game or under it, never squeezed (no sideways scroll, no clipped button text, as tall as its thumbnail when horizontal).
-      for (const width of [800, 960, 1100, 1280, 1416]) {
+      for (const width of [800, 960, 1100, 1240, 1250, 1280, 1416]) {
         await page.setViewportSize({ width, height: 900 });
         await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toBeVisible();
         const m = await page.evaluate(() => ({
@@ -6064,11 +6064,14 @@ export const STATES: State[] = [
           cardW: document.querySelector('.result')!.getBoundingClientRect().width,
           thumb: document.querySelector('.result .card-thumb')?.getBoundingClientRect().height ?? 0,
           cardH: document.querySelector('.result')!.getBoundingClientRect().height,
-          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid'
+          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid',
+          beside: document.querySelector('.result')!.getBoundingClientRect().left >= document.querySelector('.game')!.getBoundingClientRect().right
         }));
         expect(m.scroll, `no sideways scroll at ${width}`).toBeLessThanOrEqual(0);
         expect(m.clipped, `no clipped button text at ${width}`).toBe(0);
         expect(m.cardW, `card not squeezed at ${width}`).toBeGreaterThan(400);
+        if (m.beside) expect(m.horizontal, `beside the game means the horizontal card at ${width}`).toBe(true);
+        if (!m.beside) expect(m.thumb, `vertical thumbnail capped at ${width}`).toBeLessThanOrEqual(m.horizontal ? 261 : 281);
         if (m.horizontal && m.thumb) expect(m.cardH, `card as tall as its thumbnail + padding at ${width}`).toBeLessThanOrEqual(m.thumb + 2 * 16 + 2 + 3);
       }
     }

@@ -52,11 +52,24 @@
   // The wheel is as big as leaves Out for today on screen below it (never over 460px or under 320px): measured from the stage's top.
   let vh = $state(900);
   let stageEl: HTMLElement | undefined = $state();
-  let stageTop = $state(340);
-  const OUT_ROW_H = 36; // ponytail: the out row's button height; it wraps to more lines only with many out coffees (then it scrolls)
-  const wheelMax = $derived(Math.round(Math.max(320, Math.min(460, vh - stageTop - OUT_ROW_H - 4))));
-  const measure = () => { vh = innerHeight; if (stageEl) stageTop = stageEl.getBoundingClientRect().top + scrollY; };
+  let outEl: HTMLElement | undefined = $state();
+  let stageTop = $state(0);
+  let outH = $state(0);
+  let measured = $state(false); // until measured the CSS estimate below sizes the wheel (no visible jump)
+  const wheelMax = $derived(Math.round(Math.max(320, Math.min(460, vh - stageTop - outH - 4))));
+  const measure = () => {
+    if (!stageEl || !outEl) return;
+    vh = innerHeight; stageTop = stageEl.getBoundingClientRect().top + scrollY; outH = outEl.offsetHeight; measured = true;
+  };
   $effect(() => { game; ready; tick().then(measure); });
+  // Anything above the stage changing height (the header, wrapping controls, a late font) or the out row wrapping re-measures.
+  $effect(() => {
+    document.fonts?.ready.then(measure);
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
+    if (outEl) ro.observe(outEl);
+    return () => ro.disconnect();
+  });
   let showTimer: ReturnType<typeof setTimeout> | undefined;
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const CONFETTI = Array.from({ length: 28 }, (_, i) => ({ left: (i * 37) % 100, delay: (i % 7) * 0.12, dur: 1.6 + (i % 5) * 0.3, color: ['#ffe08a', '#ffd04d', '#fff6d0', '#c9952c'][i % 4] }));
@@ -316,7 +329,7 @@
   <div class="stage-box"><div class="stage" class:d20={game === 'd20'} bind:this={stageEl}>
     <section class="game" aria-label={game === 'd20' ? 'D20' : 'Wheel'}>
       {#if game === 'wheel'}
-        <div class="wheel-wrap" style:--wheel-max="{wheelMax}px">
+        <div class="wheel-wrap" style:--wheel-max={measured ? `${wheelMax}px` : undefined}>
           <PickWheel bind:this={wheel} {slices} {names} angle={today.wheelAngle} disabled={empty} onspin={spin} onresult={wheelResult} />
         </div>
       {:else}
@@ -324,7 +337,7 @@
       {/if}
       {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
       {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
-    <div class="out-row">
+    <div class="out-row" bind:this={outEl}>
       <span class="label">Out for today:</span>
       {#each outRow as c (c.id)}<span class="badge badge-neutral" tabindex="0" role="note" use:labelTip={outTip(c)}><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
       <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
@@ -374,10 +387,10 @@
 {/if}
 
 <style>
-  .stage { margin: 0; display: grid; gap: var(--space-4); align-items: start; }
+  .stage { margin: 0; max-width: 620px; display: grid; gap: var(--space-4); align-items: start; }
   .side { display: flex; min-width: 0; }
   .game { min-width: 0; display: flex; flex-direction: column; }
-  .wheel-wrap { width: 100%; max-width: var(--wheel-max, 460px); margin: 0 auto; }
+  .wheel-wrap { width: 100%; max-width: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); margin: 0 auto; } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
   .result { display: flex; align-self: start; width: 100%; max-width: 620px; } /* .card sizes by its container, so the width is explicit */
   .result:hover { box-shadow: var(--shadow); transform: none; } /* not clickable: no .card hover lift */
   @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
@@ -395,8 +408,8 @@
   /* the same layout for both games: the card beside the game (with a real gutter) only where it gets at least ~560px next to the
      620px game; narrower, it goes under the game (still horizontal if it fits: PickCard's own container query) */
   .stage-box { container-type: inline-size; margin-bottom: var(--space-3); }
-  @container (min-width: 1204px) {
-    .stage { grid-template-columns: minmax(0, 620px) minmax(0, 1fr); column-gap: var(--space-6); align-items: start; }
+  @container (min-width: 1226px) { /* 620 game + 32 gutter + 574 (the card's 540px content, padding and border): beside always means horizontal */
+    .stage { max-width: none; grid-template-columns: minmax(0, 620px) minmax(0, 1fr); column-gap: var(--space-6); align-items: start; }
   }
   /* directly below the game */
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: 0; }

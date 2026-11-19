@@ -77,11 +77,13 @@
   @container card (min-width: 540px) {
     .pick-card.wide { display: grid; grid-template-columns: minmax(0, min(260px, 46%)) minmax(0, 1fr); gap: var(--space-4); }
     .pick-card.wide.noimg { display: block; } /* no image: the fields alone, no empty block */
-    .wide .card-thumb { margin: 0; }
+    .wide .card-thumb { margin: 0; max-width: none; }
     .wide .card-body { margin-bottom: var(--space-2); }
     .wide .card-body :global(p) { margin: 0 0 2px; }
     .wide .name-row { min-height: 1.5rem; } /* a badge appearing never changes the height */
   }
+  .card-thumb { max-width: 200px; } /* vertical card: a modest square (the horizontal card sizes it by its column) */
+  @media (min-width: 641px) { .card-thumb { max-width: 280px; } }
   .card-body { margin-bottom: var(--space-3); }
   .name-row { display: flex; align-items: center; gap: var(--space-2); min-height: 1.9rem; }
   .name { margin: 0; padding: 0; border: 0; font-size: 1rem; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
