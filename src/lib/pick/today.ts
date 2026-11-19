@@ -38,14 +38,14 @@ export function parseToday(raw: unknown): PickToday | null {
 		result: validResult(raw.result) ? raw.result : null,
 		wheelAngle: typeof raw.wheelAngle === 'number' && Number.isFinite(raw.wheelAngle) ? raw.wheelAngle : 0,
 		d20Pose: validPose(raw.d20Pose) ? raw.d20Pose : null,
-		panelOpen: raw.panelOpen === true
+		panelOpen: false /* the Rules panel never reopens on load */
 	};
 }
 
 export function todayFor(raw: unknown, date: string): PickToday {
 	const p = parseToday(raw);
 	if (p?.date === date) return p;
-	return { ...freshToday(date, p?.game), panelOpen: p?.panelOpen ?? false };
+	return freshToday(date, p?.game);
 }
 
 const add = (a: number[], id: number) => (a.includes(id) ? a : [...a, id]);

@@ -16,15 +16,15 @@ describe('pick today state', () => {
 	});
 	it('parseToday round-trips and nulls malformed sub-fields', () => {
 		const t = { ...freshToday('2026-11-18', 'd20'), out: [1], brewed: [2], panelOpen: true };
-		expect(parseToday(JSON.parse(JSON.stringify(t)))).toEqual(t);
+		expect(parseToday(JSON.parse(JSON.stringify(t)))).toEqual({ ...t, panelOpen: false });
 		const p = parseToday({ ...t, board: 'bad', result: { coffeeId: 'x' }, d20Pose: { pos: 1 } });
 		expect(p).toMatchObject({ board: null, result: null, d20Pose: null, out: [1] });
 	});
-	it('todayFor: same date unchanged, new day resets but keeps panelOpen and game', () => {
+	it('todayFor: same date unchanged, a new day resets but keeps the game; panelOpen never loads open', () => {
 		const old = { ...freshToday('2026-11-17', 'd20'), out: [1], brewed: [2], panelOpen: true };
-		expect(todayFor(old, '2026-11-17')).toEqual(old);
+		expect(todayFor(old, '2026-11-17')).toEqual({ ...old, panelOpen: false });
 		const n = todayFor(old, '2026-11-18');
-		expect(n).toMatchObject({ date: '2026-11-18', out: [], brewed: [], panelOpen: true, game: 'd20' });
+		expect(n).toMatchObject({ date: '2026-11-18', out: [], brewed: [], panelOpen: false, game: 'd20' });
 		expect(todayFor(null, '2026-11-18')).toEqual(freshToday('2026-11-18'));
 	});
 	it('discard adds once, clears board, keeps result', () => {

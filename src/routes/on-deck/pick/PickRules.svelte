@@ -1,14 +1,15 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import { fly } from 'svelte/transition';
   import type { Category, CritMode, Fill, Iteration, PickCoffee, PickRules, SortGroup, SortRule } from '#lib/pick/types.ts';
   import { cleanName } from '#lib/pick/profiles.ts';
   import CritPicker from './CritPicker.svelte';
 
-  let { rules, coffees, eligible, names, selected, open, ontoggle, onchange, onpick, onsave, onsaveas, ondelete, onreset, note, locked }: {
-    rules: PickRules; coffees: PickCoffee[]; eligible: PickCoffee[]; names: string[]; selected: string; open: boolean;
+  let { rules, coffees, eligible, names, selected, open, ontoggle, onchange, onpick, onsave, onsaveas, ondelete, onreset, canSave, locked }: {
+    rules: PickRules; coffees: PickCoffee[]; eligible: PickCoffee[]; names: string[]; selected: string; canSave: boolean; open: boolean;
     ontoggle: (open: boolean) => void; onchange: (next: PickRules) => void;
     onpick: (name: string) => void; onsave: () => void; onsaveas: (name: string) => Promise<boolean>; ondelete: () => Promise<boolean>; onreset: () => void;
-    note: string; locked: boolean;
+    locked: boolean;
   } = $props();
 
   // Inline profile prompts (no window.prompt): naming a new profile, confirming an overwrite or a delete.
@@ -33,11 +34,18 @@
   let closeEl: HTMLButtonElement | undefined = $state();
   let top = $state(0);
   let wasOpen = false;
+  // The side bar (desktop) starts under the site header, which scrolls away with the page; a phone's modal is centred.
+  const measure = () => (top = window.innerWidth > 640 ? Math.max(0, document.querySelector('nav.site-nav')?.getBoundingClientRect().bottom ?? 0) : 0);
+  // It slides out as it slid in; no motion on a phone or with reduced motion.
+  const slide = () => ({ x: -416, duration: matchMedia('(min-width: 641px) and (prefers-reduced-motion: no-preference)').matches ? 200 : 0 });
   $effect(() => {
     if (open) {
       wasOpen = true;
-      top = Math.max(0, document.querySelector('nav.site-nav')?.getBoundingClientRect().bottom ?? 0);
+      measure();
+      addEventListener('scroll', measure, { passive: true });
+      addEventListener('resize', measure);
       tick().then(() => closeEl?.focus());
+      return () => (removeEventListener('scroll', measure), removeEventListener('resize', measure));
     } else if (wasOpen) {
       wasOpen = false;
       toggleEl?.focus();
@@ -51,7 +59,6 @@
   const GROUP_LABEL: Record<SortGroup, string> = { open: 'Open', backlog: 'Backlog', frozen: 'Frozen', decaf: 'Decaf' };
 
   const set = (patch: Partial<PickRules>) => onchange({ ...rules, ...patch });
-  const toggled = (list: number[], id: number, on: boolean) => (on ? [...list, id] : list.filter((x) => x !== id));
   const toggleCategory = (c: Category, on: boolean) => set({ categories: CATEGORIES.map(([k]) => k).filter((k) => (k === c ? on : rules.categories.includes(k))) });
   const move = (i: number, d: number) => {
     const o = [...rules.categoryOrder];
@@ -98,7 +105,7 @@
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Escape is handled on the window) -->
   <div class="modal-backdrop rules-backdrop" style:top="{top}px" onclick={(e) => e.target === e.currentTarget && window.innerWidth <= 640 && ontoggle(false)}>
-    <section class="modal rules-panel" role="dialog" aria-label="Rules">
+    <section class="modal rules-panel" role="dialog" aria-label="Rules" in:fly={slide()} out:fly={slide()}>
       <header class="bar">
         <h3>Rules</h3>
         <button type="button" class="button button-secondary" bind:this={closeEl} onclick={() => ontoggle(false)}>Close</button>
@@ -134,11 +141,7 @@
             <label><input type="radio" name="over20" checked={rules.over20 === 'byHand'} onchange={() => set({ over20: 'byHand' })} /> Exclude specific coffees</label>
           </div>
           {#if rules.over20 === 'byHand'}
-            <ul class="checks" aria-label="Eligible coffees">
-              {#each eligible as c (c.id)}
-                <li><label><input type="checkbox" checked={!rules.excluded.includes(c.id)} onchange={(e) => set({ excluded: toggled(rules.excluded, c.id, !e.currentTarget.checked) })} /> <span>{c.name}</span> <span class="text-muted">{c.roaster}</span></label></li>
-              {/each}
-            </ul>
+            <CritPicker label="Excluded coffees" coffees={eligible} selected={rules.excluded} onchange={(ids) => set({ excluded: ids })} />
           {/if}
         </fieldset>
 
@@ -173,14 +176,14 @@
             </select>
           </label>
           <div class="actions">
-            <button type="button" class="button button-secondary" disabled={!selected} onclick={onsave}>Save</button>
+            <button type="button" class="button button-secondary" disabled={!canSave} onclick={onsave}>Save</button>
             <button type="button" class="button button-secondary" onclick={() => (step = 'naming')}>Save as…</button>
             <button type="button" class="button button-secondary" disabled={!selected} onclick={() => (step = 'delete')}>Delete</button>
             <button type="button" class="button button-secondary" onclick={onreset}>Reset to defaults</button>
           </div>
           {#if step === 'naming'}
             <div class="actions">
-              <input class="name" type="text" maxlength="40" placeholder="Profile name" aria-label="Profile name" bind:value={nameInput} onkeydown={(e) => e.key === 'Enter' && submitName()} />
+              <input class="search-input name" type="text" maxlength="40" placeholder="Profile name" aria-label="Profile name" bind:value={nameInput} onkeydown={(e) => e.key === 'Enter' && submitName()} />
               <button type="button" class="button" disabled={!cleaned} onclick={submitName}>Save</button>
               <button type="button" class="button button-secondary" onclick={() => (step = 'idle')}>Cancel</button>
             </div>
@@ -198,7 +201,6 @@
             </div>
           {/if}
         </fieldset>
-        <span class="text-muted note" role="status">{note}</span>
       </fieldset>
     </section>
   </div>
@@ -206,31 +208,32 @@
 
 <style>
   /* Desktop: a left side bar over the page (no backdrop, the game stays usable). Phone: the shared centred modal. */
+  .toggle { padding-block: 0.4rem; } /* the Game buttons' height (.tab-group button) */
   .bar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
   .bar h3 { margin: 0; }
   @media (min-width: 641px) {
     .rules-backdrop { background: none; justify-content: flex-start; align-items: stretch; padding: 0; pointer-events: none; }
-    .rules-panel { pointer-events: auto; width: min(26rem, 90vw); max-height: none; height: 100%; border-radius: 0 var(--radius) var(--radius) 0; box-shadow: var(--shadow-hover); border-right: 1px solid var(--color-border); animation: slide-in 0.2s ease-out; }
+    .rules-panel { pointer-events: auto; width: min(26rem, 90vw); max-height: none; height: 100%; border-radius: 0 var(--radius) var(--radius) 0; box-shadow: var(--shadow-hover); border-right: 1px solid var(--color-border); }
   }
-  @keyframes slide-in { from { transform: translateX(-100%); } }
-  @media (prefers-reduced-motion: reduce) { .rules-panel { animation: none; } }
   fieldset.body { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: var(--space-2); }
-  fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); margin: 0; display: grid; gap: var(--space-1); min-width: 0; }
+  fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); margin: 0; display: grid; gap: var(--space-2); min-width: 0; }
   legend { font-weight: 600; padding: 0 var(--space-2); }
+  input[type='checkbox'], input[type='radio'] { accent-color: var(--color-accent); margin: 0; }
   .line { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); align-items: center; }
-  label { display: inline-flex; gap: var(--space-2); align-items: center; min-height: 30px; }
+  label { display: inline-flex; gap: var(--space-2); align-items: center; min-height: 30px; cursor: pointer; }
   .field { display: grid; gap: var(--space-1); min-height: 0; }
+  .field .ctl-select { width: 100%; }
   .sub { margin-left: var(--space-5); }
   .crit { display: grid; gap: var(--space-1); }
   .crit .sub { align-items: flex-start; } /* box left, label and hint right */
   .crit .sub .sub { margin-left: var(--space-5); }
-  .checks { list-style: none; margin: 0; padding: 0; max-height: 14rem; overflow: auto; }
-  .checks label { align-items: baseline; }
   .order { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1); }
   .order li { display: flex; gap: var(--space-2); align-items: center; }
   .order span { min-width: 5rem; }
-  .actions { display: flex; flex-wrap: wrap; gap: var(--space-1); justify-content: flex-start; align-items: center; }
-  .name { min-height: 36px; font: inherit; min-width: 0; flex: 1 1 8rem; }
-  .note:empty { display: none; }
+  /* equal buttons in an even grid; a prompt row (name or confirm) keeps its own flow */
+  .actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2); align-items: center; }
+  .actions :global(.button) { margin: 0; justify-content: center; }
+  .name { margin: 0; min-width: 0; grid-column: 1 / -1; }
+  .actions > span { grid-column: 1 / -1; }
   @media (max-width: 640px) { .name { min-height: 44px; font-size: 16px; } label { min-height: 44px; } .rules-panel :global(.ctl-select) { width: 100%; } .actions :global(.button), .bar :global(.button), .order :global(.button) { min-height: 44px; } }
 </style>
