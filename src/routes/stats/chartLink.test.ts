@@ -82,7 +82,7 @@ describe('insightsPreview', () => {
   it('thumbnails: bars, tile and grid on card; none for a Chart.js chart', () => {
     expect(insightsPreview({ ...base, chart: 'leaderboard-origins' }).card).toEqual({
       big: 'Origins', label: 'Stats · All time',
-      thumb: { kind: 'bars', rows: [['Ethiopia', '8.4', 1], ['Kenya', '8.1', 8.1 / 8.42], ['Colombia', '7.9', 7.94 / 8.42], ['Rwanda', '7.5', 7.5 / 8.42], ['Burundi', '7.0', 7 / 8.42]] }
+      thumb: { kind: 'bars', rows: [['🇪🇹 Ethiopia', '8.4', 1], ['🇰🇪 Kenya', '8.1', 8.1 / 8.42], ['🇨🇴 Colombia', '7.9', 7.94 / 8.42], ['🇷🇼 Rwanda', '7.5', 7.5 / 8.42], ['🇧🇮 Burundi', '7.0', 7 / 8.42]] }
     });
     const roasters = [{ key: 'a', label: 'Sey', value: 8.5, bags: 4, brews: 9 }, { key: 'b', label: 'Onyx', value: 7.0, bags: 3, brews: 6 }] as BoardRow[];
     expect(insightsPreview({ ...base, boards: { ...none, roasters }, chart: 'leaderboard-roasters', low: ['roasters'] }).card!.thumb)

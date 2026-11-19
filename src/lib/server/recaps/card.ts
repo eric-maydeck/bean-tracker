@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import satori from 'satori';
 import sharp from 'sharp';
 import { glue } from '#lib/unitGap.ts';
+import { FLAG_SVG } from './flags';
 import karlaLatin from './fonts/karla-latin-700-normal.woff?inline';
 import karlaExt from './fonts/karla-latin-ext-700-normal.woff?inline';
 import loraLatin from './fonts/lora-latin-600-normal.woff?inline';
@@ -71,10 +72,11 @@ const clipLine = { display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', t
 const karla = { fontFamily: 'Karla', fontWeight: 700 };
 // Values are never truncated, they shrink to fit `avail` px (~0.6em a character). Like values share one size when the longest
 // only needs a small step down (VALUE_STEP: at least 80% of the default); a bigger step shrinks that value alone, so one long
-// value doesn't make the rest look small. Never under 22px.
+// value doesn't make the rest look small. Never under `floor` (22px, or 30px for the grid, still legible at ~500px wide): a
+// value that still doesn't fit there (an unreasonably long text, e.g. a grind setting) is cut with an ellipsis by the renderer.
 const VALUE_STEP = 0.8;
-export function valueSizes(values: string[], size: number, avail: number): number[] {
-  const need = values.map((v) => Math.max(22, Math.min(size, Math.floor(avail / (0.6 * Math.max(1, [...v].length))))));
+export function valueSizes(values: string[], size: number, avail: number, floor = 22): number[] {
+  const need = values.map((v) => Math.max(floor, Math.min(size, Math.floor(avail / (0.6 * Math.max(1, [...v].length))))));
   const least = Math.min(...need);
   return least >= size * VALUE_STEP ? need.map(() => least) : need;
 }
@@ -97,10 +99,10 @@ function thumbnail(t: Thumb) {
     ]);
   }
   // Up to 6 tiles, 3 across: the label (2 lines at most) over its value.
-  const sizes = valueSizes(t.tiles.map((x) => x[1]), 52, 288);
+  const sizes = valueSizes(t.tiles.map((x) => x[1]), 52, 288, 30);
   const cell = (label: string, value: string, size: number) => el('div', { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: 336, height: 133, boxSizing: 'border-box', padding: '0 21px', background: SURFACE, border: `3px solid ${TILE_EDGE}`, borderRadius: 16 }, [
     el('div', { display: 'block', lineClamp: 2, textOverflow: 'ellipsis', ...karla, fontSize: 26, lineHeight: 1.1 }, label),
-    el('div', { display: 'block', whiteSpace: size > 22 ? 'nowrap' : 'normal', fontFamily: 'Lora', fontWeight: 600, fontSize: size, lineHeight: 1.15, marginTop: 6 }, value) // at the 22px floor a value wraps rather than truncates
+    el('div', { ...clipLine, width: 288, textAlign: [...value].length * 0.6 * size > 288 ? 'left' : 'center', fontFamily: 'Lora', fontWeight: 600, fontSize: size, lineHeight: 1.15, marginTop: 6 }, value)
   ]);
   return el('div', { display: 'flex', flexWrap: 'wrap', gap: 24, width: WIDTH, height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, t.tiles.map(([l, v], j) => cell(l, v, sizes[j])));
 }
@@ -128,8 +130,12 @@ export async function cardSvg(c: CardIn): Promise<string> {
       el('div', {}, c.cover ? '' : `${c.year} in coffee`), el('div', {}, 'Bean Tracker')
     ])
   ]);
-  return satori(tree as never, { width: CARD.width, height: CARD.height, fonts: FONTS });
+  return satori(tree as never, { width: CARD.width, height: CARD.height, fonts: FONTS, graphemeImages: GRAPHEME_IMAGES });
 }
+
+// Flag emoji are drawn from the vendored circle-flags SVGs (flags.ts): satori's graphemeImages maps each emoji to a data URI.
+const flagEmoji = (iso: string) => String.fromCodePoint(...[...iso.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+const GRAPHEME_IMAGES = Object.fromEntries(Object.entries(FLAG_SVG).map(([iso, svg]) => [flagEmoji(iso), `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`]));
 
 export const cardPng = (svg: string): Promise<Buffer> => sharp(Buffer.from(svg)).png().toBuffer();
 

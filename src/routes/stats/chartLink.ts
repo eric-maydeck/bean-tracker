@@ -140,8 +140,7 @@ export function insightsPreview(v: PreviewInput): Preview {
     return {
       title: `Stats: ${BOARD_TITLE[board]}`,
       description: ranked(header, items, lowest),
-      // Flags are emoji, which the card font can't draw: the thumbnail names the country alone.
-      card: statsCard(BOARD_TITLE[board], v.period, bars(rows.map((r, i) => ({ value: r.value, text: items[i].value, name: r.label })), lowest))
+      card: statsCard(BOARD_TITLE[board], v.period, bars(rows.map((r, i) => ({ value: r.value, text: items[i].value, name: items[i].name })), lowest))
     };
   }
   const rec = v.records;
@@ -169,7 +168,7 @@ export function insightsPreview(v: PreviewInput): Preview {
       !isDateHolder(tile.holder) && tile.holder.date, tile.ties.length > 0 && `Tied with ${tile.ties.length} more`
     ].filter(Boolean) as string[];
     const date = isDateHolder(tile.holder);
-    const thumb: Thumb = { kind: 'tile', value: clip(thumbValue(tile, tile.fmt)), holder: clip(date ? holderName(tile.holder) : holderRow(tile.holder)), ...(!date && tile.holder.date && { date: tile.holder.date }) };
+    const thumb: Thumb = { kind: 'tile', value: clip(thumbValue(tile, tile.fmt)), holder: clip(date ? holderName(tile.holder) : tile.key === 'leastOrigin' ? originWithFlag(tile.holder.label) : holderRow(tile.holder)), ...(!date && tile.holder.date && { date: tile.holder.date }) };
     return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false), card: statsCard(thumbLabel(tile.label, tile.fmt), v.period, thumb) };
   }
   return {

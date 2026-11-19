@@ -110,4 +110,21 @@ describe('valueSizes', () => {
     expect([a, b]).toEqual([52, 22]);
   });
   it('never goes under 22', () => expect(valueSizes(['x'.repeat(200)], 52, 288)).toEqual([22]));
+  it('an unreasonably long text stops at the floor, short values are not held back', () =>
+    expect(valueSizes(['9.2', 'x'.repeat(50)], 52, 288, 30)).toEqual([52, 30]));
+  it('short and numeric values never reach the floor', () => expect(valueSizes(['$0.09/g', '41 days', '1kg'], 52, 288, 30)).toEqual([52, 52, 52]));
+});
+
+describe('flag emoji on a card', () => {
+  it('draws a flag image instead of tofu', async () => {
+    const thumb = { kind: 'bars' as const, rows: [['\u{1F1EA}\u{1F1F9} Ethiopia', '8.4', 1]] as [string, string, number][] };
+    const svg = await cardSvg({ big: 'Origins', label: 'Stats', year: 0, cover: true, page: true, thumb });
+    expect(svg).toContain('data:image/svg+xml;base64,');
+  });
+  it('cuts an unreasonably long grid value with an ellipsis and keeps short ones whole', async () => {
+    const grid = (v: string) => cardSvg({ big: 'Money', label: 'Stats', year: 0, cover: true, page: true, thumb: { kind: 'grid', tiles: [['A', v]] } });
+    // Text is drawn as paths: two values cut to the same visible text draw identically, two short ones differ.
+    expect(await grid('x'.repeat(50))).toBe(await grid('x'.repeat(100)));
+    expect(await grid('xxxxx')).not.toBe(await grid('xxxxxxx'));
+  });
 });
