@@ -6,6 +6,14 @@ import { formatGrams } from '#lib/grams.ts';
 import { clock12 } from '#lib/hours.ts';
 import { usd, wholeUsd } from '#lib/money.ts';
 import { likeGap } from '#lib/components/deltaColor.ts';
+import type { ThumbCtx, ThumbFn } from './thumbTypes';
+import { leaderboardTimeThumb } from './thumbs/leaderboards';
+import { CONSUMPTION_THUMBS } from './thumbs/consumption';
+import { HABITS_THUMBS } from './thumbs/habits';
+import { ONHAND_THUMBS } from './thumbs/onhand';
+import { SPEND_THUMBS } from './thumbs/spend';
+import { BREWING_THUMBS } from './thumbs/brewing';
+import { ERAS_THUMBS } from './thumbs/eras';
 import type { BoardRow } from '#lib/server/insights/leaderboards.ts';
 import type { Fmt, Holder, RecordPick, RecordsTab, Section } from '#lib/server/insights/records.ts';
 
@@ -98,7 +106,7 @@ const TAB_SUMMARY: Record<Tab, (n: string) => string> = {
 
 interface PreviewInput {
   tab: Tab; owner: string; tabLabel: string; period: string; brews: number; avgRating: number | null; filters: string[]; chart?: string; line?: string; // line: replaces the brews/rating line
-  rank: Rank; low?: Board[]; perPerson: boolean; boards: Record<Board, BoardRow[]> | null; records: RecordsTab | null;
+  rank: Rank; low?: Board[]; perPerson: boolean; boards: Record<Board, BoardRow[]> | null; records: RecordsTab | null; ctx?: ThumbCtx;
 }
 // A Records tile's own element id (#record-…): keys like "grindFine:A4Z (Femobook)" slugged.
 export const recordAnchor = (key: string): string => `record-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
@@ -125,9 +133,15 @@ const thumbValue = (t: RecordPick, fmt: Fmt) => (fmt === 'per100' ? `${usd(t.val
 const thumbLabel = (label: string, fmt: Fmt) => (fmt === 'per100' ? label.replace(/ per 100g$/, ' per g') : label);
 const holderRow = (h: Holder) => [h.sub, h.label].filter(Boolean).join(' · ');
 
+// The Chart.js tabs' thumbnails by chart id. Merged per call: the thumb files import this one, so a module-level spread could hit a half-loaded cycle.
+const thumbFor = (chart: string): ThumbFn | undefined => ({ ...CONSUMPTION_THUMBS, ...HABITS_THUMBS, ...ONHAND_THUMBS, ...SPEND_THUMBS, ...BREWING_THUMBS, ...ERAS_THUMBS })[chart];
+
 export function insightsPreview(v: PreviewInput): Preview {
   const chart = v.chart ?? '';
   const board = BOARDS.find((b) => chart === `leaderboard-${b}`);
+  // A board linked in its Over time view draws lines; the List view falls through to #118's bars. The text stays the page's own.
+  const timed = board && v.ctx && leaderboardTimeThumb(v.ctx, board);
+  if (timed) return { ...pagePreview(v), card: statsCard(timed.title, v.period, timed.thumb) };
   const all = board && v.boards?.[board];
   const rows = all && board && v.low?.includes(board) ? lowFirst(board, all) : all;
   // The board shows under this rank (hidden by rank=like, or unranked: spend/$ per g on a non-bag board).
@@ -171,6 +185,12 @@ export function insightsPreview(v: PreviewInput): Preview {
     const thumb: Thumb = { kind: 'tile', value: clip(thumbValue(tile, tile.fmt)), holder: clip(date ? holderName(tile.holder) : tile.key === 'leastOrigin' ? originWithFlag(tile.holder.label) : holderRow(tile.holder)), ...(!date && tile.holder.date && { date: tile.holder.date }) };
     return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false), card: statsCard(thumbLabel(tile.label, tile.fmt), v.period, thumb) };
   }
+  const page = pagePreview(v);
+  const t = v.ctx && thumbFor(chart)?.(v.ctx);
+  return t ? { ...page, card: statsCard(t.title, v.period, t.thumb) } : page;
+}
+
+function pagePreview(v: PreviewInput): Preview {
   return {
     title: `Stats: ${v.tabLabel}`,
     description: [

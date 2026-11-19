@@ -1971,6 +1971,12 @@ export const STATES: State[] = [
       expect(t['og:image']).toMatch(new RegExp(`^${origin}/preview\\.png\\?c=[\\w-]+&s=[\\w-]+$`));
       const img = await page.request.get(t['og:image']);
       expect([img.status(), img.headers()['content-type']]).toEqual([200, 'image/png']);
+      // Chart.js tabs draw their chart's shape.
+      for (const p of ['/stats?tab=habits&range=all&chart=habits-hour', '/stats?tab=spend&range=all&chart=spend-chart']) {
+        const og = (await previewTags(page, p))['og:image'];
+        expect(og).toMatch(new RegExp(`^${origin}/preview\\.png\\?c=[\\w-]+&s=[\\w-]+$`));
+        expect((await page.request.get(og)).status()).toBe(200);
+      }
     } },
   { name: 'coffee-detail-no-like', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { insightsPreview, recordAnchor } from './chartLink';
+import type { ThumbCtx } from './thumbTypes';
 import type { RecordsTab } from '#lib/server/insights/records.ts';
 import type { BoardRow } from '#lib/server/insights/leaderboards.ts';
 
@@ -125,5 +126,26 @@ describe('insightsPreview', () => {
     const d = insightsPreview({ ...base, boards: { ...none, roasters: long }, chart: 'leaderboard-roasters' }).description;
     expect(d.length).toBeLessThanOrEqual(300);
     expect(d.startsWith('Avg rating · All time\n🥇 8.0 · x')).toBe(true);
+  });
+});
+
+describe('insightsPreview chart thumbnails', () => {
+  const tab = { buckets: [{}, {}, {}], ratingFrom: 0, trendLine: null, trendLabel: null, labels: ['a', 'b', 'c'], brewed: [6, 7.5, 8], bought: [5, 0, 4], backlog: [3, 0, 1], compareBrewed: null, compareTitles: null, compareAverage: null };
+  const h = { tiles: { brewDays: 3 }, byHour: [1, 2, 3], byWeekday: [4, 5, 6, 7], compareHour: null, compareWeekday: null };
+  const ctx = (data: object, s: object = {}) => ({ data, s: { unit: 'bags', agg: 'total', measure: 'brews', ...s }, periodLabel: 'All time', compareLabel: 'p', perPerson: false, explicitAvg: false }) as unknown as ThumbCtx;
+  const page = { ...base, tab: 'habits' as const, tabLabel: 'Habits' };
+  it('habits and consumption links add a card; text is the page text', () => {
+    const r = insightsPreview({ ...page, chart: 'habits-hour', ctx: ctx({ habits: h }) });
+    expect(r.title).toBe('Stats: Habits');
+    expect(r.description).toBe(insightsPreview({ ...page, chart: 'habits-hour' }).description);
+    expect(r.card).toMatchObject({ big: 'By hour of day', label: 'Stats · All time', thumb: { kind: 'vbars' } });
+    expect(insightsPreview({ ...page, chart: 'consumption-chart-on-hand', ctx: ctx({ consumptionTab: tab }) }).card?.thumb.kind).toBe('lines');
+  });
+  it('unknown chart or no data: no card', () => {
+    expect(insightsPreview({ ...page, chart: 'nope', ctx: ctx({ habits: h }) }).card).toBeUndefined();
+    expect(insightsPreview({ ...page, chart: 'habits-hour', ctx: ctx({ habits: null }) }).card).toBeUndefined();
+  });
+  it('leaderboard List view keeps the bars', () => {
+    expect(insightsPreview({ ...base, chart: 'leaderboard-origins', ctx: ctx({ boards: none, boardSeries: null }) }).card?.thumb.kind).toBe('bars');
   });
 });
