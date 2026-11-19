@@ -78,12 +78,18 @@
       const boardMat = new THREE.MeshStandardMaterial({ roughness: 0.9 });
       const board = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), boardMat);
       board.rotation.x = -Math.PI / 2; board.position.y = 0.01; board.receiveShadow = true; scene.add(board);
-      function layBoard() {
+      function paintBoardTex() {
         const h = 1024, w = Math.round(h * TX / TZ);
         boardMat.map?.dispose(); boardMat.map = canvasTex(w, h, (g) => paintBoard(g, w, h, h * 0.045, h * 0.016)); boardMat.needsUpdate = true;
-        board.scale.set(TX * 2, TZ * 2, 1);
       }
-      layBoard();
+      // A resize stretches the old picture at once and repaints when the size has settled, not on every step of a drag.
+      let boardTimer: ReturnType<typeof setTimeout> | undefined;
+      function layBoard() {
+        board.scale.set(TX * 2, TZ * 2, 1);
+        clearTimeout(boardTimer); boardTimer = setTimeout(() => { paintBoardTex(); dirty = true; }, 150);
+      }
+      undo.push(() => clearTimeout(boardTimer));
+      board.scale.set(TX * 2, TZ * 2, 1); paintBoardTex();
 
       // An ivory die with espresso numerals. The face that lands on top is redrawn: gold for a critical success,
       // dark red for a critical fail (the pop-up's colours), a brass outline for any other number.

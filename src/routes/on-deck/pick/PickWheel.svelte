@@ -12,7 +12,7 @@
   const TAU = Math.PI * 2;
   const BASE = 460; // drawing space; the canvas bitmap scales from this
   // Wood-veneer wedges, each with the label colour that reads on it; the same in both themes, like the board under the wheel.
-  const VENEER = [['#5c3a24', '#f6eee2'], ['#c49a6c', '#2b211b'], ['#7a4326', '#f6eee2'], ['#e3c9a0', '#2b211b'], ['#43281a', '#f6eee2'], ['#a8703f', '#2b211b']];
+  const VENEER = [['#5c3a24', '#f6eee2'], ['#c49a6c', '#2b211b'], ['#7a4326', '#f6eee2'], ['#e3c9a0', '#2b211b'], ['#43281a', '#f6eee2'], ['#bb8350', '#2b211b']];
 
   let width = $state(BASE);
   let spinning = $state(false);
@@ -65,49 +65,69 @@
     });
   }
 
+  // One slice in wheel space (origin at the hub, no rotation applied here).
+  function drawSlice(ctx: CanvasRenderingContext2D, i: number, s: WheelSlice, veneer: string[]) {
+    const wedge = () => { ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, s.a0, s.a1); ctx.closePath(); };
+    const mid = (s.a0 + s.a1) / 2;
+    ctx.save(); wedge();
+    if (s.kind === 'success') {
+      const g = ctx.createLinearGradient(Math.cos(mid - 0.6) * R, Math.sin(mid - 0.6) * R, Math.cos(mid + 0.6) * R, Math.sin(mid + 0.6) * R);
+      const t = (Math.sin(shimmer) + 1) / 2;
+      g.addColorStop(0, '#8a6214'); g.addColorStop(Math.min(0.9, 0.2 + t * 0.6), '#fff2b8'); g.addColorStop(1, '#b8862b'); ctx.fillStyle = g;
+    } else if (s.kind === 'fail') {
+      const g = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, R); g.addColorStop(0, '#000'); g.addColorStop(0.7, '#1a0000'); g.addColorStop(1, '#7a0a0a'); ctx.fillStyle = g;
+    } else ctx.fillStyle = veneer[0];
+    ctx.fill();
+    if (s.kind === 'coffee') { // veneer grain: faint arcs across the wedge
+      ctx.save(); ctx.clip();
+      for (let j = 0; j < 26; j++) {
+        const q = Math.abs(Math.sin((i + 1) * 12.9898 + j * 78.233) * 43758.5453) % 1;
+        ctx.beginPath(); ctx.arc(-R * 0.9 * (q - 0.2), R * 0.5 * q, R * (0.25 + 1.1 * ((q * 7) % 1)), 0, 7);
+        ctx.strokeStyle = j % 3 ? 'rgba(20,10,4,0.13)' : 'rgba(255,225,180,0.12)'; ctx.lineWidth = 0.8 + q * 1.4; ctx.stroke();
+      }
+      ctx.restore(); wedge();
+    }
+    ctx.strokeStyle = s.kind === 'success' ? '#ffe08a' : s.kind === 'fail' ? '#d01c1c' : '#1d120a';
+    ctx.lineWidth = s.kind === 'coffee' ? 2 : 2.5; ctx.stroke();
+    ctx.rotate(mid);
+    if (s.kind === 'coffee') {
+      // same rule for every wedge: along the centre radius from a fixed gap outside the hub, top of the text toward the wedge's counter-clockwise side
+      ctx.fillStyle = veneer[1]; ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      ctx.fillText(labels[i], LABEL_START, 0);
+    } else if (s.kind === 'success') {
+      ctx.fillStyle = '#fff8dc'; star(ctx, R - 26, 0, 10); ctx.fillStyle = 'rgba(255,255,255,.9)'; star(ctx, R - 60 - 8 * Math.sin(shimmer * 1.7), 0, 4);
+    } else skull(ctx, R - 26, 0, 12);
+    ctx.restore();
+  }
+
+  // Everything that never changes while the wheel turns (the veneer wedges with their grain and labels, the fail wedge) is
+  // painted once per slices/names/size change; each frame only rotates that picture and draws the shimmering gold wedge.
+  let face: HTMLCanvasElement | null = null;
+  let faceKey: unknown[] = [];
+  function paintFace(k: number) {
+    if (face && faceKey[0] === slices && faceKey[1] === names && faceKey[2] === k) return;
+    face ??= document.createElement('canvas');
+    faceKey = [slices, names, k];
+    face.width = face.height = Math.round(BASE * k);
+    const ctx = face.getContext('2d')!;
+    ctx.setTransform(k, 0, 0, k, (BASE / 2) * k, (BASE / 2) * k);
+    layoutLabels(ctx);
+    let ci = 0;
+    for (const [i, s] of slices.entries()) if (s.kind !== 'success') drawSlice(ctx, i, s, s.kind === 'coffee' ? VENEER[ci++ % VENEER.length] : []);
+  }
+
   function drawWheel() {
     if (!wheel) return;
     const ctx = wheel.getContext('2d')!;
     const k = (width * dpr()) / BASE;
+    paintFace(k);
     ctx.setTransform(k, 0, 0, k, 0, 0);
     const cx = BASE / 2, cy = BASE / 2;
     ctx.clearRect(0, 0, BASE, BASE);
-    layoutLabels(ctx);
-    let ci = 0;
-    for (const [i, s] of slices.entries()) {
-      const [color, ink] = s.kind === 'coffee' ? VENEER[ci++ % VENEER.length] : ['', ''];
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
-      ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, s.a0, s.a1); ctx.closePath();
-      const mid = (s.a0 + s.a1) / 2;
-      if (s.kind === 'success') {
-        const g = ctx.createLinearGradient(Math.cos(mid - 0.6) * R, Math.sin(mid - 0.6) * R, Math.cos(mid + 0.6) * R, Math.sin(mid + 0.6) * R);
-        const t = (Math.sin(shimmer) + 1) / 2;
-        g.addColorStop(0, '#8a6214'); g.addColorStop(Math.min(0.9, 0.2 + t * 0.6), '#fff2b8'); g.addColorStop(1, '#b8862b'); ctx.fillStyle = g;
-      } else if (s.kind === 'fail') {
-        const g = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, R); g.addColorStop(0, '#000'); g.addColorStop(0.7, '#1a0000'); g.addColorStop(1, '#7a0a0a'); ctx.fillStyle = g;
-      } else ctx.fillStyle = color;
-      ctx.fill();
-      if (s.kind === 'coffee') { // veneer grain: faint arcs across the wedge, the same every frame
-        ctx.save(); ctx.clip();
-        for (let j = 0; j < 26; j++) {
-          const q = Math.abs(Math.sin((i + 1) * 12.9898 + j * 78.233) * 43758.5453) % 1;
-          ctx.beginPath(); ctx.arc(-R * 0.9 * (q - 0.2), R * 0.5 * q, R * (0.25 + 1.1 * ((q * 7) % 1)), 0, 7);
-          ctx.strokeStyle = j % 3 ? 'rgba(20,10,4,0.13)' : 'rgba(255,225,180,0.12)'; ctx.lineWidth = 0.8 + q * 1.4; ctx.stroke();
-        }
-        ctx.restore(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, s.a0, s.a1); ctx.closePath();
-      }
-      ctx.strokeStyle = s.kind === 'success' ? '#ffe08a' : s.kind === 'fail' ? '#d01c1c' : '#1d120a';
-      ctx.lineWidth = s.kind === 'coffee' ? 2 : 2.5; ctx.stroke();
-      ctx.rotate(mid);
-      if (s.kind === 'coffee') {
-        // same rule for every wedge: along the centre radius from a fixed gap outside the hub, top of the text toward the wedge's counter-clockwise side
-        ctx.fillStyle = ink; ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-        ctx.fillText(labels[i], LABEL_START, 0);
-      } else if (s.kind === 'success') {
-        ctx.fillStyle = '#fff8dc'; star(ctx, R - 26, 0, 10); ctx.fillStyle = 'rgba(255,255,255,.9)'; star(ctx, R - 60 - 8 * Math.sin(shimmer * 1.7), 0, 4);
-      } else skull(ctx, R - 26, 0, 12);
-      ctx.restore();
-    }
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
+    ctx.drawImage(face!, -BASE / 2, -BASE / 2, BASE, BASE);
+    for (const [i, s] of slices.entries()) if (s.kind === 'success') drawSlice(ctx, i, s, []);
+    ctx.restore();
     ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, 7); ctx.lineWidth = 10; ctx.strokeStyle = '#b8862b'; ctx.stroke(); // brass rim
     for (let i = 0; i < 24; i++) { const a = (i * Math.PI) / 12; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6), 2.5, 0, 7); ctx.fillStyle = '#fff2b8'; ctx.fill(); }
     // pointer at 3 o'clock, tip pointing into the wheel
