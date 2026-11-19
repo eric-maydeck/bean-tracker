@@ -158,6 +158,18 @@
     return s.kind === 'coffee' ? (result.via === 'normal' && s.coffeeId === result.coffeeId ? n : null) : s.kind === result.via ? n : null;
   });
   const dismissOverlay = () => { shown = false; };
+  // Escape closes the pop-up; Tab and Shift+Tab stay inside it while it is open (aria-modal).
+  function onKey(e: KeyboardEvent) {
+    if (!overlay || dlg?.open) return;
+    if (e.key === 'Escape') return dismissOverlay();
+    if (e.key !== 'Tab' || !modalEl) return;
+    const els = [...modalEl.querySelectorAll<HTMLElement>('button:not([disabled])')];
+    const [first, last] = [els[0], els[els.length - 1]];
+    if (!first || !last) return;
+    if (!modalEl.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
   // Focus: the overlay's Close button on open, the control that was focused before on close.
   let overlayWas = false;
   $effect(() => {
@@ -306,7 +318,7 @@
   }
 </script>
 
-<svelte:window onresize={measure} onkeydown={(e) => e.key === 'Escape' && overlay && !dlg?.open && dismissOverlay()} />
+<svelte:window onresize={measure} onkeydown={onKey} />
 
 {#if ready}
   <div class="search-row game-row">
@@ -368,11 +380,11 @@
           {#if result.via === 'success'}{#each CONFETTI as c, i (i)}<i style:left="{c.left}%" style:animation-delay="{c.delay}s" style:animation-duration="{c.dur}s" style:background={c.color}></i>{/each}{/if}
         </div>
       {/if}
-      <div class="modal pick-modal {result.via}" role="dialog" aria-modal="true" aria-label="Pick result" bind:this={modalEl}>
+      <div class="modal pick-modal {result.via}" class:horizontal={!narrow} role="dialog" aria-modal="true" aria-label="Pick result" bind:this={modalEl}>
         {#if game === 'd20' && result.n}
-          <p class="rolled {result.via}" aria-live="polite">Rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
+          <p class="rolled {result.via}" aria-live="polite">You rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
         {/if}
-        <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+        <PickCard wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
           onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} />
       </div>
     </div>
@@ -397,8 +409,8 @@
   .stage { --pick-h: 360px; margin: 0; max-width: 674px; display: grid; gap: 1.25rem var(--space-6); align-items: start; }
   .game { min-width: 0; max-width: 620px; display: flex; flex-direction: column; }
   .out-row { max-width: 620px; }
-  .side { display: flex; flex-direction: column; min-width: 0; }
-  .last { margin: 0 0 var(--space-2); font-size: 1rem; } /* beside the game: level with the tray's top, the card under it */
+  .side { position: relative; display: flex; flex-direction: column; min-width: 0; }
+  .last { margin: 0 0 var(--space-2); font-size: 1rem; } /* stacked: in the flow above the card */
   .wheel-wrap { width: 100%; max-width: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); margin: 0 auto; } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
   .result { display: flex; align-self: start; width: 100%; max-width: 674px; } /* .card sizes by its container, so the width is explicit */
   @media (max-width: 720px) { .result { max-width: 480px; } } /* the vertical card: the /coffees card's width on a phone (its thumbnail the full content width) */
@@ -407,6 +419,8 @@
   /* the result pop-up (every width) hugs its card: little padding around it */
   .pick-modal { position: relative; width: auto; max-width: 100%; padding: var(--space-3); }
   .pick-modal :global(.pick-card) { margin: 0 auto; }
+  /* where the inline card is horizontal (beside layout, see `narrow`) the pop-up shows that card too: a `card` container for its own query, wide enough for the 4 buttons */
+  .pick-modal.horizontal { container: card / inline-size; width: 760px; max-width: calc(100vw - 2 * var(--space-4)); }
   .rolled { margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
   .rolled b { display: block; font-size: 3.5rem; line-height: 1; letter-spacing: 0; color: var(--color-accent); }
   /* a crit: a dark panel (the same dark in both themes, like the D20 tray, so the colours keep their contrast) with its glow; a normal roll stays plain */
@@ -443,6 +457,7 @@
     .game { grid-row: 1; }
     .out-row { grid-row: 2; }
     .side { grid-column: 2; grid-row: 1 / span 2; }
+    .last { position: absolute; bottom: 100%; margin: 0 0 var(--space-2); } /* beside: in the space above the card (level with the Game row), the card stays level with the game */
     .result { max-width: none; }
   }
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: 0; }
