@@ -36,6 +36,7 @@
   let selBefore = '';
   let busy = $state(false);
   let rollAgain = $state(false);
+  let panelOpen = $state(false); // never saved or restored: the panel starts closed
   let announce = $state('');
   let pendingRules = $state<PickRules | null>(null);
   let wheel = $state<PickWheel>();
@@ -129,7 +130,7 @@
     return k === 'success' || k === 'fail' ? k : null;
   };
   // Not while the Rules modal is open: one Escape then closes only the top layer.
-  const overlay = $derived(phone && shown && !!result && !today.panelOpen);
+  const overlay = $derived(phone && shown && !!result && !panelOpen);
   const inlineCard = $derived(!(phone && (landing || overlay)));
   // The highlighted row must still match the board (it is redrawn when a coffee goes out or the rules change).
   const rolledN = $derived.by(() => {
@@ -246,6 +247,7 @@
     if (!chosen) { rev++; selected = selBefore; } // Cancel or Escape: the controls go back to the unchanged rules
   }
   function pickProfile(name: string) {
+    if (!name) { selected = ''; return; } // the placeholder: no profile, Save off
     if (!profiles[name]) return;
     selBefore = selected;
     selected = name;
@@ -263,6 +265,12 @@
       showToast("Couldn't save.");
       return false;
     }
+  }
+  // Back to the selected profile's saved rules (re-picking it fires no change event).
+  function revertProfile() {
+    if (!selected || !profiles[selected]) return;
+    selBefore = selected;
+    edit(profiles[selected]);
   }
   function resetRules() {
     selBefore = selected;
@@ -292,8 +300,8 @@
       </div>
     </div>
     {#key rev}
-    <PickRulesPanel {rules} {coffees} {eligible} names={Object.keys(profiles).sort((a, b) => a.localeCompare(b))} {selected} {canSave} open={today.panelOpen} locked={busy}
-      ontoggle={(o) => (today.panelOpen = o)} onchange={edit} onpick={pickProfile} onsave={saveProfile} onsaveas={saveProfileAs} ondelete={deleteProfile} onreset={resetRules} />
+    <PickRulesPanel {rules} {coffees} {eligible} names={Object.keys(profiles).sort((a, b) => a.localeCompare(b))} {selected} {canSave} open={panelOpen} locked={busy}
+      ontoggle={(o) => (panelOpen = o)} onchange={edit} onpick={pickProfile} onsave={saveProfile} onsaveas={saveProfileAs} ondelete={deleteProfile} onreset={resetRules} onrevert={revertProfile} />
     {/key}
   </div>
 
@@ -383,6 +391,7 @@
   .out-row .label { font-weight: 600; }
   .out-row .badge { white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }
+  .rules-dialog h2 { padding: 0; border: 0; margin: 0 0 var(--space-2); } /* not the section heading's divider */
   .dlg-buttons { display: grid; gap: var(--space-2); }
   .dlg-buttons :global(.button) { min-height: 44px; }
 </style>

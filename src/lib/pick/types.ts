@@ -49,5 +49,5 @@ export interface PickToday {
   v: 1; date: string; // YYYY-MM-DD local
   out: number[]; brewed: number[];
   game: Game; board: Slot[] | null; result: PickResult | null;
-  wheelAngle: number; d20Pose: D20Pose | null; panelOpen: boolean;
+  wheelAngle: number; d20Pose: D20Pose | null;
 }

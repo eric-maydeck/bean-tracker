@@ -3,7 +3,7 @@
   import type { PickCoffee } from '#lib/pick/types.ts';
 
   // A searchable multi-select: chips of the picked coffees on top (x removes), a filter box, and a list of checkboxes.
-  let { label, coffees, selected, onchange }: { label: string; coffees: PickCoffee[]; selected: number[]; onchange: (ids: number[]) => void } = $props();
+  let { label, coffees, selected, onchange, requireSearch = false }: { requireSearch?: boolean; label: string; coffees: PickCoffee[]; selected: number[]; onchange: (ids: number[]) => void } = $props();
 
   let query = $state('');
   const byName = (a: PickCoffee, b: PickCoffee) => a.name.localeCompare(b.name);
@@ -15,10 +15,10 @@
 </script>
 
 <div class="picker" role="group" aria-label={label}>
-  <span class="head">{label} <span class="text-muted">({selected.length} picked)</span></span>
+  <span class="head">{label} <span class="text-muted">({picked.length} picked)</span></span>
   <input type="search" class="search-input search" placeholder="Search coffees or roasters" aria-label={`Search ${label}`} bind:value={query} />
   <div class="bulk">
-    <button type="button" class="button button-secondary" onclick={selectVisible} disabled={visible.length === 0}>Select all{query ? ' shown' : ''}</button>
+    <button type="button" class="button button-secondary" onclick={selectVisible} disabled={visible.length === 0 || (requireSearch && !query.trim())}>Select all{query ? ' shown' : ''}</button>
     <button type="button" class="button button-secondary" onclick={() => onchange([])} disabled={selected.length === 0}>Deselect all</button>
   </div>
   <!-- a table-like list: the coffee left, its roaster flush right (the site's filter-value row) -->

@@ -5899,6 +5899,7 @@ export const STATES: State[] = [
       await panel.getByLabel('Exclude specific coffees').check();
       const ex = panel.getByRole('group', { name: 'Excluded coffees' });
       await expect(ex.getByLabel('Search Excluded coffees')).toBeVisible();
+      await expect(ex.getByRole('button', { name: 'Select all', exact: true }), 'no one-click exclude-everything').toBeDisabled();
       const row = ex.locator('.list label').first();
       await row.getByRole('checkbox').check();
       const [rowB, nameB, roasterB] = [(await row.boundingBox())!, (await row.locator('.nm').boundingBox())!, (await row.locator('.roaster').boundingBox())!];
@@ -6062,6 +6063,7 @@ export const STATES: State[] = [
       const dlg = page.getByRole('dialog', { name: 'Change the rules' });
       await expect(dlg).toBeVisible();
       await expect(dlg.getByRole('button', { name: 'Reset today and use the new rules' })).toBeVisible();
+      await expect(dlg.getByRole('heading', { name: 'Change the rules' })).toHaveCSS('border-bottom-width', '0px');
       await expect(dlg.getByRole('button', { name: "Keep today's out list with the new rules" })).toBeVisible();
       await dlg.getByRole('button', { name: 'Cancel' }).click();
       await expect(dlg).toBeHidden();
@@ -6126,6 +6128,22 @@ export const STATES: State[] = [
       await expect(save, 'nothing to save yet').toBeDisabled();
       await panel.getByLabel('Sort').selectOption('urgency-asc');
       await expect(save, 'changed rules can be saved').toBeEnabled();
+      // Revert reloads the profile's saved rules (re-picking it would fire no change event).
+      const revert = panel.getByRole('button', { name: 'Revert', exact: true });
+      await expect(revert).toBeEnabled();
+      await revert.click();
+      await expect(panel.getByLabel('Sort')).toHaveValue('name');
+      await expect(save).toBeDisabled();
+      await expect(revert).toBeDisabled();
+      // The placeholder deselects the profile: Save goes off while the rules stay.
+      await panel.getByLabel('Sort').selectOption('urgency-asc');
+      await expect(save).toBeEnabled();
+      await profile.selectOption('');
+      await expect(save).toBeDisabled();
+      await expect(panel.getByLabel('Sort')).toHaveValue('urgency-asc');
+      await profile.selectOption('Mine');
+      await expect(panel.getByLabel('Sort')).toHaveValue('name');
+      await panel.getByLabel('Sort').selectOption('urgency-asc');
       // Reset: the defaults load, no profile is selected, Save stays off.
       await panel.getByRole('button', { name: 'Reset to defaults' }).click();
       await expect(profile).toHaveValue('');

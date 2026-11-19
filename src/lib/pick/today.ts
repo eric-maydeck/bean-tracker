@@ -1,7 +1,7 @@
 import type { D20Pose, Game, PickResult, PickRules, PickToday, Slot } from './types';
 
 export function freshToday(date: string, game: Game = 'wheel'): PickToday {
-	return { v: 1, date, out: [], brewed: [], game, board: null, result: null, wheelAngle: 0, d20Pose: null, panelOpen: false };
+	return { v: 1, date, out: [], brewed: [], game, board: null, result: null, wheelAngle: 0, d20Pose: null };
 }
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -37,8 +37,7 @@ export function parseToday(raw: unknown): PickToday | null {
 		board: Array.isArray(raw.board) && raw.board.every(validSlot) ? raw.board : null,
 		result: validResult(raw.result) ? raw.result : null,
 		wheelAngle: typeof raw.wheelAngle === 'number' && Number.isFinite(raw.wheelAngle) ? raw.wheelAngle : 0,
-		d20Pose: validPose(raw.d20Pose) ? raw.d20Pose : null,
-		panelOpen: false /* the Rules panel never reopens on load */
+		d20Pose: validPose(raw.d20Pose) ? raw.d20Pose : null
 	};
 }
 

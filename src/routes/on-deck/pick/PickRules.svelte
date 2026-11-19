@@ -5,10 +5,10 @@
   import { cleanName } from '#lib/pick/profiles.ts';
   import CritPicker from './CritPicker.svelte';
 
-  let { rules, coffees, eligible, names, selected, open, ontoggle, onchange, onpick, onsave, onsaveas, ondelete, onreset, canSave, locked }: {
+  let { rules, coffees, eligible, names, selected, open, ontoggle, onchange, onpick, onsave, onsaveas, ondelete, onreset, onrevert, canSave, locked }: {
     rules: PickRules; coffees: PickCoffee[]; eligible: PickCoffee[]; names: string[]; selected: string; canSave: boolean; open: boolean;
     ontoggle: (open: boolean) => void; onchange: (next: PickRules) => void;
-    onpick: (name: string) => void; onsave: () => void; onsaveas: (name: string) => Promise<boolean>; ondelete: () => Promise<boolean>; onreset: () => void;
+    onpick: (name: string) => void; onsave: () => void; onsaveas: (name: string) => Promise<boolean>; ondelete: () => Promise<boolean>; onreset: () => void; onrevert: () => void;
     locked: boolean;
   } = $props();
 
@@ -82,13 +82,13 @@
 
 {#snippet crit(label: string, which: 'critSuccess' | 'critFail', spot: string)}
   <div class="crit">
-    <label><input type="checkbox" checked={on(which)} onchange={(e) => setOn(which, e.currentTarget.checked)} /> {label}</label>
+    <div class="form-field-checkbox"><label><input type="checkbox" checked={on(which)} onchange={(e) => setOn(which, e.currentTarget.checked)} /> {label}</label></div>
     {#if on(which)}
       <div class="sub" role="radiogroup" aria-label={`${label} holds`}>
         <label><input type="radio" name={`${which}-mode`} checked={mode(which) === 'spot'} onchange={() => setMode(which, 'spot')} /> The coffee in that spot ({spot})</label>
         <label><input type="radio" name={`${which}-mode`} checked={mode(which) === 'specific'} onchange={() => setMode(which, 'specific')} /> Specific coffees</label>
         {#if which === 'critSuccess' && mode(which) === 'spot'}
-          <label class="sub"><input type="checkbox" checked={rules.highestIsCrit} onchange={(e) => set({ highestIsCrit: e.currentTarget.checked })} /> <span>Highest number is crit success <span class="text-muted">when fewer than 20 coffees</span></span></label>
+          <div class="form-field-checkbox sub"><label><input type="checkbox" checked={rules.highestIsCrit} onchange={(e) => set({ highestIsCrit: e.currentTarget.checked })} /> <span>Highest number is crit success <span class="text-muted">when fewer than 20 coffees</span></span></label></div>
         {/if}
         {#if mode(which) === 'specific'}
           <CritPicker label={`${label} coffees`} {coffees} selected={rules[which]} onchange={(ids) => setCrit(which, ids)} />
@@ -115,11 +115,11 @@
           <legend>Pool</legend>
           <div class="line">
             {#each CATEGORIES as [k, label] (k)}
-              <label><input type="checkbox" checked={rules.categories.includes(k)} onchange={(e) => toggleCategory(k, e.currentTarget.checked)} /> {label}</label>
+              <div class="form-field-checkbox"><label><input type="checkbox" checked={rules.categories.includes(k)} onchange={(e) => toggleCategory(k, e.currentTarget.checked)} /> {label}</label></div>
             {/each}
           </div>
-          <label><input type="checkbox" checked={rules.includeDecaf} onchange={(e) => set({ includeDecaf: e.currentTarget.checked })} /> Include decaf</label>
-          <label class="sub"><input type="checkbox" checked={rules.includeFrozenDecaf} disabled={!rules.includeDecaf} onchange={(e) => set({ includeFrozenDecaf: e.currentTarget.checked })} /> Include frozen decaf</label>
+          <div class="form-field-checkbox"><label><input type="checkbox" checked={rules.includeDecaf} onchange={(e) => set({ includeDecaf: e.currentTarget.checked })} /> Include decaf</label></div>
+          <div class="form-field-checkbox sub"><label><input type="checkbox" checked={rules.includeFrozenDecaf} disabled={!rules.includeDecaf} onchange={(e) => set({ includeFrozenDecaf: e.currentTarget.checked })} /> Include frozen decaf</label></div>
           <label class="field">Sort
             <select class="ctl-select" value={rules.sort} onchange={(e) => set({ sort: e.currentTarget.value as SortRule })}>
               {#each SORTS as [k, label] (k)}<option value={k}>{label}</option>{/each}
@@ -141,7 +141,7 @@
             <label><input type="radio" name="over20" checked={rules.over20 === 'byHand'} onchange={() => set({ over20: 'byHand' })} /> Exclude specific coffees</label>
           </div>
           {#if rules.over20 === 'byHand'}
-            <CritPicker label="Excluded coffees" coffees={eligible} selected={rules.excluded} onchange={(ids) => set({ excluded: ids })} />
+            <CritPicker label="Excluded coffees" requireSearch coffees={eligible} selected={rules.excluded} onchange={(ids) => set({ excluded: ids })} />
           {/if}
         </fieldset>
 
@@ -163,8 +163,8 @@
               {#each FILLS as [k, label] (k)}<option value={k}>{label}</option>{/each}
             </select>
           </label>
-          <label><input type="checkbox" checked={rules.fillEnds} onchange={(e) => set({ fillEnds: e.currentTarget.checked })} /> Normal 1 and 20 take part in the fill</label>
-          <label><input type="checkbox" checked={rules.repeats} onchange={(e) => set({ repeats: e.currentTarget.checked })} /> Repeats (a brewed coffee stays in play)</label>
+          <div class="form-field-checkbox"><label><input type="checkbox" checked={rules.fillEnds} onchange={(e) => set({ fillEnds: e.currentTarget.checked })} /> Normal 1 and 20 take part in the fill</label></div>
+          <div class="form-field-checkbox"><label><input type="checkbox" checked={rules.repeats} onchange={(e) => set({ repeats: e.currentTarget.checked })} /> Repeats (a brewed coffee stays in play)</label></div>
         </fieldset>
 
         <fieldset class="profiles">
@@ -177,9 +177,10 @@
           </label>
           <div class="actions">
             <button type="button" class="button button-secondary" disabled={!canSave} onclick={onsave}>Save</button>
+            <button type="button" class="button button-secondary" disabled={!canSave} onclick={onrevert}>Revert</button>
             <button type="button" class="button button-secondary" onclick={() => (step = 'naming')}>Save as…</button>
             <button type="button" class="button button-secondary" disabled={!selected} onclick={() => (step = 'delete')}>Delete</button>
-            <button type="button" class="button button-secondary" onclick={onreset}>Reset to defaults</button>
+            <button type="button" class="button button-secondary wide" onclick={onreset}>Reset to defaults</button>
           </div>
           {#if step === 'naming'}
             <div class="actions">
@@ -218,7 +219,6 @@
   fieldset.body { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: var(--space-2); }
   fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); margin: 0; display: grid; gap: var(--space-2); min-width: 0; }
   legend { font-weight: 600; padding: 0 var(--space-2); }
-  input[type='checkbox'], input[type='radio'] { accent-color: var(--color-accent); margin: 0; }
   .line { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); align-items: center; }
   label { display: inline-flex; gap: var(--space-2); align-items: center; min-height: 30px; cursor: pointer; }
   .field { display: grid; gap: var(--space-1); min-height: 0; }
@@ -227,6 +227,7 @@
   .crit { display: grid; gap: var(--space-1); }
   .crit .sub { align-items: flex-start; } /* box left, label and hint right */
   .crit .sub .sub { margin-left: var(--space-5); }
+  .crit .sub label { align-items: flex-start; } /* the box stays on the first line when the hint wraps */
   .order { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1); }
   .order li { display: flex; gap: var(--space-2); align-items: center; }
   .order span { min-width: 5rem; }
@@ -234,6 +235,7 @@
   .actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2); align-items: center; }
   .actions :global(.button) { margin: 0; justify-content: center; }
   .name { margin: 0; min-width: 0; grid-column: 1 / -1; }
+  .actions .wide { grid-column: 1 / -1; }
   .actions > span { grid-column: 1 / -1; }
   @media (max-width: 640px) { .name { min-height: 44px; font-size: 16px; } label { min-height: 44px; } .rules-panel :global(.ctl-select) { width: 100%; } .actions :global(.button), .bar :global(.button), .order :global(.button) { min-height: 44px; } }
 </style>
