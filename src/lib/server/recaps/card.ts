@@ -38,34 +38,37 @@ const fit = (text: string, size: number) => Math.max(24, Math.min(size, Math.flo
 const el = (type: string, style: Record<string, unknown>, children?: unknown) => ({ type, props: { style, children } });
 
 // A recipe's pour chart on a page card (the PourTimeline shapes), in card-legible colours: solid fills, no hairlines, bold swirls.
-// Pour fills are the app's series pastels (bloom orange, fast blue, medium olive, slow green); the bloom bands use the band hues.
+// Colours are the light theme's own (src/app.css): --fill-bloom = 50% mix of --series-4 and --series-11, --fill-fast = 75% --series-8 + white,
+// --series-5 (medium), --series-6 (slow); bands --series-9, -7, -3 at --band-opacity 0.6. Swirls are wavy ink lines.
 const CHART_H = 130;
-const KIND_FILL = { bloom: '#fdc58b', fast: '#9db4fb', medium: '#d8db80', slow: '#92dba9' };
-const BAND_FILL = ['#d9a6e3', '#7fdcea', '#ffb7c1'];
+const KIND_FILL = { bloom: '#df954a', fast: '#8faafe', medium: '#d8db80', slow: '#92dba9' };
+const BAND_FILL = ['#ae57bb', '#7fdcea', '#ffb7c1'];
+// A vertical sine line, 3 full waves over the chart height, as short segments (smooth at 2px steps).
+const wave = (x: number) => Array.from({ length: CHART_H / 2 + 1 }, (_, i) => `${i ? 'L' : 'M'}${(x + 4 * Math.sin((i * 2 / CHART_H) * 6 * Math.PI)).toFixed(1)} ${i * 2}`).join(' ');
 function chart(t: ChartTimeline) {
   const g = pourShapes(t, WIDTH, CHART_H), H = CHART_H;
   const node = (type: string, props: Record<string, unknown>) => ({ type, props });
   const children = [
-    ...g.windows.map((w) => node('rect', { x: w.x0, y: 0, width: w.x1 - w.x0, height: H, fill: BAND_FILL[Math.min(w.bloom, 2)], fillOpacity: 0.4 })),
-    node('rect', { x: 0, y: H - 4, width: WIDTH, height: 4, fill: CREAM, fillOpacity: 0.6 }),
+    ...g.windows.map((w) => node('rect', { x: w.x0, y: 0, width: w.x1 - w.x0, height: H, fill: BAND_FILL[Math.min(w.bloom, 2)], fillOpacity: 0.6 })),
+    node('rect', { x: 0, y: H - 4, width: WIDTH, height: 4, fill: INK }),
     ...g.shapes.flatMap((sh) => [
-      ...(sh.hold ? [node('rect', { x: sh.hold.x0, y: sh.hold.y - 2, width: sh.hold.x1 - sh.hold.x0, height: 4, fill: CREAM, fillOpacity: 0.7 })] : []),
+      ...(sh.hold ? [node('rect', { x: sh.hold.x0, y: sh.hold.y - 2, width: sh.hold.x1 - sh.hold.x0, height: 4, fill: INK })] : []),
       node('polygon', { points: sh.points, fill: KIND_FILL[sh.kind] })
     ]),
-    ...g.swirls.flatMap((x) => [node('rect', { x: x - 5, y: 0, width: 10, height: H, fill: INK }), node('rect', { x: x - 2.5, y: 0, width: 5, height: H, fill: CREAM })])
+    ...g.swirls.map((x) => node('path', { d: wave(x), fill: 'none', stroke: INK, strokeWidth: 5, strokeLinecap: 'round', strokeLinejoin: 'round' }))
   ];
   return node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { display: 'flex', flexShrink: 0, marginBottom: 24 }, children });
 }
 
 export async function cardSvg(c: { big: string; label: string; year: number; tone: Tone; dark?: false; cover?: true; page?: true; timeline?: ChartTimeline }): Promise<string> {
-  const color = fg(c.tone);
+  const color = c.page ? INK : fg(c.tone); // a page card is light: the app's page background, ink text
   // "Roaster · Coffee" (a bag): two lines, the roaster smaller above the coffee name. `page` (a page's link-preview card) keeps big as one text, with a larger label and footer.
   const [rn, cn] = !c.page && c.big.includes(' · ') ? c.big.split(' · ', 2) : [null, c.big];
   // A page card keeps fixed sizes (cards side by side look alike): one headline size, a smaller step only for very long text.
   const bigSize = fit(cn, c.page ? ([...cn].length <= 40 ? 96 : 72) : cardFontSize(rn ? (rn.length > cn.length ? rn : cn) : cn, 'big'));
   const bigStyle = { fontFamily: 'Lora', fontWeight: 600, lineHeight: 1.05, display: 'block', lineClamp: 2 };
   const lblSize = fit(c.label, c.page ? 52 : cardFontSize(c.label, 'label'));
-  const tree = el('div', { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: CARD.width, height: CARD.height, padding: PAD, boxSizing: 'border-box', background: BG[c.tone], color }, [
+  const tree = el('div', { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: CARD.width, height: CARD.height, padding: PAD, boxSizing: 'border-box', background: c.page ? CREAM : BG[c.tone], color }, [
     el('div', { display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center' }, [
       ...(rn ? [el('div', { ...bigStyle, fontSize: Math.round(bigSize * 0.55), opacity: 0.85, marginBottom: 12 }, glue(rn))] : []),
       el('div', { ...bigStyle, fontSize: bigSize }, glue(cn)),
