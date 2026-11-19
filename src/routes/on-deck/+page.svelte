@@ -34,7 +34,7 @@
   // before afterNavigate has had a chance to restore it.
   let explicit = $state<Show | undefined>(pickOne(currentParams(page.url), 'show', SHOW_VALUES));
   // The Currently open / Next up view: URL only (never remembered), and only `next` is explicit.
-  let explicitView = $state<'next' | undefined>(parseOnDeckView(currentParams(page.url)));
+  let explicitView = $state<'next' | 'pick' | undefined>(parseOnDeckView(currentParams(page.url)));
   let view = $derived<OnDeckView>(explicitView ?? 'open');
   let loaded = $state(false);
   let filter = $derived(explicit ?? 'all');
@@ -89,7 +89,7 @@
 <svelte:head>
   <title>Bean Tracker - On Deck</title>
 </svelte:head>
-<PreviewMeta preview={onDeckPreview(view, filter, view === 'open' ? current.open : current.nextUp)} />
+<PreviewMeta preview={onDeckPreview(view === 'next' ? 'next' : 'open', filter, view === 'next' ? current.nextUp : current.open)} />
 
 <div class="toolbar">
   <h1>On Deck</h1>
@@ -99,7 +99,7 @@
 <div class="search-row">
   <label class="form-field group-field">
     <span>View</span>
-    <select class="ctl-select" aria-label="View" value={view} onchange={(e) => (explicitView = e.currentTarget.value === 'next' ? 'next' : undefined)}>
+    <select class="ctl-select" aria-label="View" value={view} onchange={(e) => (explicitView = e.currentTarget.value === 'next' || e.currentTarget.value === 'pick' ? e.currentTarget.value : undefined)}>
       {#each VIEWS as v (v)}<option value={v}>{VIEW_LABEL[v]}</option>{/each}
     </select>
   </label>
@@ -176,7 +176,7 @@
       </section>
     {/if}
   </section>
-{:else}
+{:else if view === 'next'}
   <section class="detail-section">
     <h2>Next up</h2>
     {#if current.nextUp.length === 0}
