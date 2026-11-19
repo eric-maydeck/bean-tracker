@@ -139,14 +139,14 @@ describe('insightsPreview chart thumbnails', () => {
     expect(r.title).toBe('Stats: Habits');
     expect(r.description).toBe(insightsPreview({ ...page, chart: 'habits-hour' }).description);
     expect(r.card).toMatchObject({ big: 'By hour of day', label: 'Stats · All time', thumb: { kind: 'vbars' } });
-    expect(insightsPreview({ ...page, chart: 'consumption-chart-on-hand', ctx: ctx({ consumptionTab: tab }) }).card?.thumb.kind).toBe('lines');
+    expect(insightsPreview({ ...page, chart: 'consumption-chart-on-hand', ctx: ctx({ consumptionTab: tab }) }).card?.thumb?.kind).toBe('lines');
   });
   it('unknown chart or no data: no card', () => {
     expect(insightsPreview({ ...page, chart: 'nope', ctx: ctx({ habits: h }) }).card).toBeUndefined();
     expect(insightsPreview({ ...page, chart: 'habits-hour', ctx: ctx({ habits: null }) }).card).toBeUndefined();
   });
   it('leaderboard List view keeps the bars', () => {
-    expect(insightsPreview({ ...base, chart: 'leaderboard-origins', ctx: ctx({ boards: none, boardSeries: null }) }).card?.thumb.kind).toBe('bars');
+    expect(insightsPreview({ ...base, chart: 'leaderboard-origins', ctx: ctx({ boards: none, boardSeries: null }) }).card?.thumb?.kind).toBe('bars');
   });
   it.each([
     ['onhand-age', { onHand: { age: { labels: ['a', 'b', 'c'], bags: { before: [1, 0, 2], inside: [0, 1, 1], past: [1, 1, 1], noWindow: [0, 0, 0] }, grams: { before: [1, 0, 2], inside: [0, 1, 1], past: [1, 1, 1], noWindow: [0, 0, 0] } } } }, 'Age profile', 'vbars'],
@@ -166,6 +166,6 @@ describe('insightsPreview chart thumbnails', () => {
     expect(time.card).toMatchObject({ big: 'Dripper', label: 'Stats · All time', thumb: { kind: 'lines' } });
     expect(time.title).toBe(PAGE.title);
     expect(time.description).toBe(PAGE.description);
-    expect(insightsPreview({ ...base, chart: 'leaderboard-dripper', boards: data.boards, ctx: ctx(data, { rank: 'rating', low: [], open: [] }) }).card?.thumb.kind).toBe('bars');
+    expect(insightsPreview({ ...base, chart: 'leaderboard-dripper', boards: data.boards, ctx: ctx(data, { rank: 'rating', low: [], open: [] }) }).card?.thumb?.kind).toBe('bars');
   });
 });
