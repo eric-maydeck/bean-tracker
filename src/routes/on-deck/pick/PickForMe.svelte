@@ -42,7 +42,10 @@
   let rev = $state(0); // bumped on cancel so the panel re-reads `rules`
   let restored = false;
   let phone = $state(false);
-  let shown = $state(true); // phone overlay: appears ~1.5s after a result lands
+  let shown = $state(false); // phone overlay: opens ~1.5s after a fresh result lands, never for a restored one
+  let landing = $state(false); // between the landing and the overlay: the inline card waits too
+  let modalEl: HTMLDivElement | undefined = $state();
+  let prevFocus: HTMLElement | null = null;
   let showTimer: ReturnType<typeof setTimeout> | undefined;
   const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const CONFETTI = Array.from({ length: 28 }, (_, i) => ({ left: (i * 37) % 100, delay: (i % 7) * 0.12, dur: 1.6 + (i % 5) * 0.3, color: ['#ffe08a', '#ffd04d', '#fff6d0', '#c9952c'][i % 4] }));
@@ -84,7 +87,7 @@
   $effect(() => {
     if (!ready) return;
     const snap = $state.snapshot(today);
-    const json = JSON.stringify(snap);
+    const json = JSON.stringify({ ...snap, board: null }); // the board snapshot alone is not a change worth a write
     if (saved === '') return void (saved = json);
     if (json !== saved) { saved = json; saveToday(admin, snap); }
   });
@@ -116,8 +119,29 @@
     const k = board[n - 1]?.kind;
     return k === 'success' || k === 'fail' ? k : null;
   };
-  const overlay = $derived(phone && shown && !!result);
-  const rolledN = $derived(game === 'd20' ? (result?.n ?? null) : null);
+  // Not while the Rules modal is open: one Escape then closes only the top layer.
+  const overlay = $derived(phone && shown && !!result && !today.panelOpen);
+  const inlineCard = $derived(!(phone && (landing || overlay)));
+  // The highlighted row must still match the board (it is redrawn when a coffee goes out or the rules change).
+  const rolledN = $derived.by(() => {
+    const n = game === 'd20' ? result?.n : undefined;
+    const s = n ? board[n - 1] : undefined;
+    if (!n || !result || !s) return null;
+    return s.kind === 'coffee' ? (result.via === 'normal' && s.coffeeId === result.coffeeId ? n : null) : s.kind === result.via ? n : null;
+  });
+  const dismissOverlay = () => { shown = false; };
+  // Focus: the overlay's Close button on open, the control that was focused before on close.
+  let overlayWas = false;
+  $effect(() => {
+    if (overlay) {
+      overlayWas = true;
+      prevFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      tick().then(() => modalEl?.querySelector<HTMLButtonElement>('[data-close]')?.focus());
+    } else if (overlayWas) {
+      overlayWas = false;
+      if (prevFocus?.isConnected) prevFocus.focus();
+    }
+  });
 
   const any = <T,>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)];
   // Clearing first makes a repeated message ("Roll again" twice) announce again.
@@ -130,8 +154,9 @@
     busy = false;
     today.result = r;
     shown = false;
+    landing = true;
     clearTimeout(showTimer);
-    showTimer = setTimeout(() => (shown = true), reduced() ? 0 : 1500);
+    showTimer = setTimeout(() => { landing = false; shown = true; }, reduced() ? 0 : 1500);
     say(`Picked ${byId.get(r.coffeeId)?.name ?? ''}`);
   }
   function again() {
@@ -145,6 +170,8 @@
     rollAgain = false;
     busy = true;
     shown = false;
+    landing = false;
+    clearTimeout(showTimer);
     wheel.spinTo(sliceAt(slices, Math.random() * TAU));
   }
   function wheelResult(s: WheelSlice, angle: number) {
@@ -165,6 +192,8 @@
     rollAgain = false;
     busy = true;
     shown = false;
+    landing = false;
+    clearTimeout(showTimer);
   }
 
   function setGame(g: Game) {
@@ -215,28 +244,30 @@
     edit(profiles[name]);
   }
   // Write the whole map; the local copy changes only when the save went through.
-  async function storeProfiles(next: Profiles, msg: string, sel = selected) {
+  async function storeProfiles(next: Profiles, msg: string, sel = selected): Promise<boolean> {
     try {
       await saveProfiles(admin, next);
       profiles = next;
       selected = sel;
       note = msg;
+      return true;
     } catch {
       note = "Couldn't save.";
+      return false;
     }
   }
-  const saveProfile = () => selected && storeProfiles({ ...profiles, [selected]: $state.snapshot(rules) }, `Saved "${selected}".`);
-  function saveProfileAs(raw: string) {
+  const saveProfile = () => selected ? storeProfiles({ ...profiles, [selected]: $state.snapshot(rules) }, `Saved "${selected}".`) : Promise.resolve(false);
+  function saveProfileAs(raw: string): Promise<boolean> {
     const n = cleanName(raw);
-    if (n) storeProfiles({ ...profiles, [n]: $state.snapshot(rules) }, `Saved "${n}".`, n);
+    return n ? storeProfiles({ ...profiles, [n]: $state.snapshot(rules) }, `Saved "${n}".`, n) : Promise.resolve(false);
   }
-  function deleteProfile() {
+  function deleteProfile(): Promise<boolean> {
     const { [selected]: gone, ...rest } = profiles;
-    if (gone) storeProfiles(rest, `Deleted "${selected}".`, '');
+    return gone ? storeProfiles(rest, `Deleted "${selected}".`, '') : Promise.resolve(false);
   }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && overlay && !dlg?.open && close()} />
+<svelte:window onkeydown={(e) => e.key === 'Escape' && overlay && !dlg?.open && dismissOverlay()} />
 
 {#if ready}
   <div class="form-field group-field">
@@ -266,7 +297,7 @@
     </section>
 
     <div class="side">
-      {#if !phone}<div class="result card">
+      {#if inlineCard}<div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
           <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
             onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={close} />
@@ -286,15 +317,15 @@
 
   {#if overlay && result && resultCoffee}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Escape is handled on the window) -->
-    <div class="modal-backdrop" onclick={(e) => e.target === e.currentTarget && close()}>
+    <div class="modal-backdrop" onclick={(e) => e.target === e.currentTarget && dismissOverlay()}>
       {#if result.via !== 'normal'}
         <div class="fx {result.via}" aria-hidden="true">
           {#if result.via === 'success'}{#each CONFETTI as c, i (i)}<i style:left="{c.left}%" style:animation-delay="{c.delay}s" style:animation-duration="{c.dur}s" style:background={c.color}></i>{/each}{/if}
         </div>
       {/if}
-      <div class="modal pick-modal {result.via}" role="dialog" aria-modal="true" aria-label="Pick result">
+      <div class="modal pick-modal {result.via}" role="dialog" aria-modal="true" aria-label="Pick result" bind:this={modalEl}>
         <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
-          onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={close} />
+          onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} />
       </div>
     </div>
   {/if}
@@ -318,6 +349,7 @@
   .game { min-width: 0; }
   .wheel-wrap { max-width: 560px; margin: 0 auto; }
   .result { min-height: 7.5rem; }
+  @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
   .pick-modal { position: relative; max-width: 28rem; }
   .pick-modal.success { box-shadow: 0 0 0 3px #ffe08a, 0 0 32px #d4a73a; }
   .pick-modal.fail { box-shadow: 0 0 0 3px #d01c1c, 0 0 32px #7a0a0a; }

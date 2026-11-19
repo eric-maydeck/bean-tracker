@@ -8,7 +8,7 @@ export const MAX_NAME = 40;
 /** A profile name: trimmed, 1 to 40 characters. Returns the trimmed name, or null when it is not allowed. */
 export function cleanName(raw: string): string | null {
   const n = raw.trim();
-  return n.length >= 1 && n.length <= MAX_NAME ? n : null;
+  return n.length >= 1 && n.length <= MAX_NAME && n !== '__proto__' ? n : null; // '__proto__' would set the map's prototype, not a key
 }
 
 /**

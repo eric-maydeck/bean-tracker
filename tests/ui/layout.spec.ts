@@ -5834,7 +5834,7 @@ export const STATES: State[] = [
       if ((page.viewportSize()?.width ?? 0) > 640) {
         const [w, r] = [(await page.locator('.wheel').boundingBox())!, (await page.locator('.result').boundingBox())!];
         expect(r.x, 'desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
-      } else await expect(page.locator('.result')).toHaveCount(0); // phone: results show in the overlay
+      } else await expect(page.locator('.result')).toBeHidden(); // phone: no placeholder, results show in the overlay
       await expectGroupsLabelled(page);
       const rules = page.getByRole('button', { name: 'Rules', exact: true });
       await rules.click();
@@ -5859,6 +5859,7 @@ export const STATES: State[] = [
       const vw = page.viewportSize()!.width;
       if (vw > 640) {
         expect(box.x, 'side bar hugs the left edge').toBeLessThanOrEqual(1);
+        expect(box.y, 'side bar starts below the site header').toBeGreaterThanOrEqual((await page.locator('nav.site-nav').boundingBox())!.height - 1);
         expect(box.width).toBeLessThanOrEqual(420);
         const after = (await stage.boundingBox())!;
         expect(after.y, 'the game is not pushed down').toBe(before.y);
@@ -5952,6 +5953,7 @@ export const STATES: State[] = [
       await expect(modal).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(modal).toBeHidden();
+      await expect(page.locator('.result .pick-card')).toBeVisible(); // dismissing the overlay keeps the result, inline
       await spin.click();
       await expect(modal).toBeVisible();
       await modal.getByRole('button', { name: 'Close' }).click();

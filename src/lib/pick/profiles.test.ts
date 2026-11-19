@@ -21,5 +21,7 @@ describe('pick profiles', () => {
     expect(cleanName('   ')).toBeNull();
     expect(cleanName('a'.repeat(40))).toBe('a'.repeat(40));
     expect(cleanName('a'.repeat(41))).toBeNull();
+    expect(cleanName('__proto__')).toBeNull();
+    expect(Object.keys(parseProfiles(JSON.parse('{"__proto__":{},"Ok":{}}')))).toEqual(['Ok']);
   });
 });

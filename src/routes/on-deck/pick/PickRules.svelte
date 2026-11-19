@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { Category, CritMode, Fill, Iteration, PickCoffee, PickRules, SortGroup, SortRule } from '#lib/pick/types.ts';
   import { cleanName } from '#lib/pick/profiles.ts';
   import CritPicker from './CritPicker.svelte';
@@ -6,7 +7,7 @@
   let { rules, coffees, eligible, names, selected, open, ontoggle, onchange, onpick, onsave, onsaveas, ondelete, onreset, note, locked }: {
     rules: PickRules; coffees: PickCoffee[]; eligible: PickCoffee[]; names: string[]; selected: string; open: boolean;
     ontoggle: (open: boolean) => void; onchange: (next: PickRules) => void;
-    onpick: (name: string) => void; onsave: () => void; onsaveas: (name: string) => void; ondelete: () => void; onreset: () => void;
+    onpick: (name: string) => void; onsave: () => void; onsaveas: (name: string) => Promise<boolean>; ondelete: () => Promise<boolean>; onreset: () => void;
     note: string; locked: boolean;
   } = $props();
 
@@ -14,11 +15,34 @@
   let step = $state<'idle' | 'naming' | 'overwrite' | 'delete'>('idle');
   let nameInput = $state('');
   const cleaned = $derived(cleanName(nameInput));
+  // A failed save keeps the prompt and the typed name; the note says why.
+  async function saveNamed() {
+    if (cleaned && (await onsaveas(cleaned))) { step = 'idle'; nameInput = ''; }
+  }
   function submitName() {
     if (!cleaned) return;
     if (names.includes(cleaned)) step = 'overwrite';
-    else { onsaveas(cleaned); step = 'idle'; nameInput = ''; }
+    else saveNamed();
   }
+  async function removeSelected() {
+    if (await ondelete()) step = 'idle';
+  }
+
+  // Focus the panel's Close button when it opens, and the opener when it closes; start below the site header.
+  let toggleEl: HTMLButtonElement | undefined = $state();
+  let closeEl: HTMLButtonElement | undefined = $state();
+  let top = $state(0);
+  let wasOpen = false;
+  $effect(() => {
+    if (open) {
+      wasOpen = true;
+      top = Math.max(0, document.querySelector('nav.site-nav')?.getBoundingClientRect().bottom ?? 0);
+      tick().then(() => closeEl?.focus());
+    } else if (wasOpen) {
+      wasOpen = false;
+      toggleEl?.focus();
+    }
+  });
 
   const CATEGORIES: [Category, string][] = [['open', 'Open'], ['backlog', 'Backlog'], ['frozen', 'Frozen']];
   const SORTS: [SortRule, string][] = [['urgency-desc', 'Urgency, high first'], ['urgency-asc', 'Urgency, low first'], ['name', 'A to Z'], ['category', 'By category']];
@@ -69,15 +93,15 @@
 
 <svelte:window onkeydown={onkey} />
 
-<button type="button" class="button button-secondary toggle" aria-expanded={open} onclick={() => ontoggle(!open)}>Rules</button>
+<button type="button" class="button button-secondary toggle" bind:this={toggleEl} aria-expanded={open} onclick={() => ontoggle(!open)}>Rules</button>
 
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Escape is handled on the window) -->
-  <div class="modal-backdrop rules-backdrop" onclick={(e) => e.target === e.currentTarget && window.innerWidth <= 640 && ontoggle(false)}>
+  <div class="modal-backdrop rules-backdrop" style:top="{top}px" onclick={(e) => e.target === e.currentTarget && window.innerWidth <= 640 && ontoggle(false)}>
     <section class="modal rules-panel" role="dialog" aria-label="Rules">
       <header class="bar">
         <h3>Rules</h3>
-        <button type="button" class="button button-secondary" onclick={() => ontoggle(false)}>Close</button>
+        <button type="button" class="button button-secondary" bind:this={closeEl} onclick={() => ontoggle(false)}>Close</button>
       </header>
       <fieldset class="body" disabled={locked}>
         <fieldset>
@@ -163,13 +187,13 @@
           {:else if step === 'overwrite'}
             <div class="actions" role="alert">
               <span>Overwrite "{cleaned}"?</span>
-              <button type="button" class="button" onclick={() => { if (cleaned) onsaveas(cleaned); step = 'idle'; nameInput = ''; }}>Overwrite</button>
+              <button type="button" class="button" onclick={saveNamed}>Overwrite</button>
               <button type="button" class="button button-secondary" onclick={() => (step = 'naming')}>Back</button>
             </div>
           {:else if step === 'delete'}
             <div class="actions" role="alert">
               <span>Delete "{selected}"?</span>
-              <button type="button" class="button button-danger" onclick={() => { ondelete(); step = 'idle'; }}>Delete</button>
+              <button type="button" class="button button-danger" onclick={removeSelected}>Delete</button>
               <button type="button" class="button button-secondary" onclick={() => (step = 'idle')}>Cancel</button>
             </div>
           {/if}

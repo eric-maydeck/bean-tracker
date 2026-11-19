@@ -9,6 +9,7 @@
 </script>
 
 <table class="data-table board" aria-label="D20 board">
+  <colgroup><col class="c-n" /><col class="c-name" /><col class="c-roaster" /></colgroup>
   <thead><tr><th scope="col">#</th><th scope="col">Coffee</th><th scope="col">Roaster</th></tr></thead>
   <tbody>
     {#each board as s (s.n)}
@@ -25,7 +26,9 @@
   .board { font-size: 0.85rem; table-layout: fixed; }
   .board :global(th), .board :global(td) { padding: 0.2rem var(--space-2); }
   .board tbody tr:nth-child(even) { background: color-mix(in srgb, var(--color-text-muted) 7%, transparent); }
-  .n { width: 2.2rem; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .c-n { width: 2.6rem; }
+  .c-roaster { width: 34%; }
+  .n { font-variant-numeric: tabular-nums; font-weight: 600; }
   .name, .roaster { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .name .badge { margin-right: var(--space-2); font-size: 0.7rem; padding: 0.05rem 0.4rem; }
   tr.success { background: #3b2d0c !important; color: #ffe08a; }

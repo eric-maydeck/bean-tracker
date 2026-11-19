@@ -27,7 +27,7 @@
       <button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>
       <button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>
       <button type="button" class="button button-secondary" disabled={busy} onclick={onopen}>Open coffee page</button>
-      <button type="button" class="button button-secondary" disabled={busy} onclick={onclose}>Close</button>
+      <button type="button" class="button button-secondary" data-close disabled={busy} onclick={onclose}>Close</button>
     </div>
   </div>
 </article>
@@ -37,8 +37,8 @@
   .thumb { width: 84px; height: 104px; object-fit: contain; border-radius: var(--radius); flex-shrink: 0; }
   .info { min-width: 0; flex: 1; }
   .name { margin: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-  .badges { display: contents; }
-  @media (max-width: 640px) { .badges { display: flex; flex-basis: 100%; gap: var(--space-2); min-height: 1.7rem; } } /* a reserved line: a badge never moves the buttons */
+  /* a reserved line under the name, on every width: a badge never wraps the name or moves the buttons */
+  .badges { display: flex; flex-basis: 100%; gap: var(--space-2); min-height: 1.7rem; }
   .info p { margin: var(--space-1) 0 0; }
   .buttons { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-2); }
   .buttons :global(.button) { min-height: 44px; }
