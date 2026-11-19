@@ -6137,7 +6137,8 @@ export const STATES: State[] = [
         const nm = ex.locator('.list .nm').filter({ hasText: 'Finca' });
         await nm.hover(); // scrolls it into view first: its tip stays (the row is under the pointer)
         await expect(tipOf).toBeVisible();
-        await ex.locator('.list').evaluate((el) => { el.scrollTop = el.scrollHeight; });
+        // scroll to the far end from where the row sits, so the row really leaves the pointer (the hover may have scrolled it to either end)
+        await ex.locator('.list').evaluate((el) => { el.scrollTop = el.scrollTop > 0 ? 0 : el.scrollHeight; });
         await expect(tipOf).toBeHidden();
       }
       // Closing slides the panel out as opening slid it in (desktop; none on a phone or with reduced motion).

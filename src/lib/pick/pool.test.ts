@@ -149,6 +149,10 @@ describe('bags of one coffee', () => {
     expect(ids(buildPool(cs, DEFAULT_RULES, new Set()).pool)).toEqual([1]);
     expect(ids(buildPool(cs, DEFAULT_RULES, new Set([1])).pool)).toEqual([2]);
   });
+  it('excluding one bag by hand leaves no bag of that coffee in the pool', () => {
+    const r = R({ over20: 'byHand', excluded: [2] });
+    expect(ids(buildPool([bag(1, { urgency: 9 }), bag(2, { urgency: 5 }), mk(3)], r, new Set()).pool)).toEqual([3]);
+  });
   it('the cap of 20 counts coffees, not bags', () => {
     const cs = [...fixture.slice(0, 19), ...fixture.slice(0, 5).map((c, i) => ({ ...c, id: 100 + i, urgency: 0 })), mk(30, { urgency: 0 })];
     const { pool, sittingOut } = buildPool(cs, DEFAULT_RULES, new Set());

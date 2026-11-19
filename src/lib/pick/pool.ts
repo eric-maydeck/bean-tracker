@@ -49,7 +49,11 @@ export function buildPool(
     .filter((c) => (c.decaf ? rules.includeDecaf && !(skipFrozenDecaf && c.category === 'frozen') : true))
     .filter((c) => !critKeys.has(keyOf(c)) && !out.has(c.id))
     .sort(sorter(rules));
-  if (rules.over20 === 'byHand') list = list.filter((c) => !rules.excluded.includes(c.id));
+  if (rules.over20 === 'byHand') {
+    // the Excluded list shows one row per coffee, so excluding a bag excludes every bag of it
+    const skip = new Set(coffees.filter((c) => rules.excluded.includes(c.id)).map(keyOf));
+    list = list.filter((c) => !skip.has(keyOf(c)));
+  }
   list = onePerCoffee(list); // the most urgent bag (the sort order) stands for the coffee: later bags take no number, count toward no cap
   return { pool: list.slice(0, CAP), sittingOut: list.slice(CAP) };
 }
