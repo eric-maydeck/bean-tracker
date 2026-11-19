@@ -5980,13 +5980,17 @@ export const STATES: State[] = [
       const [t1, t2] = [(await page.locator('table.board').nth(0).boundingBox())!, (await page.locator('table.board').nth(1).boundingBox())!];
       // The result opens in the pop-up at every width, with the rolled number; the inline card is what remains once it is closed.
       await expect(page.locator('.pick-modal .rolled b'), 'the overlay shows the rolled number').toHaveText('7');
+      await expect(page.locator('.pick-modal .rolled'), 'the header reads You rolled').toContainText('You rolled');
       await dismissPickOverlay(page);
       await expect(page.locator('.side .last'), 'the inline card has its heading').toHaveText('Your last roll');
-      expect((await page.locator('.side .last').boundingBox())!.y + 1, 'heading above the card').toBeLessThanOrEqual((await page.locator('.result').boundingBox())!.y);
+      const [hb, cb0, gr] = [(await page.locator('.side .last').boundingBox())!, (await page.locator('.result').boundingBox())!, (await page.locator('.game-row').boundingBox())!];
+      expect(hb.y + hb.height - 1, 'heading above the card').toBeLessThanOrEqual(cb0.y);
+      if ((page.viewportSize()?.width ?? 0) >= 1280) expect(hb.y, 'beside the game: the heading sits in the Game row band, not off the page').toBeGreaterThanOrEqual(gr.y - 2);
       if ((page.viewportSize()?.width ?? 0) > 900) {
         expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
         await expectOutRowOnScreen(page);
         expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the D20').toBeGreaterThan((await page.locator('.d20 .stage').boundingBox())!.x + (await page.locator('.d20 .stage').boundingBox())!.width);
+        expect(Math.abs((await page.locator('.result').boundingBox())!.y - (await page.locator('.d20 .stage').boundingBox())!.y), 'card top level with the tray top (the heading does not push it)').toBeLessThanOrEqual(2);
         // The card is as tall as the D20 tray (an image card; one without is as tall as its content).
         if (await page.locator('.result img').count()) expect(Math.abs((await page.locator('.result').boundingBox())!.height - (await page.locator('.d20 .stage').boundingBox())!.height), 'card as tall as the tray').toBeLessThanOrEqual(2);
       } else {
@@ -6055,6 +6059,7 @@ export const STATES: State[] = [
       if ((page.viewportSize()?.width ?? 0) <= 640) return;
       await expect(page.locator('.side .last'), 'the wheel result has its heading').toHaveText('Your last spin');
       const card = page.locator('.result');
+      if ((page.viewportSize()?.width ?? 0) >= 1280) expect(Math.abs((await card.boundingBox())!.y - (await page.locator('.game').boundingBox())!.y), 'card top level with the game top').toBeLessThanOrEqual(2);
       await expect(card.locator('.pick-card')).toBeVisible();
       expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(735);
       await expect(card.getByRole('button', { name: 'Close' })).toHaveCount(0);
@@ -6109,6 +6114,17 @@ export const STATES: State[] = [
       await spin.click();
       const modal = page.getByRole('dialog', { name: 'Pick result' });
       await expect(modal).toBeVisible();
+      // Horizontal card where the layout is wide, vertical on a phone; its detail fits (no clipping), and Tab stays inside the pop-up.
+      const wide = (page.viewportSize()?.width ?? 0) >= 1280;
+      expect(await modal.locator('.pick-card').evaluate((e) => getComputedStyle(e).display === 'grid'), wide ? 'horizontal pop-up card' : 'vertical pop-up card').toBe(wide);
+      if (wide) {
+        expect(await modal.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the pop-up detail fits').toBe(true);
+        expect(Math.abs((await modal.locator('.pick-card').boundingBox())!.height - 326), 'pop-up card height').toBeLessThanOrEqual(2);
+      }
+      for (const key of ['Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
+        await page.keyboard.press(key);
+        expect(await page.evaluate(() => !!document.activeElement?.closest('.pick-modal')), `focus stays in the pop-up after ${key}`).toBe(true);
+      }
       await page.keyboard.press('Escape');
       await expect(modal).toBeHidden();
       await expect(page.locator('.result .pick-card')).toBeVisible(); // dismissing the overlay keeps the result, inline
