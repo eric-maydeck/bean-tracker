@@ -16,10 +16,14 @@ describe('on-deck view param', () => {
     expect(parseOnDeckView(p('view=pick'))).toBe('pick');
     expect(parseOnDeckView(p('view=PICK'))).toBe('pick');
     expect(parseGame(p('game=d20'))).toBe('d20');
-    expect(parseGame(p('game=wheel'))).toBeUndefined();
+    expect(parseGame(p('game=wheel'))).toBe('wheel');
+    expect(parseGame(p('game=Wheel'))).toBe('wheel');
+    expect(parseGame(p('view=pick'))).toBeUndefined(); // bare: the visitor's last game today, else the wheel
     expect(parseGame(p('game=bogus'))).toBeUndefined();
     expect(parseGame(p(''))).toBeUndefined();
     expect(onDeckParams({ view: 'pick', game: 'd20' }).toString()).toBe('view=pick&game=d20');
+    expect(onDeckParams({ view: 'pick', game: 'wheel' }).toString()).toBe('view=pick&game=wheel');
+    expect(onDeckParams({ view: 'pick' }).toString()).toBe('view=pick');
     expect(onDeckParams({ view: 'next', game: 'd20' }).toString()).toBe('view=next');
     expect(onDeckParams({ game: 'd20' }).toString()).toBe('');
   });

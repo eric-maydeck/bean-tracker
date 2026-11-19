@@ -6,6 +6,7 @@
   import { labelTip } from '#lib/components/labelTip.ts';
   import { coffeeToast, commitChanges, restoreStates } from '#lib/coffeeToast.ts';
   import type { CoffeeRow } from '#lib/types.ts';
+  import type { Game } from '#lib/pick/types.ts';
   import { afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
@@ -36,8 +37,8 @@
   let explicit = $state<Show | undefined>(pickOne(currentParams(page.url), 'show', SHOW_VALUES));
   // The Currently open / Next up view: URL only (never remembered), and only `next` is explicit.
   let explicitView = $state<'next' | 'pick' | undefined>(parseOnDeckView(currentParams(page.url)));
-  // The Pick for me game: only `d20` is explicit (the wheel is the default).
-  let explicitGame = $state<'d20' | undefined>(parseGame(currentParams(page.url)));
+  // The Pick for me game: `wheel` or `d20` once chosen; none = today's last game, else the wheel.
+  let explicitGame = $state<Game | undefined>(parseGame(currentParams(page.url)));
   // A shared link's rules: `profile=<name>` or `rules=default` (only while that is what is being played; Use my rules drops it).
   let explicitProfile = $state<string | undefined>(parseProfile(currentParams(page.url)));
   let explicitDefaults = $state(parseDefaultRules(currentParams(page.url)));
@@ -231,7 +232,7 @@
 {:else}
   <section class="detail-section">
     <h2>Pick for me</h2>
-    <PickForMe pick={data.pick} admin={page.data.isAdmin} shared={explicitProfile || explicitCode || explicitDefaults ? data.pick.shared : null} onunshare={() => { explicitProfile = undefined; explicitCode = undefined; explicitDefaults = false; }} bind:shareRules game={explicitGame ?? 'wheel'} ongame={(g) => (explicitGame = g === 'd20' ? 'd20' : undefined)} />
+    <PickForMe pick={data.pick} admin={page.data.isAdmin} shared={explicitProfile || explicitCode || explicitDefaults ? data.pick.shared : null} onunshare={() => { explicitProfile = undefined; explicitCode = undefined; explicitDefaults = false; }} bind:shareRules game={explicitGame} ongame={(g) => (explicitGame = g)} />
   </section>
 {/if}
 

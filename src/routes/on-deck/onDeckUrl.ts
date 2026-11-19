@@ -1,16 +1,16 @@
 import { pickOne } from '#lib/pageUrlState.ts';
 import { cleanName } from '#lib/pick/profiles.ts';
 import { DEFAULT_RULES, parseRules } from '#lib/pick/rules.ts';
-import type { PickRules } from '#lib/pick/types.ts';
+import type { Game, PickRules } from '#lib/pick/types.ts';
 
 // /on-deck view state: `show` (All/Caffeinated/Decaf) and `view` (Currently open is the default,
-// so only `next`/`pick` are explicit; `game` rides along only with pick).
+// so only `next`/`pick` are explicit; `game` (wheel or d20) rides along only with pick; none = the visitor's last game today).
 export const VIEWS = ['open', 'next', 'pick'] as const;
 export type OnDeckView = (typeof VIEWS)[number];
 export const VIEW_LABEL: Record<OnDeckView, string> = { open: 'Currently open', next: 'Next up', pick: 'Pick for me' };
 
 export const parseOnDeckView = (p: URLSearchParams): 'next' | 'pick' | undefined => pickOne(p, 'view', ['next', 'pick']);
-export const parseGame = (p: URLSearchParams): 'd20' | undefined => pickOne(p, 'game', ['d20']);
+export const parseGame = (p: URLSearchParams): Game | undefined => pickOne(p, 'game', ['wheel', 'd20']);
 
 /** `profile`: a saved rules profile's name, trimmed; empty or over 60 characters is ignored. Matching against the owner's names is the server's. */
 export const MAX_PROFILE_PARAM = 60;
@@ -54,7 +54,7 @@ export function decodeRulesLink(code: string): { name: string; rules: PickRules 
   }
 }
 
-export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: 'd20'; profile?: string; rulesCode?: string; defaultRules?: boolean }): URLSearchParams {
+export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: Game; profile?: string; rulesCode?: string; defaultRules?: boolean }): URLSearchParams {
   const p = new URLSearchParams();
   if (s.show) p.set('show', s.show);
   if (s.view) p.set('view', s.view);

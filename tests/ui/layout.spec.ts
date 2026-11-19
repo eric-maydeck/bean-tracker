@@ -14,7 +14,7 @@ import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, 
 // The whole Out for today row, on screen without scrolling (the wheel shrinks to leave room; the D20's entry row is kept tight).
 // The worst-case horizontal card: a long name, all 10 stats with long values and long tasting notes, written into the rendered card (layout is CSS, so this
 // is the densest coffee without seeding one). Every row must end inside the body with a little margin; the grid is put back afterwards.
-async function expectDenseCardFits(card: Locator, what: string) {
+async function expectDenseCardFits(card: Locator, what: string, grows = false) { // grows: the pop-up is as tall as its content (#136)
   const m = await card.locator('.card-body').evaluate((body) => {
     const grid = body.querySelector<HTMLElement>('.stat-grid')!;
     const saved = grid.innerHTML;
@@ -36,7 +36,7 @@ async function expectDenseCardFits(card: Locator, what: string) {
   });
   expect(m.rows, `${what}: ten stats`).toBe(10);
   expect(m.fits, `${what}: the densest detail fits the body`).toBe(true);
-  expect(m.grew, `${what}: the card keeps its height`).toBeLessThanOrEqual(1);
+  if (!grows) expect(m.grew, `${what}: the card keeps its height`).toBeLessThanOrEqual(1);
   expect(m.slack, `${what}: the last row ends at least 4px above the buttons`).toBeGreaterThanOrEqual(4);
 }
 
@@ -6306,9 +6306,21 @@ export const STATES: State[] = [
         expect(ob.y, 'Out for today below the card on a phone').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
         expect(await page.evaluate(() => !!(document.querySelector('.side')!.compareDocumentPosition(document.querySelector('.out-row')!) & Node.DOCUMENT_POSITION_FOLLOWING)), 'DOM order = visual order: the card, then Out for today').toBe(true);
       }
+      if ((page.viewportSize()?.width ?? 0) >= 1280) { // #136: the desktop pop-up with an image (the seed's one, wherever the board puts it)
+        const n = await page.locator('table.board tr').filter({ hasText: 'Rwanda Gitega Natural' }).locator('td.n').first().textContent();
+        await page.getByLabel('Number someone rolled').fill(n!);
+        await page.getByRole('button', { name: 'Show', exact: true }).click();
+        const modal = page.getByRole('dialog', { name: 'Pick result' });
+        // as tall as its content: the thumbnail down to the buttons' bottom, the padding below them as beside them
+        const [mb, bb, tb] = [(await modal.boundingBox())!, (await modal.locator('.buttons').boundingBox())!, (await modal.locator('.card-thumb').boundingBox())!];
+        expect(tb.height, 'pop-up thumbnail at least square').toBeGreaterThanOrEqual(tb.width - 1);
+        expect(Math.abs(tb.y + tb.height - (bb.y + bb.height)), 'thumbnail bottom level with the buttons bottom').toBeLessThanOrEqual(1);
+        expect(Math.abs((mb.y + mb.height - (bb.y + bb.height)) - (mb.x + mb.width - (bb.x + bb.width))), 'padding below the buttons = padding right of them').toBeLessThanOrEqual(1);
+        await dismissPickOverlay(page);
+      }
       await checkLayout(page); // D20, the board and the inline card on screen: no sideways scroll
       await page.getByRole('button', { name: 'Wheel', exact: true }).click();
-      await expect(page).not.toHaveURL(/game=/);
+      await expect(page).toHaveURL(/game=wheel/); // the wheel has its own URL (#136)
     }
   },
   {
@@ -6422,8 +6434,7 @@ export const STATES: State[] = [
       if (wide && img) expect(await modal.locator('.pick-card').evaluate((e) => getComputedStyle(e).display), 'the horizontal card is a grid').toBe('grid');
       if (wide) {
         expect(await modal.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the pop-up detail fits').toBe(true);
-        if (img) await expectDenseCardFits(modal.locator('.pick-card'), 'pop-up card');
-        if (img) expect(Math.abs((await modal.locator('.pick-card').boundingBox())!.height - 326), 'pop-up card height').toBeLessThanOrEqual(2);
+        if (img) await expectDenseCardFits(modal.locator('.pick-card'), 'pop-up card', true);
         expect(await modal.locator('.buttons .button').evaluateAll((bs) => bs.filter((b) => b.scrollWidth > b.clientWidth).length), 'no clipped button text in the pop-up (Open coffee fits)').toBe(0);
       }
       for (const key of ['Tab', 'Tab', 'Tab', 'Tab', 'Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab', 'Shift+Tab']) {
