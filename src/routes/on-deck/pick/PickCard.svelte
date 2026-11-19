@@ -20,7 +20,7 @@
   const locked = $derived(busy || out);
   const info = $derived(coffee.info);
 
-  // Most useful first; only what has a value; the first 8 (4 rows of 2) fit the card with the head, the tasting notes line and one fixed gap between all of them.
+  // Most useful first; only what has a value; the first 10 (5 rows of 2) fit the card with the head, the tasting notes line and one fixed gap between all of them.
   // The coffee page's labels (COFFEE_ORIGIN_LABELS) and stat styles.
   type Stat = { label: string; text?: string; cost?: number; kind?: 'origin' | 'roast' };
   const stats = $derived.by((): Stat[] => {
@@ -40,7 +40,7 @@
       info?.harvestTime && { label: 'Harvest', text: info.harvestTime },
       info?.certification && { label: 'Certification', text: info.certification }
     ];
-    return all.filter((s): s is Stat => !!s).slice(0, 8);
+    return all.filter((s): s is Stat => !!s).slice(0, 10);
   });
 </script>
 
@@ -139,7 +139,7 @@
   .badges { display: flex; gap: var(--space-1); flex: none; }
   .head.full, .stat.full { grid-column: 1 / -1; }
   .head.full :global(p) { margin: 0; }
-  .card-body .stat-grid { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: var(--space-3); }
+  .card-body .stat-grid { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); gap: var(--space-2); }
   .card-body .stat { min-width: 0; gap: 0; }
   .card-body .stat-label { line-height: 1.2; }
   .card-body .stat-value { font-size: 0.85rem; line-height: 1.3; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -159,7 +159,7 @@
     .wide .card-thumb { margin: 0; }
     .wide .card-body { margin: 0 0 var(--space-2); flex: 1; min-height: 0; overflow: hidden; }
     /* two columns (origin left, roast level right ...); one fixed gap between every row, the slack (a sparse coffee) goes above the buttons */
-    .wide .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; row-gap: var(--space-3); }
+    .wide .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; row-gap: var(--space-2); }
     .wide .buttons.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .wide .name-row { min-height: 1.5rem; } /* a badge appearing never changes the height */
   }
