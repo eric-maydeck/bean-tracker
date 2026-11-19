@@ -11,11 +11,12 @@ import { PART, PARTS } from './viewports';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
-async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
+// The wheel leaves all of it on screen; the D20's tray is fixed (and the game and Out for today are spaced out), so there at least half of it.
+async function expectOutRowOnScreen(page: import('@playwright/test').Page, whole = true) {
   const b = (await page.locator('.out-row').boundingBox())!;
   const vh = page.viewportSize()!.height;
   expect(b.y, 'Out for today on screen, no scrolling').toBeGreaterThanOrEqual(0);
-  expect(b.y + b.height, 'Out for today on screen, no scrolling').toBeLessThanOrEqual(vh);
+  expect(b.y + (whole ? b.height : b.height / 2), 'Out for today on screen, no scrolling').toBeLessThanOrEqual(vh);
 }
 
 
@@ -5848,7 +5849,8 @@ export const STATES: State[] = [
       expect((await page.locator('.wheel').boundingBox())!.width).toBeLessThanOrEqual(561);
       if ((page.viewportSize()?.width ?? 0) > 640) {
         const [w, r] = [(await page.locator('.wheel').boundingBox())!, (await page.locator('.result').boundingBox())!];
-        expect(r.x, 'desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
+        if ((page.viewportSize()?.width ?? 0) >= 1360) expect(r.x, 'wide desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
+        else expect(r.y, 'narrower desktop: the card sits under the game').toBeGreaterThan(w.y + w.height - 1);
       } else await expect(page.locator('.result')).toBeHidden(); // phone: no placeholder, results show in the overlay
       await expectGroupsLabelled(page);
       const rules = page.getByRole('button', { name: 'Rules', exact: true });
@@ -5978,16 +5980,23 @@ export const STATES: State[] = [
       const [t1, t2] = [(await page.locator('table.board').nth(0).boundingBox())!, (await page.locator('table.board').nth(1).boundingBox())!];
       if ((page.viewportSize()?.width ?? 0) > 900) {
         expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
-        await expectOutRowOnScreen(page);
+        await expectOutRowOnScreen(page, false);
+        // The card is as tall as the D20 tray (an image card; one without is as tall as its content).
+        if (await page.locator('.result img').count()) expect(Math.abs((await page.locator('.result').boundingBox())!.height - (await page.locator('.d20 .stage').boundingBox())!.height), 'card as tall as the tray').toBeLessThanOrEqual(2);
       } else {
         expect(Math.abs(t2.x - t1.x), 'one column').toBeLessThanOrEqual(1); // stacked: one table, 1 to 20
         expect(t2.y, 'second half under the first').toBeGreaterThan(t1.y + t1.height - 1);
         await expect(page.getByRole('table', { name: 'D20 board, 11 to 20' }).getByRole('columnheader'), 'second header stays in the accessibility tree').toHaveCount(3);
-        await expectOutRowOnScreen(page);
+        // A phone: the result overlay shows the rolled number; the inline card (after it is dismissed) has Out for today below it.
+        await expect(page.locator('.pick-modal .rolled b'), 'the overlay shows the rolled number').toHaveText('7');
       }
       await expect(page.locator('.pick-card')).toBeVisible();
       await expect(page).toHaveURL(/game=d20/);
       await dismissPickOverlay(page);
+      if ((page.viewportSize()?.width ?? 0) <= 640) {
+        const [cb, ob] = [(await page.locator('.result').boundingBox())!, (await page.locator('.out-row').boundingBox())!];
+        expect(ob.y, 'Out for today below the card on a phone').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
+      }
       await page.getByRole('button', { name: 'Wheel', exact: true }).click();
       await expect(page).not.toHaveURL(/game=/);
     }
@@ -6041,16 +6050,20 @@ export const STATES: State[] = [
       }
       const card = page.locator('.result');
       await expect(card.locator('.pick-card')).toBeVisible();
-      expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(621);
+      expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(735);
       await expect(card.getByRole('button', { name: 'Close' })).toHaveCount(0);
       const img = card.locator('img');
-      if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(261); expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(1); }
+      if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(327); expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(1); }
       const bs = await Promise.all(['Brew', 'Discard', 'Open coffee'].map((n) => card.getByRole('button', { name: n, exact: true }).boundingBox()));
       for (const b of bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
-      // Horizontal card: the thumbnail left, the fields and buttons right, no empty band under the buttons.
+      // Horizontal card as tall as the D20 tray (360px): the square thumbnail left, the detail and the buttons right, nothing spilling out.
       const cardBox = (await card.boundingBox())!;
-      expect(Math.abs(cardBox.y + cardBox.height - (bs[0]!.y + bs[0]!.height) - 17), 'no empty band under the card content').toBeLessThanOrEqual(3);
-      if (await img.count()) expect((await img.boundingBox())!.x + 262, 'content right of the thumbnail').toBeLessThan(bs[0]!.x + 1);
+      expect(bs[0]!.y + bs[0]!.height, 'buttons inside the card').toBeLessThanOrEqual(cardBox.y + cardBox.height - 16);
+      if (await img.count()) {
+        expect(Math.abs(cardBox.height - 360), 'card as tall as the D20 tray').toBeLessThanOrEqual(2);
+        expect((await img.boundingBox())!.x + 327, 'content right of the thumbnail').toBeLessThan(bs[0]!.x + 1);
+        expect(await card.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the detail fits its height').toBe(true);
+      }
       await expectOutRowOnScreen(page);
       // The /coffees card's rows: roaster, origin, roast level, cost.
       await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
@@ -6064,15 +6077,15 @@ export const STATES: State[] = [
           cardW: document.querySelector('.result')!.getBoundingClientRect().width,
           thumb: document.querySelector('.result .card-thumb')?.getBoundingClientRect().height ?? 0,
           cardH: document.querySelector('.result')!.getBoundingClientRect().height,
-          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid',
+          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid' || (document.querySelector('.pick-card')!.classList.contains('noimg') && document.querySelector('.result')!.getBoundingClientRect().width >= 674),
           beside: document.querySelector('.result')!.getBoundingClientRect().left >= document.querySelector('.game')!.getBoundingClientRect().right
         }));
         expect(m.scroll, `no sideways scroll at ${width}`).toBeLessThanOrEqual(0);
         expect(m.clipped, `no clipped button text at ${width}`).toBe(0);
         expect(m.cardW, `card not squeezed at ${width}`).toBeGreaterThan(400);
         if (m.beside) expect(m.horizontal, `beside the game means the horizontal card at ${width}`).toBe(true);
-        if (!m.beside) expect(m.thumb, `vertical thumbnail capped at ${width}`).toBeLessThanOrEqual(m.horizontal ? 261 : 281);
-        if (m.horizontal && m.thumb) expect(m.cardH, `card as tall as its thumbnail + padding at ${width}`).toBeLessThanOrEqual(m.thumb + 2 * 16 + 2 + 3);
+        if (!m.beside) expect(m.thumb, `thumbnail within the card at ${width}`).toBeLessThanOrEqual(m.horizontal ? 327 : 281);
+        if (m.horizontal && m.thumb) expect(Math.abs(m.cardH - 360), `card as tall as the tray at ${width}`).toBeLessThanOrEqual(2);
       }
     }
   },
@@ -6094,6 +6107,8 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await expect(modal).toBeHidden();
       await expect(page.locator('.result .pick-card')).toBeVisible(); // dismissing the overlay keeps the result, inline
+      const [cb, ob] = [(await page.locator('.result').boundingBox())!, (await page.locator('.out-row').boundingBox())!];
+      expect(ob.y, 'Out for today below the card').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
       await spin.click();
       await expect(modal).toBeVisible();
       await modal.getByRole('button', { name: 'Close' }).click();

@@ -55,11 +55,13 @@
   let outEl: HTMLElement | undefined = $state();
   let stageTop = $state(0);
   let outH = $state(0);
+  let narrow = $state(false); // a phone: the card and Out for today come after the game, no height budget for the wheel
   let measured = $state(false); // until measured the CSS estimate below sizes the wheel (no visible jump)
-  const wheelMax = $derived(Math.round(Math.max(320, Math.min(460, vh - stageTop - outH - 4))));
+  const wheelMax = $derived(narrow ? 460 : Math.round(Math.max(320, Math.min(460, vh - stageTop - outH - 4))));
   const measure = () => {
     if (!stageEl || !outEl) return;
-    vh = innerHeight; stageTop = stageEl.getBoundingClientRect().top + scrollY; outH = outEl.offsetHeight; measured = true;
+    vh = innerHeight; narrow = innerWidth <= 640; stageTop = stageEl.getBoundingClientRect().top + scrollY;
+    outH = outEl.offsetHeight + (parseFloat(getComputedStyle(stageEl).rowGap) || 0); measured = true;
   };
   $effect(() => { game; ready; tick().then(measure); });
   // Anything above the stage changing height (the header, wrapping controls, a late font) or the out row wrapping re-measures.
@@ -337,12 +339,14 @@
       {/if}
       {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
       {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
+    </section>
+
+    <!-- below the game (a phone: below the card) -->
     <div class="out-row" bind:this={outEl}>
       <span class="label">Out for today:</span>
       {#each outRow as c (c.id)}<span class="badge badge-neutral" tabindex="0" role="note" use:labelTip={outTip(c)}><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
       <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
     </div>
-    </section>
 
     <div class="side">
       {#if inlineCard}<div class="result card" class:empty={!(result && resultCoffee)}>
@@ -367,6 +371,9 @@
         </div>
       {/if}
       <div class="modal pick-modal {result.via}" role="dialog" aria-modal="true" aria-label="Pick result" bind:this={modalEl}>
+        {#if game === 'd20' && result.n}
+          <p class="rolled {result.via}" aria-live="polite">{result.via === 'success' ? 'Crit success' : result.via === 'fail' ? 'Crit fail' : 'Rolled'}<b>{result.n}</b></p>
+        {/if}
         <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
           onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} />
       </div>
@@ -387,15 +394,25 @@
 {/if}
 
 <style>
-  .stage { margin: 0; max-width: 620px; display: grid; gap: var(--space-4); align-items: start; }
-  .side { display: flex; min-width: 0; }
-  .game { min-width: 0; display: flex; flex-direction: column; }
+  /* one column: the game, Out for today, then the card (a phone: the game, the card, Out for today), all left-aligned; the card is as tall as
+     the D20 tray (--pick-h: PickD20's 360px stage) */
+  .stage { --pick-h: 360px; margin: 0; max-width: 674px; display: grid; gap: var(--space-5) var(--space-6); align-items: start; }
+  .game { order: 1; min-width: 0; max-width: 620px; display: flex; flex-direction: column; }
+  .out-row { order: 2; max-width: 620px; }
+  .side { order: 3; display: flex; min-width: 0; }
+  @media (max-width: 640px) { .side { order: 2; } .out-row { order: 3; } }
   .wheel-wrap { width: 100%; max-width: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); margin: 0 auto; } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
-  .result { display: flex; align-self: start; width: 100%; max-width: 620px; } /* .card sizes by its container, so the width is explicit */
+  .result { display: flex; align-self: start; width: 100%; max-width: 674px; } /* .card sizes by its container, so the width is explicit */
+  @media (max-width: 720px) { .result { width: calc(280px + 2 * var(--space-4) + 2px); max-width: 100%; } } /* the vertical card: its box hugs it */
   .result:hover { box-shadow: var(--shadow); transform: none; } /* not clickable: no .card hover lift */
   @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
-  .pick-modal { position: relative; max-width: 28rem; }
+  /* the phone overlay hugs its card: little padding around it */
+  .pick-modal { position: relative; width: auto; max-width: 100%; padding: var(--space-3); }
   .pick-modal :global(.pick-card) { margin: 0 auto; }
+  .rolled { margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+  .rolled b { display: block; font-size: 3.5rem; line-height: 1; letter-spacing: 0; color: var(--color-accent); }
+  .rolled.success b { color: #b8860b; }
+  .rolled.fail b { color: #d01c1c; }
   .pick-modal.success { box-shadow: 0 0 0 3px #ffe08a, 0 0 32px #d4a73a; }
   .pick-modal.fail { box-shadow: 0 0 0 3px #d01c1c, 0 0 32px #7a0a0a; }
   .fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -405,13 +422,17 @@
   @keyframes fall { to { transform: translateY(105vh) rotate(540deg); opacity: 0; } }
   @keyframes fade-in { from { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .fx i { display: none; } .fx.fail { animation: none; } }
-  /* the same layout for both games: the card beside the game (with a real gutter) only where it gets at least ~560px next to the
-     620px game; narrower, it goes under the game (still horizontal if it fits: PickCard's own container query) */
+  /* the same layout for both games: the card beside the game (with a real gutter) only where it gets the room for its horizontal form next
+     to the 620px game; narrower, it goes under the game (PickCard's own container query picks the horizontal or vertical form) */
   .stage-box { container-type: inline-size; margin-bottom: var(--space-3); }
-  @container (min-width: 1226px) { /* 620 game + 32 gutter + 574 (the card's 540px content, padding and border): beside always means horizontal */
-    .stage { max-width: none; grid-template-columns: minmax(0, 620px) minmax(0, 1fr); column-gap: var(--space-6); align-items: start; }
+  @container (min-width: 1326px) { /* 620 game + 32 gutter + 674 (the card: 640px of content, padding and border): beside always means horizontal */
+    .stage { max-width: none; grid-template-columns: minmax(0, 620px) minmax(0, 1fr); }
+    .game, .out-row { grid-column: 1; }
+    .game { grid-row: 1; }
+    .out-row { grid-row: 2; }
+    .side { grid-column: 2; grid-row: 1 / span 2; }
+    .result { max-width: none; }
   }
-  /* directly below the game */
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: 0; }
   .out-row .button { margin: 0; padding: 0.35rem 0.5rem; min-height: 36px; font-size: 0.85rem; }
   @media (max-width: 640px) { .out-row .button { min-height: 44px; } }
