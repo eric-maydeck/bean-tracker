@@ -4,7 +4,7 @@ import { CONSUMPTION_THUMBS } from './consumption';
 import { HABITS_THUMBS } from './habits';
 
 const tab = { buckets: [{}, {}, {}], ratingFrom: 0, trendLine: null, trendLabel: null, labels: ['a', 'b', 'c'], brewed: [6, 7.5, 8], bought: [5, 0, 4], backlog: [3, 0, 1], compareBrewed: null, compareTitles: null, compareAverage: null };
-const ctx = (data: object, s: object = {}): ThumbCtx => ({ data, s: { unit: 'bags', agg: 'total', measure: 'brews', ...s }, periodLabel: 'This month', compareLabel: 'Last month', perPerson: false, explicitAvg: false }) as unknown as ThumbCtx;
+const ctx = (data: object, s: object = {}): ThumbCtx => ({ data, s: { unit: 'bags', agg: 'total', measure: 'brews', ...s }, periodLabel: 'This month', compareLabel: 'Last month', perPerson: false }) as unknown as ThumbCtx;
 const c = ctx({ consumptionTab: tab });
 
 describe('consumption thumbs', () => {

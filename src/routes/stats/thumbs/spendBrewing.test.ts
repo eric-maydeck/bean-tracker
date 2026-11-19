@@ -3,7 +3,7 @@ import type { ThumbCtx } from '../thumbTypes';
 import { SPEND_THUMBS } from './spend';
 import { BREWING_THUMBS } from './brewing';
 
-const ctx = (data: object, s: object = {}): ThumbCtx => ({ data, s, periodLabel: 'p', compareLabel: 'Prev', perPerson: false, explicitAvg: false } as never);
+const ctx = (data: object, s: object = {}): ThumbCtx => ({ data, s, periodLabel: 'p', compareLabel: 'Prev', perPerson: false } as never);
 const series = { by: 'month', labels: ['a', 'b', 'c'], sub: [1, 2, 3], oneOff: [3, 2, 1], ppg: { all: [0.1, 0.2, 0.3], sub: [0.1, 0.2, 0.3], oneOff: [0.1, 0.2, 0.3] }, compare: null, compareAverage: null, comparePpg: null, compareSplit: null, comparePpgSplit: null, compareAverageSplit: null };
 const spend = (o: object = {}) => ({ spend: { tiles: { bags: 3 }, series, discovery: { cumulative: [1, 2, 3] }, ...o } });
 

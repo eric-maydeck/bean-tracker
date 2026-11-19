@@ -16,7 +16,7 @@ const onHand = (over: object = {}) => ({
   ...over
 });
 const ctx = (s: object = {}, o: object = onHand()): ThumbCtx =>
-  ({ data: { onHand: o, today: '2026-09-25' }, s: { range: 'all', unit: 'grams', ...s }, periodLabel: 'All time', compareLabel: '', perPerson: false, explicitAvg: false }) as unknown as ThumbCtx;
+  ({ data: { onHand: o, today: '2026-09-25' }, s: { range: 'all', unit: 'grams', ...s }, periodLabel: 'All time', compareLabel: '', perPerson: false }) as unknown as ThumbCtx;
 const rows = (r: { title: string; thumb: any } | null) => r!.thumb.rows;
 
 describe('ONHAND_THUMBS', () => {

@@ -26,7 +26,7 @@ describe('boardTimeLines', () => {
   });
 });
 
-const ctx = (data: object, s: object): ThumbCtx => ({ data, s, periodLabel: '', compareLabel: '', perPerson: false, explicitAvg: false }) as never;
+const ctx = (data: object, s: object): ThumbCtx => ({ data, s, periodLabel: '', compareLabel: '', perPerson: false }) as never;
 const eras = { x: ['a', 'b', 'c'], lines: [line('V60', [60, 50, 40]), line('Kalita', [40, 50, 60])], other: [] };
 
 describe('eras thumbs', () => {

@@ -596,7 +596,7 @@
     tab: s.tab, owner: page.data.site.contactName, tabLabel: TAB_LABEL[s.tab], period: periodLabel, brews: data.tiles.brews, avgRating: data.tiles.avgRating,
     filters: [...coffeeChips.map(([, v]) => v), ...brewChips.map((k) => brewFilterText(k, s[k]!))],
     chart: s.chart, rank: s.rank, low: s.low, perPerson: perPersonOn, boards: data.boards, records: data.records,
-    ctx: { data, s, periodLabel, compareLabel, perPerson: perPersonOn, explicitAvg: explicit.avg !== undefined },
+    ctx: { data, s, periodLabel, compareLabel, perPerson: perPersonOn },
     line: data.onHand ? `${plural(data.onHand.tiles.bagsWaiting, 'bag')} waiting · ${formatGrams(data.onHand.tiles.gramsWaiting)} · ${usd(data.onHand.tiles.tiedUp)} tied up` : !data.spend ? undefined : `Spent ${usd(data.spend.tiles.spent)} · ${plural(data.spend.tiles.bags, 'bag')}${data.spend.tiles.avgPpg === null ? '' : ` · ${usd(data.spend.tiles.avgPpg)}/g avg`}`
   })}
 />
