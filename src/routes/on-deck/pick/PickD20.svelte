@@ -199,16 +199,16 @@
     <div class="inset {lensClass}">
       <div class="lens" bind:this={lens}></div>
       <span class="inset-label">{lensLabel}</span>
-      <button type="button" class="roll" class:idle={!blocked} disabled={blocked} onclick={() => roll()}>{rolling ? (again ? 'Roll again' : 'Rolling…') : 'Roll'}</button>
+      <button type="button" class="button button-solid roll" class:idle={!blocked} disabled={blocked} onclick={() => roll()}>{rolling ? (again ? 'Roll again' : 'Rolling…') : 'Roll'}</button>
     </div>
   </div>
   {#if failed}<p class="hint">3D dice need WebGL; try the wheel.</p>{/if}
-  <div class="row">
-    <span class="someone">Someone rolled for me:</span>
-    <span class="entry">
-      <input type="number" min="1" max="20" placeholder="1–20" aria-label="Number someone rolled" bind:value={rolled} disabled={disabled || !ready} />
+  <div class="form-field group-field entry">
+    <label class="someone" for="d20-rolled">Someone rolled for me:</label>
+    <div class="search-row pair">
+      <input id="d20-rolled" type="number" min="1" max="20" step="1" inputmode="numeric" placeholder="1–20" aria-label="Number someone rolled" bind:value={rolled} disabled={disabled || !ready} />
       <button type="button" class="button button-secondary" disabled={blocked} onclick={show}>Show</button>
-    </span>
+    </div>
   </div>
 </div>
 
@@ -224,22 +224,21 @@
   .inset.win .lens { border-color: #ffe08a; box-shadow: 0 0 22px #d4a73a, inset 0 0 22px rgba(0, 0, 0, 0.5); transform: scale(1.08); }
   .inset.fail .lens { border-color: #d01c1c; box-shadow: 0 0 22px #7a0a0a, inset 0 0 22px rgba(0, 0, 0, 0.7); transform: scale(1.08); }
   .inset-label { display: inline-block; margin-top: 6px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #f3ece2; background: rgba(22, 19, 15, 0.8); padding: 2px 8px; border-radius: 99px; }
-  /* Primary call to action: same width as the lens, pulses while idle (like the wheel's SPIN hub). */
-  .roll { display: block; width: 100%; min-height: 48px; margin-top: 8px; padding: 0 4px; pointer-events: auto; cursor: pointer; white-space: nowrap;
-    font: inherit; font-size: clamp(0.8rem, 3.4cqw, 1.3rem); font-weight: 800; letter-spacing: 0.02em; border-radius: var(--radius);
-    border: 2px solid var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); box-shadow: var(--shadow); }
+  /* Primary call to action: the site's solid .button, enlarged; same width as the lens, pulses while idle (like the wheel's SPIN hub). */
+  .roll { display: block; width: 100%; min-height: 48px; margin: var(--space-3) 0 0; padding: 0 4px; pointer-events: auto; white-space: nowrap;
+    font-size: clamp(0.8rem, 3.4cqw, 1.3rem); font-weight: 800; letter-spacing: 0.02em; }
   .roll.idle { animation: pulse 1.8s infinite; }
-  .roll:hover:not(:disabled) { filter: brightness(1.12); }
   .roll:disabled { cursor: default; filter: grayscale(0.6) brightness(0.8); }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 70%, transparent); }
     70% { box-shadow: 0 0 0 16px transparent; }
     100% { box-shadow: 0 0 0 0 transparent; }
   }
-  .row { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; margin: var(--space-3) 0; }
+  .entry { margin: var(--space-3) 0; } /* the site's label-above-input + button pairing (.search-row) */
+  .pair { align-items: end; margin-bottom: 0; }
+  .pair .button { margin: 0; }
+  .pair input { width: 6rem; } /* look comes from the site's .form-field input */
   .someone { font-size: 1.1rem; font-weight: 700; color: var(--color-accent); }
-  .entry { display: flex; flex-wrap: nowrap; gap: var(--space-2); align-items: center; }
   .hint { font-size: 13px; color: var(--color-text-muted, inherit); }
-  input[type='number'] { width: 5rem; min-height: 44px; font: inherit; }
   @media (prefers-reduced-motion: reduce) { .lens { transition: none; } .roll.idle { animation: none; } }
 </style>
