@@ -33,7 +33,7 @@ export function chartThumb(kind: 'vbars' | 'lines', series: ChartSeries[], opts:
     trimmed = a;
     kept = kept.map((c) => ({ ...c, values: Array.from({ length: b - a }, (_, k) => c.values[a + k] ?? null) }));
   }
-  if (kept.length === 1) kept[0].color = tokenIdx('--series-11');
+  if (kept.length === 1) kept[0].color = tokenIdx('--series-brown-1');
 
   const off = kind === 'lines' ? trimmed : 0;
   const n = Math.max(...kept.map((k) => k.values.length));

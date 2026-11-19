@@ -8,11 +8,11 @@ const out = (t: Thumb | null) => (t as { series: { label: string; color: number;
 
 describe('chartThumb', () => {
   it('one series vbars', () => {
-    expect(chartThumb('vbars', [{ label: 'A', values: [0, 5, 10] }])).toEqual({ kind: 'vbars', series: [{ label: 'A', color: idx('--series-11'), values: [0, 50, 100] }] });
+    expect(chartThumb('vbars', [{ label: 'A', values: [0, 5, 10] }])).toEqual({ kind: 'vbars', series: [{ label: 'A', color: idx('--series-brown-1'), values: [0, 50, 100] }] });
   });
   it('drops overlays', () => {
     const t = chartThumb('vbars', [{ label: 'A', values: [0, 5, 10] }, { label: 'f', values: [1, 1, 1], faded: true }, { label: 'd', values: [1, 1, 1], dashed: true }, { label: 't', values: [1, 1, 1], trend: true }]);
-    expect(out(t)).toEqual([{ label: 'A', color: idx('--series-11'), values: [0, 50, 100] }]);
+    expect(out(t)).toEqual([{ label: 'A', color: idx('--series-brown-1'), values: [0, 50, 100] }]);
   });
   it('caps lines at 3', () => {
     const t = chartThumb('lines', vals(5, (i) => i).map((i) => ({ label: `S${i}`, values: [1, 2, 3] })));
@@ -116,7 +116,7 @@ describe('chartThumb labels', () => {
   });
   it('per-point colours on a single bar series', () => {
     const t = lab(chartThumb('vbars', [{ label: 'A', values: [1, 2, 3] }], { points: [null, '--series-brown-3', null] }));
-    expect(t.series[0].colors).toEqual([idx('--series-11'), idx('--series-brown-3'), idx('--series-11')]);
+    expect(t.series[0].colors).toEqual([idx('--series-brown-1'), idx('--series-brown-3'), idx('--series-brown-1')]);
     expect(lab(chartThumb('vbars', [{ label: 'A', values: [1, 2] }], { points: [null, null] })).series[0].colors).toBeUndefined();
   });
 });

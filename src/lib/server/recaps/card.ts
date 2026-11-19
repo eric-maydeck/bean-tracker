@@ -105,6 +105,8 @@ export function valueSizes(values: string[], size: number, avail: number, floor 
 const TOKEN_HEX = ['#a8bffd', '#d9a6e3', '#ffb7c1', '#fdc58b', '#d8db80', '#92dba9', '#7fdcea', '#698dfd', '#ae57bb', '#fc7184', '#c06408', '#abac11', '#069954', '#01baca', '#d2a679', '#b0703f', '#73503a', '#a8a8a8'];
 if (TOKEN_HEX.length !== THUMB_TOKENS.length) throw new Error('TOKEN_HEX out of step with THUMB_TOKENS');
 const LEGEND_H = 40, GAP = 8, STROKE = 7, LABEL = 28, XROW = 38, VAL_ROOM = 36;
+// The page's soft bar fill (colour at b3 alpha) over the card background; bars get its --slice-line outline (INK), 2px at 1200 wide.
+const soft = (hex: string) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * 0.7 + parseInt(CREAM.slice(i, i + 2), 16) * 0.3).toString(16).padStart(2, '0')).join('');
 const textW = (s: string) => Math.ceil(s.length * LABEL * 0.58); // Karla bold, generous
 // Axis tick labels left to right: the first always shows, the last wins over the ones it would touch, any other that would overlap is dropped.
 export function pickTicks(ticks: { cx: number; w: number }[], min = 10): number[] {
@@ -149,7 +151,7 @@ function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
     label(y[0], 0, top + H - LABEL - 3, gutter - 8, 'flex-end'); // above the baseline, clear of the x row
   }
   if (t.kind === 'vbars') {
-    const x0 = (c: number) => gutter + c * (w + GAP), bar = (x: number, y: number, bw: number, h: number, fill: string) => kids.push(node('rect', { x, y, width: bw, height: h, rx: Math.min(5, bw / 2, h / 2), fill }));
+    const x0 = (c: number) => gutter + c * (w + GAP), bar = (x: number, y: number, bw: number, h: number, fill: string) => kids.push(node('rect', { x, y, width: bw, height: h, rx: Math.min(5, bw / 2, h / 2), fill: soft(fill), stroke: INK, strokeWidth: 2 }));
     for (let c = 0; c < n; c++) {
       let topY = H;
       if (t.stacked) {
@@ -157,7 +159,7 @@ function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
       } else {
         t.series.forEach((s, i) => { const h = Math.max(3, (s.values[c] ?? 0) / 100 * H); topY = Math.min(topY, H - h); bar(x0(c) + i * w / k, H - h, w / k, h, hex(i, c)); });
       }
-      if (vals) label(vals[c], x0(c) - GAP / 2, top + topY - LABEL - 4, w + GAP, 'center');
+      if (vals) label(vals[c], x0(c) - GAP / 2, top + topY - LABEL - 6, w + GAP, 'center');
     }
   } else {
     const pad = STROKE / 2 + 1;
