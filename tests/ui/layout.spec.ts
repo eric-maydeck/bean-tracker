@@ -12,6 +12,34 @@ import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 // The whole Out for today row, on screen without scrolling (the wheel shrinks to leave room; the D20's entry row is kept tight).
+// The worst-case horizontal card: a long name, all 10 stats with long values and long tasting notes, written into the rendered card (layout is CSS, so this
+// is the densest coffee without seeding one). Every row must end inside the body with a little margin; the grid is put back afterwards.
+async function expectDenseCardFits(card: Locator, what: string) {
+  const m = await card.locator('.card-body').evaluate((body) => {
+    const grid = body.querySelector<HTMLElement>('.stat-grid')!;
+    const saved = grid.innerHTML;
+    const cardEl = body.closest('.pick-card')!;
+    const h0 = cardEl.getBoundingClientRect().height;
+    const long = 'A very long value that cannot fit on one line of the card';
+    grid.querySelector('.name')!.textContent = long;
+    const stats = [...grid.querySelectorAll<HTMLElement>('.stat:not(.full)')];
+    const notesRow = () => grid.querySelector<HTMLElement>('.stat.full');
+    while (grid.querySelectorAll('.stat:not(.full)').length < 10) { const c = stats[0].cloneNode(true) as HTMLElement; grid.insertBefore(c, notesRow()); }
+    grid.querySelectorAll('.stat-value').forEach((v) => { v.textContent = long; });
+    let notes = notesRow();
+    if (!notes) { notes = stats[0].cloneNode(true) as HTMLElement; notes.classList.add('full'); grid.appendChild(notes); }
+    notes.querySelector('.stat-value')!.textContent = long.repeat(3);
+    const bottom = Math.max(...[...grid.children].map((c) => c.getBoundingClientRect().bottom));
+    const r = { slack: body.nextElementSibling!.getBoundingClientRect().top - bottom, grew: cardEl.getBoundingClientRect().height - h0, rows: grid.querySelectorAll('.stat:not(.full)').length, fits: body.scrollHeight <= body.clientHeight + 1 };
+    grid.innerHTML = saved;
+    return r;
+  });
+  expect(m.rows, `${what}: ten stats`).toBe(10);
+  expect(m.fits, `${what}: the densest detail fits the body`).toBe(true);
+  expect(m.grew, `${what}: the card keeps its height`).toBeLessThanOrEqual(1);
+  expect(m.slack, `${what}: the last row ends at least 4px above the buttons`).toBeGreaterThanOrEqual(4);
+}
+
 async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
   const b = (await page.locator('.out-row').boundingBox())!;
   const vh = page.viewportSize()!.height;
@@ -6285,6 +6313,7 @@ export const STATES: State[] = [
         expect(Math.abs(cardBox.height - 360), 'card as tall as the D20 tray').toBeLessThanOrEqual(2);
         expect((await img.boundingBox())!.x + 327, 'content right of the thumbnail').toBeLessThan(bs[0]!.x + 1);
         expect(await card.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the detail fits its height').toBe(true);
+        await expectDenseCardFits(card, 'inline card');
       }
       await expectOutRowOnScreen(page);
       // The /coffees card's rows: roaster, origin, roast level, cost.
@@ -6332,6 +6361,7 @@ export const STATES: State[] = [
       if (wide && img) expect(await modal.locator('.pick-card').evaluate((e) => getComputedStyle(e).display), 'the horizontal card is a grid').toBe('grid');
       if (wide) {
         expect(await modal.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the pop-up detail fits').toBe(true);
+        if (img) await expectDenseCardFits(modal.locator('.pick-card'), 'pop-up card');
         if (img) expect(Math.abs((await modal.locator('.pick-card').boundingBox())!.height - 326), 'pop-up card height').toBeLessThanOrEqual(2);
         expect(await modal.locator('.buttons .button').evaluateAll((bs) => bs.filter((b) => b.scrollWidth > b.clientWidth).length), 'no clipped button text in the pop-up (Open coffee fits)').toBe(0);
       }
