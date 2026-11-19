@@ -3,10 +3,11 @@
   import type { Mesh, MeshStandardMaterial, Quaternion, WebGLRenderer } from 'three';
   import type { D20Pose } from '#lib/pick/types.ts';
 
-  let { pose, disabled, onresult, critFor }: {
+  let { pose, disabled, onresult, critFor, onfail }: {
     pose: D20Pose | null;
     disabled: boolean;
     onresult: (n: number, pose: D20Pose) => void;
+    onfail?: () => void;
     critFor: (n: number) => 'success' | 'fail' | null;
   } = $props();
 
@@ -15,6 +16,7 @@
   let stage: HTMLDivElement;
   let lens: HTMLDivElement;
   let ready = $state(false);
+  let failed = $state(false);
   let rolling = $state(false);
   let again = $state(false);
   let lensClass = $state('');
@@ -34,13 +36,18 @@
   }
 
   onMount(() => {
-    let dispose = () => {};
+    const undo: (() => void)[] = []; // cleanups, run in reverse
     let dead = false;
+    const dispose = () => { doRoll = null; undo.splice(0).reverse().forEach((f) => f()); };
     (async () => {
-      const [THREE, CANNON] = await Promise.all([import('three'), import('cannon-es')]);
-      void CANNON; // loaded with the sim chunk; named here so the pair stays dynamic-only
-      const sim = await import('./d20Sim');
+      try {
+      const THREE = await import('three');
+      const sim = await import('./d20Sim'); // pulls in cannon-es
       if (dead) return;
+      if (!stage.clientWidth || !stage.clientHeight) { // hidden or not laid out yet: wait for a real size (one-shot)
+        await new Promise<void>((res) => { const ro = new ResizeObserver(() => { if (stage.clientWidth && stage.clientHeight) { ro.disconnect(); res(); } }); ro.observe(stage); undo.push(() => ro.disconnect()); });
+        if (dead) return;
+      }
       const { V, F, C, num, trayFor, simulate, symmetry } = sim;
 
       const W = stage.clientWidth, H = stage.clientHeight;
@@ -49,6 +56,7 @@
       renderer.setPixelRatio(dpr); renderer.setSize(W, H);
       renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       stage.appendChild(renderer.domElement);
+      undo.push(() => { renderer.setAnimationLoop(null); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); });
       const scene = new THREE.Scene(); scene.background = new THREE.Color('#1b1712');
       const camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 100);
       camera.position.set(0, 10, 7); camera.lookAt(0, 0, 0.2);
@@ -79,6 +87,7 @@
       const LS = lens.clientWidth;
       const insetRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       insetRenderer.setPixelRatio(dpr); insetRenderer.setSize(LS, LS); lens.appendChild(insetRenderer.domElement);
+      undo.push(() => { insetRenderer.dispose(); insetRenderer.forceContextLoss(); insetRenderer.domElement.remove(); });
       const closeCam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
       const wc = new THREE.Vector3(), wa = new THREE.Vector3(), up = new THREE.Vector3(), Y = new THREE.Vector3(0, 1, 0);
       const SCREEN_UP = new THREE.Vector3(0, 0, -1);
@@ -139,11 +148,14 @@
         aimCloseCam(now); insetRenderer.render(scene, closeCam);
       });
       ready = true;
-      dispose = () => {
-        renderer.setAnimationLoop(null); doRoll = null;
-        renderer.dispose(); insetRenderer.dispose(); geo.dispose(); mats.forEach((m) => { m.map?.dispose(); m.dispose(); });
-        renderer.domElement.remove(); insetRenderer.domElement.remove();
-      };
+      undo.push(() => {
+        sun.shadow.map?.dispose();
+        for (const m of [floor, trayLine]) { m.geometry.dispose(); (m.material as { dispose(): void }).dispose(); }
+        geo.dispose(); mats.forEach((m) => { m.map?.dispose(); m.dispose(); });
+      });
+      } catch {
+        dispose(); failed = true; onfail?.();
+      }
     })();
     return () => { dead = true; dispose(); };
   });
@@ -158,6 +170,7 @@
       <span class="inset-label">{lensLabel}</span>
     </div>
   </div>
+  {#if failed}<p class="hint">3D dice need WebGL; try the wheel.</p>{/if}
   <div class="row">
     <button type="button" class="button roll" disabled={blocked} onclick={() => roll()}>{rolling ? (again ? 'Roll for me again' : 'Rolling…') : 'Roll for me'}</button>
     <span class="hint">or someone rolled:</span>

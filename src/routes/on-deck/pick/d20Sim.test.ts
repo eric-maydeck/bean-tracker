@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { faceNormal, simulate, symmetry } from './d20Sim';
+import { faceNormal, simulate, symmetry, trayFor } from './d20Sim';
 import { seededRandom } from '#lib/pick/random.ts';
 
 const SIZE = { w: 800, h: 360 };
@@ -14,6 +14,7 @@ describe('d20 simulation', () => {
     for (const r of runs) {
       expect(r.frames.length).toBeGreaterThan(0);
       expect(r.frames.length).toBeLessThanOrEqual(480);
+      expect(Math.abs(r.frames.at(-1)![1] - trayFor(SIZE).DR * 0.7947)).toBeLessThan(0.05); // lying flat
     }
   });
   it('lands on every face', () => {
