@@ -2,6 +2,7 @@
   import { onMount, untrack } from 'svelte';
   import { sliceAt } from '#lib/pick/wheel.ts';
   import type { WheelSlice } from '#lib/pick/types.ts';
+  import { paintBoard } from './wood';
 
   let { slices, names, angle = 0, disabled = false, onspin, onresult }: {
     slices: WheelSlice[]; names: Map<number, string>; angle: number; disabled: boolean;
@@ -10,7 +11,8 @@
 
   const TAU = Math.PI * 2;
   const BASE = 460; // drawing space; the canvas bitmap scales from this
-  const PALETTE_VARS = ['--t-espresso', '--t-brown', '--t-green', '--t-blue', '--t-teal', '--t-plum', '--t-violet', '--t-red'];
+  // Wood-veneer wedges, each with the label colour that reads on it; the same in both themes, like the board under the wheel.
+  const VENEER = [['#5c3a24', '#f6eee2'], ['#c49a6c', '#2b211b'], ['#7a4326', '#f6eee2'], ['#e3c9a0', '#2b211b'], ['#43281a', '#f6eee2'], ['#a8703f', '#2b211b']];
 
   let width = $state(BASE);
   let spinning = $state(false);
@@ -21,7 +23,9 @@
   let rot = 0; // current rotation, radians
   let shimmer = 0;
   let shakeRaf = 0;
-  let palette: string[] = $state([]);
+  let board: HTMLCanvasElement;
+  let boardW = $state(0);
+  let boardH = $state(0);
   let confetti: { x: number; y: number; vx: number; vy: number; life: number; r: number; c: string }[] = [];
   let kindOfBurst: 'success' | 'fail' = 'success';
 
@@ -71,7 +75,7 @@
     layoutLabels(ctx);
     let ci = 0;
     for (const [i, s] of slices.entries()) {
-      const color = s.kind === 'coffee' ? palette[ci++ % palette.length] : '';
+      const [color, ink] = s.kind === 'coffee' ? VENEER[ci++ % VENEER.length] : ['', ''];
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, s.a0, s.a1); ctx.closePath();
       const mid = (s.a0 + s.a1) / 2;
@@ -83,23 +87,32 @@
         const g = ctx.createRadialGradient(0, 0, R * 0.2, 0, 0, R); g.addColorStop(0, '#000'); g.addColorStop(0.7, '#1a0000'); g.addColorStop(1, '#7a0a0a'); ctx.fillStyle = g;
       } else ctx.fillStyle = color;
       ctx.fill();
-      ctx.strokeStyle = s.kind === 'success' ? '#ffe08a' : s.kind === 'fail' ? '#d01c1c' : '#16130f';
+      if (s.kind === 'coffee') { // veneer grain: faint arcs across the wedge, the same every frame
+        ctx.save(); ctx.clip();
+        for (let j = 0; j < 26; j++) {
+          const q = Math.abs(Math.sin((i + 1) * 12.9898 + j * 78.233) * 43758.5453) % 1;
+          ctx.beginPath(); ctx.arc(-R * 0.9 * (q - 0.2), R * 0.5 * q, R * (0.25 + 1.1 * ((q * 7) % 1)), 0, 7);
+          ctx.strokeStyle = j % 3 ? 'rgba(20,10,4,0.13)' : 'rgba(255,225,180,0.12)'; ctx.lineWidth = 0.8 + q * 1.4; ctx.stroke();
+        }
+        ctx.restore(); ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, s.a0, s.a1); ctx.closePath();
+      }
+      ctx.strokeStyle = s.kind === 'success' ? '#ffe08a' : s.kind === 'fail' ? '#d01c1c' : '#1d120a';
       ctx.lineWidth = s.kind === 'coffee' ? 2 : 2.5; ctx.stroke();
       ctx.rotate(mid);
       if (s.kind === 'coffee') {
         // same rule for every wedge: along the centre radius from a fixed gap outside the hub, top of the text toward the wedge's counter-clockwise side
-        ctx.fillStyle = '#f6eee2'; ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        ctx.fillStyle = ink; ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
         ctx.fillText(labels[i], LABEL_START, 0);
       } else if (s.kind === 'success') {
         ctx.fillStyle = '#fff8dc'; star(ctx, R - 26, 0, 10); ctx.fillStyle = 'rgba(255,255,255,.9)'; star(ctx, R - 60 - 8 * Math.sin(shimmer * 1.7), 0, 4);
       } else skull(ctx, R - 26, 0, 12);
       ctx.restore();
     }
-    ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, 7); ctx.lineWidth = 10; ctx.strokeStyle = '#3b2a1a'; ctx.stroke();
-    for (let i = 0; i < 24; i++) { const a = (i * Math.PI) / 12; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6), 2.5, 0, 7); ctx.fillStyle = '#e8c88a'; ctx.fill(); }
+    ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, 7); ctx.lineWidth = 10; ctx.strokeStyle = '#b8862b'; ctx.stroke(); // brass rim
+    for (let i = 0; i < 24; i++) { const a = (i * Math.PI) / 12; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6), 2.5, 0, 7); ctx.fillStyle = '#fff2b8'; ctx.fill(); }
     // pointer at 3 o'clock, tip pointing into the wheel
     ctx.beginPath(); ctx.moveTo(BASE - 4, cy - 14); ctx.lineTo(BASE - 4, cy + 14); ctx.lineTo(BASE - 34, cy); ctx.closePath();
-    ctx.fillStyle = '#f3ece2'; ctx.fill(); ctx.strokeStyle = '#16130f'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#e9c46a'; ctx.fill(); ctx.strokeStyle = '#3a2416'; ctx.lineWidth = 2; ctx.stroke();
   }
 
   function drawConfetti() {
@@ -143,7 +156,13 @@
     if (spin || confetti.length || hasSuccess()) raf = requestAnimationFrame(tick);
   }
   const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
-  $effect(() => { void [slices, names, angle, width, palette]; kick(); });
+  $effect(() => { void [slices, names, angle, width]; kick(); });
+  // The oak board under the wheel, repainted at its own size so the grain and the brass inlay never stretch.
+  $effect(() => {
+    if (!board || !boardW || !boardH) return;
+    const k = dpr(); board.width = Math.round(boardW * k); board.height = Math.round(boardH * k);
+    paintBoard(board.getContext('2d')!, board.width, board.height, 7 * k, 3 * k);
+  });
 
   function settle(s: WheelSlice) {
     spinning = false;
@@ -169,28 +188,32 @@
   }
 
   onMount(() => {
-    const cs = getComputedStyle(document.documentElement);
-    palette = PALETTE_VARS.map((v) => cs.getPropertyValue(v).trim() || '#8a5a3b');
     kick();
     return () => { cancelAnimationFrame(raf); cancelAnimationFrame(shakeRaf); };
   });
 </script>
 
+<div class="mat" bind:clientWidth={boardW} bind:clientHeight={boardH}>
+<canvas class="board" bind:this={board} aria-hidden="true"></canvas>
 <div class="wheel" class:shake bind:clientWidth={width}>
   <canvas bind:this={wheel} width={Math.round(width * dpr())} height={Math.round(width * dpr())} style:height="{width}px"></canvas>
   <canvas class="fx" bind:this={fx} width={Math.round(width * dpr())} height={Math.round(width * dpr())} style:height="{width}px"></canvas>
   <div class="vignette" class:on={vignette}></div>
   <button type="button" class="hub" disabled={disabled || spinning} onclick={onspin} aria-label="Spin">SPIN</button>
 </div>
+</div>
 
 <style>
-  .wheel { position: relative; width: 100%; overflow: hidden; border-radius: 50%; }
+  /* The board: as wide as the game column, the wheel centred on it. --wheel-size is the height budget from PickForMe, board included. */
+  .mat { --pad: 14px; position: relative; padding: var(--pad); border-radius: var(--radius); overflow: hidden; background: #a8743f; }
+  .board { position: absolute; inset: 0; height: 100%; }
+  .wheel { position: relative; width: 100%; max-width: calc(var(--wheel-size, 460px) - 2 * var(--pad)); margin: 0 auto; overflow: hidden; border-radius: 50%; box-shadow: 0 6px 14px -4px rgba(0, 0, 0, 0.55); }
   canvas { width: 100%; display: block; }
   .fx { position: absolute; inset: 0; pointer-events: none; }
   .hub {
     position: absolute; left: 50%; top: 50%; width: 24%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
-    border: 3px solid #f0c27a; background: radial-gradient(circle at 35% 30%, #e6a862, #a8642a 60%, #6e3b14);
-    color: #1b0f04; font: inherit; font-weight: 900; letter-spacing: 0.12em; font-size: clamp(14px, 4.4vw, 22px); padding: 0; cursor: pointer;
+    border: 3px solid #ffe9a8; background: radial-gradient(circle at 35% 30%, #ffe9a8, #b8862b 55%, #6e4a10); /* brass */
+    color: #2b1a05; font: inherit; font-weight: 900; letter-spacing: 0.12em; font-size: clamp(14px, 4.4vw, 22px); padding: 0; cursor: pointer;
     box-shadow: 0 0 0 0 rgba(240, 194, 122, 0.7), inset 0 -4px 10px rgba(0, 0, 0, 0.35); animation: pulse 1.8s infinite;
   }
   .hub:hover { filter: brightness(1.1); }

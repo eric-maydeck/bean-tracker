@@ -43,6 +43,7 @@
       try {
       const THREE = await import('three');
       const sim = await import('./d20Sim'); // pulls in cannon-es
+      const { paintBoard, paintCounter, WALNUT_DARK } = await import('./wood');
       if (dead) return;
       if (!stage.clientWidth || !stage.clientHeight) { // hidden or not laid out yet: wait for a real size (one-shot)
         await new Promise<void>((res) => { const ro = new ResizeObserver(() => { if (stage.clientWidth && stage.clientHeight) { ro.disconnect(); res(); } }); ro.observe(stage); undo.push(() => ro.disconnect()); });
@@ -57,23 +58,43 @@
       renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       stage.appendChild(renderer.domElement);
       undo.push(() => { renderer.setAnimationLoop(null); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); });
-      const scene = new THREE.Scene(); scene.background = new THREE.Color('#1b1712');
+      const scene = new THREE.Scene(); scene.background = new THREE.Color(WALNUT_DARK);
       const camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 100);
       camera.position.set(0, 10, 7); camera.lookAt(0, 0, 0.2);
-      scene.add(new THREE.AmbientLight('#fff4e6', 0.55));
-      const sun = new THREE.DirectionalLight('#ffe9cc', 1.6); sun.position.set(-4, 12, 6); sun.castShadow = true;
+      scene.add(new THREE.AmbientLight('#fff4e6', 0.85));
+      const sun = new THREE.DirectionalLight('#ffe9cc', 2); sun.position.set(-4, 12, 6); sun.castShadow = true;
       sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 }); scene.add(sun);
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: '#3b2a1a', roughness: 0.95 }));
+      // A coffee-bar counter: walnut all round, the tray an oak board with a brass inlay (canvas-painted, see wood.ts).
+      const canvasTex = (w: number, h: number, paint: (g: CanvasRenderingContext2D) => void) => {
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h; paint(cv.getContext('2d')!);
+        const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+      };
+      const counter = canvasTex(1024, 512, (g) => paintCounter(g, 1024, 512)); counter.wrapS = counter.wrapT = THREE.RepeatWrapping; counter.repeat.set(2, 2);
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ map: counter, roughness: 0.9 }));
       floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
       let { TX, TZ, DR } = trayFor({ w: W, h: H });
       const DR0 = DR; // the die mesh is built at this radius and scaled on resize
-      const trayLine = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(TX * 2, 0.01, TZ * 2)), new THREE.LineBasicMaterial({ color: '#c8925a', transparent: true, opacity: 0.35 }));
-      trayLine.position.y = 0.01; scene.add(trayLine);
+      // The board is exactly the tray (the walls sit on its edge), repainted at the tray's shape when that changes.
+      const boardMat = new THREE.MeshStandardMaterial({ roughness: 0.9 });
+      const board = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), boardMat);
+      board.rotation.x = -Math.PI / 2; board.position.y = 0.01; board.receiveShadow = true; scene.add(board);
+      function layBoard() {
+        const h = 1024, w = Math.round(h * TX / TZ);
+        boardMat.map?.dispose(); boardMat.map = canvasTex(w, h, (g) => paintBoard(g, w, h, h * 0.045, h * 0.016)); boardMat.needsUpdate = true;
+        board.scale.set(TX * 2, TZ * 2, 1);
+      }
+      layBoard();
 
-      function faceTexture(n: number) {
+      // An ivory die with espresso numerals. The face that lands on top is redrawn: gold for a critical success,
+      // dark red for a critical fail (the pop-up's colours), a brass outline for any other number.
+      function faceTexture(n: number, top?: 'success' | 'fail' | 'plain') {
         const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d')!;
-        g.fillStyle = '#5c348c'; g.fillRect(0, 0, 256, 256);
-        g.fillStyle = '#ffffff'; g.font = `800 ${n >= 10 ? 74 : 86}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillStyle = '#fffaf0';
+        if (top === 'success') { const gr = g.createLinearGradient(0, 40, 256, 256); gr.addColorStop(0, '#b8862b'); gr.addColorStop(0.5, '#ffe9a8'); gr.addColorStop(1, '#c9952c'); g.fillStyle = gr; }
+        if (top === 'fail') { const gr = g.createRadialGradient(128, 150, 10, 128, 150, 170); gr.addColorStop(0, '#a31515'); gr.addColorStop(1, '#3a0505'); g.fillStyle = gr; }
+        g.fillRect(0, 0, 256, 256);
+        if (top === 'plain') { g.strokeStyle = '#c9952c'; g.lineWidth = 12; g.lineJoin = 'round'; g.beginPath(); g.moveTo(128, 14); g.lineTo(10, 216); g.lineTo(246, 216); g.closePath(); g.stroke(); } // the face's triangle in uv space
+        g.fillStyle = top === 'fail' ? '#ffe6e0' : '#3b2415'; g.font = `800 ${n >= 10 ? 74 : 86}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
         g.fillText(String(n), 128, 152);
         if (n === 6 || n === 9) g.fillRect(104, 196, 48, 7);
         const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
@@ -107,14 +128,16 @@
         closeCam.position.set(die.position.x, die.position.y + 5, die.position.z); closeCam.up.copy(up); closeCam.lookAt(die.position);
       }
 
-      const glow = (n: number) => { const c = critFor(n); return c === 'success' ? '#7a5a00' : c === 'fail' ? '#6b0000' : '#4a2a10'; };
+      let topFace: { i: number; map: MeshStandardMaterial['map'] } | null = null; // the highlighted face and its everyday texture
+      const unlight = () => { if (!topFace) return; mats[topFace.i].map?.dispose(); mats[topFace.i].map = topFace.map; topFace = null; };
+      const light = (n: number) => { unlight(); const i = num.indexOf(n); topFace = { i, map: mats[i].map }; mats[i].map = faceTexture(n, critFor(n) ?? 'plain'); };
       const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
       const tmpQ = new THREE.Quaternion();
       let dirty = true; // render both views only while something moves, plus one frame after any change
       let play: { frames: Float32Array[]; sym: Quaternion; t0: number; n: number } | null = null;
 
       function finish(now: number, n: number) {
-        mats[num.indexOf(n)].emissive.set(glow(n));
+        light(n);
         setLens(n);
         play = null; rolling = false; again = false; dirty = true;
         if (resizePending) applySize();
@@ -126,7 +149,7 @@
       doRoll = (forced) => {
         if (disabled || (play && performance.now() - play.t0 < RESTART_MS)) return;
         onstart?.();
-        mats.forEach((m) => m.emissive.set(0));
+        unlight();
         const { frames, top } = simulate(Math.random, { w: W, h: H });
         const n = forced ?? top;
         play = { frames, sym: new THREE.Quaternion().fromArray(symmetry(n, top)), t0: performance.now(), n };
@@ -145,7 +168,7 @@
         const old = { TX, DR };
         W = w; H = h; ({ TX, TZ, DR } = trayFor({ w, h }));
         renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
-        trayLine.geometry.dispose(); trayLine.geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(TX * 2, 0.01, TZ * 2));
+        layBoard();
         die.scale.setScalar(DR / DR0);
         die.position.set(die.position.x * TX / old.TX, die.position.y * DR / old.DR, die.position.z); // ponytail: scaling keeps the resting die inside the new tray; exact only for x/y
         LS = lens.clientWidth; insetRenderer.setSize(LS, LS);
@@ -163,7 +186,7 @@
         die.position.fromArray(pose.pos); die.quaternion.fromArray(pose.quat);
         die.position.y = DR * 0.7947; // resting on a face at this tray's die size, whatever size it was saved at
         die.position.x = Math.max(-(TX - DR), Math.min(TX - DR, die.position.x)); die.position.z = Math.max(-(TZ - DR), Math.min(TZ - DR, die.position.z));
-        lensAngle = pose.lensAngle; mats[num.indexOf(pose.sym)].emissive.set(glow(pose.sym)); setLens(pose.sym);
+        lensAngle = pose.lensAngle; light(pose.sym); setLens(pose.sym);
       }
 
       renderer.setAnimationLoop((now) => {
@@ -181,8 +204,8 @@
       ready = true;
       undo.push(() => {
         sun.shadow.map?.dispose();
-        for (const m of [floor, trayLine]) { m.geometry.dispose(); (m.material as { dispose(): void }).dispose(); }
-        geo.dispose(); mats.forEach((m) => { m.map?.dispose(); m.dispose(); });
+        for (const m of [floor, board]) { m.geometry.dispose(); m.material.map?.dispose(); m.material.dispose(); }
+        unlight(); geo.dispose(); mats.forEach((m) => { m.map?.dispose(); m.dispose(); });
       });
       } catch {
         dispose(); failed = true; onfail?.();
@@ -214,13 +237,13 @@
 
 <style>
   .d20 { container-type: inline-size; width: 100%; min-width: 0; }
-  .stage { position: relative; width: 100%; height: 360px; border-radius: var(--radius); overflow: hidden; background: #1b1712; }
+  .stage { position: relative; width: 100%; height: 360px; border-radius: var(--radius); overflow: hidden; background: #1a100a; } /* wood.ts WALNUT_DARK */
   .inset { position: absolute; z-index: 1; top: 12px; left: 12px; width: clamp(104px, 26cqw, 168px); text-align: center; pointer-events: none; }
-  .lens { width: 100%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #241b12; border: 4px solid #6b5640;
+  .lens { width: 100%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #2a1a10; border: 4px solid #b8862b;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), inset 0 0 22px rgba(0, 0, 0, 0.7);
     transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s cubic-bezier(0.3, 1.6, 0.6, 1); }
   .lens :global(canvas) { display: block; width: 100% !important; height: 100% !important; }
-  .inset.done .lens { border-color: #c8925a; transform: scale(1.06); }
+  .inset.done .lens { border-color: #f3d58a; transform: scale(1.06); }
   .inset.win .lens { border-color: #ffe08a; box-shadow: 0 0 22px #d4a73a, inset 0 0 22px rgba(0, 0, 0, 0.5); transform: scale(1.08); }
   .inset.fail .lens { border-color: #d01c1c; box-shadow: 0 0 22px #7a0a0a, inset 0 0 22px rgba(0, 0, 0, 0.7); transform: scale(1.08); }
   .inset-label { display: inline-block; margin-top: 6px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #f3ece2; background: rgba(22, 19, 15, 0.8); padding: 2px 8px; border-radius: 99px; }

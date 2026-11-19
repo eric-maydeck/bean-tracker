@@ -411,7 +411,7 @@
   .out-row { max-width: 620px; }
   .side { position: relative; display: flex; flex-direction: column; min-width: 0; }
   .last { margin: 0 0 var(--space-2); font-size: 1rem; } /* stacked: in the flow above the card */
-  .wheel-wrap { width: 100%; max-width: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); margin: 0 auto; } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
+  .wheel-wrap { width: 100%; --wheel-size: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
   .result { display: flex; align-self: start; width: 100%; max-width: 674px; } /* .card sizes by its container, so the width is explicit */
   @media (max-width: 720px) { .result { max-width: 480px; } } /* the vertical card: the /coffees card's width on a phone (its thumbnail the full content width) */
   .result:hover { box-shadow: var(--shadow); transform: none; } /* not clickable: no .card hover lift */
