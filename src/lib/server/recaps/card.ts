@@ -7,6 +7,7 @@ import karlaLatin from './fonts/karla-latin-700-normal.woff?inline';
 import karlaExt from './fonts/karla-latin-ext-700-normal.woff?inline';
 import loraLatin from './fonts/lora-latin-600-normal.woff?inline';
 import loraExt from './fonts/lora-latin-ext-600-normal.woff?inline';
+import { pourShapes, type ChartTimeline } from '#lib/pourShapes.ts';
 import type { Tone } from './types';
 
 export const CARD = { width: 1200, height: 630 };
@@ -36,7 +37,27 @@ const WIDTH = CARD.width - 2 * PAD;
 const fit = (text: string, size: number) => Math.max(24, Math.min(size, Math.floor(WIDTH / (0.62 * Math.max(1, ...text.split(/\s+/).map((w) => [...w].length))))));
 const el = (type: string, style: Record<string, unknown>, children?: unknown) => ({ type, props: { style, children } });
 
-export async function cardSvg(c: { big: string; label: string; year: number; tone: Tone; dark?: false; cover?: true; page?: true }): Promise<string> {
+// A recipe's pour chart on a page card (the PourTimeline shapes), in card-legible colours: solid fills, no hairlines, bold swirls.
+// Pour fills are the app's series pastels (bloom orange, fast blue, medium olive, slow green); the bloom bands use the band hues.
+const CHART_H = 130;
+const KIND_FILL = { bloom: '#fdc58b', fast: '#9db4fb', medium: '#d8db80', slow: '#92dba9' };
+const BAND_FILL = ['#d9a6e3', '#7fdcea', '#ffb7c1'];
+function chart(t: ChartTimeline) {
+  const g = pourShapes(t, WIDTH, CHART_H), H = CHART_H;
+  const node = (type: string, props: Record<string, unknown>) => ({ type, props });
+  const children = [
+    ...g.windows.map((w) => node('rect', { x: w.x0, y: 0, width: w.x1 - w.x0, height: H, fill: BAND_FILL[Math.min(w.bloom, 2)], fillOpacity: 0.4 })),
+    node('rect', { x: 0, y: H - 4, width: WIDTH, height: 4, fill: CREAM, fillOpacity: 0.6 }),
+    ...g.shapes.flatMap((sh) => [
+      ...(sh.hold ? [node('rect', { x: sh.hold.x0, y: sh.hold.y - 2, width: sh.hold.x1 - sh.hold.x0, height: 4, fill: CREAM, fillOpacity: 0.7 })] : []),
+      node('polygon', { points: sh.points, fill: KIND_FILL[sh.kind] })
+    ]),
+    ...g.swirls.flatMap((x) => [node('rect', { x: x - 5, y: 0, width: 10, height: H, fill: INK }), node('rect', { x: x - 2.5, y: 0, width: 5, height: H, fill: CREAM })])
+  ];
+  return node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { display: 'flex', flexShrink: 0, marginBottom: 24 }, children });
+}
+
+export async function cardSvg(c: { big: string; label: string; year: number; tone: Tone; dark?: false; cover?: true; page?: true; timeline?: ChartTimeline }): Promise<string> {
   const color = fg(c.tone);
   // "Roaster · Coffee" (a bag): two lines, the roaster smaller above the coffee name. `page` (a page's link-preview card) keeps big as one text, with a larger label and footer.
   const [rn, cn] = !c.page && c.big.includes(' · ') ? c.big.split(' · ', 2) : [null, c.big];
@@ -50,6 +71,7 @@ export async function cardSvg(c: { big: string; label: string; year: number; ton
       el('div', { ...bigStyle, fontSize: bigSize }, glue(cn)),
       el('div', { fontFamily: 'Karla', fontWeight: 700, fontSize: lblSize, lineHeight: 1.2, marginTop: 20, display: 'block', lineClamp: 2, textOverflow: 'ellipsis' }, glue(c.label))
     ]),
+    ...(c.page && c.timeline?.pours.length ? [chart(c.timeline)] : []),
     el('div', { display: 'flex', justifyContent: 'space-between', fontFamily: 'Karla', fontWeight: 700, fontSize: c.page ? 40 : 30, opacity: 0.85 }, [
       el('div', {}, c.cover ? '' : `${c.year} in coffee`), el('div', {}, 'Bean Tracker')
     ])

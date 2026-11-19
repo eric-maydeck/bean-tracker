@@ -168,6 +168,19 @@ describe('recipePreview', () => {
   });
 });
 
+describe('recipePreview timeline', () => {
+  const timeline = { pours: [{ startS: 0, durationS: 10.04, grams: 50, kind: 'bloom' as const }, { startS: 40, durationS: 20, grams: 150, kind: 'slow' as const }], swirls: [5], totalS: 90, windows: [{ startS: 0, targetS: 40, bloom: 0, pour: 0 }] };
+  const base = { name: 'F', description: '', steps: '', tempNotes: null, n: 1, avgRating: null };
+  it('puts the timeline on the card; none keeps the plain card', () => {
+    expect(recipePreview({ ...base, timeline }).card!.timeline).toBe(timeline);
+    expect(recipePreview({ ...base, timeline: null }).card).toEqual({ big: 'F', label: 'Recipes' });
+  });
+  it('encodeCard: compact, rounded, kind as an index', () => {
+    const c = encodeCard({ big: 'F', label: 'Recipes', timeline });
+    expect(JSON.parse(Buffer.from(c, 'base64url').toString('utf8'))).toEqual(['F', 'Recipes', [[[0, 10, 50, 0], [40, 20, 150, 3]], [5], 90, [[0, 40, 0]]]]);
+  });
+});
+
 describe('recapPreview', () => {
   const slide = (o: object) => ({ big: '', context: 'ctx', link: { tab: '', section: '', href: '' }, card: { big: '', label: '' }, ...o });
   const r = {

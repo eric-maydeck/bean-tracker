@@ -4,10 +4,11 @@ import type { StatusTab } from './coffeeViewState';
 import { formatBag, formatGrams } from './grams';
 import { originWithFlag } from './countryFlags';
 import { glue, unitGap } from './unitGap';
+import { KINDS, type ChartTimeline } from './pourShapes';
 import type { Recap } from './server/recaps/recap';
 
 // `card`: the text of the default image card (/preview.png) when there's no image; else derived from the title.
-export interface Card { big: string; label: string }
+export interface Card { big: string; label: string; timeline?: ChartTimeline }
 export interface Preview { title: string; description: string; image?: { src: string; alt: string } | null; card?: Card }
 
 // "Stats: Roasters" -> big "Roasters", label "Stats"; a title without "Page: " is big alone.
@@ -17,9 +18,16 @@ export function previewCard(p: Preview): Card {
   return i < 0 ? { big: p.title, label: '' } : { big: p.title.slice(i + 2), label: p.title.slice(0, i) };
 }
 
-// base64url of [big, label] (UTF-8): no characters that need escaping in a URL or an HTML attribute. The server signs it (server/previewCard.ts).
+// base64url of [big, label, timeline?] (UTF-8): no characters that need escaping in a URL or an HTML attribute. The server signs
+// it (server/previewCard.ts). The timeline is compact: pours [startS, durationS, grams, kind index], swirls, totalS, windows [startS, targetS, bloom].
+const r1 = (n: number) => Math.round(n * 10) / 10;
+const wire = (t: ChartTimeline) => [
+  t.pours.map((p) => [r1(p.startS), r1(p.durationS), r1(p.grams), KINDS.indexOf(p.kind)]),
+  t.swirls.map(r1), r1(t.totalS), (t.windows ?? []).map((w) => [r1(w.startS), r1(w.targetS), w.bloom])
+];
 export const encodeCard = (c: Card): string =>
-  btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify([c.big, c.label])))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(c.timeline?.pours.length ? [c.big, c.label, wire(c.timeline)] : [c.big, c.label]))))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 export const DESCRIPTION_MAX = 300;
 
@@ -85,11 +93,11 @@ export const RECIPE_PREVIEW_MAX = DESCRIPTION_MAX;
 
 // One recipe's link preview: its one-liner, steps, temperature and notes, then how many brews matched and their average
 // rating. The one-liner goes first when the lot is over the budget; still over, fitList cuts it.
-export function recipePreview(r: { name: string; description: string; steps: string; tempNotes: string | null; n: number; avgRating: number | null; brewTime?: string | null }): Preview {
+export function recipePreview(r: { timeline?: ChartTimeline | null; name: string; description: string; steps: string; tempNotes: string | null; n: number; avgRating: number | null; brewTime?: string | null }): Preview {
   const stats = join([plural(r.n, 'brew'), r.avgRating != null && `avg ${f1(r.avgRating)}`, r.brewTime && `most brews took ${r.brewTime}`]);
   const rest = [r.steps, r.tempNotes, stats].filter(Boolean) as string[];
   const all = [r.description, ...rest].filter(Boolean).join('\n');
-  return { title: r.name, description: all.length <= RECIPE_PREVIEW_MAX ? all : fitList(rest, '\n', false, RECIPE_PREVIEW_MAX), card: { big: r.name, label: 'Recipes' } };
+  return { title: r.name, description: all.length <= RECIPE_PREVIEW_MAX ? all : fitList(rest, '\n', false, RECIPE_PREVIEW_MAX), card: { big: r.name, label: 'Recipes', ...(r.timeline ? { timeline: r.timeline } : {}) } };
 }
 
 export function recipesPreview(names: string[]): Preview {
