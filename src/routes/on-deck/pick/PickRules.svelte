@@ -222,7 +222,7 @@
   .field { display: grid; gap: var(--space-1); min-height: 0; }
   .sub { margin-left: var(--space-5); }
   .crit { display: grid; gap: var(--space-1); }
-  .crit .sub { display: grid; gap: 0; }
+  .crit .sub { align-items: flex-start; } /* box left, label and hint right */
   .crit .sub .sub { margin-left: var(--space-5); }
   .checks { list-style: none; margin: 0; padding: 0; max-height: 14rem; overflow: auto; }
   .checks label { align-items: baseline; }

@@ -5873,6 +5873,12 @@ export const STATES: State[] = [
       await expect(panel.getByLabel('The coffee in that spot (#1)')).toBeChecked();
       await expect(panel.getByLabel('The coffee in that spot (#20)')).toBeChecked();
       await expect(panel.getByLabel(/Highest number is crit success/)).toBeChecked();
+      // An inline row: the box sits left of the label text, on the same line.
+      const hi = panel.getByLabel(/Highest number is crit success/);
+      const hiText = panel.getByText('Highest number is crit success').first();
+      const [bx, tx] = [(await hi.boundingBox())!, (await hiText.boundingBox())!];
+      expect(bx.x + bx.width, 'box left of its label').toBeLessThanOrEqual(tx.x + 1);
+      expect(Math.abs(bx.y - tx.y), 'box on the label first line').toBeLessThan(14);
       await panel.getByLabel('Specific coffees').last().check();
       await expect(panel.getByLabel(/Highest number is crit success/)).toHaveCount(0);
       await expect(panel.getByRole('button', { name: 'Select all', exact: true })).toBeVisible();
