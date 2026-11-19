@@ -370,9 +370,8 @@
   .side { display: flex; min-width: 0; }
   .game { min-width: 0; display: flex; flex-direction: column; }
   .wheel-wrap { width: 100%; max-width: 460px; margin: 0 auto; }
-  .result { display: flex; width: calc(280px + 2 * var(--space-4) + 2px); max-width: 100%; } /* .card sizes by its container, so the width is explicit */
-  .result :global(.pick-card) { align-self: stretch; } /* Brew sits at the card's foot, level with Reset today */
-  .result.empty { align-self: start; }
+  .result { display: flex; align-self: start; width: calc(280px + 2 * var(--space-4) + 2px); max-width: 100%; } /* .card sizes by its container, so the width is explicit */
+  .result:hover { box-shadow: var(--shadow); transform: none; } /* not clickable: no .card hover lift */
   @media (max-width: 640px) { .result.empty { display: none; } } /* no placeholder on a phone (and no flash before the script runs) */
   .pick-modal { position: relative; max-width: 28rem; }
   .pick-modal :global(.pick-card) { margin: 0 auto; }
@@ -387,7 +386,7 @@
   @media (prefers-reduced-motion: reduce) { .fx i { display: none; } .fx.fail { animation: none; } }
   /* the same layout for both games: the game left, the card right with a real gutter; both columns as tall as the taller one */
   @media (min-width: 641px) {
-    .stage { grid-template-columns: minmax(0, 620px) auto; column-gap: var(--space-6); align-items: stretch; }
+    .stage { grid-template-columns: minmax(0, 620px) auto; column-gap: var(--space-6); align-items: stretch; } /* one row: the card keeps its natural height, the game column fills the row with Reset today at its foot */
   }
   /* at the game column's foot, Reset today level with the card's Brew (the same size) */
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: auto 0 var(--space-3); padding-top: var(--space-3); }

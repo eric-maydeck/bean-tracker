@@ -24,7 +24,7 @@
     {#if coffee.image}<img class="card-thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{/if}
     <!-- one line: the name truncates, a badge never wraps it or changes the height -->
     <div class="name-row">
-      <h2 class="name" use:truncTip>{#if out}<s><CoffeeName name={coffee.name} /></s>{:else}<CoffeeName name={coffee.name} />{/if}</h2>
+      <h3 class="name" use:truncTip>{#if out}<s><CoffeeName name={coffee.name} /></s>{:else}<CoffeeName name={coffee.name} />{/if}</h3>
       {#if result.via === 'success'}<span class="badge badge-warm">Critical success</span>{/if}
       {#if result.via === 'fail'}<span class="badge badge-urgent">Critical fail</span>{/if}
       {#if out}<span class="badge badge-neutral">Out for today</span>{/if}
@@ -69,7 +69,7 @@
   .pick-card { width: 280px; max-width: 100%; display: flex; flex-direction: column; }
   .card-body { margin-bottom: var(--space-3); }
   .name-row { display: flex; align-items: center; gap: var(--space-2); min-height: 1.9rem; }
-  .name { margin: 0; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .name { margin: 0; padding: 0; border: 0; font-size: 1rem; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .name-row .badge { flex: none; white-space: nowrap; }
   /* same size, close together, one aligned row at the card's foot (Reset today shares this size) */
   .buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-top: auto; }

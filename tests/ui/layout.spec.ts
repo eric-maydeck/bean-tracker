@@ -5918,11 +5918,9 @@ export const STATES: State[] = [
       if ((page.viewportSize()?.width ?? 0) > 640) {
         await chip.hover();
         await expect(tipOf).toBeVisible();
-        // A tip over a row of a scrolling list goes when the list scrolls (it must not ride along with the old row).
+        // A tip over a row of a scrolling list goes when the list scrolls the row from under the pointer (it must not ride along with the old row).
         const nm = ex.locator('.list .nm').filter({ hasText: 'Finca' });
-        await nm.scrollIntoViewIfNeeded();
-        await page.waitForTimeout(300); // let that scroll settle: a tip opened mid-scroll is rightly closed by it
-        await nm.hover();
+        await nm.hover(); // scrolls it into view first: its tip stays (the row is under the pointer)
         await expect(tipOf).toBeVisible();
         await ex.locator('.list').evaluate((el) => { el.scrollTop = el.scrollHeight; });
         await expect(tipOf).toBeHidden();
@@ -5967,19 +5965,20 @@ export const STATES: State[] = [
       await expect(page.locator('tr.rolled')).toHaveCount(1);
       await expect(page.locator('tr.rolled td.n')).toHaveText('7');
       // The board: 1 to 10 and 11 to 20 side by side on desktop, stacked on a phone.
+      await expect(page.locator('table.board')).toHaveCount(2);
+      await expect(page.locator('table.board').nth(0).locator('tbody tr')).toHaveCount(10);
+      await expect(page.locator('table.board').nth(1).locator('tbody tr')).toHaveCount(10);
+      const [t1, t2] = [(await page.locator('table.board').nth(0).boundingBox())!, (await page.locator('table.board').nth(1).boundingBox())!];
       if ((page.viewportSize()?.width ?? 0) > 900) {
-        await expect(page.locator('table.board')).toHaveCount(2);
-        const [t1, t2] = [(await page.locator('table.board').nth(0).boundingBox())!, (await page.locator('table.board').nth(1).boundingBox())!];
-        await expect(page.locator('table.board').nth(0).locator('tbody tr')).toHaveCount(10);
-        await expect(page.locator('table.board').nth(1).locator('tbody tr')).toHaveCount(10);
         expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
         // Reset today level with Brew, the same size (both games).
         const [brew, reset] = [(await page.locator('.result').getByRole('button', { name: 'Brew', exact: true }).boundingBox())!, (await page.getByRole('button', { name: 'Reset today' }).boundingBox())!];
-        expect(Math.abs(brew.y - reset.y), 'Reset today level with Brew').toBeLessThanOrEqual(2);
+        if (await page.locator('.result img').count()) expect(Math.abs(brew.y - reset.y), 'Reset today level with Brew (an image card)').toBeLessThanOrEqual(2);
         expect(Math.abs(brew.height - reset.height), 'same height').toBeLessThanOrEqual(2);
       } else {
-        await expect(page.locator('table.board')).toHaveCount(1); // one table, 1 to 20
-        await expect(page.locator('table.board tbody tr')).toHaveCount(20);
+        expect(Math.abs(t2.x - t1.x), 'one column').toBeLessThanOrEqual(1); // stacked: one table, 1 to 20
+        expect(t2.y, 'second half under the first').toBeGreaterThan(t1.y + t1.height - 1);
+        await expect(page.locator('table.board').nth(1).locator('thead')).toBeHidden();
       }
       await expect(page.locator('.pick-card')).toBeVisible();
       await expect(page).toHaveURL(/game=d20/);
@@ -6045,8 +6044,11 @@ export const STATES: State[] = [
       for (const b of bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
       // Reset today level with Brew, the same size.
       const [brew, reset] = [bs[0]!, (await page.getByRole('button', { name: 'Reset today' }).boundingBox())!];
-      expect(Math.abs(brew.y - reset.y), 'Reset today level with Brew').toBeLessThanOrEqual(2);
+      const cardBox = (await card.boundingBox())!;
+      expect(Math.abs(cardBox.y + cardBox.height - (brew.y + brew.height) - 17), 'no empty band under the card content').toBeLessThanOrEqual(3);
       expect(Math.abs(brew.height - reset.height), 'same height').toBeLessThanOrEqual(2);
+      // An image card is taller than the wheel column, so Reset today (at the row's foot) is level with Brew; a short card sits top-aligned.
+      if (await img.count()) expect(Math.abs(brew.y - reset.y), 'Reset today level with Brew').toBeLessThanOrEqual(2);
       // The /coffees card's rows: roaster, origin, roast level, cost.
       await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
     }
