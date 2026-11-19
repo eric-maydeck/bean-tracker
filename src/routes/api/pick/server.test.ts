@@ -30,6 +30,14 @@ describe('/api/pick', () => {
     expect(await (await get('pick.profiles')).json()).toEqual({ value: profiles });
   });
 
+  it('stores the selected profile name; only a short string is accepted', async () => {
+    expect((await put({ key: 'pick.profile.selected', value: 'Morning' })).status).toBe(204);
+    expect(await (await get('pick.profile.selected')).json()).toEqual({ value: 'Morning' });
+    expect((await put({ key: 'pick.profile.selected', value: '' })).status).toBe(204);
+    for (const value of [1, null, { a: 1 }, ['x'], 'x'.repeat(41)]) expect((await put({ key: 'pick.profile.selected', value })).status).toBe(400);
+    expect(await (await get('pick.profile.selected')).json()).toEqual({ value: '' });
+  });
+
   it('400s an unknown key, 413s a body over 64KB', async () => {
     expect((await get('nope')).status).toBe(400);
     expect((await put({ key: 'nope', value: 1 })).status).toBe(400);

@@ -5,7 +5,7 @@ import { getOpenCoffees, getBacklogCoffees, getNonArchivedCoffees } from '#lib/s
 import { getRoastLevels } from '#lib/server/roastLevels.ts';
 import { getUserKv } from '#lib/server/userKv.ts';
 import { getSharedProfile } from '#lib/server/pickShared.ts';
-import { parseDefaultRules, parseProfile } from './onDeckUrl';
+import { decodeRulesLink, parseDefaultRules, parseProfile, parseRulesCode } from './onDeckUrl';
 import { buildOnDeckData, buildPickCoffees } from './onDeckData';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -16,7 +16,13 @@ export const load: PageServerLoad = ({ locals, url }) => {
   // A shared link names one of the owner's profiles ('admin' until there are per-user paths; anyone may read that one) or asks for the default rules.
   const asked = parseProfile(url.searchParams);
   const found = asked ? getSharedProfile(db, 'admin', asked) : null;
-  const shared = asked ? (found ?? { name: asked, missing: true as const }) : parseDefaultRules(url.searchParams) ? { defaults: true as const } : null;
+  const code = asked ? undefined : parseRulesCode(url.searchParams);
+  const decoded = code ? decodeRulesLink(code) : null; // untrusted: checked and validated like stored rules
+  const shared = asked
+    ? (found ?? { name: asked, missing: true as const })
+    : code
+      ? decoded ? { ...decoded, code: code as string } : { unreadable: true as const }
+      : parseDefaultRules(url.searchParams) ? { defaults: true as const } : null;
   return {
     ...buildOnDeckData(getOpenCoffees(db), getBacklogCoffees(db), today),
     pick: {
@@ -26,6 +32,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
       profiles: kv('pick.profiles'),
       savedRules: kv('pick.rules.saved'), // the pre-profiles single copy, migrated to a profile "Saved"
       todayState: kv('pick.today'),
+      selectedProfile: kv('pick.profile.selected'),
       shared
     }
   };

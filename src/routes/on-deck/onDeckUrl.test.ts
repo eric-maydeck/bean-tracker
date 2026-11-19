@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { onDeckParams, parseDefaultRules, parseGame, parseOnDeckView, parseProfile } from './onDeckUrl';
+import { DEFAULT_RULES } from '#lib/pick/rules.ts';
+import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile } from './onDeckUrl';
 
 const p = (q: string) => new URLSearchParams(q);
 
@@ -50,5 +51,41 @@ describe('on-deck view param', () => {
     expect(onDeckParams({ view: 'pick', game: 'd20', defaultRules: true }).toString()).toBe('view=pick&game=d20&rules=default');
     expect(onDeckParams({ view: 'pick', profile: 'A', defaultRules: true }).toString()).toBe('view=pick&profile=A');
     expect(onDeckParams({ view: 'next', defaultRules: true }).toString()).toBe('view=next');
+  });
+  it('rules code: round trip keeps name (unicode too) and rules, stays small, and is not "default"', () => {
+    const rules = { ...DEFAULT_RULES, sort: 'name' as const, critFailOn: false, excluded: [3, 9], critSuccess: [4], critSuccessMode: 'specific' as const };
+    const code = encodeRulesLink('Café ☕ rules', rules);
+    expect(code).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(code.length).toBeLessThan(400);
+    expect(decodeRulesLink(code)).toEqual({ name: 'Café ☕ rules', rules });
+    expect(decodeRulesLink(encodeRulesLink('A', DEFAULT_RULES))).toEqual({ name: 'A', rules: DEFAULT_RULES });
+    expect(parseRulesCode(p(`rules=${code}`))).toBe(code);
+    expect(parseRulesCode(p('rules=default'))).toBeUndefined();
+    expect(parseRulesCode(p('rules=DEFAULT'))).toBeUndefined();
+    expect(parseRulesCode(p('rules='))).toBeUndefined();
+    expect(parseRulesCode(p('rules=a+b'))).toBeUndefined();
+    expect(parseRulesCode(p(''))).toBeUndefined();
+    expect(onDeckParams({ view: 'pick', game: 'd20', rulesCode: code }).toString()).toBe(`view=pick&game=d20&rules=${code}`);
+    expect(onDeckParams({ view: 'pick', rulesCode: code, defaultRules: true }).toString()).toBe(`view=pick&rules=${code}`);
+    expect(onDeckParams({ view: 'pick', profile: 'A', rulesCode: code }).toString()).toBe('view=pick&profile=A');
+    expect(onDeckParams({ view: 'next', rulesCode: code }).toString()).toBe('view=next');
+  });
+  it('rules code: untrusted input is refused or repaired, never thrown', () => {
+    const b64 = (s: string) => btoa(s).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+    expect(decodeRulesLink('default')).toBeNull(); // valid base64 characters, not JSON
+    expect(decodeRulesLink('!!!')).toBeNull(); // bad characters
+    expect(decodeRulesLink('A')).toBeNull(); // impossible base64 length
+    expect(decodeRulesLink(b64('not json'))).toBeNull();
+    expect(decodeRulesLink(b64('[1]'))).toBeNull();
+    expect(decodeRulesLink(b64('{"n":"A"}'))).toBeNull(); // no rules
+    expect(decodeRulesLink(b64('{"r":{}}'))).toBeNull(); // no name
+    expect(decodeRulesLink(b64('{"n":"  ","r":{}}'))).toBeNull();
+    expect(decodeRulesLink(b64('{"n":"A","r":[]}'))).toBeNull();
+    expect(decodeRulesLink(b64('{"n":"' + 'x'.repeat(41) + '","r":{}}'))).toBeNull();
+    expect(decodeRulesLink('A'.repeat(MAX_RULES_CODE + 1))).toBeNull(); // oversize
+    expect(parseRulesCode(p('rules=' + 'A'.repeat(MAX_RULES_CODE + 1)))).toBeUndefined();
+    // invalid rule values fall back field by field to the defaults
+    expect(decodeRulesLink(b64('{"n":"A","r":{"sort":"bogus","includeDecaf":true,"categories":7}}'))).toEqual({ name: 'A', rules: { ...DEFAULT_RULES, includeDecaf: true } });
+    expect(decodeRulesLink(b64(String.fromCharCode(0xff, 0xfe)))).toBeNull(); // not UTF-8
   });
 });

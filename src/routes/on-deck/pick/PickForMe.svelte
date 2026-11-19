@@ -7,26 +7,27 @@
   import { buildPool, resolveCrits } from '#lib/pick/pool.ts';
   import { boardMatches, fillBoard } from '#lib/pick/board.ts';
   import { DEFAULT_RULES, rulesDiffer } from '#lib/pick/rules.ts';
-  import { cleanName, type Profiles } from '#lib/pick/profiles.ts';
+  import { cleanName, restoreSelected, type Profiles } from '#lib/pick/profiles.ts';
   import { discard, markBrewed, resetDay } from '#lib/pick/today.ts';
   import { sliceAt, wheelSlices } from '#lib/pick/wheel.ts';
   import type { Game, PickCoffee, PickResult, PickRules, PickToday, Slot, WheelSlice } from '#lib/pick/types.ts';
+  import { encodeRulesLink } from '../onDeckUrl';
   import PickBoard from './PickBoard.svelte';
   import PickCard from './PickCard.svelte';
   import PickD20 from './PickD20.svelte';
   import PickRulesPanel from './PickRules.svelte';
   import PickWheel from './PickWheel.svelte';
-  import { flushToday, loadProfiles, loadRules, loadToday, saveProfiles, saveRules, saveToday } from './store';
+  import { flushToday, loadProfiles, loadRules, loadSelected, loadToday, saveProfiles, saveRules, saveSelected, saveToday } from './store';
 
-  type Shared = { name: string; rules: PickRules } | { name: string; missing: true } | { defaults: true } | null;
+  type Shared = { name: string; rules: PickRules; code?: string } | { name: string; missing: true } | { unreadable: true } | { defaults: true } | null;
   // `shared`: a share link's rules (a saved profile, or the defaults) or a profile that was not found; `onunshare` drops them from the URL.
   // `shareRules`: what the page's Share button adds for the rules in play.
   let { pick, admin, game, ongame, shared, onunshare, shareRules = $bindable() }: {
-    pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; profiles: unknown; savedRules: unknown; todayState: unknown };
-    admin: boolean; game: Game; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; defaultRules?: boolean };
+    pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; profiles: unknown; savedRules: unknown; todayState: unknown; selectedProfile: unknown };
+    admin: boolean; game: Game; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; rulesCode?: string; defaultRules?: boolean };
   } = $props();
   // Who the shared rules are: a change of it (another profile=, or none) re-seeds the rules; a missing profile plays the visitor's own.
-  const sharedKey = $derived(shared && 'rules' in shared ? `p:${shared.name}` : shared && 'defaults' in shared ? 'defaults' : '');
+  const sharedKey = $derived(shared && 'rules' in shared ? `${shared.code ? 'c' : 'p'}:${shared.code ?? shared.name}` : shared && 'defaults' in shared ? 'defaults' : '');
   const sharedRules = $derived(shared && 'rules' in shared ? shared.rules : shared && 'defaults' in shared ? DEFAULT_RULES : null);
   // While shared rules are in play nothing is saved over the visitor's (or admin's) own rules; today's state still saves.
   const ownRules = () => loadRules(admin, admin ? pick.rulesLast : null);
@@ -40,7 +41,9 @@
   let rules = $state<PickRules>(untrack(() => sharedRules ?? (admin ? loadRules(true, pick.rulesLast) : DEFAULT_RULES)));
   let today = $state<PickToday>(untrack(() => loadToday(admin, admin ? pick.todayState : null, pick.today)));
   let profiles = $state<Profiles>(untrack(() => (admin ? loadProfiles(true, pick.profiles, pick.savedRules) : {})));
-  let selected = $state(''); // the profile the rules came from (a base: further edits do not change it until Save)
+  // The profile the rules came from (a base: further edits do not change it until Save). Remembered with the last rules; it comes back only while that profile still holds those rules.
+  let selected = $state(untrack(() => (admin && !sharedRules ? restoreSelected(pick.selectedProfile, profiles, rules) : '')));
+  let storedSel = untrack(() => selected);
   let selBefore = '';
   let busy = $state(false);
   let rollAgain = $state(false);
@@ -88,6 +91,8 @@
       rules = untrack(() => sharedRules) ?? loadRules(false, null);
       today = loadToday(false, null, pick.today);
       profiles = loadProfiles(false, null, null);
+      selected = untrack(() => (sharedRules ? '' : restoreSelected(loadSelected(false, null), profiles, rules)));
+      storedSel = selected;
       ready = true;
     }
     const hide = () => flushToday();
@@ -121,15 +126,25 @@
     wasKey = key;
     untrack(() => {
       if (leftShared) { leftShared = false; return; }
-      rules = sharedRules ?? ownRules(); selected = ''; rev++; today = { ...today, board: null };
+      rules = sharedRules ?? ownRules(); selected = sharedRules ? '' : restoreSelected(loadSelected(admin, pick.selectedProfile), profiles, rules); rev++; today = { ...today, board: null };
     });
   });
   // A profile picked, saved or reset to defaults while shared rules are in play ends shared mode (the note goes), keeping the new rules.
   let leaving = false; // a profile pick or Reset to defaults is under way: it ends shared mode once its rules apply (not on a cancelled dialog)
   const leaveShared = () => { if (!shared) return; if (sharedKey) leftShared = true; onunshare(); };
+  // Remember the selection (never while shared rules are in play: they must not overwrite the stored one; leaving shared mode writes it).
+  $effect(() => {
+    const sel = selected;
+    if (!ready || sharedKey) return;
+    untrack(() => { if (sel !== storedSel) { storedSel = sel; saveSelected(admin, sel).catch(() => {}); } });
+  });
   // Share carries the loaded profile (its saved version), else the default rules; visitors have no saved profiles of the owner's.
   $effect(() => {
-    shareRules = !ready ? undefined : shared && 'rules' in shared ? { profile: shared.name } : shared && 'defaults' in shared ? { defaultRules: true } : admin && selected && profiles[selected] ? { profile: selected } : { defaultRules: true };
+    shareRules = !ready ? undefined
+      : shared && 'rules' in shared ? (shared.code ? { rulesCode: shared.code } : { profile: shared.name })
+      : shared && 'defaults' in shared ? { defaultRules: true }
+      : selected && profiles[selected] ? (admin ? { profile: selected } : !rulesDiffer(profiles[selected], rules) ? { rulesCode: encodeRulesLink(selected, rules) } : { defaultRules: true }) // a visitor's profile is only theirs: the link carries the rules, if unchanged
+      : { defaultRules: true };
   });
 
   // Save only real changes (not the state just loaded).
@@ -368,8 +383,8 @@
     {/key}
     {#if shared}
       <p class="shared-note" role="status">
-        <span>{#if 'missing' in shared}That rules profile wasn't found.{:else if 'defaults' in shared}Playing with the default rules.{:else}Playing with the “{shared.name}” rules.{/if}</span>
-        <button type="button" class="button button-secondary" onclick={onunshare}>{'missing' in shared ? 'Dismiss' : 'Use my rules'}</button>
+        <span>{#if 'missing' in shared}That rules profile wasn't found.{:else if 'unreadable' in shared}That rules link couldn't be read.{:else if 'defaults' in shared}Playing with the default rules.{:else}Playing with the “{shared.name}” rules.{/if}</span>
+        <button type="button" class="button button-secondary" onclick={onunshare}>{'missing' in shared || 'unreadable' in shared ? 'Dismiss' : 'Use my rules'}</button>
       </p>
     {/if}
   </div>

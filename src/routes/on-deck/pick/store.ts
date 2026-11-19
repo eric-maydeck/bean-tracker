@@ -74,3 +74,11 @@ export async function saveProfiles(admin: boolean, profiles: Profiles): Promise<
   if (admin) await put('pick.profiles', profiles);
   else write('pick.profiles', profiles);
 }
+
+/** The remembered profile name next to the last rules (a raw value: `restoreSelected` decides whether it still holds). */
+export const loadSelected = (admin: boolean, serverValue: unknown): unknown => (admin ? serverValue : read('pick.profile.selected'));
+
+export async function saveSelected(admin: boolean, name: string): Promise<void> {
+  if (admin) await put('pick.profile.selected', name);
+  else write('pick.profile.selected', name);
+}

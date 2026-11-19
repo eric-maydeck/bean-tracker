@@ -2,8 +2,10 @@ import type { RequestHandler } from './$types';
 import { getDb } from '#lib/server/db.ts';
 import { requireAdmin } from '#lib/server/auth.ts';
 import { getUserKv, setUserKv } from '#lib/server/userKv.ts';
+import { MAX_NAME } from '#lib/pick/profiles.ts';
 
-const PICK_KEYS = ['pick.rules.saved', 'pick.rules.last', 'pick.profiles', 'pick.today']; // rules.saved is the pre-profiles single copy
+const SELECTED_KEY = 'pick.profile.selected'; // the name of the profile the last-used rules came from ('' for none)
+const PICK_KEYS = ['pick.rules.saved', 'pick.rules.last', 'pick.profiles', 'pick.today', SELECTED_KEY]; // rules.saved is the pre-profiles single copy
 const MAX_BYTES = 64 * 1024;
 
 // Admin-only storage for Pick's saved rules, last-used rules and today's state.
@@ -28,6 +30,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
   if (typeof body?.key !== 'string' || !PICK_KEYS.includes(body.key) || body.value === undefined) {
     return Response.json({ error: 'Bad key or value' }, { status: 400 });
   }
+  if (body.key === SELECTED_KEY && !(typeof body.value === 'string' && body.value.length <= MAX_NAME)) return Response.json({ error: 'Bad value' }, { status: 400 });
   setUserKv(getDb(), 'admin', body.key, body.value);
   return new Response(null, { status: 204 });
 };
