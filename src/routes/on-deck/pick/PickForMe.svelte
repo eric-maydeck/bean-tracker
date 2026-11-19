@@ -55,12 +55,12 @@
   let outEl: HTMLElement | undefined = $state();
   let stageTop = $state(0);
   let outH = $state(0);
-  let narrow = $state(false); // a phone: the card and Out for today come after the game, no height budget for the wheel
+  let narrow = $state(false); // stacked (the card between the game and Out for today): no height budget for the wheel
   let measured = $state(false); // until measured the CSS estimate below sizes the wheel (no visible jump)
   const wheelMax = $derived(narrow ? 460 : Math.round(Math.max(320, Math.min(460, vh - stageTop - outH - 4))));
   const measure = () => {
     if (!stageEl || !outEl) return;
-    vh = innerHeight; narrow = innerWidth <= 640; stageTop = stageEl.getBoundingClientRect().top + scrollY;
+    vh = innerHeight; narrow = stageEl.parentElement!.clientWidth < 1226; /* the stacked layout (see the container query below) */ stageTop = stageEl.getBoundingClientRect().top + scrollY;
     outH = outEl.offsetHeight + (parseFloat(getComputedStyle(stageEl).rowGap) || 0); measured = true;
   };
   $effect(() => { game; ready; tick().then(measure); });
@@ -352,7 +352,7 @@
       </div>{/if}
     </div>
 
-    <!-- after the card in the DOM (a phone: reads and tabs in the order it shows); on a desktop CSS puts it directly below the game -->
+    <!-- after the card in the DOM and on screen when stacked; beside, the grid puts it directly below the game -->
     <div class="out-row" bind:this={outEl}>
       <span class="label">Out for today:</span>
       {#each outRow as c (c.id)}<span class="badge badge-neutral" tabindex="0" role="note" use:labelTip={outTip(c)}><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
@@ -394,14 +394,12 @@
 {/if}
 
 <style>
-  /* one column: the game, Out for today, then the card (a phone: the game, the card, Out for today), all left-aligned; the card is as tall as
+  /* one column in DOM and visual order: the game, the card, then Out for today, all left-aligned; the card is as tall as
      the D20 tray (--pick-h: PickD20's 360px stage) */
   .stage { --pick-h: 360px; margin: 0; max-width: 674px; display: grid; gap: 1.25rem var(--space-6); align-items: start; }
-  .game :global(.entry) { margin: var(--space-2) 0 0; } /* the D20's "Someone rolled" row: tight, so the whole Out row stays on a 1280x800 screen with a 20px gap above it (was 12) */
-  .game { order: 1; min-width: 0; max-width: 620px; display: flex; flex-direction: column; }
-  .out-row { order: 2; max-width: 620px; }
-  .side { order: 3; display: flex; min-width: 0; }
-  @media (max-width: 640px) { .side { order: 2; } .out-row { order: 3; } }
+  .game { min-width: 0; max-width: 620px; display: flex; flex-direction: column; }
+  .out-row { max-width: 620px; }
+  .side { display: flex; min-width: 0; }
   .wheel-wrap { width: 100%; max-width: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); margin: 0 auto; } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
   .result { display: flex; align-self: start; width: 100%; max-width: 674px; } /* .card sizes by its container, so the width is explicit */
   @media (max-width: 720px) { .result { max-width: 480px; } } /* the vertical card: the /coffees card's width on a phone (its thumbnail the full content width) */
@@ -412,8 +410,20 @@
   .pick-modal :global(.pick-card) { margin: 0 auto; }
   .rolled { margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
   .rolled b { display: block; font-size: 3.5rem; line-height: 1; letter-spacing: 0; color: var(--color-accent); }
-  .rolled.success b { color: #b8860b; }
-  .rolled.fail b { color: #d01c1c; }
+  /* a crit: a dark panel (the same dark in both themes, like the D20 tray, so the colours keep their contrast) with its glow; a normal roll stays plain */
+  .rolled.success, .rolled.fail { position: relative; overflow: hidden; padding: var(--space-3) var(--space-2); border-radius: var(--radius); }
+  .rolled.success { color: #ffe08a; background: radial-gradient(ellipse 70% 80% at 50% 62%, rgba(255, 208, 77, 0.55), transparent 70%), #2a1d05; box-shadow: 0 0 22px rgba(255, 208, 77, 0.45); }
+  .rolled.success b { color: transparent; background: linear-gradient(100deg, #b8860b 0%, #ffe08a 35%, #fff6d0 50%, #ffd04d 65%, #b8860b 100%) 40% 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 8px rgba(255, 208, 77, 0.7)); animation: shimmer 2.4s linear infinite; }
+  .rolled.success::before, .rolled.success::after { content: '\2726'; position: absolute; color: #fff6d0; text-shadow: 0 0 6px #ffd04d; animation: twinkle 1.6s ease-in-out infinite; }
+  .rolled.success::before { top: 22%; left: 20%; font-size: 1.1rem; }
+  .rolled.success::after { bottom: 12%; right: 18%; font-size: 0.8rem; animation-delay: 0.8s; }
+  .rolled.fail { color: #f3b4b4; background: radial-gradient(ellipse 70% 80% at 50% 62%, rgba(208, 28, 28, 0.5), transparent 70%), #150303; box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.85), 0 0 18px rgba(122, 10, 10, 0.6); animation: shake 0.5s 1; }
+  .rolled.fail b { color: #ff5a4a; text-shadow: 0 0 14px rgba(208, 28, 28, 0.9); animation: ember 3s ease-in-out infinite; }
+  @keyframes shimmer { to { background-position: -160% 0; } }
+  @keyframes twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.15); } }
+  @keyframes ember { 50% { text-shadow: 0 0 26px rgba(208, 28, 28, 1); opacity: 0.82; } }
+  @keyframes shake { 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+  @media (prefers-reduced-motion: reduce) { .rolled, .rolled b, .rolled::before, .rolled::after { animation: none !important; } .rolled.success::before, .rolled.success::after { opacity: 1; } }
   .pick-modal.success { box-shadow: 0 0 0 3px #ffe08a, 0 0 32px #d4a73a; }
   .pick-modal.fail { box-shadow: 0 0 0 3px #d01c1c, 0 0 32px #7a0a0a; }
   .fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
@@ -426,8 +436,8 @@
   /* the same layout for both games: the card beside the game (with a real gutter) only where it gets the room for its horizontal form next
      to the 620px game; narrower, it goes under the game (PickCard's own container query picks the horizontal or vertical form) */
   .stage-box { container-type: inline-size; margin-bottom: var(--space-3); }
-  @container (min-width: 1246px) { /* 540 game + 32 gutter + 674 (the card: 640px of content, padding and border): beside always means horizontal; the game column takes up to 620 */
-    .stage { max-width: none; grid-template-columns: minmax(540px, 620px) minmax(674px, 1fr); }
+  @container (min-width: 1226px) { /* 520 game + 32 gutter + 674 (the card: 640px of content, padding and border): beside always means horizontal; the game column takes up to 620. 1280 less a 15px scrollbar still gets it */
+    .stage { max-width: none; grid-template-columns: minmax(520px, 620px) minmax(674px, 1fr); }
     .game, .out-row { grid-column: 1; }
     .game { grid-row: 1; }
     .out-row { grid-row: 2; }

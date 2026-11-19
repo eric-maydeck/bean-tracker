@@ -234,7 +234,7 @@
     70% { box-shadow: 0 0 0 16px transparent; }
     100% { box-shadow: 0 0 0 0 transparent; }
   }
-  .entry { margin: var(--space-3) 0; } /* the site's label-above-input + button pairing (.search-row) */
+  .entry { margin: var(--space-2) 0 0; } /* tight, so the whole Out row stays on a 1280x800 screen */ /* the site's label-above-input + button pairing (.search-row) */
   .pair { align-items: end; margin-bottom: 0; }
   .pair .button { margin: 0; }
   .pair input { width: 6rem; } /* look comes from the site's .form-field input */
