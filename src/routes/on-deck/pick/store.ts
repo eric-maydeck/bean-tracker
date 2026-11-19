@@ -82,3 +82,20 @@ export async function saveSelected(admin: boolean, name: string): Promise<void> 
   if (admin) await put('pick.profile.selected', name);
   else write('pick.profile.selected', name);
 }
+
+// Custom coffees (#137): everything lives in this browser for everyone (admin too); the site keys and /api/pick are never touched.
+export const loadCustomRules = (): PickRules => parseRules(read('pick.custom.rules'));
+export const saveCustomRules = (r: PickRules): void => write('pick.custom.rules', r);
+export function loadCustomToday(date: string): PickToday {
+  try {
+    return todayFor(read('pick.custom.today'), date);
+  } catch {
+    return freshToday(date);
+  }
+}
+export const saveCustomToday = (t: PickToday): void => write('pick.custom.today', t);
+export function loadList(): string[] {
+  const v = read('pick.custom.list');
+  return Array.isArray(v) ? v.filter((n): n is string => typeof n === 'string') : [];
+}
+export const saveList = (names: string[]): void => write('pick.custom.list', names);
