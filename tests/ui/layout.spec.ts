@@ -3520,6 +3520,33 @@ export const STATES: State[] = [
         }
       },
       {
+        // A recipe title follows its link; the link icon after it copies the recipe page's full URL (as Stats headings do).
+        name: 'recipes-copy-link', viewports: 'two' as const,
+        path: () => '/recipes',
+        act: async (page: Page) => {
+          await page.evaluate(() => {
+            const w = window as unknown as { copies: string[] };
+            w.copies = [];
+            Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t: string) => void w.copies.push(t) }, configurable: true });
+          });
+          const h = panel(page, 'Your recipes').locator('li.item').filter({ hasText: 'Seed equal pours' }).locator('h3');
+          await expect(h).toHaveAccessibleName('Seed equal pours');
+          const icon = h.locator('.copy-link');
+          const touch = await page.evaluate(() => matchMedia('(hover: none)').matches);
+          if (!touch) {
+            await page.mouse.move(0, 0);
+            await expect(icon).toHaveCSS('opacity', '0');
+            await h.hover();
+          }
+          await expect(icon).toHaveCSS('opacity', '1');
+          await (touch ? icon.tap() : icon.click());
+          await expect(page.locator('.toast', { hasText: 'Link copied' })).toBeVisible();
+          const href = await h.locator('a').getAttribute('href');
+          expect(await page.evaluate(() => (window as unknown as { copies: string[] }).copies)).toEqual([new URL(href!, page.url()).href]);
+          expect(new URL(page.url()).pathname, 'the icon leaves the address bar alone').toBe('/recipes');
+        }
+      },
+      {
         name: 'recipes-see-brews',
         path: (s: Seed) => `/recipes?brews=s${s.recipes.bbsKey}`,
         act: async (page: Page, s: Seed) => {

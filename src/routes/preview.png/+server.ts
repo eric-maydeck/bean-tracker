@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { cardPng, cardSvg, PHOTO_H, PHOTO_W } from '#lib/server/recaps/card.ts';
-import { previewCardsOn, verifyCard } from '#lib/server/previewCard.ts';
+import { verifyCard } from '#lib/server/previewCard.ts';
 import { imagesRoot } from '#lib/server/imageCopies.ts';
 import { readFile } from 'node:fs/promises';
 import sharp from 'sharp';
@@ -12,7 +12,6 @@ import { join } from 'node:path';
 const cache = new Map<string, Buffer>();
 
 export const GET: RequestHandler = async ({ url }) => {
-  if (!previewCardsOn()) error(404, 'Not found');
   const c = url.searchParams.get('c');
   const card = verifyCard(c, url.searchParams.get('s'));
   if (!card) error(404, 'Not found');

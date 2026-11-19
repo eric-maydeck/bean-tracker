@@ -11,6 +11,7 @@
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import PourTimeline from '#lib/components/PourTimeline.svelte';
   import Icon from '#lib/components/Icon.svelte';
+  import CopyLinkButton from '#lib/components/CopyLinkButton.svelte';
   import RecipeEditor from './RecipeEditor.svelte';
   import { fmtRange } from '#lib/recipes.ts';
   import { stepsText } from '#lib/recipeSteps.ts';
@@ -172,7 +173,7 @@
       <ul class="items">
         {#each data.recipes as r (r.recipe.id)}
           <li class="item" class:open={isOpen({ recipe: r.recipe.id })} class:flash={flashId === r.recipe.id} id="recipe-{r.recipe.id}">
-            <h3><a class="recipe-link" href="/recipes/{r.slug}" data-sveltekit-preload-data="false" data-sveltekit-reset="false">{r.recipe.name}<Icon name="link" /></a></h3>
+            <h3 aria-labelledby="recipe-{r.recipe.id}-name" data-row-scope><a id="recipe-{r.recipe.id}-name" class="recipe-link" href="/recipes/{r.slug}" data-sveltekit-preload-data="false" data-sveltekit-reset="false">{r.recipe.name}</a><CopyLinkButton /></h3>
             <PourTimeline timeline={r.timeline} label={r.description} />
             <div>{r.description}</div>
             <ol class="steps" aria-label="Steps">
@@ -416,9 +417,6 @@
   @media (prefers-reduced-motion: reduce) { .item.flash { animation: none; outline: 2px solid var(--color-accent); } }
   .item h3 { margin: 0; }
   .recipe-link { color: inherit; text-decoration: none; }
-  .recipe-link :global(.icon) { width: 0.8em; height: 0.8em; margin-inline-start: 0.3em; vertical-align: -0.05em; color: var(--color-text-muted); opacity: 0; }
-  .recipe-link:hover :global(.icon), .recipe-link:focus-visible :global(.icon) { opacity: 1; }
-  @media (hover: none) { .recipe-link :global(.icon) { opacity: 0.5; } }
   .row-actions {
     display: flex;
     flex-wrap: wrap;

@@ -307,7 +307,7 @@
 <svelte:head>
   <title>Bean Tracker - {data.coffee.coffee_name}</title>
 </svelte:head>
-<PreviewMeta preview={coffeePreview(data.coffee, detailImage, data.previewCards)} />
+<PreviewMeta preview={coffeePreview(data.coffee, detailImage)} />
 
 <div class="detail-actions">
   <a class="button button-ghost detail-back" href="/coffees" onclick={back}>&larr; Back</a>
