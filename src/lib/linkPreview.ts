@@ -14,7 +14,10 @@ export type Thumb =
   | { kind: 'bars'; rows: [string, string, number][]; plain?: boolean }
   | { kind: 'tile'; value: string; holder: string; date?: string }
   | { kind: 'grid'; tiles: [string, string][] };
-export interface Card { big: string; label: string; timeline?: ChartTimeline; thumb?: Thumb }
+// `coffee`: a coffee's card layout (name from the top, roaster at the bottom), with its saved photo on the right when there is one
+// (a local /img/ copy only, never a remote URL) on its backdrop fill.
+export interface Card { big: string; label: string; timeline?: ChartTimeline; thumb?: Thumb; coffee?: { photo?: { src: string; fill: string } } }
+export const PHOTO_RE = /^\/img\/(coffees|roasters)\/[0-9a-f]{64}\.webp$/;
 export interface Preview { title: string; description: string; image?: { src: string; alt: string } | null; card?: Card }
 
 // "Stats: Roasters" -> big "Roasters", label "Stats"; a title without "Page: " is big alone.
@@ -24,7 +27,7 @@ export function previewCard(p: Preview): Card {
   return i < 0 ? { big: p.title, label: '' } : { big: p.title.slice(i + 2), label: p.title.slice(0, i) };
 }
 
-// base64url of [big, label, timeline?, thumb?] (UTF-8; a thumb with no timeline has null in the timeline's place): no characters that need escaping in a URL or an HTML attribute. The server signs
+// base64url of [big, label, timeline?, thumb?, coffee? ([] or [photo src, fill])] (UTF-8; a missing field before a present one is null): no characters that need escaping in a URL or an HTML attribute. The server signs
 // it (server/previewCard.ts). The timeline is compact: pours [startS, durationS, grams, kind index], swirls, totalS, windows [startS, targetS, bloom].
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const wire = (t: ChartTimeline) => [
@@ -33,9 +36,11 @@ const wire = (t: ChartTimeline) => [
 ];
 const wireThumb = (t: Thumb) => t.kind === 'bars' ? ['bars', t.rows.map(([l, v, f]) => [l, v, Math.round(f * 1000) / 1000]), t.plain ? 1 : 0]
   : t.kind === 'tile' ? ['tile', t.value, t.holder, t.date ?? ''] : ['grid', t.tiles];
-export const encodeCard = (c: Card): string =>
-  btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify([c.big, c.label, ...(c.thumb ? [c.timeline?.pours.length ? wire(c.timeline) : null, wireThumb(c.thumb)] : c.timeline?.pours.length ? [wire(c.timeline)] : [])]))))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+export function encodeCard(c: Card): string {
+  const a = [c.big, c.label, c.timeline?.pours.length ? wire(c.timeline) : null, c.thumb ? wireThumb(c.thumb) : null, c.coffee ? (c.coffee.photo ? [c.coffee.photo.src, c.coffee.photo.fill] : []) : null];
+  while (a.at(-1) === null) a.pop();
+  return btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(a)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 
 export const DESCRIPTION_MAX = 300;
 
@@ -62,7 +67,8 @@ export function fitList(items: string[], sep: string, more: boolean, max = DESCR
 
 export function coffeePreview(
   c: Pick<CoffeeRow, 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'amount_g' | 'roast_date' | 'grams_left'>,
-  image: { src: string; alt: string } | null
+  image: { src: string; alt: string; fill?: string } | null,
+  cards = false
 ): Preview {
   const details = join([
     c.origin?.trim() && originWithFlag(c.origin.trim()),
@@ -70,7 +76,10 @@ export function coffeePreview(
     c.amount_g != null && formatBag(c.amount_g, c.grams_left != null && c.grams_left < c.amount_g ? c.grams_left : null),
     c.roast_date && `Roasted ${c.roast_date}`
   ]);
-  return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image, card: { big: c.coffee_name, label: c.roaster ?? '' } };
+  const card: Card = { big: c.coffee_name, label: c.roaster ?? '' };
+  // PREVIEW_CARDS on: always the coffee card (no bare photo), with the saved photo when there's a local copy.
+  if (cards) card.coffee = image?.fill && PHOTO_RE.test(image.src) ? { photo: { src: image.src, fill: image.fill } } : {};
+  return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image: cards ? null : image, card };
 }
 
 export function waterPreview(w: { mode: Mode; tip: Tip; recipe: string; ml: number; drops: Drops; gh: number; kh: number; target?: { gh: number; kh: number }; idealMl?: number[] }): Preview {

@@ -70,3 +70,23 @@ describe('verifyCard with a thumbnail', () => {
     expect(check(['A', 'B', null, th])).toBeNull();
   });
 });
+
+describe('verifyCard with a coffee card', () => {
+  const src = `/img/coffees/${'a'.repeat(64)}.webp`;
+  it('round-trips a saved photo with its fill, after empty timeline and thumb slots', () => {
+    const c = encodeCard({ big: 'A', label: 'B', coffee: { photo: { src, fill: '#e6ddd2' } } });
+    expect(JSON.parse(Buffer.from(c, 'base64url').toString())).toEqual(['A', 'B', null, null, [src, '#e6ddd2']]);
+    expect(verifyCard(c, sign(c), S)).toEqual({ big: 'A', label: 'B', coffee: { photo: { src, fill: '#e6ddd2' } } });
+  });
+  it('round-trips a coffee card without a photo', () => {
+    const c = encodeCard({ big: 'A', label: 'B', coffee: {} });
+    expect(verifyCard(c, sign(c), S)).toEqual({ big: 'A', label: 'B', coffee: {} });
+  });
+  it.each([
+    ['a remote URL', ['https://x.example/a.webp', '#e6ddd2']],
+    ['a path out of the images folder', [`/img/coffees/../${'a'.repeat(64)}.webp`, '#e6ddd2']],
+    ['another copy kind', [`/img/gear/${'a'.repeat(64)}.webp`, '#e6ddd2']],
+    ['a fill that is not a hex colour', [src, 'red;x']],
+    ['a wrong shape', [src]]
+  ])('rejects %s', (_n, ph) => expect(check(['A', 'B', null, null, ph])).toBeNull());
+});

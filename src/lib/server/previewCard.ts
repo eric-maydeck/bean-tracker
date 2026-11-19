@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { Card, Thumb } from '#lib/linkPreview.ts';
+import { PHOTO_RE, type Card, type Thumb } from '#lib/linkPreview.ts';
 import { KINDS, type ChartTimeline } from '#lib/pourShapes.ts';
 
 // Feature flag for epic #27 (link-preview images): off in prod until the epic ships, then delete it and its checks.
@@ -19,13 +19,15 @@ export function verifyCard(c: string | null, s: string | null, secret = process.
   const want = Buffer.from(sig(c, secret)), got = Buffer.from(s);
   if (want.length !== got.length || !timingSafeEqual(want, got)) return null;
   try {
-    const [big, label, t, th] = JSON.parse(Buffer.from(c, 'base64url').toString('utf8'));
+    const [big, label, t, th, ph] = JSON.parse(Buffer.from(c, 'base64url').toString('utf8'));
     if (typeof big !== 'string' || typeof label !== 'string') return null;
     const timeline = t == null ? undefined : decodeTimeline(t);
     if (timeline === null) return null;
-    const thumb = th === undefined ? undefined : decodeThumb(th);
+    const thumb = th == null ? undefined : decodeThumb(th);
     if (thumb === null) return null;
-    return { big, label, ...(timeline && { timeline }), ...(thumb && { thumb }) };
+    const photo = ph != null && row(ph, 2) && typeof ph[0] === 'string' && PHOTO_RE.test(ph[0]) && typeof ph[1] === 'string' && /^#[0-9a-f]{6}$/i.test(ph[1]);
+    if (ph != null && !photo && !row(ph, 0)) return null;
+    return { big, label, ...(timeline && { timeline }), ...(thumb && { thumb }), ...(ph && { coffee: photo ? { photo: { src: ph[0], fill: ph[1] } } : {} }) };
   } catch {
     return null;
   }
