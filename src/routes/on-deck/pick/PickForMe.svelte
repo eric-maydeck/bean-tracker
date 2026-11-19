@@ -549,7 +549,7 @@
     .result { max-width: none; }
   }
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: 0; }
-  .out-row .button[aria-pressed='true'] { background: color-mix(in srgb, var(--color-accent) 18%, transparent); border-color: var(--color-accent); }
+  .out-row .button[aria-pressed='true']:not(:hover) { /* hover keeps the site's hover look (its light text on this tint was unreadable) */ background: color-mix(in srgb, var(--color-accent) 18%, transparent); border-color: var(--color-accent); }
   .out-row .button { margin: 0; padding: 0.35rem 0.5rem; min-height: 36px; font-size: 0.85rem; }
   @media (max-width: 640px) { .out-row .button { min-height: 44px; } }
   .out-row .label { font-weight: 600; }
