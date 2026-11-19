@@ -4,13 +4,19 @@ import { localToday, localTodayDate } from '#lib/server/localToday.ts';
 import { getOpenCoffees, getBacklogCoffees, getNonArchivedCoffees } from '#lib/server/coffees.ts';
 import { getRoastLevels } from '#lib/server/roastLevels.ts';
 import { getUserKv } from '#lib/server/userKv.ts';
+import { getSharedProfile } from '#lib/server/pickShared.ts';
+import { parseDefaultRules, parseProfile } from './onDeckUrl';
 import { buildOnDeckData, buildPickCoffees } from './onDeckData';
 
-export const load: PageServerLoad = ({ locals }) => {
+export const load: PageServerLoad = ({ locals, url }) => {
   const db = getDb();
   const today = localTodayDate();
   // Stored rules and today's state are the signed-in user's; visitors get nulls.
   const kv = (key: string) => (locals.isAdmin ? getUserKv(db, 'admin', key) : null);
+  // A shared link names one of the owner's profiles ('admin' until there are per-user paths; anyone may read that one) or asks for the default rules.
+  const asked = parseProfile(url.searchParams);
+  const found = asked ? getSharedProfile(db, 'admin', asked) : null;
+  const shared = asked ? (found ?? { name: asked, missing: true as const }) : parseDefaultRules(url.searchParams) ? { defaults: true as const } : null;
   return {
     ...buildOnDeckData(getOpenCoffees(db), getBacklogCoffees(db), today),
     pick: {
@@ -19,7 +25,8 @@ export const load: PageServerLoad = ({ locals }) => {
       rulesLast: kv('pick.rules.last'),
       profiles: kv('pick.profiles'),
       savedRules: kv('pick.rules.saved'), // the pre-profiles single copy, migrated to a profile "Saved"
-      todayState: kv('pick.today')
+      todayState: kv('pick.today'),
+      shared
     }
   };
 };
