@@ -34,7 +34,7 @@ test.afterAll(() => {
   db.close();
 });
 
-test('cards: inline edit, Set as roaster default, Save writes the default', { tag: '@coffees' }, async ({ page }) => {
+test('cards: edit overlay, Set as roaster default, Save writes the default', { tag: '@coffees' }, async ({ page }) => {
   await gotoReady(page, '/coffees?status=all&view=cards');
   await page.locator('.card').filter({ hasText: NAME }).getByRole('button', { name: 'Edit', exact: true }).click();
   await page.locator('#image_url').fill(LOGO);
@@ -45,21 +45,32 @@ test('cards: inline edit, Set as roaster default, Save writes the default', { ta
   await expect.poll(read(`SELECT image_url FROM coffees WHERE coffee_name = ?`, NAME)).toEqual({ image_url: null });
 });
 
-test('cards: two inline edits open, Save on A writes A and leaves B open', { tag: '@coffees' }, async ({ page }) => {
+test('cards: Save in the edit overlay writes A; Cancel on B writes nothing', { tag: '@coffees' }, async ({ page }) => {
   await gotoReady(page, '/coffees?status=all&view=cards');
-  for (const [name, probe] of [[A, 'a'], [B, 'b']]) {
-    const card = page.locator('.card').filter({ hasText: name });
-    await card.evaluate((el, p) => (el.dataset.probe = p), probe); // the card element survives the form swap
-    await card.getByRole('button', { name: 'Edit', exact: true }).click();
-    await page.locator(`[data-probe="${probe}"] #processing`).fill(probe === 'a' ? 'Honey' : 'Natural');
-  }
-  await page.locator('[data-probe="a"]').getByRole('button', { name: 'Save', exact: true }).click();
+  const modal = page.locator('.modal');
+  await page.locator('.card').filter({ hasText: A }).getByRole('button', { name: 'Edit', exact: true }).click();
+  await modal.locator('#processing').fill('Honey');
+  await modal.getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(read(`SELECT processing FROM coffees WHERE coffee_name = ?`, A)).toEqual({ processing: 'Honey' });
-  await expect(page.locator('[data-probe="a"] form')).toHaveCount(0);
-  await expect(page.locator('[data-probe="b"] #processing')).toHaveValue('Natural');
-  await page.locator('[data-probe="b"]').getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(page.locator('form #processing')).toHaveCount(0);
+  await expect(modal).toHaveCount(0);
+  await page.locator('.card').filter({ hasText: B }).getByRole('button', { name: 'Edit', exact: true }).click();
+  await modal.locator('#processing').fill('Natural');
+  page.once('dialog', (d) => d.accept()); // typed: Cancel asks before dropping it
+  await modal.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(modal).toHaveCount(0);
   await expect.poll(read(`SELECT processing FROM coffees WHERE coffee_name = ?`, B)).not.toEqual({ processing: 'Natural' });
+});
+
+test('coffee page: a status icon applies at once, stays on the page, and Undo restores it', { tag: '@coffees' }, async ({ page }) => {
+  const { slug, status } = read(`SELECT slug, status FROM coffees WHERE coffee_name = ?`, A)() as { slug: string; status: string };
+  await gotoReady(page, `/coffees/${slug}`);
+  const icon = page.locator('.detail-actions').getByRole('button', { name: status === 'archive' ? 'Unarchive' : 'Archive', exact: true });
+  await icon.click();
+  await expect.poll(read(`SELECT status FROM coffees WHERE coffee_name = ?`, A)).not.toEqual({ status });
+  await expect(page).toHaveURL(new RegExp(`/coffees/${slug}$`));
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(read(`SELECT status FROM coffees WHERE coffee_name = ?`, A)).toEqual({ status });
+  await expect(page).toHaveURL(new RegExp(`/coffees/${slug}$`));
 });
 
 // The layout workers share the DB and never save, so a household of one is checked here:
@@ -125,6 +136,7 @@ test.describe('coffee added popup', { tag: '@coffees' }, () => {
     // so a target of "now" can already be in the past ("Cannot fast-forward to the past").
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.mouse.move(0, 0); // Save is in the overlay's header, where the toast lands: a pointer left there would pause it
     const toast = page.locator('.added-toast');
     await expect(toast).toBeVisible();
     return toast;

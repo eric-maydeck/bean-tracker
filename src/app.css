@@ -1386,9 +1386,9 @@ nav.site-nav a[aria-current='page'] {
   }
 }
 
-/* Coffee detail page: Back/Import/Clone/Edit/Share as a flex-wrap row
+/* Coffee detail page: Back/Import/Clone/Edit/status icons/Share as a flex-wrap row
    spaced by gap (button margins zeroed), and its stacked blocks (this row,
-   the BQ share panel, Save/Discard, the form, Delete) all var(--space-4)
+   the BQ share panel, the article) all var(--space-4)
    apart. Desktop puts Back on the left and pushes the rest right, Share
    last (its DOM position, so tab order matches). */
 .detail-actions {
@@ -1412,32 +1412,25 @@ nav.site-nav a[aria-current='page'] {
   margin-bottom: var(--space-4);
 }
 
-/* Save/Discard: .search-row already gives gap, zero button margins and
-   margin-bottom; Delete sits under the form, one block gap below it. */
-.detail-edit-row ~ .button-danger {
-  margin: var(--space-4) 0 0;
+/* The status icons (admin) join the row as its own flex items, after Edit; the rows around them dissolve. */
+.detail-actions .action-stack,
+.detail-actions .action-row {
+  display: contents;
+}
+.detail-actions .button.button-icon {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 @media (max-width: 640px) {
-  /* Same grid-template-columns + gap on both rows (not shared via one
-     selector, since .detail-edit-row also carries .search-row's own
-     display:flex elsewhere) so Save changes/Discard changes come out the
-     exact same width/height as Back/Import/Clone/Edit above, rather than
-     sizing to their own shorter labels. CSS cascade ties break on source
-     order, not specificity —. */
-  .detail-edit-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
   /* Labels stay on one line and the row wraps instead when they don't fit
      side by side. */
-  .detail-actions .button {
+  .detail-actions .button:not(.button-icon) {
     flex: 1 1 auto;
     white-space: nowrap;
   }
-  .detail-actions .button,
-  .detail-edit-row .button {
+  .detail-actions .button {
     text-align: center;
   }
   /* Phone keeps Share second (Back, Share, Import, Clone, Edit); it's last

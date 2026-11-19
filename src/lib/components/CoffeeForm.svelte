@@ -438,6 +438,15 @@
     return stageChecked();
   }
 
+  // The overlay's header buttons drive the form: Save submits it (validity, standards check, then create), and a Cancel
+  // or Escape asks first when something was typed since it opened or was last staged.
+  export function submit() {
+    formEl.requestSubmit();
+  }
+  export function isDirty(): boolean {
+    return !!baselineFields && fieldsChanged(captureFields(), baselineFields);
+  }
+
   // Staged mode's submit: check, then hand the (possibly rewritten) fields to the parent.
   // One check at a time: a second call while one is running (or its dialog is open) resolves false.
   let checking = false;
