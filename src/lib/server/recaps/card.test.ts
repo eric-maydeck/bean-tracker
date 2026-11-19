@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 import { localToday } from '#lib/server/localToday.ts';
 vi.mock('node:fs', async (orig) => { const a = await orig<typeof import('node:fs')>(); return { ...a, unlinkSync: vi.fn(a.unlinkSync) }; });
-import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard } from './card';
+import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard, valueSizes } from './card';
 
 const dir = mkdtempSync(join(tmpdir(), 'card-'));
 process.env.DB_PATH = join(dir, 't.db');
@@ -99,4 +99,15 @@ describe('endpoint', () => {
     expect(b.equals(a)).toBe(true);
     expect(existsSync(cardsRoot())).toBe(true);
   });
+});
+
+describe('valueSizes', () => {
+  it('fitting values keep the default size', () => expect(valueSizes(['9.2', '41 days'], 52, 288)).toEqual([52, 52]));
+  it('a small step down for the longest applies to every value', () =>
+    expect(valueSizes(['9.2', 'x'.repeat(10)], 52, 288)).toEqual([48, 48]));
+  it('a big step down shrinks that value alone', () => {
+    const [a, b] = valueSizes(['9.2', 'x'.repeat(30)], 52, 288);
+    expect([a, b]).toEqual([52, 22]);
+  });
+  it('never goes under 22', () => expect(valueSizes(['x'.repeat(200)], 52, 288)).toEqual([22]));
 });

@@ -65,33 +65,44 @@ function chart(t: ChartTimeline) {
 // A Stats view's thumbnail (the lower part of a page card, THUMB_H tall): app light-theme colours, nothing under 22px, no hairlines.
 // Bars are --series-11 (#c06408) on the page background; medals are the gold/silver/bronze of the text preview's emoji.
 const THUMB_H = 290;
-const BAR = '#c06408', SURFACE = '#ffffff', MEDAL_FILL = ['#f5c518', '#cfc9c1', '#d79a62'];
+const BAR = '#c06408', SURFACE = '#ffffff', TILE_EDGE = 'rgba(92, 58, 36, 0.3)', // --color-surface; espresso at 30% for the tile outline
+   MEDAL_FILL = ['#f5c518', '#cfc9c1', '#d79a62'];
 const clipLine = { display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 const karla = { fontFamily: 'Karla', fontWeight: 700 };
+// Values are never truncated, they shrink to fit `avail` px (~0.6em a character). Like values share one size when the longest
+// only needs a small step down (VALUE_STEP: at least 80% of the default); a bigger step shrinks that value alone, so one long
+// value doesn't make the rest look small. Never under 22px.
+const VALUE_STEP = 0.8;
+export function valueSizes(values: string[], size: number, avail: number): number[] {
+  const need = values.map((v) => Math.max(22, Math.min(size, Math.floor(avail / (0.6 * Math.max(1, [...v].length))))));
+  const least = Math.min(...need);
+  return least >= size * VALUE_STEP ? need.map(() => least) : need;
+}
 function thumbnail(t: Thumb) {
   const box = (children: unknown) => el('div', { display: 'flex', flexDirection: 'column', height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, children);
   if (t.kind === 'bars') {
+    const sizes = valueSizes(t.rows.map((r) => r[1]), 30, 150);
     return box(t.rows.map(([label, value, frac], i) => el('div', { display: 'flex', alignItems: 'center', height: THUMB_H / 5, ...karla, fontSize: 30 }, [
       el('div', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 22, marginRight: 16, flexShrink: 0, fontSize: 26, background: !t.plain && i < 3 ? MEDAL_FILL[i] : 'transparent' }, String(i + 1)),
       el('div', { ...clipLine, width: 380, flexShrink: 0 }, label),
       el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, background: BAR, borderRadius: 6 })),
-      el('div', { ...clipLine, width: 140, flexShrink: 0, textAlign: 'right' }, value)
+      el('div', { display: 'flex', justifyContent: 'flex-end', width: 150, flexShrink: 0, whiteSpace: 'nowrap', fontSize: sizes[i] }, value)
     ])));
   }
   if (t.kind === 'tile') {
-    const n = [...t.value].length;
     return box([
-      el('div', { ...clipLine, fontFamily: 'Lora', fontWeight: 600, fontSize: n <= 8 ? 150 : n <= 14 ? 108 : 72, lineHeight: 1.1 }, t.value),
+      el('div', { display: 'block', whiteSpace: 'nowrap', fontFamily: 'Lora', fontWeight: 600, fontSize: valueSizes([t.value], 150, WIDTH)[0], lineHeight: 1.1 }, t.value),
       el('div', { ...clipLine, ...karla, fontSize: 44, marginTop: 8 }, t.holder),
       ...(t.date ? [el('div', { ...clipLine, ...karla, fontSize: 34, marginTop: 6, opacity: 0.85 }, t.date)] : [])
     ]);
   }
   // Up to 6 tiles, 3 across: the label (2 lines at most) over its value.
-  const cell = (label: string, value: string) => el('div', { display: 'flex', flexDirection: 'column', justifyContent: 'center', width: 336, height: 133, boxSizing: 'border-box', padding: '0 24px', background: SURFACE, borderRadius: 16 }, [
+  const sizes = valueSizes(t.tiles.map((x) => x[1]), 52, 288);
+  const cell = (label: string, value: string, size: number) => el('div', { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', width: 336, height: 133, boxSizing: 'border-box', padding: '0 21px', background: SURFACE, border: `3px solid ${TILE_EDGE}`, borderRadius: 16 }, [
     el('div', { display: 'block', lineClamp: 2, textOverflow: 'ellipsis', ...karla, fontSize: 26, lineHeight: 1.1 }, label),
-    el('div', { ...clipLine, fontFamily: 'Lora', fontWeight: 600, fontSize: [...value].length <= 8 ? 52 : 40, lineHeight: 1.15, marginTop: 6 }, value)
+    el('div', { display: 'block', whiteSpace: size > 22 ? 'nowrap' : 'normal', fontFamily: 'Lora', fontWeight: 600, fontSize: size, lineHeight: 1.15, marginTop: 6 }, value) // at the 22px floor a value wraps rather than truncates
   ]);
-  return el('div', { display: 'flex', flexWrap: 'wrap', gap: 24, width: WIDTH, height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, t.tiles.map(([l, v]) => cell(l, v)));
+  return el('div', { display: 'flex', flexWrap: 'wrap', gap: 24, width: WIDTH, height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, t.tiles.map(([l, v], j) => cell(l, v, sizes[j])));
 }
 
 // A page card (a page's link-preview) is always light, so it takes no tone; a recap card takes its tone.

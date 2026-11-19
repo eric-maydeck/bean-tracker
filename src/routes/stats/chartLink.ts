@@ -119,6 +119,10 @@ function bars(rows: { value: number; text: string; name: string }[], plain: bool
   const top = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9);
   return { kind: 'bars', rows: rows.slice(0, 5).map((r) => [clip(r.name), clip(r.text), Math.abs(r.value) / top]), ...(plain && { plain }) };
 }
+// The thumbnail shows a bag's price per gram ("$0.09/g", as the $/g rank does), not the page's per 100g (fmt 'per100': the
+// priciest and cheapest bag tiles); the label's "per 100g" follows.
+const thumbValue = (t: RecordPick, fmt: Fmt) => (fmt === 'per100' ? `${usd(t.value / 100)}/g` : recordValue(t, fmt));
+const thumbLabel = (label: string, fmt: Fmt) => (fmt === 'per100' ? label.replace(/ per 100g$/, ' per g') : label);
 const holderRow = (h: Holder) => [h.sub, h.label].filter(Boolean).join(' · ');
 
 export function insightsPreview(v: PreviewInput): Preview {
@@ -154,7 +158,7 @@ export function insightsPreview(v: PreviewInput): Preview {
   if (section?.tiles.length) {
     const prefix = `${v.period}\n`;
     const items = section.tiles.map((t) => `${t.label} · ${recordValue(t, t.fmt)}`);
-    const grid: Thumb = { kind: 'grid', tiles: section.tiles.slice(0, 6).map((t) => [clip(t.label), clip(recordValue(t, t.fmt))]) };
+    const grid: Thumb = { kind: 'grid', tiles: section.tiles.slice(0, 6).map((t) => [clip(thumbLabel(t.label, t.fmt)), clip(thumbValue(t, t.fmt))]) };
     return { title: `Stats: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length), card: statsCard(RECORD_TITLE[section.key], v.period, grid) };
   }
   const tile = rec?.sections.flatMap((s) => s.tiles).find((t) => chart === recordAnchor(t.key));
@@ -165,8 +169,8 @@ export function insightsPreview(v: PreviewInput): Preview {
       !isDateHolder(tile.holder) && tile.holder.date, tile.ties.length > 0 && `Tied with ${tile.ties.length} more`
     ].filter(Boolean) as string[];
     const date = isDateHolder(tile.holder);
-    const thumb: Thumb = { kind: 'tile', value: clip(recordValue(tile, tile.fmt)), holder: clip(date ? holderName(tile.holder) : holderRow(tile.holder)), ...(!date && tile.holder.date && { date: tile.holder.date }) };
-    return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false), card: statsCard(tile.label, v.period, thumb) };
+    const thumb: Thumb = { kind: 'tile', value: clip(thumbValue(tile, tile.fmt)), holder: clip(date ? holderName(tile.holder) : holderRow(tile.holder)), ...(!date && tile.holder.date && { date: tile.holder.date }) };
+    return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false), card: statsCard(thumbLabel(tile.label, tile.fmt), v.period, thumb) };
   }
   return {
     title: `Stats: ${v.tabLabel}`,
