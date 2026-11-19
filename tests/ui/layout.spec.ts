@@ -11,12 +11,12 @@ import { PART, PARTS } from './viewports';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
-// The wheel leaves all of it on screen; the D20's tray is fixed (and the game and Out for today are spaced out), so there at least half of it.
-async function expectOutRowOnScreen(page: import('@playwright/test').Page, whole = true) {
+// The whole Out for today row, on screen without scrolling (the wheel shrinks to leave room; the D20's entry row is kept tight).
+async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
   const b = (await page.locator('.out-row').boundingBox())!;
   const vh = page.viewportSize()!.height;
   expect(b.y, 'Out for today on screen, no scrolling').toBeGreaterThanOrEqual(0);
-  expect(b.y + (whole ? b.height : b.height / 2), 'Out for today on screen, no scrolling').toBeLessThanOrEqual(vh);
+  expect(b.y + b.height, 'Out for today on screen, no scrolling').toBeLessThanOrEqual(vh);
 }
 
 
@@ -5849,7 +5849,7 @@ export const STATES: State[] = [
       expect((await page.locator('.wheel').boundingBox())!.width).toBeLessThanOrEqual(561);
       if ((page.viewportSize()?.width ?? 0) > 640) {
         const [w, r] = [(await page.locator('.wheel').boundingBox())!, (await page.locator('.result').boundingBox())!];
-        if ((page.viewportSize()?.width ?? 0) >= 1360) expect(r.x, 'wide desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
+        if ((page.viewportSize()?.width ?? 0) >= 1280) expect(r.x, 'wide desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
         else expect(r.y, 'narrower desktop: the card sits under the game').toBeGreaterThan(w.y + w.height - 1);
       } else await expect(page.locator('.result')).toBeHidden(); // phone: no placeholder, results show in the overlay
       await expectGroupsLabelled(page);
@@ -5980,7 +5980,8 @@ export const STATES: State[] = [
       const [t1, t2] = [(await page.locator('table.board').nth(0).boundingBox())!, (await page.locator('table.board').nth(1).boundingBox())!];
       if ((page.viewportSize()?.width ?? 0) > 900) {
         expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
-        await expectOutRowOnScreen(page, false);
+        await expectOutRowOnScreen(page);
+        expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the D20').toBeGreaterThan((await page.locator('.d20 .stage').boundingBox())!.x + (await page.locator('.d20 .stage').boundingBox())!.width);
         // The card is as tall as the D20 tray (an image card; one without is as tall as its content).
         if (await page.locator('.result img').count()) expect(Math.abs((await page.locator('.result').boundingBox())!.height - (await page.locator('.d20 .stage').boundingBox())!.height), 'card as tall as the tray').toBeLessThanOrEqual(2);
       } else {
@@ -5996,7 +5997,9 @@ export const STATES: State[] = [
       if ((page.viewportSize()?.width ?? 0) <= 640) {
         const [cb, ob] = [(await page.locator('.result').boundingBox())!, (await page.locator('.out-row').boundingBox())!];
         expect(ob.y, 'Out for today below the card on a phone').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
+        expect(await page.evaluate(() => !!(document.querySelector('.side')!.compareDocumentPosition(document.querySelector('.out-row')!) & Node.DOCUMENT_POSITION_FOLLOWING)), 'DOM order = visual order: the card, then Out for today').toBe(true);
       }
+      await checkLayout(page); // D20, the board and the inline card on screen: no sideways scroll
       await page.getByRole('button', { name: 'Wheel', exact: true }).click();
       await expect(page).not.toHaveURL(/game=/);
     }
@@ -6068,7 +6071,7 @@ export const STATES: State[] = [
       // The /coffees card's rows: roaster, origin, roast level, cost.
       await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
       // Every desktop width: the card beside the game or under it, never squeezed (no sideways scroll, no clipped button text, as tall as its thumbnail when horizontal).
-      for (const width of [800, 960, 1100, 1240, 1250, 1280, 1416]) {
+      for (const width of [800, 960, 1100, 1240, 1250, 1278, 1280, 1416]) {
         await page.setViewportSize({ width, height: 900 });
         await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toBeVisible();
         const m = await page.evaluate(() => ({
@@ -6083,6 +6086,7 @@ export const STATES: State[] = [
         expect(m.scroll, `no sideways scroll at ${width}`).toBeLessThanOrEqual(0);
         expect(m.clipped, `no clipped button text at ${width}`).toBe(0);
         expect(m.cardW, `card not squeezed at ${width}`).toBeGreaterThan(400);
+        if (width >= 1280) expect(m.beside, `the card sits beside the game at ${width}`).toBe(true);
         if (m.beside) expect(m.horizontal, `beside the game means the horizontal card at ${width}`).toBe(true);
         if (!m.beside) expect(m.thumb, `thumbnail within the card at ${width}`).toBeLessThanOrEqual(m.horizontal ? 327 : 281);
         if (m.horizontal && m.thumb) expect(Math.abs(m.cardH - 360), `card as tall as the tray at ${width}`).toBeLessThanOrEqual(2);
