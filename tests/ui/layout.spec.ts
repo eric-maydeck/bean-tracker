@@ -5978,6 +5978,11 @@ export const STATES: State[] = [
       await expect(page.locator('table.board').nth(0).locator('tbody tr')).toHaveCount(10);
       await expect(page.locator('table.board').nth(1).locator('tbody tr')).toHaveCount(10);
       const [t1, t2] = [(await page.locator('table.board').nth(0).boundingBox())!, (await page.locator('table.board').nth(1).boundingBox())!];
+      // The result opens in the pop-up at every width, with the rolled number; the inline card is what remains once it is closed.
+      await expect(page.locator('.pick-modal .rolled b'), 'the overlay shows the rolled number').toHaveText('7');
+      await dismissPickOverlay(page);
+      await expect(page.locator('.side .last'), 'the inline card has its heading').toHaveText('Your last roll');
+      expect((await page.locator('.side .last').boundingBox())!.y + 1, 'heading above the card').toBeLessThanOrEqual((await page.locator('.result').boundingBox())!.y);
       if ((page.viewportSize()?.width ?? 0) > 900) {
         expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
         await expectOutRowOnScreen(page);
@@ -5988,8 +5993,6 @@ export const STATES: State[] = [
         expect(Math.abs(t2.x - t1.x), 'one column').toBeLessThanOrEqual(1); // stacked: one table, 1 to 20
         expect(t2.y, 'second half under the first').toBeGreaterThan(t1.y + t1.height - 1);
         await expect(page.getByRole('table', { name: 'D20 board, 11 to 20' }).getByRole('columnheader'), 'second header stays in the accessibility tree').toHaveCount(3);
-        // A phone: the result overlay shows the rolled number; the inline card (after it is dismissed) has Out for today below it.
-        await expect(page.locator('.pick-modal .rolled b'), 'the overlay shows the rolled number').toHaveText('7');
       }
       await expect(page.locator('.pick-card')).toBeVisible();
       await expect(page).toHaveURL(/game=d20/);
@@ -6045,12 +6048,12 @@ export const STATES: State[] = [
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.getByRole('button', { name: 'Spin', exact: true }).click();
-      if ((page.viewportSize()?.width ?? 0) <= 640) {
-        const modal = page.getByRole('dialog', { name: 'Pick result' });
-        await expect(modal.getByRole('button', { name: 'Close' })).toBeVisible();
-        await dismissPickOverlay(page);
-        return;
-      }
+      // The result opens in the pop-up at every width (Close inside); the inline card is measured once it is closed.
+      const modal = page.getByRole('dialog', { name: 'Pick result' });
+      await expect(modal.getByRole('button', { name: 'Close' })).toBeVisible();
+      await dismissPickOverlay(page);
+      if ((page.viewportSize()?.width ?? 0) <= 640) return;
+      await expect(page.locator('.side .last'), 'the wheel result has its heading').toHaveText('Your last spin');
       const card = page.locator('.result');
       await expect(card.locator('.pick-card')).toBeVisible();
       expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(735);
@@ -6097,29 +6100,28 @@ export const STATES: State[] = [
     }
   },
   {
-    // Phone: the result shows in a focused overlay (Close, Escape and Brew work); desktop keeps the card beside the wheel.
+    // The result shows in a focused overlay at every width (Close, Escape and Brew work); the inline card stays when it is closed.
     name: 'pick-overlay', viewports: 'two',
     path: () => '/on-deck?view=pick',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const spin = page.getByRole('button', { name: 'Spin', exact: true });
       await spin.click();
-      if ((page.viewportSize()?.width ?? 0) > 640) {
-        await expect(page.locator('.result .pick-card')).toBeVisible();
-        await expect(page.locator('.modal')).toHaveCount(0);
-        return;
-      }
       const modal = page.getByRole('dialog', { name: 'Pick result' });
       await expect(modal).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(modal).toBeHidden();
       await expect(page.locator('.result .pick-card')).toBeVisible(); // dismissing the overlay keeps the result, inline
-      const [cb, ob] = [(await page.locator('.result').boundingBox())!, (await page.locator('.out-row').boundingBox())!];
-      expect(ob.y, 'Out for today below the card').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
-      await spin.click();
+      if ((page.viewportSize()?.width ?? 0) <= 640) {
+        const [cb, ob] = [(await page.locator('.result').boundingBox())!, (await page.locator('.out-row').boundingBox())!];
+        expect(ob.y, 'Out for today below the card').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
+      }
+      await spin.focus();
+      await page.keyboard.press('Enter');
       await expect(modal).toBeVisible();
       await modal.getByRole('button', { name: 'Close' }).click();
       await expect(modal).toBeHidden();
+      await expect(spin, 'focus returns to Spin after Close').toBeFocused();
       await spin.click();
       await modal.getByRole('button', { name: 'Brew', exact: true }).click();
       await expect(page).toHaveURL(/\/brew$/);
