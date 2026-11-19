@@ -2,6 +2,7 @@ import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
 import { bodyTooLarge, crossSiteBlocked, SECURITY_HEADERS } from '#lib/server/csrf.ts';
 import { SESSION_COOKIE_NAME, verifySessionCookieValue } from '#lib/server/auth.ts';
 import { getDb } from '#lib/server/db.ts';
+import { signPreviewUrls } from '#lib/server/previewCard.ts';
 import { queueFillMissing } from '#lib/server/imageFills.ts';
 import { queueReadings } from '#lib/server/pourReadings.ts';
 import { backfillRoasterWebsites } from '#lib/server/roasterWebsites.ts';
@@ -38,5 +39,5 @@ export const handle: Handle = async ({ event, resolve }) => {
       return secured(Response.json({ type: 'error', error: { message: 'Sign in again to upload' } }, { status: 413 }));
     return secured(new Response('Request body too large', { status: 413 }));
   }
-  return secured(await resolve(event));
+  return secured(await resolve(event, { transformPageChunk: ({ html }) => signPreviewUrls(html) }));
 };

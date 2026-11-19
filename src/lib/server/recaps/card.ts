@@ -36,20 +36,21 @@ const WIDTH = CARD.width - 2 * PAD;
 const fit = (text: string, size: number) => Math.max(24, Math.min(size, Math.floor(WIDTH / (0.62 * Math.max(1, ...text.split(/\s+/).map((w) => [...w].length))))));
 const el = (type: string, style: Record<string, unknown>, children?: unknown) => ({ type, props: { style, children } });
 
-export async function cardSvg(c: { big: string; label: string; year: number; tone: Tone; dark?: false; cover?: true }): Promise<string> {
+export async function cardSvg(c: { big: string; label: string; year: number; tone: Tone; dark?: false; cover?: true; page?: true }): Promise<string> {
   const color = fg(c.tone);
-  // "Roaster · Coffee" (a bag): two lines, the roaster smaller above the coffee name.
-  const [rn, cn] = c.big.includes(' · ') ? c.big.split(' · ', 2) : [null, c.big];
-  const bigSize = fit(cn, cardFontSize(rn ? (rn.length > cn.length ? rn : cn) : cn, 'big'));
+  // "Roaster · Coffee" (a bag): two lines, the roaster smaller above the coffee name. `page` (a page's link-preview card) keeps big as one text, with a larger label and footer.
+  const [rn, cn] = !c.page && c.big.includes(' · ') ? c.big.split(' · ', 2) : [null, c.big];
+  // A page card keeps fixed sizes (cards side by side look alike): one headline size, a smaller step only for very long text.
+  const bigSize = fit(cn, c.page ? ([...cn].length <= 40 ? 96 : 72) : cardFontSize(rn ? (rn.length > cn.length ? rn : cn) : cn, 'big'));
   const bigStyle = { fontFamily: 'Lora', fontWeight: 600, lineHeight: 1.05, display: 'block', lineClamp: 2 };
-  const lblSize = fit(c.label, cardFontSize(c.label, 'label'));
+  const lblSize = fit(c.label, c.page ? 52 : cardFontSize(c.label, 'label'));
   const tree = el('div', { display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: CARD.width, height: CARD.height, padding: PAD, boxSizing: 'border-box', background: BG[c.tone], color }, [
     el('div', { display: 'flex', flexDirection: 'column', flexGrow: 1, justifyContent: 'center' }, [
       ...(rn ? [el('div', { ...bigStyle, fontSize: Math.round(bigSize * 0.55), opacity: 0.85, marginBottom: 12 }, glue(rn))] : []),
       el('div', { ...bigStyle, fontSize: bigSize }, glue(cn)),
       el('div', { fontFamily: 'Karla', fontWeight: 700, fontSize: lblSize, lineHeight: 1.2, marginTop: 20, display: 'block', lineClamp: 2, textOverflow: 'ellipsis' }, glue(c.label))
     ]),
-    el('div', { display: 'flex', justifyContent: 'space-between', fontFamily: 'Karla', fontWeight: 700, fontSize: 30, opacity: 0.85 }, [
+    el('div', { display: 'flex', justifyContent: 'space-between', fontFamily: 'Karla', fontWeight: 700, fontSize: c.page ? 40 : 30, opacity: 0.85 }, [
       el('div', {}, c.cover ? '' : `${c.year} in coffee`), el('div', {}, 'Bean Tracker')
     ])
   ]);
