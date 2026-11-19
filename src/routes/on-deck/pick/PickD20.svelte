@@ -86,7 +86,7 @@
       let boardTimer: ReturnType<typeof setTimeout> | undefined;
       function layBoard() {
         board.scale.set(TX * 2, TZ * 2, 1);
-        clearTimeout(boardTimer); boardTimer = setTimeout(() => { paintBoardTex(); dirty = true; }, 150);
+        clearTimeout(boardTimer); boardTimer = setTimeout(() => { paintBoardTex(); wake(); }, 150);
       }
       undo.push(() => clearTimeout(boardTimer));
       board.scale.set(TX * 2, TZ * 2, 1); paintBoardTex();

@@ -92,7 +92,7 @@
     if (!open || document.querySelector('dialog[open]')) return;
     if (e.key === 'Escape') return ontoggle(false);
     if (e.key !== 'Tab' || !phone || !panelEl) return;
-    const els = [...panelEl.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled])')].filter((el) => el.offsetParent);
+    const els = [...panelEl.querySelectorAll<HTMLElement>('button, input, select')].filter((el) => el.offsetParent && !el.matches(':disabled'));
     const [first, last] = [els[0], els[els.length - 1]];
     if (!first || !last) return;
     if (!panelEl.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
