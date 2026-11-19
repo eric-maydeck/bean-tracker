@@ -16,7 +16,8 @@ export const load: PageServerLoad = ({ locals }) => {
       coffees: buildPickCoffees(getNonArchivedCoffees(db), today),
       today: localToday(),
       rulesLast: kv('pick.rules.last'),
-      hasSaved: kv('pick.rules.saved') !== null,
+      profiles: kv('pick.profiles'),
+      savedRules: kv('pick.rules.saved'), // the pre-profiles single copy, migrated to a profile "Saved"
       todayState: kv('pick.today')
     }
   };

@@ -4,6 +4,7 @@
   import { buildPool, resolveCrits } from '#lib/pick/pool.ts';
   import { boardMatches, fillBoard } from '#lib/pick/board.ts';
   import { DEFAULT_RULES, rulesDiffer } from '#lib/pick/rules.ts';
+  import { cleanName, type Profiles } from '#lib/pick/profiles.ts';
   import { discard, markBrewed, resetDay } from '#lib/pick/today.ts';
   import { sliceAt, wheelSlices } from '#lib/pick/wheel.ts';
   import type { Game, PickCoffee, PickResult, PickRules, PickToday, Slot, WheelSlice } from '#lib/pick/types.ts';
@@ -12,10 +13,10 @@
   import PickD20 from './PickD20.svelte';
   import PickRulesPanel from './PickRules.svelte';
   import PickWheel from './PickWheel.svelte';
-  import { fetchSaved, flushToday, loadRules, loadToday, saveRules, saveToday } from './store';
+  import { flushToday, loadProfiles, loadRules, loadToday, saveProfiles, saveRules, saveToday } from './store';
 
   let { pick, admin, game, ongame }: {
-    pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; hasSaved: boolean; todayState: unknown };
+    pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; profiles: unknown; savedRules: unknown; todayState: unknown };
     admin: boolean; game: Game; ongame: (g: Game) => void;
   } = $props();
 
@@ -27,7 +28,9 @@
   let ready = $state(untrack(() => admin));
   let rules = $state<PickRules>(untrack(() => (admin ? loadRules(true, pick.rulesLast) : DEFAULT_RULES)));
   let today = $state<PickToday>(untrack(() => loadToday(admin, admin ? pick.todayState : null, pick.today)));
-  let hasSaved = $state(untrack(() => pick.hasSaved));
+  let profiles = $state<Profiles>(untrack(() => (admin ? loadProfiles(true, pick.profiles, pick.savedRules) : {})));
+  let selected = $state(''); // the profile the rules came from (a base: further edits do not change it until Save)
+  let selBefore = '';
   let busy = $state(false);
   let rollAgain = $state(false);
   let announce = $state('');
@@ -48,6 +51,7 @@
     if (!admin) {
       rules = loadRules(false, null);
       today = loadToday(false, null, pick.today);
+      profiles = loadProfiles(false, null, null);
       ready = true;
     }
     const mq = matchMedia('(max-width: 640px)');
@@ -202,25 +206,33 @@
   }
   function onDialogClose() {
     pendingRules = null;
-    if (!chosen) { rev++; note = ''; } // Cancel or Escape: the controls go back to the unchanged rules
+    if (!chosen) { rev++; note = ''; selected = selBefore; } // Cancel or Escape: the controls go back to the unchanged rules
   }
-  async function save() {
+  function pickProfile(name: string) {
+    if (!profiles[name]) return;
+    selBefore = selected;
+    selected = name;
+    edit(profiles[name]);
+  }
+  // Write the whole map; the local copy changes only when the save went through.
+  async function storeProfiles(next: Profiles, msg: string, sel = selected) {
     try {
-      await saveRules(admin, 'pick.rules.saved', rules);
-      hasSaved = true;
-      note = 'Saved.';
+      await saveProfiles(admin, next);
+      profiles = next;
+      selected = sel;
+      note = msg;
     } catch {
       note = "Couldn't save.";
     }
   }
-  async function load() {
-    try {
-      const r = await fetchSaved();
-      note = r ? 'Loaded.' : 'Nothing saved yet.';
-      if (r) edit(r);
-    } catch {
-      note = "Couldn't load.";
-    }
+  const saveProfile = () => selected && storeProfiles({ ...profiles, [selected]: $state.snapshot(rules) }, `Saved "${selected}".`);
+  function saveProfileAs(raw: string) {
+    const n = cleanName(raw);
+    if (n) storeProfiles({ ...profiles, [n]: $state.snapshot(rules) }, `Saved "${n}".`, n);
+  }
+  function deleteProfile() {
+    const { [selected]: gone, ...rest } = profiles;
+    if (gone) storeProfiles(rest, `Deleted "${selected}".`, '');
   }
 </script>
 
@@ -236,8 +248,8 @@
   </div>
 
   {#key rev}
-  <PickRulesPanel {rules} {coffees} {eligible} {admin} {hasSaved} open={today.panelOpen} {note} locked={busy}
-    ontoggle={(o) => (today.panelOpen = o)} onchange={edit} onsave={save} onload={load} onreset={() => edit(DEFAULT_RULES)} />
+  <PickRulesPanel {rules} {coffees} {eligible} names={Object.keys(profiles).sort((a, b) => a.localeCompare(b))} {selected} open={today.panelOpen} {note} locked={busy}
+    ontoggle={(o) => (today.panelOpen = o)} onchange={edit} onpick={pickProfile} onsave={saveProfile} onsaveas={saveProfileAs} ondelete={deleteProfile} onreset={() => edit(DEFAULT_RULES)} />
   {/key}
 
   <div class="stage" class:d20={game === 'd20'}>
@@ -323,6 +335,7 @@
   }
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: var(--space-3) 0; }
   .out-row .label { font-weight: 600; }
+  .out-row .badge { white-space: normal; max-width: 100%; overflow-wrap: anywhere; }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }
   .dlg-buttons { display: grid; gap: var(--space-2); }
   .dlg-buttons :global(.button) { min-height: 44px; }

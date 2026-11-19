@@ -1,12 +1,24 @@
 <script lang="ts">
   import type { Category, CritMode, Fill, Iteration, PickCoffee, PickRules, SortGroup, SortRule } from '#lib/pick/types.ts';
+  import { cleanName } from '#lib/pick/profiles.ts';
   import CritPicker from './CritPicker.svelte';
 
-  let { rules, coffees, eligible, admin, hasSaved, open, ontoggle, onchange, onsave, onload, onreset, note, locked }: {
-    rules: PickRules; coffees: PickCoffee[]; eligible: PickCoffee[]; admin: boolean; hasSaved: boolean; open: boolean;
+  let { rules, coffees, eligible, names, selected, open, ontoggle, onchange, onpick, onsave, onsaveas, ondelete, onreset, note, locked }: {
+    rules: PickRules; coffees: PickCoffee[]; eligible: PickCoffee[]; names: string[]; selected: string; open: boolean;
     ontoggle: (open: boolean) => void; onchange: (next: PickRules) => void;
-    onsave: () => void; onload: () => void; onreset: () => void; note: string; locked: boolean;
+    onpick: (name: string) => void; onsave: () => void; onsaveas: (name: string) => void; ondelete: () => void; onreset: () => void;
+    note: string; locked: boolean;
   } = $props();
+
+  // Inline profile prompts (no window.prompt): naming a new profile, confirming an overwrite or a delete.
+  let step = $state<'idle' | 'naming' | 'overwrite' | 'delete'>('idle');
+  let nameInput = $state('');
+  const cleaned = $derived(cleanName(nameInput));
+  function submitName() {
+    if (!cleaned) return;
+    if (names.includes(cleaned)) step = 'overwrite';
+    else { onsaveas(cleaned); step = 'idle'; nameInput = ''; }
+  }
 
   const CATEGORIES: [Category, string][] = [['open', 'Open'], ['backlog', 'Backlog'], ['frozen', 'Frozen']];
   const SORTS: [SortRule, string][] = [['urgency-desc', 'Urgency, high first'], ['urgency-asc', 'Urgency, low first'], ['name', 'A to Z'], ['category', 'By category']];
@@ -45,7 +57,7 @@
         <label><input type="radio" name={`${which}-mode`} checked={mode(which) === 'spot'} onchange={() => setMode(which, 'spot')} /> The coffee in that spot ({spot})</label>
         <label><input type="radio" name={`${which}-mode`} checked={mode(which) === 'specific'} onchange={() => setMode(which, 'specific')} /> Specific coffees</label>
         {#if which === 'critSuccess' && mode(which) === 'spot'}
-          <label class="sub"><input type="checkbox" checked={rules.highestIsCrit} onchange={(e) => set({ highestIsCrit: e.currentTarget.checked })} /> Highest number is crit success <span class="text-muted">when fewer than 20 coffees</span></label>
+          <label class="sub"><input type="checkbox" checked={rules.highestIsCrit} onchange={(e) => set({ highestIsCrit: e.currentTarget.checked })} /> <span>Highest number is crit success <span class="text-muted">when fewer than 20 coffees</span></span></label>
         {/if}
         {#if mode(which) === 'specific'}
           <CritPicker label={`${label} coffees`} {coffees} selected={rules[which]} onchange={(ids) => setCrit(which, ids)} />
@@ -128,13 +140,40 @@
           <label><input type="checkbox" checked={rules.repeats} onchange={(e) => set({ repeats: e.currentTarget.checked })} /> Repeats (a brewed coffee stays in play)</label>
         </fieldset>
 
-        <div class="actions">
-          {#if admin}
-            <button type="button" class="button button-secondary" onclick={onsave}>Save</button>
-            <button type="button" class="button button-secondary" disabled={!hasSaved} onclick={onload}>Load</button>
+        <fieldset class="profiles">
+          <legend>Profiles</legend>
+          <label class="field">Profile
+            <select class="ctl-select" aria-label="Profile" value={selected} onchange={(e) => onpick(e.currentTarget.value)}>
+              <option value="">{names.length ? 'Choose a profile' : 'No profiles yet'}</option>
+              {#each names as n (n)}<option value={n}>{n}</option>{/each}
+            </select>
+          </label>
+          <div class="actions">
+            <button type="button" class="button button-secondary" disabled={!selected} onclick={onsave}>Save</button>
+            <button type="button" class="button button-secondary" onclick={() => (step = 'naming')}>Save as…</button>
+            <button type="button" class="button button-secondary" disabled={!selected} onclick={() => (step = 'delete')}>Delete</button>
+            <button type="button" class="button button-secondary" onclick={onreset}>Reset to defaults</button>
+          </div>
+          {#if step === 'naming'}
+            <div class="actions">
+              <input class="name" type="text" maxlength="40" placeholder="Profile name" aria-label="Profile name" bind:value={nameInput} onkeydown={(e) => e.key === 'Enter' && submitName()} />
+              <button type="button" class="button" disabled={!cleaned} onclick={submitName}>Save</button>
+              <button type="button" class="button button-secondary" onclick={() => (step = 'idle')}>Cancel</button>
+            </div>
+          {:else if step === 'overwrite'}
+            <div class="actions" role="alert">
+              <span>Overwrite "{cleaned}"?</span>
+              <button type="button" class="button" onclick={() => { if (cleaned) onsaveas(cleaned); step = 'idle'; nameInput = ''; }}>Overwrite</button>
+              <button type="button" class="button button-secondary" onclick={() => (step = 'naming')}>Back</button>
+            </div>
+          {:else if step === 'delete'}
+            <div class="actions" role="alert">
+              <span>Delete "{selected}"?</span>
+              <button type="button" class="button button-danger" onclick={() => { ondelete(); step = 'idle'; }}>Delete</button>
+              <button type="button" class="button button-secondary" onclick={() => (step = 'idle')}>Cancel</button>
+            </div>
           {/if}
-          <button type="button" class="button button-secondary" onclick={onreset}>Reset to defaults</button>
-        </div>
+        </fieldset>
         <span class="text-muted note" role="status">{note}</span>
       </fieldset>
     </section>
@@ -166,7 +205,8 @@
   .order { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1); }
   .order li { display: flex; gap: var(--space-2); align-items: center; }
   .order span { min-width: 5rem; }
-  .actions { display: flex; flex-wrap: wrap; gap: var(--space-1); justify-content: flex-start; }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-1); justify-content: flex-start; align-items: center; }
+  .name { min-height: 36px; font: inherit; min-width: 0; flex: 1 1 8rem; }
   .note:empty { display: none; }
-  @media (max-width: 640px) { label { min-height: 44px; } .rules-panel :global(.ctl-select) { width: 100%; } .actions :global(.button), .bar :global(.button), .order :global(.button) { min-height: 44px; } }
+  @media (max-width: 640px) { .name { min-height: 44px; font-size: 16px; } label { min-height: 44px; } .rules-panel :global(.ctl-select) { width: 100%; } .actions :global(.button), .bar :global(.button), .order :global(.button) { min-height: 44px; } }
 </style>

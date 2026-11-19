@@ -3,7 +3,7 @@ import { getDb } from '#lib/server/db.ts';
 import { requireAdmin } from '#lib/server/auth.ts';
 import { getUserKv, setUserKv } from '#lib/server/userKv.ts';
 
-const PICK_KEYS = ['pick.rules.saved', 'pick.rules.last', 'pick.today'];
+const PICK_KEYS = ['pick.rules.saved', 'pick.rules.last', 'pick.profiles', 'pick.today']; // rules.saved is the pre-profiles single copy
 const MAX_BYTES = 64 * 1024;
 
 // Admin-only storage for Pick's saved rules, last-used rules and today's state.

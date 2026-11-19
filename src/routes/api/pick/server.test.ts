@@ -24,6 +24,12 @@ describe('/api/pick', () => {
     expect(await (await get('pick.rules.saved')).json()).toEqual({ value: { v: 1, a: [2] } });
   });
 
+  it('stores named profiles under pick.profiles', async () => {
+    const profiles = { Morning: { v: 1, sort: 'name' }, Weekend: { v: 1, repeats: true } };
+    expect((await put({ key: 'pick.profiles', value: profiles })).status).toBe(204);
+    expect(await (await get('pick.profiles')).json()).toEqual({ value: profiles });
+  });
+
   it('400s an unknown key, 413s a body over 64KB', async () => {
     expect((await get('nope')).status).toBe(400);
     expect((await put({ key: 'nope', value: 1 })).status).toBe(400);

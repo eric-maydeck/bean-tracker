@@ -5985,6 +5985,22 @@ export const STATES: State[] = [
       await expect(dlg).toBeHidden();
       await expect(page.getByLabel('Sort')).toHaveValue('urgency-desc');
       await expect(page.locator('.out-row s')).toHaveCount(1);
+      // Profiles: save the current rules as "Weekend", change the sort (keep today's out list), then load the profile back.
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      await panel.getByRole('button', { name: 'Save as…' }).click();
+      await panel.getByLabel('Profile name').fill('Weekend');
+      await panel.locator('input[aria-label="Profile name"] + button').click();
+      await expect(panel.getByLabel('Profile', { exact: true })).toHaveValue('Weekend');
+      await page.getByLabel('Sort').selectOption('name');
+      await dlg.getByRole('button', { name: "Keep today's out list with the new rules" }).click();
+      await expect(page.getByLabel('Sort')).toHaveValue('name');
+      await panel.getByLabel('Profile', { exact: true }).selectOption('');
+      await panel.getByLabel('Profile', { exact: true }).selectOption('Weekend');
+      await dlg.getByRole('button', { name: "Keep today's out list with the new rules" }).click();
+      await expect(page.getByLabel('Sort')).toHaveValue('urgency-desc');
+      await panel.getByRole('button', { name: 'Delete', exact: true }).click();
+      await panel.getByRole('alert').getByRole('button', { name: 'Delete' }).click();
+      await expect(panel.getByLabel('Profile', { exact: true })).toHaveValue('');
     }
   },
   {

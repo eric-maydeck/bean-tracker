@@ -1,8 +1,9 @@
 import { DEFAULT_RULES, parseRules } from '#lib/pick/rules.ts';
+import { parseProfiles, type Profiles } from '#lib/pick/profiles.ts';
 import { freshToday, todayFor } from '#lib/pick/today.ts';
 import type { PickRules, PickToday } from '#lib/pick/types.ts';
 
-type RulesKey = 'pick.rules.saved' | 'pick.rules.last';
+type RulesKey = 'pick.rules.last';
 
 const read = (key: string): unknown => {
   try {
@@ -63,10 +64,13 @@ export function saveToday(admin: boolean, t: PickToday): void {
   timer = setTimeout(flushToday, 300);
 }
 
-/** The saved rules, or null when none are saved. Throws when the server can't be reached. */
-export async function fetchSaved(): Promise<PickRules | null> {
-  const res = await fetch('/api/pick?key=pick.rules.saved');
-  if (!res.ok) throw new Error(`Load failed (${res.status})`);
-  const { value } = await res.json();
-  return value == null ? null : parseRules(value);
+/** Named rule profiles. The old single saved copy shows up as a profile named "Saved" until profiles are first saved. */
+export function loadProfiles(admin: boolean, serverProfiles: unknown, serverSaved: unknown): Profiles {
+  return admin ? parseProfiles(serverProfiles, serverSaved) : parseProfiles(read('pick.profiles'), read('pick.rules.saved'));
+}
+
+/** Writes the whole map; rejects when the server refuses. */
+export async function saveProfiles(admin: boolean, profiles: Profiles): Promise<void> {
+  if (admin) await put('pick.profiles', profiles);
+  else write('pick.profiles', profiles);
 }
