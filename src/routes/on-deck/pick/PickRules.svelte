@@ -82,13 +82,13 @@
 
 {#snippet crit(label: string, which: 'critSuccess' | 'critFail', spot: string)}
   <div class="crit">
-    <div class="form-field-checkbox"><label><input type="checkbox" checked={on(which)} onchange={(e) => setOn(which, e.currentTarget.checked)} /> {label}</label></div>
+    <label class="filter-value"><input type="checkbox" checked={on(which)} onchange={(e) => setOn(which, e.currentTarget.checked)} /> {label}</label>
     {#if on(which)}
       <div class="sub" role="radiogroup" aria-label={`${label} holds`}>
-        <label><input type="radio" name={`${which}-mode`} checked={mode(which) === 'spot'} onchange={() => setMode(which, 'spot')} /> The coffee in that spot ({spot})</label>
-        <label><input type="radio" name={`${which}-mode`} checked={mode(which) === 'specific'} onchange={() => setMode(which, 'specific')} /> Specific coffees</label>
+        <label class="filter-value"><input type="radio" name={`${which}-mode`} checked={mode(which) === 'spot'} onchange={() => setMode(which, 'spot')} /> The coffee in that spot ({spot})</label>
+        <label class="filter-value"><input type="radio" name={`${which}-mode`} checked={mode(which) === 'specific'} onchange={() => setMode(which, 'specific')} /> Specific coffees</label>
         {#if which === 'critSuccess' && mode(which) === 'spot'}
-          <div class="form-field-checkbox sub"><label><input type="checkbox" checked={rules.highestIsCrit} onchange={(e) => set({ highestIsCrit: e.currentTarget.checked })} /> <span>Highest number is crit success <span class="text-muted">when fewer than 20 coffees</span></span></label></div>
+          <label class="filter-value sub"><input type="checkbox" checked={rules.highestIsCrit} onchange={(e) => set({ highestIsCrit: e.currentTarget.checked })} /> <span>Highest number is crit success <span class="text-muted">when fewer than 20 coffees</span></span></label>
         {/if}
         {#if mode(which) === 'specific'}
           <CritPicker label={`${label} coffees`} {coffees} selected={rules[which]} onchange={(ids) => setCrit(which, ids)} />
@@ -115,11 +115,11 @@
           <legend>Pool</legend>
           <div class="line">
             {#each CATEGORIES as [k, label] (k)}
-              <div class="form-field-checkbox"><label><input type="checkbox" checked={rules.categories.includes(k)} onchange={(e) => toggleCategory(k, e.currentTarget.checked)} /> {label}</label></div>
+              <label class="filter-value"><input type="checkbox" checked={rules.categories.includes(k)} onchange={(e) => toggleCategory(k, e.currentTarget.checked)} /> {label}</label>
             {/each}
           </div>
-          <div class="form-field-checkbox"><label><input type="checkbox" checked={rules.includeDecaf} onchange={(e) => set({ includeDecaf: e.currentTarget.checked })} /> Include decaf</label></div>
-          <div class="form-field-checkbox sub"><label><input type="checkbox" checked={rules.includeFrozenDecaf} disabled={!rules.includeDecaf} onchange={(e) => set({ includeFrozenDecaf: e.currentTarget.checked })} /> Include frozen decaf</label></div>
+          <label class="filter-value"><input type="checkbox" checked={rules.includeDecaf} onchange={(e) => set({ includeDecaf: e.currentTarget.checked })} /> Include decaf</label>
+          <label class="filter-value sub"><input type="checkbox" checked={rules.includeFrozenDecaf} disabled={!rules.includeDecaf} onchange={(e) => set({ includeFrozenDecaf: e.currentTarget.checked })} /> Include frozen decaf</label>
           <label class="field">Sort
             <select class="ctl-select" value={rules.sort} onchange={(e) => set({ sort: e.currentTarget.value as SortRule })}>
               {#each SORTS as [k, label] (k)}<option value={k}>{label}</option>{/each}
@@ -137,8 +137,8 @@
             </ol>
           {/if}
           <div class="line" role="radiogroup" aria-label="More than 20 coffees">
-            <label><input type="radio" name="over20" checked={rules.over20 === 'first20'} onchange={() => set({ over20: 'first20' })} /> First 20</label>
-            <label><input type="radio" name="over20" checked={rules.over20 === 'byHand'} onchange={() => set({ over20: 'byHand' })} /> Exclude specific coffees</label>
+            <label class="filter-value"><input type="radio" name="over20" checked={rules.over20 === 'first20'} onchange={() => set({ over20: 'first20' })} /> First 20</label>
+            <label class="filter-value"><input type="radio" name="over20" checked={rules.over20 === 'byHand'} onchange={() => set({ over20: 'byHand' })} /> Exclude specific coffees</label>
           </div>
           {#if rules.over20 === 'byHand'}
             <CritPicker label="Excluded coffees" requireSearch coffees={eligible} selected={rules.excluded} onchange={(ids) => set({ excluded: ids })} />
@@ -163,8 +163,8 @@
               {#each FILLS as [k, label] (k)}<option value={k}>{label}</option>{/each}
             </select>
           </label>
-          <div class="form-field-checkbox"><label><input type="checkbox" checked={rules.fillEnds} onchange={(e) => set({ fillEnds: e.currentTarget.checked })} /> Normal 1 and 20 take part in the fill</label></div>
-          <div class="form-field-checkbox"><label><input type="checkbox" checked={rules.repeats} onchange={(e) => set({ repeats: e.currentTarget.checked })} /> Repeats (a brewed coffee stays in play)</label></div>
+          <label class="filter-value"><input type="checkbox" checked={rules.fillEnds} onchange={(e) => set({ fillEnds: e.currentTarget.checked })} /> Normal 1 and 20 take part in the fill</label>
+          <label class="filter-value"><input type="checkbox" checked={rules.repeats} onchange={(e) => set({ repeats: e.currentTarget.checked })} /> Repeats (a brewed coffee stays in play)</label>
         </fieldset>
 
         <fieldset class="profiles">
@@ -217,7 +217,7 @@
     .rules-panel { pointer-events: auto; width: min(26rem, 90vw); max-height: none; height: 100%; border-radius: 0 var(--radius) var(--radius) 0; box-shadow: var(--shadow-hover); border-right: 1px solid var(--color-border); }
   }
   fieldset.body { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: var(--space-2); }
-  fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); margin: 0; display: grid; gap: var(--space-2); min-width: 0; }
+  fieldset { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2) var(--space-3); margin: 0; display: grid; gap: var(--space-1); min-width: 0; }
   legend { font-weight: 600; padding: 0 var(--space-2); }
   .line { display: flex; flex-wrap: wrap; gap: 0 var(--space-4); align-items: center; }
   label { display: inline-flex; gap: var(--space-2); align-items: center; min-height: 30px; cursor: pointer; }
