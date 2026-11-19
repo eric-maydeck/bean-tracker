@@ -5814,11 +5814,19 @@ export const STATES: State[] = [
       await view.getByRole('button', { name: 'Pick for me' }).click();
       await expect(page).toHaveURL(/view=pick/);
       await expect(page.getByRole('heading', { name: 'Pick for me' })).toBeVisible();
+      // Every view's heading has the same divider under it.
+      await expect(page.locator('section.detail-section > h2')).toHaveCSS('border-bottom-width', '1px');
       await view.getByRole('button', { name: 'Next up' }).click();
       await expect(page).toHaveURL(/view=next/);
+      await expect(page.locator('section.detail-section > h2')).toHaveCSS('border-bottom-width', '1px');
       await expect(page.getByRole('heading', { name: 'Pick for me' })).toHaveCount(0);
       await view.getByRole('button', { name: 'Currently open' }).click();
       await expect(page).not.toHaveURL(/view=/);
+      await expect(page.locator('section.detail-section > h2').first()).toHaveCSS('border-bottom-width', '1px');
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        const [v, s] = [(await view.boundingBox())!, (await page.getByRole('group', { name: 'Show' }).boundingBox())!];
+        expect(s.x - (v.x + v.width), 'room between View and Show').toBeGreaterThanOrEqual(23);
+      }
       await expectGroupsLabelled(page);
     }
   },
@@ -5837,6 +5845,11 @@ export const STATES: State[] = [
       } else await expect(page.locator('.result')).toBeHidden(); // phone: no placeholder, results show in the overlay
       await expectGroupsLabelled(page);
       const rules = page.getByRole('button', { name: 'Rules', exact: true });
+      // Rules sits on the Game buttons' row, at their height.
+      const [gb, rb] = [(await page.getByRole('group', { name: 'Game' }).getByRole('button', { name: 'Wheel' }).boundingBox())!, (await rules.boundingBox())!];
+      expect(Math.abs(gb.y - rb.y), 'Rules on the Game row').toBeLessThanOrEqual(3);
+      expect(Math.abs(gb.height - rb.height), 'same height').toBeLessThanOrEqual(3);
+      if ((page.viewportSize()?.width ?? 0) > 640) await expect(page.locator('.out-row')).toBeInViewport(); // no scrolling to reach it
       await rules.click();
       await expect(page.getByRole('group', { name: 'Pool' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Reset to defaults' })).toBeVisible();
@@ -5882,7 +5895,29 @@ export const STATES: State[] = [
       await panel.getByLabel('Specific coffees').last().check();
       await expect(panel.getByLabel(/Highest number is crit success/)).toHaveCount(0);
       await expect(panel.getByRole('button', { name: 'Select all', exact: true })).toBeVisible();
-      await panel.getByRole('button', { name: 'Close' }).click();
+      // Exclude specific coffees: the same searchable picker; a row has the coffee left and its roaster flush right; the chips sit under the list.
+      await panel.getByLabel('Exclude specific coffees').check();
+      const ex = panel.getByRole('group', { name: 'Excluded coffees' });
+      await expect(ex.getByLabel('Search Excluded coffees')).toBeVisible();
+      const row = ex.locator('.list label').first();
+      await row.getByRole('checkbox').check();
+      const [rowB, nameB, roasterB] = [(await row.boundingBox())!, (await row.locator('.nm').boundingBox())!, (await row.locator('.roaster').boundingBox())!];
+      expect(roasterB.x, 'roaster right of the name').toBeGreaterThanOrEqual(nameB.x + nameB.width - 1);
+      expect(rowB.x + rowB.width - (roasterB.x + roasterB.width), 'roaster flush right').toBeLessThanOrEqual(4);
+      const [listB, chipB] = [(await ex.locator('.list').boundingBox())!, (await ex.locator('.chip').first().boundingBox())!];
+      expect(chipB.y, 'chips under the list').toBeGreaterThanOrEqual(listB.y + listB.height - 1);
+      // Closing slides the panel out as opening slid it in (desktop; none on a phone or with reduced motion).
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        const moving = await panel.evaluate(async (el) => {
+          (el.querySelector('header button') as HTMLButtonElement).click();
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          return getComputedStyle(el).transform !== 'none';
+        });
+        expect(moving, 'the panel slides out').toBe(true);
+      } else {
+        expect((await page.locator('.rules-backdrop').boundingBox())!.y, 'phone: the modal layer covers the whole page').toBe(0);
+        await panel.getByRole('button', { name: 'Close' }).click();
+      }
       await expect(panel).toBeHidden();
       await page.getByRole('button', { name: 'Rules', exact: true }).click();
       await expect(panel).toBeVisible();
@@ -5910,6 +5945,12 @@ export const STATES: State[] = [
       await show.click();
       await expect(page.locator('tr.rolled')).toHaveCount(1);
       await expect(page.locator('tr.rolled td.n')).toHaveText('7');
+      // The board: 1 to 10 and 11 to 20 side by side on desktop, stacked on a phone.
+      const [t1, t2] = [(await page.locator('table.board').nth(0).boundingBox())!, (await page.locator('table.board').nth(1).boundingBox())!];
+      await expect(page.locator('table.board').nth(0).locator('tbody tr')).toHaveCount(10);
+      await expect(page.locator('table.board').nth(1).locator('tbody tr')).toHaveCount(10);
+      if ((page.viewportSize()?.width ?? 0) > 640) expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
+      else expect(t2.y, 'phone: one column').toBeGreaterThan(t1.y + t1.height - 1);
       await expect(page.locator('.pick-card')).toBeVisible();
       await expect(page).toHaveURL(/game=d20/);
       await dismissPickOverlay(page);
@@ -5933,13 +5974,46 @@ export const STATES: State[] = [
       await expect(card.locator('s')).toHaveCount(1);
       await expect(card.getByRole('button', { name: 'Brew', exact: true })).toBeDisabled();
       await expect(card.getByRole('button', { name: 'Discard' })).toBeDisabled();
-      await expect(card.getByRole('button', { name: 'Open coffee page' })).toBeEnabled();
+      await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toBeEnabled();
       await expect(page.locator('.out-row s')).toHaveCount(1);
+      // The badge sits right of the name on the same line; the name line keeps its height.
+      const [nm, bd] = [(await card.locator('.name').boundingBox())!, (await card.getByText('Out for today').boundingBox())!];
+      expect(bd.x, 'badge right of the name').toBeGreaterThanOrEqual(nm.x + nm.width - 1);
+      expect(Math.abs(bd.y + bd.height / 2 - (nm.y + nm.height / 2)), 'badge on the name line').toBeLessThanOrEqual(6);
       const after = (await card.boundingBox())!;
       expect(Math.abs(after.height - before.height), 'card keeps its height').toBeLessThanOrEqual(2);
       await dismissPickOverlay(page);
+      // The out-for-today badge's tip: name, roaster, detail and the reason.
+      await page.locator('.out-row .badge').hover();
+      await expect(page.locator('.float-tip').filter({ hasText: 'Discarded today' })).toBeVisible();
+      await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Reset today' }).click();
       await expect(page.locator('.out-row s')).toHaveCount(0);
+    }
+  },
+  {
+    // The result card (desktop): the /coffees card's width, the coffee page's picture size, three equal buttons on one row,
+    // and the Out for today row still on screen with a result showing.
+    name: 'pick-card', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.getByRole('button', { name: 'Spin', exact: true }).click();
+      if ((page.viewportSize()?.width ?? 0) <= 640) {
+        const modal = page.getByRole('dialog', { name: 'Pick result' });
+        await expect(modal.getByRole('button', { name: 'Close' })).toBeVisible();
+        await dismissPickOverlay(page);
+        return;
+      }
+      const card = page.locator('.result');
+      await expect(card.locator('.pick-card')).toBeVisible();
+      expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(400);
+      await expect(card.getByRole('button', { name: 'Close' })).toHaveCount(0);
+      const img = card.locator('img');
+      if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(281); expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(1); }
+      const bs = await Promise.all(['Brew', 'Discard', 'Open coffee'].map((n) => card.getByRole('button', { name: n, exact: true }).boundingBox()));
+      for (const b of bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
+      await expect(page.locator('.out-row')).toBeInViewport();
     }
   },
   {
@@ -6006,9 +6080,72 @@ export const STATES: State[] = [
       await panel.getByLabel('Profile', { exact: true }).selectOption('Weekend');
       await dlg.getByRole('button', { name: "Keep today's out list with the new rules" }).click();
       await expect(page.getByLabel('Sort')).toHaveValue('urgency-desc');
+      // Same again, choosing to reset today: the panel stays open and shows the profile.
+      await page.getByLabel('Sort').selectOption('name');
+      await dlg.getByRole('button', { name: "Keep today's out list with the new rules" }).click();
+      await panel.getByLabel('Profile', { exact: true }).selectOption('');
+      await panel.getByLabel('Profile', { exact: true }).selectOption('Weekend');
+      await dlg.getByRole('button', { name: 'Reset today and use the new rules' }).click();
+      await expect(panel).toBeVisible();
+      await expect(page.getByLabel('Sort')).toHaveValue('urgency-desc');
+      await expect(page.locator('.out-row s')).toHaveCount(0);
       await panel.getByRole('button', { name: 'Delete', exact: true }).click();
       await panel.getByRole('alert').getByRole('button', { name: 'Delete' }).click();
       await expect(panel.getByLabel('Profile', { exact: true })).toHaveValue('');
+    }
+  },
+  {
+    // Profiles: Save is for changed rules only, Save as saves under a new name (a toast confirms), Reset to defaults deselects
+    // the profile, and choosing a profile loads its rules into every control.
+    name: 'pick-profiles', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      const profile = panel.getByLabel('Profile', { exact: true });
+      const save = panel.getByRole('button', { name: 'Save', exact: true });
+      const saveAs = panel.getByRole('button', { name: 'Save as…' });
+      await expect(save).toBeDisabled();
+      await expect(saveAs).toBeEnabled();
+      await panel.getByLabel('Sort').selectOption('name');
+      await panel.getByLabel('Backlog', { exact: true }).uncheck();
+      await panel.getByLabel('Order').selectOption('evens');
+      await panel.getByLabel('Normal 1 and 20 take part in the fill').uncheck();
+      await panel.getByLabel('Include decaf', { exact: true }).check();
+      await panel.getByLabel('Repeats (a brewed coffee stays in play)').check();
+      await panel.getByLabel('Crit fail', { exact: true }).uncheck();
+      await panel.getByRole('radiogroup', { name: 'Crit success holds' }).getByLabel('Specific coffees').check();
+      await panel.getByLabel('Exclude specific coffees').check();
+      await saveAs.click();
+      await panel.getByLabel('Profile name').fill('Mine');
+      await panel.locator('input[aria-label="Profile name"] ~ button').first().click();
+      await expect(page.getByText('Saved "Mine".')).toBeVisible(); // a toast, not a line in the panel
+      await expect(panel.getByText('Saved "Mine".')).toHaveCount(0);
+      await expect(profile).toHaveValue('Mine');
+      await expect(save, 'nothing to save yet').toBeDisabled();
+      await panel.getByLabel('Sort').selectOption('urgency-asc');
+      await expect(save, 'changed rules can be saved').toBeEnabled();
+      // Reset: the defaults load, no profile is selected, Save stays off.
+      await panel.getByRole('button', { name: 'Reset to defaults' }).click();
+      await expect(profile).toHaveValue('');
+      await expect(save).toBeDisabled();
+      await expect(panel.getByLabel('Sort')).toHaveValue('urgency-desc');
+      await expect(panel.getByLabel('Backlog', { exact: true })).toBeChecked();
+      await expect(panel.getByLabel('Crit fail', { exact: true })).toBeChecked();
+      await expect(panel.getByLabel('Exclude specific coffees')).not.toBeChecked();
+      // Choosing the profile loads it into every control.
+      await profile.selectOption('Mine');
+      await expect(panel.getByLabel('Sort')).toHaveValue('name');
+      await expect(panel.getByLabel('Backlog', { exact: true })).not.toBeChecked();
+      await expect(panel.getByLabel('Order')).toHaveValue('evens');
+      await expect(panel.getByLabel('Normal 1 and 20 take part in the fill')).not.toBeChecked();
+      await expect(panel.getByLabel('Include decaf', { exact: true })).toBeChecked();
+      await expect(panel.getByLabel('Repeats (a brewed coffee stays in play)')).toBeChecked();
+      await expect(panel.getByLabel('Crit fail', { exact: true })).not.toBeChecked();
+      await expect(panel.getByRole('radiogroup', { name: 'Crit success holds' }).getByLabel('Specific coffees')).toBeChecked();
+      await expect(panel.getByLabel('Exclude specific coffees')).toBeChecked();
+      await expect(save).toBeDisabled();
     }
   },
   {
