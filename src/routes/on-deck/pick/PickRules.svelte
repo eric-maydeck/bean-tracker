@@ -77,6 +77,12 @@
   const setMode = (which: 'critSuccess' | 'critFail', v: CritMode) => set(which === 'critSuccess' ? { critSuccessMode: v } : { critFailMode: v });
 
   // Escape closes the panel, unless a dialog (the rule-change confirm) is on top of it.
+  // A click outside the desktop side bar closes it like Close (the opener returns focus). Not on the opener itself (it toggles), inside a popup or tooltip, or while a dialog is open; a phone's overlay has its own backdrop click.
+  const onOutside = (e: MouseEvent) => {
+    if (!open || window.innerWidth <= 640 || !(e.target instanceof Element) || !e.target.isConnected) return;
+    if (e.target.closest('.rules-panel, .float-tip, .modal-backdrop, dialog') || toggleEl?.contains(e.target) || document.querySelector('dialog[open]')) return;
+    ontoggle(false);
+  };
   const onkey = (e: KeyboardEvent) => e.key === 'Escape' && open && !document.querySelector('dialog[open]') && ontoggle(false);
 </script>
 
@@ -98,7 +104,7 @@
   </div>
 {/snippet}
 
-<svelte:window onkeydown={onkey} />
+<svelte:window onkeydown={onkey} onclick={onOutside} />
 
 <button type="button" class="button button-secondary toggle" bind:this={toggleEl} aria-expanded={open} onclick={() => ontoggle(!open)}>Rules</button>
 
