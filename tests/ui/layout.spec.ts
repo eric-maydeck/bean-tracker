@@ -1630,7 +1630,7 @@ export const STATES: State[] = [
         expect(Math.abs(r.y - icon[0].y), 'one row').toBeLessThanOrEqual(1);
       }
       // In the top action row, never crowding another button: on a shared line at least the normal gap apart, else on their own line.
-      const others = await Promise.all((await page.locator('.detail-actions > .button, .detail-actions > .share-button, .detail-actions > .detail-back').all()).map(bx));
+      const others = await Promise.all((await page.locator('.detail-actions .detail-right > *, .detail-actions > .detail-back').all()).map(bx));
       for (const o of others) {
         const sameLine = Math.min(o.y + o.height, icon[0].y + icon[0].height) - Math.max(o.y, icon[0].y) > 4;
         if (!sameLine) continue;
@@ -1655,7 +1655,7 @@ export const STATES: State[] = [
         await page.setViewportSize({ width, height: 800 });
         await frames(page);
         const m = await page.evaluate(() => {
-          const kids = [...document.querySelectorAll<HTMLElement>('.detail-actions > *')].map((c) => c.getBoundingClientRect());
+          const kids = [...document.querySelectorAll<HTMLElement>('.detail-actions > :not(.detail-right), .detail-right > *')].map((c) => c.getBoundingClientRect());
           const status = document.querySelector('.detail-status .button-icon')!.getBoundingClientRect();
           const imp = document.querySelector('.detail-import')!.getBoundingClientRect();
           const back = document.querySelector('.detail-back')!.getBoundingClientRect();
@@ -1668,6 +1668,26 @@ export const STATES: State[] = [
         expect(m.backGap, `${width}px: gap after Back`).toBeGreaterThanOrEqual(7.5);
         expect(wide ? m.sw >= 70 : Math.abs(m.sw - 44) <= 1, `${width}px: status width ${m.sw}`).toBe(true);
       }
+      // Where the row has to wrap (768px), the right-hand buttons stay anchored top right: each line of them ends at the row's
+      // right edge, and Back, the status buttons and the first of them share the first line's top.
+      await page.setViewportSize({ width: 768, height: 800 });
+      await frames(page);
+      const w = await page.evaluate(() => {
+        const box = (e: Element) => { const r = e.getBoundingClientRect(); return { top: r.top, right: r.right, left: r.left }; };
+        const row = box(document.querySelector('.detail-actions')!);
+        return {
+          rowRight: row.right,
+          rows: [...document.querySelectorAll('.detail-right > *')].map(box),
+          left: [box(document.querySelector('.detail-back')!), box(document.querySelector('.detail-status .button-icon')!)]
+        };
+      });
+      const lines = new Map<number, typeof w.rows>();
+      for (const b of w.rows) lines.set(Math.round(b.top), [...(lines.get(Math.round(b.top)) ?? []), b]);
+      expect(lines.size, '768px: the right-hand buttons wrap').toBeGreaterThan(1);
+      for (const b of w.rows) expect(b.right, '768px: inside the row').toBeLessThanOrEqual(w.rowRight + 1);
+      for (const [, l] of lines) expect(Math.abs(Math.max(...l.map((b) => b.right)) - w.rowRight), '768px: each line ends at the row edge').toBeLessThanOrEqual(1);
+      const first = Math.min(...w.rows.map((b) => b.top));
+      for (const b of w.left) expect(Math.abs(b.top - first), '768px: Back and the status buttons share the first line').toBeLessThanOrEqual(1);
     } },
   {
     name: 'coffee-add-modal',

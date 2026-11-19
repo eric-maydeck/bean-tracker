@@ -1409,16 +1409,29 @@ nav.site-nav a[aria-current='page'] {
   margin: 0;
 }
 
+/* Above phone width the row is Back, the status buttons, then the right-hand buttons as one group that takes the rest of
+   the line. Where they don't all fit (641-1001px) the group wraps inside itself, right-aligned, so Back and the status
+   buttons keep the top left and the others the top right. Phones dissolve the group (display: contents) into the grid below. */
 @media (min-width: 641px) {
-  .detail-actions > :first-child {
-    margin-right: auto;
+  .detail-actions {
+    flex-wrap: nowrap;
+    align-items: flex-start;
   }
-  /* With the status buttons present they take the gap instead: Back, status ... Import, Brew now, ... */
-  .detail-actions > .detail-back:has(+ .detail-status) {
-    margin-right: 0;
+  .detail-actions > :not(.detail-right) {
+    flex: none;
   }
-  .detail-actions > .detail-status {
-    margin-right: auto;
+  .detail-actions > .detail-right {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+}
+@media (max-width: 640px) {
+  .detail-actions > .detail-right {
+    display: contents;
   }
 }
 
@@ -1464,7 +1477,7 @@ nav.site-nav a[aria-current='page'] {
   .detail-actions > :first-child {
     order: -2;
   }
-  .detail-actions > .share-button {
+  .detail-actions .share-button {
     order: -1;
   }
   /* The status buttons: their own full-width row of four equal buttons, last (under Brew now / Add / Clone / Edit). */
@@ -1497,7 +1510,7 @@ nav.site-nav a[aria-current='page'] {
 }
 @media (max-width: 419px) {
   /* Signed out: Back and Share equal while their labels fit. */
-  .detail-actions:not(:has(.detail-clone)) > :is(.detail-back, .share-button) {
+  .detail-actions:not(:has(.detail-clone)) :is(.detail-back, .share-button) {
     flex: 1 1 0;
   }
 }

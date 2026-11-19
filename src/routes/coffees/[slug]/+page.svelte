@@ -335,20 +335,22 @@
   {#if data.isAdmin}
     <div class="detail-status"><CoffeeStatusActions stable coffee={data.coffee} onaction={quickAction} /></div>
   {/if}
-  <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
-    Import into Bean Conqueror
-  </button>
-  <a class="button button-secondary detail-brew" href="/coffees/{data.coffee.slug}/brew">Brew now</a>
-  {#if data.isAdmin}
-    <button class="button button-secondary detail-add" type="button" onclick={() => openModal({}, true)}>+ Add Coffee</button>
-    <button class="button button-secondary detail-clone" type="button" onclick={() => openModal(clonePrefill(formCoffee))}>
-      Clone
+  <div class="detail-right">
+    <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
+      Import into Bean Conqueror
     </button>
-  {/if}
-  {#if data.isAdmin}
-    <button class="button button-secondary detail-edit" type="button" onclick={() => (editMode = true)}>Edit</button>
-  {/if}
-  <ShareButton />
+    <a class="button button-secondary detail-brew" href="/coffees/{data.coffee.slug}/brew">Brew now</a>
+    {#if data.isAdmin}
+      <button class="button button-secondary detail-add" type="button" onclick={() => openModal({}, true)}>+ Add Coffee</button>
+      <button class="button button-secondary detail-clone" type="button" onclick={() => openModal(clonePrefill(formCoffee))}>
+        Clone
+      </button>
+    {/if}
+    {#if data.isAdmin}
+      <button class="button button-secondary detail-edit" type="button" onclick={() => (editMode = true)}>Edit</button>
+    {/if}
+    <ShareButton />
+  </div>
 </div>
 
 {#if shareUrl && shareQrDataUrl}
