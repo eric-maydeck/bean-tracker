@@ -76,7 +76,7 @@
 <svelte:head>
   <title>Bean Tracker - {focus ? focus.recipe.name : 'Recipes'}</title>
 </svelte:head>
-<PreviewMeta preview={focus ? recipePreview({ name: focus.recipe.name, description: focus.description, steps: stepsText(focus.recipe.def), tempNotes: focus.tempNotes, n: focus.n, avgRating: focus.avgRating, brewTime: focus.brewTime ? fmtRange(focus.brewTime) : null }) : recipesPreview(data.recipes.map((r: { recipe: { name: string } }) => r.recipe.name))} />
+<PreviewMeta preview={focus ? recipePreview({ timeline: focus.timeline, name: focus.recipe.name, description: focus.description, steps: stepsText(focus.recipe.def), tempNotes: focus.tempNotes, n: focus.n, avgRating: focus.avgRating, brewTime: focus.brewTime ? fmtRange(focus.brewTime) : null }) : recipesPreview(data.recipes.map((r: { recipe: { name: string } }) => r.recipe.name))} />
 
 <div class="recipes">
 <h1>Recipes</h1>

@@ -3618,7 +3618,7 @@ export const STATES: State[] = [
         }
       },
       {
-        name: 'recipes-by-name-path',
+        name: 'recipes-by-name-path', viewports: 'two' as const,
         path: () => '/recipes/seed-equal-pours',
         act: async (page: Page, s: Seed) => {
           const item = page.locator(`#recipe-${s.recipes.recipeId}`);
@@ -3629,6 +3629,11 @@ export const STATES: State[] = [
           await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Seed equal pours');
           await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /bloom[\s\S]*\n93°C · Rinse the filter\n\d+ brews? · avg/);
           await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', /\/recipes\/seed-equal-pours$/);
+          // The card image is a signed URL (with the pour chart in it) that serves a PNG.
+          const og = (await previewTags(page, '/recipes/seed-equal-pours'))['og:image']; // the SSR HTML is the signed one
+          expect(og).toMatch(/\/preview\.png\?c=[\w-]+&s=[\w-]+$/);
+          const img = await page.request.get(og);
+          expect([img.status(), img.headers()['content-type']]).toEqual([200, 'image/png']);
           expect((await page.goto('/recipes/no-such-recipe'))!.status()).toBe(404);
         }
       },
