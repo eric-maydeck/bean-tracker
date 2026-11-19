@@ -908,3 +908,41 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
     }
   });
 });
+
+// The selected Pick for me profile is remembered with the last rules and survives Close, a reload and unsaved edits.
+// Stores the rules and selection for real (today's state is stubbed), so it lives here and ends on the defaults.
+test('pick: the selected profile is remembered', { tag: '@on-deck' }, async ({ page }) => {
+  await page.route('**/api/pick**', (route) => route.request().method() === 'PUT' && route.request().postData()?.includes('"pick.today"') ? route.fulfill({ status: 204 }) : route.continue());
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await gotoReady(page, '/on-deck?view=pick&game=d20');
+  const panel = page.getByRole('dialog', { name: 'Rules' });
+  const profile = panel.getByLabel('Profile', { exact: true });
+  const opener = page.getByRole('button', { name: 'Rules', exact: true });
+  await opener.click();
+  await profile.selectOption('Shared Rules');
+  await panel.getByRole('button', { name: 'Close', exact: true }).click(); // the header Close keeps the selection
+  await expect(panel).toBeHidden();
+  await page.evaluate(() => { (window as unknown as { __s: string[] }).__s = []; navigator.share = async (d) => { (window as unknown as { __s: string[] }).__s.push(d!.url!); }; });
+  await page.getByRole('button', { name: 'Share', exact: true }).click();
+  expect(await page.evaluate(() => (window as unknown as { __s: string[] }).__s.at(-1)), 'Close keeps the profile in the link').toMatch(/profile=Shared\+Rules$/);
+  await reloadReady(page);
+  await opener.click();
+  await expect(profile, 'the selection survives a reload').toHaveValue('Shared Rules');
+  await expect(panel.getByLabel('Sort')).toHaveValue('name');
+  await profile.selectOption('Other Rules');
+  await reloadReady(page);
+  await opener.click();
+  await expect(profile, 'a new pick survives a reload').toHaveValue('Other Rules');
+  await panel.getByLabel('Sort').selectOption('name'); // unsaved edits on top of the profile
+  await reloadReady(page);
+  await opener.click();
+  await expect(profile, 'the profile is still selected after unsaved edits, so Save stays available').toHaveValue('Other Rules');
+  await expect(panel.getByLabel('Sort')).toHaveValue('name');
+  await expect(panel.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
+  // Leave nothing behind: the defaults and no profile.
+  await panel.getByRole('button', { name: 'Reset to defaults' }).click();
+  await reloadReady(page);
+  await opener.click();
+  await expect(profile).toHaveValue('');
+  await expect(panel.getByLabel('Sort')).toHaveValue('urgency-desc');
+});

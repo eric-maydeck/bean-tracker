@@ -6,7 +6,7 @@
   let { pose, disabled, onresult, critFor, onfail, onstart }: {
     pose: D20Pose | null;
     disabled: boolean;
-    onresult: (n: number, pose: D20Pose) => void;
+    onresult: (n: number, pose: D20Pose | null) => void;
     onfail?: () => void;
     onstart?: () => void;
     critFor: (n: number) => 'success' | 'fail' | null;
@@ -27,7 +27,8 @@
 
   export function roll() { doRoll?.(); }
 
-  function show() { const n = Number(rolled); if (Number.isInteger(n) && n >= 1 && n <= 20) doRoll?.(n); }
+  // Without WebGL there is no die to throw: a number someone rolled goes straight to the result.
+  function show() { const n = Number(rolled); if (Number.isInteger(n) && n >= 1 && n <= 20) { if (failed) { setLens(n); onresult(n, null); } else doRoll?.(n); } }
 
   function setLens(n: number) {
     const crit = critFor(n);
@@ -234,13 +235,13 @@
       <span class="inset-label">{lensLabel}</span>
       <button type="button" class="button button-solid roll" class:idle={!blocked} disabled={blocked} onclick={() => roll()}>{rolling ? (again ? 'Roll again' : 'Rolling…') : 'Roll'}</button>
     </div>
+    {#if failed}<p class="hint">3D dice need WebGL; try the wheel, or enter a number below.</p>{/if}
   </div>
-  {#if failed}<p class="hint">3D dice need WebGL; try the wheel.</p>{/if}
   <div class="form-field group-field entry">
     <label class="someone" for="d20-rolled">Someone rolled for me:</label>
     <div class="search-row pair">
-      <input id="d20-rolled" type="number" min="1" max="20" step="1" inputmode="numeric" placeholder="1–20" aria-label="Number someone rolled" bind:value={rolled} disabled={disabled || !ready} />
-      <button type="button" class="button button-secondary" disabled={blocked} onclick={show}>Show</button>
+      <input id="d20-rolled" type="number" min="1" max="20" step="1" inputmode="numeric" placeholder="1–20" aria-label="Number someone rolled" bind:value={rolled} disabled={disabled || (!ready && !failed)} />
+      <button type="button" class="button button-secondary" disabled={failed ? disabled : blocked} onclick={show}>Show</button>
     </div>
   </div>
 </div>
@@ -272,6 +273,6 @@
   .pair .button { margin: 0; }
   .pair input { width: 6rem; } /* look comes from the site's .form-field input */
   .someone { font-size: 1.1rem; font-weight: 700; color: var(--color-accent); }
-  .hint { font-size: 13px; color: var(--color-text-muted, inherit); }
+  .hint { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); margin: 0; max-width: 40%; text-align: center; font-size: 13px; color: #f3e6d3; } /* inside the empty tray, so it adds no height */
   @media (prefers-reduced-motion: reduce) { .lens { transition: none; } .roll.idle { animation: none; } }
 </style>

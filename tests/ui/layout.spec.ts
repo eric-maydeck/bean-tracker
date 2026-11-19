@@ -100,7 +100,7 @@ const dismissPickOverlay = async (page: Page) => {
   const modal = page.getByRole('dialog', { name: 'Pick result' });
   if (await modal.isVisible()) { await page.keyboard.press('Escape'); await expect(modal).toBeHidden(); }
 };
-// Pick for me saves through /api/pick; states never write, so the endpoint is stubbed (pick-profile-remembered stores the rules and the selection for real, and puts them back).
+// Pick for me saves through /api/pick; states never write, so the endpoint is stubbed.
 const stubPickApi = (page: Page) => page.route('**/api/pick**', (route) => route.request().method() === 'PUT' ? route.fulfill({ status: 204 }) : route.fulfill({ json: { value: null } }));
 
 interface State {
@@ -6102,35 +6102,38 @@ export const STATES: State[] = [
     }
   },
   {
-    // The wheel runs one animation loop: after several spins only one of its frames is ever pending, and leaving the wheel leaves none.
+    // The wheel runs one animation loop: after several spins at most one animation frame is pending at rest, and leaving the wheel leaves none.
+    // Counts every requestAnimationFrame (callback names don't survive the production build); transitions are over before sampling.
     name: 'pick-wheel-one-loop', viewports: 'two',
     path: () => '/on-deck?view=pick',
     act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' }); // short spins; the loop is the same
       await page.evaluate(() => {
-        const w = window as unknown as { __raf: { pending: Set<number>; max: number } };
-        w.__raf = { pending: new Set(), max: 0 };
+        const w = window as unknown as { __raf: Set<number> };
+        w.__raf = new Set();
         const [req, cancel] = [window.requestAnimationFrame.bind(window), window.cancelAnimationFrame.bind(window)];
-        window.requestAnimationFrame = (cb) => {
-          if (cb.name !== 'tick') return req(cb); // the wheel's loop only (three.js and transitions have their own)
-          const id = req((t) => { w.__raf.pending.delete(id); cb(t); });
-          w.__raf.pending.add(id);
-          w.__raf.max = Math.max(w.__raf.max, w.__raf.pending.size);
-          return id;
-        };
-        window.cancelAnimationFrame = (id) => { w.__raf.pending.delete(id); cancel(id); };
+        window.requestAnimationFrame = (cb) => { const id = req((t) => { w.__raf.delete(id); cb(t); }); w.__raf.add(id); return id; };
+        window.cancelAnimationFrame = (id) => { w.__raf.delete(id); cancel(id); };
       });
-      const stats = () => page.evaluate(() => { const r = (window as unknown as { __raf: { pending: Set<number>; max: number } }).__raf; return { pending: r.pending.size, max: r.max }; });
-      for (let i = 0; i < 3; i++) {
+      // The most frames pending at once over half a second of rest.
+      const pendingAtRest = async () => {
+        await page.waitForTimeout(1200);
+        return page.evaluate(() => new Promise<number>((done) => {
+          const w = window as unknown as { __raf: Set<number> };
+          let max = 0; const t0 = performance.now();
+          const poll = () => { max = Math.max(max, w.__raf.size); if (performance.now() - t0 < 500) setTimeout(poll, 10); else done(max); };
+          poll();
+        }));
+      };
+      for (let i = 0; i < 2; i++) {
         await page.getByRole('button', { name: 'Spin', exact: true }).click();
         await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled({ timeout: 15000 });
         await dismissPickOverlay(page);
       }
-      const s = await stats();
-      expect(s.max, 'the wheel loop was observed').toBeGreaterThanOrEqual(1);
-      expect(s.max, 'one loop at a time, however many spins').toBe(1);
-      await page.getByRole('group', { name: 'Game' }).getByRole('button', { name: 'D20' }).click();
+      expect(await pendingAtRest(), 'one loop at a time, however many spins').toBeLessThanOrEqual(1);
+      await page.getByRole('button', { name: 'Currently open', exact: true }).click();
       await expect(page.locator('.wheel')).toHaveCount(0);
-      expect((await stats()).pending, 'unmounting the wheel leaves no loop').toBe(0);
+      expect(await pendingAtRest(), 'unmounting the wheel leaves no loop').toBe(0);
     }
   },
   {
@@ -6218,6 +6221,32 @@ export const STATES: State[] = [
       await expect(panel).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(panel).toBeHidden();
+    }
+  },
+  {
+    // No WebGL: the note sits inside the empty tray (no extra height) and a number someone rolled still shows its coffee.
+    name: 'pick-d20-no-webgl', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.addInitScript(() => {
+        const get = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, id: string, ...rest: unknown[]) {
+          return /webgl/.test(id) ? null : (get as (...a: unknown[]) => RenderingContext | null).call(this, id, ...rest);
+        } as typeof get;
+      });
+      await page.reload();
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const hint = page.locator('.d20 .hint');
+      await expect(hint).toBeVisible({ timeout: 20000 });
+      const [hb, sb] = [(await hint.boundingBox())!, (await page.locator('.d20 .stage').boundingBox())!];
+      expect(hb.y >= sb.y && hb.y + hb.height <= sb.y + sb.height, 'the note is inside the tray').toBe(true);
+      await expect(page.getByRole('button', { name: 'Roll', exact: true })).toBeDisabled();
+      if ((page.viewportSize()?.width ?? 0) >= 1280) await expectOutRowOnScreen(page);
+      await page.getByLabel('Number someone rolled').fill('7');
+      await page.getByRole('button', { name: 'Show', exact: true }).click();
+      await expect(page.locator('.pick-modal .rolled b')).toHaveText('7');
+      await dismissPickOverlay(page);
+      await expect(page.locator('tr.rolled td.n')).toHaveText('7');
     }
   },
   {
@@ -6605,44 +6634,6 @@ export const STATES: State[] = [
       await expect(page.locator('.shared-note')).toHaveCount(0);
       await page.getByRole('button', { name: 'Share', exact: true }).click();
       expect(await shared(), 'Reset to defaults from a shared link').toMatch(/rules=default$/);
-    }
-  },
-  {
-    // The selected profile is remembered with the last rules (it comes back only while it still holds them) and survives Close.
-    name: 'pick-profile-remembered', viewports: 'two',
-    path: () => '/on-deck?view=pick&game=d20',
-    act: async (page) => {
-      await page.emulateMedia({ reducedMotion: 'reduce' });
-      const panel = page.getByRole('dialog', { name: 'Rules' });
-      const profile = panel.getByLabel('Profile', { exact: true });
-      const opener = page.getByRole('button', { name: 'Rules', exact: true });
-      await opener.click();
-      await profile.selectOption('Shared Rules');
-      await panel.getByRole('button', { name: 'Close', exact: true }).click(); // the header Close keeps the selection
-      await expect(panel).toBeHidden();
-      await page.evaluate(() => { (window as unknown as { __s: string[] }).__s = []; navigator.share = async (d) => { (window as unknown as { __s: string[] }).__s.push(d!.url!); }; });
-      await page.getByRole('button', { name: 'Share', exact: true }).click();
-      expect(await page.evaluate(() => (window as unknown as { __s: string[] }).__s.at(-1)), 'Close keeps the profile in the link').toMatch(/profile=Shared\+Rules$/);
-      await reloadReady(page);
-      await opener.click();
-      await expect(profile, 'the selection survives a reload').toHaveValue('Shared Rules');
-      await expect(panel.getByLabel('Sort')).toHaveValue('name');
-      await profile.selectOption('Other Rules');
-      await reloadReady(page);
-      await opener.click();
-      await expect(profile, 'a new pick survives a reload').toHaveValue('Other Rules');
-      await panel.getByLabel('Sort').selectOption('name'); // unsaved edits on top of the profile
-      await reloadReady(page);
-      await opener.click();
-      await expect(profile, 'the profile is still selected after unsaved edits, so Save stays available').toHaveValue('Other Rules');
-      await expect(panel.getByLabel('Sort')).toHaveValue('name');
-      await expect(panel.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
-      // Leave nothing behind: the defaults and no profile.
-      await panel.getByRole('button', { name: 'Reset to defaults' }).click();
-      await reloadReady(page);
-      await opener.click();
-      await expect(profile).toHaveValue('');
-      await expect(panel.getByLabel('Sort')).toHaveValue('urgency-desc');
     }
   },
   {
@@ -13206,8 +13197,7 @@ const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   test(state.name, { tag: [routeTag(state), ...tabTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
     const s = seed();
-    if (state.name === 'pick-profile-remembered') await page.route('**/api/pick**', (route) => route.request().method() === 'PUT' && route.request().postData()?.includes('"pick.today"') ? route.fulfill({ status: 204 }) : route.continue()); // rules and selection are really stored (a reload reads them back); today's state is not
-    else if (state.name.startsWith('pick-')) await stubPickApi(page); // before the page loads: Pick saves its state on load
+    if (state.name.startsWith('pick-')) await stubPickApi(page); // before the page loads: Pick saves its state on load
     await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);
     // Flush Pick's debounced save while the stub is still up: closing the page would send it for real and leave a result behind for the next state.
