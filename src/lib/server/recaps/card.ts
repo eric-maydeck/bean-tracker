@@ -132,8 +132,8 @@ function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
   const n = t.series[0].values.length, k = t.series.length;
   const ticks = t.x ?? [];
   // Data labels go only where each fits over its own bar; they replace the y labels and rules (which would repeat them).
-  const fits = (pw: number) => t.kind === 'vbars' && t.vals && t.vals.every((v) => textW(v) <= (pw - GAP * (n - 1)) / n + GAP - 4);
-  const vals = fits(WIDTH) ? t.vals! : null;
+  const tv = t.kind === 'vbars' ? t.vals : undefined;
+  const vals = tv?.every((v) => textW(v) <= (WIDTH - GAP * (n - 1)) / n + GAP - 4) ? tv : null;
   const y = vals ? undefined : t.y;
   const gutter = y ? Math.max(textW(y[0]), textW(y[1])) + 12 : 0;
   const PW = WIDTH - gutter, w = (PW - GAP * (n - 1)) / n;
