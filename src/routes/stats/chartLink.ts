@@ -115,7 +115,7 @@ function ranked(header: string, rows: { value: string; name: string }[], plain =
 const clip = (s: string) => (s.length > 80 ? s.slice(0, 79) + '…' : s);
 const statsCard = (big: string, period: string, thumb: Thumb): Card => ({ big, label: `Stats · ${period}`, thumb });
 // Top 5 bars, as long as value ÷ largest (by size, so a negative "vs like coffees" gap still draws).
-function bars(rows: { value: number; text: string; name: string }[], plain: boolean): Thumb {
+export function bars(rows: { value: number; text: string; name: string }[], plain: boolean): Thumb {
   const top = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9);
   return { kind: 'bars', rows: rows.slice(0, 5).map((r) => [clip(r.name), clip(r.text), Math.abs(r.value) / top]), ...(plain && { plain }) };
 }
