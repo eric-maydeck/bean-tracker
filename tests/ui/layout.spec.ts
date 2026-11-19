@@ -11,6 +11,13 @@ import { PART, PARTS } from './viewports';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
+async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
+  const b = (await page.locator('.out-row').boundingBox())!;
+  const vh = page.viewportSize()!.height;
+  expect(b.y, 'Out for today on screen, no scrolling').toBeGreaterThanOrEqual(0);
+  expect(b.y + b.height, 'Out for today on screen, no scrolling').toBeLessThanOrEqual(vh);
+}
+
 
 /** Switches the /stats tab the way a user does: "☰ View: …" (or, scrolled on a phone, the short row's ☰), then the drawer link for `tab`. */
 async function pickTab(page: Page, tab: string) {
@@ -5849,7 +5856,7 @@ export const STATES: State[] = [
       const [gb, rb] = [(await page.getByRole('group', { name: 'Game' }).getByRole('button', { name: 'Wheel' }).boundingBox())!, (await rules.boundingBox())!];
       expect(Math.abs(gb.y - rb.y), 'Rules on the Game row').toBeLessThanOrEqual(3);
       expect(Math.abs(gb.height - rb.height), 'same height').toBeLessThanOrEqual(3);
-      if ((page.viewportSize()?.width ?? 0) > 640) await expect(page.locator('.out-row')).toBeInViewport(); // no scrolling to reach it
+      if ((page.viewportSize()?.width ?? 0) > 640) await expectOutRowOnScreen(page); // no scrolling to reach it
       await rules.click();
       await expect(page.getByRole('group', { name: 'Pool' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Reset to defaults' })).toBeVisible();
@@ -5907,7 +5914,7 @@ export const STATES: State[] = [
       expect(rowB.x + rowB.width - (roasterB.x + roasterB.width), 'roaster flush right').toBeLessThanOrEqual(4);
       const [listB, chipB] = [(await ex.locator('.list').boundingBox())!, (await ex.locator('.chip').first().boundingBox())!];
       expect(chipB.y, 'chips under the list').toBeGreaterThanOrEqual(listB.y + listB.height - 1);
-      // A chip reads "Name · Roaster"; cut short on desktop, a hover tip has the whole of it.
+      // A chip reads "Roaster · Name"; cut short on desktop, a hover tip has the whole of it.
       const search = ex.getByLabel('Search Excluded coffees');
       await search.fill('Finca');
       await ex.locator('.list label').first().getByRole('checkbox').check();
@@ -5971,14 +5978,12 @@ export const STATES: State[] = [
       const [t1, t2] = [(await page.locator('table.board').nth(0).boundingBox())!, (await page.locator('table.board').nth(1).boundingBox())!];
       if ((page.viewportSize()?.width ?? 0) > 900) {
         expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
-        // Reset today level with Brew, the same size (both games).
-        const [brew, reset] = [(await page.locator('.result').getByRole('button', { name: 'Brew', exact: true }).boundingBox())!, (await page.getByRole('button', { name: 'Reset today' }).boundingBox())!];
-        if (await page.locator('.result img').count()) expect(Math.abs(brew.y - reset.y), 'Reset today level with Brew (an image card)').toBeLessThanOrEqual(2);
-        expect(Math.abs(brew.height - reset.height), 'same height').toBeLessThanOrEqual(2);
+        await expectOutRowOnScreen(page);
       } else {
         expect(Math.abs(t2.x - t1.x), 'one column').toBeLessThanOrEqual(1); // stacked: one table, 1 to 20
         expect(t2.y, 'second half under the first').toBeGreaterThan(t1.y + t1.height - 1);
-        await expect(page.locator('table.board').nth(1).locator('thead')).toBeHidden();
+        expect((await page.locator('table.board').nth(1).locator('thead').boundingBox())!.height, 'second header sr-only').toBeLessThanOrEqual(2);
+        await expectOutRowOnScreen(page);
       }
       await expect(page.locator('.pick-card')).toBeVisible();
       await expect(page).toHaveURL(/game=d20/);
@@ -6036,19 +6041,17 @@ export const STATES: State[] = [
       }
       const card = page.locator('.result');
       await expect(card.locator('.pick-card')).toBeVisible();
-      expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(320);
+      expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(621);
       await expect(card.getByRole('button', { name: 'Close' })).toHaveCount(0);
       const img = card.locator('img');
-      if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(281); expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(1); }
+      if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(261); expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(1); }
       const bs = await Promise.all(['Brew', 'Discard', 'Open coffee'].map((n) => card.getByRole('button', { name: n, exact: true }).boundingBox()));
       for (const b of bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
-      // Reset today level with Brew, the same size.
-      const [brew, reset] = [bs[0]!, (await page.getByRole('button', { name: 'Reset today' }).boundingBox())!];
+      // Horizontal card: the thumbnail left, the fields and buttons right, no empty band under the buttons.
       const cardBox = (await card.boundingBox())!;
-      expect(Math.abs(cardBox.y + cardBox.height - (brew.y + brew.height) - 17), 'no empty band under the card content').toBeLessThanOrEqual(3);
-      expect(Math.abs(brew.height - reset.height), 'same height').toBeLessThanOrEqual(2);
-      // An image card is taller than the wheel column, so Reset today (at the row's foot) is level with Brew; a short card sits top-aligned.
-      if (await img.count()) expect(Math.abs(brew.y - reset.y), 'Reset today level with Brew').toBeLessThanOrEqual(2);
+      expect(Math.abs(cardBox.y + cardBox.height - (bs[0]!.y + bs[0]!.height) - 17), 'no empty band under the card content').toBeLessThanOrEqual(3);
+      if (await img.count()) expect((await img.boundingBox())!.x + 262, 'content right of the thumbnail').toBeLessThan(bs[0]!.x + 1);
+      await expectOutRowOnScreen(page);
       // The /coffees card's rows: roaster, origin, roast level, cost.
       await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
     }
