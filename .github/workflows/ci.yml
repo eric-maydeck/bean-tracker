@@ -101,7 +101,29 @@ jobs:
 
       - run: npm ci
       - run: npx svelte-kit sync
-      - run: npx playwright install --with-deps firefox
+      # Browser cached per Playwright version; system deps from apt, retried with a per-try timeout so a flaky
+      # Ubuntu mirror (2026-11-19: a 14-minute hang, then security.ubuntu.com timeouts) can't fail or stall a shard.
+      - &pw-version
+        id: pw
+        run: echo "v=$(node -p 'require("playwright/package.json").version')" >> "$GITHUB_OUTPUT"
+      - &pw-cache
+        id: pw-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-firefox-${{ runner.os }}-${{ steps.pw.outputs.v }}
+      - &pw-browser
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 10
+        run: npx playwright install firefox
+      - &pw-deps
+        timeout-minutes: 15
+        run: |
+          for i in 1 2 3; do
+            timeout 240 npx playwright install-deps firefox && exit 0
+            echo "install-deps attempt $i failed; retrying"; sleep 20
+          done
+          exit 1
       # balanced = 4 workers, matching the 4-vCPU runner (performance's 9 overloads it).
       - run: npm run test:ui:prod
         env:
@@ -150,7 +172,10 @@ jobs:
 
       - run: npm ci
       - run: npx svelte-kit sync
-      - run: npx playwright install --with-deps firefox
+      - *pw-version
+      - *pw-cache
+      - *pw-browser
+      - *pw-deps
       - run: node scripts/test-changed.ts -- $(git diff --name-only origin/${{ github.base_ref }}...HEAD)
         env:
           TZ: America/Denver
