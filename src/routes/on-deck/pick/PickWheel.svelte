@@ -43,7 +43,9 @@
   }
 
   const FONT = '600 13px system-ui'; // drawing space, so labels never depend on the canvas size
-  const LABEL_MAX = BASE / 2 - 18 - 75;
+  const R = BASE / 2 - 18; // wheel radius
+  const LABEL_START = BASE * 0.12 + 12; // the hub's radius (.hub is 24% wide) plus a fixed gap: every label starts here
+  const LABEL_MAX = R - 14 - LABEL_START;
   let labelKey: unknown[] = [];
   let labels: string[] = [];
   // Labels are measured and truncated once per slices/names change, never per frame.
@@ -64,7 +66,7 @@
     const ctx = wheel.getContext('2d')!;
     const k = (width * dpr()) / BASE;
     ctx.setTransform(k, 0, 0, k, 0, 0);
-    const cx = BASE / 2, cy = BASE / 2, R = BASE / 2 - 18;
+    const cx = BASE / 2, cy = BASE / 2;
     ctx.clearRect(0, 0, BASE, BASE);
     layoutLabels(ctx);
     let ci = 0;
@@ -85,9 +87,9 @@
       ctx.lineWidth = s.kind === 'coffee' ? 2 : 2.5; ctx.stroke();
       ctx.rotate(mid);
       if (s.kind === 'coffee') {
-        // same rule for every wedge: along the centre radius, top of the text toward the wedge's counter-clockwise side
-        ctx.fillStyle = '#f6eee2'; ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
-        ctx.fillText(labels[i], R - 14, 0);
+        // same rule for every wedge: along the centre radius from a fixed gap outside the hub, top of the text toward the wedge's counter-clockwise side
+        ctx.fillStyle = '#f6eee2'; ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+        ctx.fillText(labels[i], LABEL_START, 0);
       } else if (s.kind === 'success') {
         ctx.fillStyle = '#fff8dc'; star(ctx, R - 26, 0, 10); ctx.fillStyle = 'rgba(255,255,255,.9)'; star(ctx, R - 60 - 8 * Math.sin(shimmer * 1.7), 0, 4);
       } else skull(ctx, R - 26, 0, 12);
