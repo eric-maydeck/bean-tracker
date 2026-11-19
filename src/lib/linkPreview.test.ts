@@ -36,7 +36,7 @@ describe('plural', () => {
 
 describe('coffeePreview', () => {
   it('builds title and description', () => {
-    expect(coffeePreview(kenya, null)).toEqual({ title: 'Kenya AA Inoi Kianderi', description: 'The Picky Chemist\n🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03', image: null, card: { big: 'Kenya AA Inoi Kianderi', label: 'The Picky Chemist' } });
+    expect(coffeePreview(kenya, null)).toEqual({ title: 'Kenya AA Inoi Kianderi', description: 'The Picky Chemist\n🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03', image: null, card: { big: 'Kenya AA Inoi Kianderi', label: 'The Picky Chemist', coffee: {} } });
   });
   it('skips missing fields', () => {
     expect(coffeePreview({ ...kenya, origin: null, processing: '  ', amount_g: null, roast_date: null }, null).description).toBe('The Picky Chemist');
@@ -52,19 +52,15 @@ describe('coffeePreview', () => {
     expect(line(null)).toBe('🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03');
     expect(line(undefined)).toBe('🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03');
   });
-  it('PREVIEW_CARDS on: always the card, with a saved photo only', () => {
+  it('always the card, with a saved photo only', () => {
     const src = `/img/coffees/${'a'.repeat(64)}.webp`;
-    const saved = coffeePreview(kenya, { src, alt: 'x', fill: '#e6ddd2' }, true);
+    const saved = coffeePreview(kenya, { src, alt: 'x', fill: '#e6ddd2' });
     expect([saved.image, saved.card?.coffee]).toEqual([null, { photo: { src, fill: '#e6ddd2' } }]);
-    const remote = coffeePreview(kenya, { src: 'https://o/a.webp', alt: 'x', fill: '#e6ddd2' }, true);
+    const remote = coffeePreview(kenya, { src: 'https://o/a.webp', alt: 'x', fill: '#e6ddd2' });
     expect([remote.image, remote.card?.coffee]).toEqual([null, {}]);
-    expect(coffeePreview(kenya, null).card?.coffee).toBeUndefined();
   });
-  it('formats kg and passes the image', () => {
-    const image = { src: 'https://o/a.webp', alt: 'x' };
-    const p = coffeePreview({ ...kenya, amount_g: 1500 }, image);
-    expect(p.description).toContain('1.5kg');
-    expect(p.image).toBe(image);
+  it('formats kg', () => {
+    expect(coffeePreview({ ...kenya, amount_g: 1500 }, null).description).toContain('1.5kg');
   });
 });
 

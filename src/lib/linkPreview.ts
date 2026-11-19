@@ -78,8 +78,7 @@ export function fitList(items: string[], sep: string, more: boolean, max = DESCR
 
 export function coffeePreview(
   c: Pick<CoffeeRow, 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'amount_g' | 'roast_date' | 'grams_left'>,
-  image: { src: string; alt: string; fill?: string } | null,
-  cards = false
+  image: { src: string; alt: string; fill?: string } | null
 ): Preview {
   const details = join([
     c.origin?.trim() && originWithFlag(c.origin.trim()),
@@ -87,10 +86,9 @@ export function coffeePreview(
     c.amount_g != null && formatBag(c.amount_g, c.grams_left != null && c.grams_left < c.amount_g ? c.grams_left : null),
     c.roast_date && `Roasted ${c.roast_date}`
   ]);
-  const card: Card = { big: c.coffee_name, label: c.roaster ?? '' };
-  // PREVIEW_CARDS on: always the coffee card (no bare photo), with the saved photo when there's a local copy.
-  if (cards) card.coffee = image?.fill && PHOTO_RE.test(image.src) ? { photo: { src: image.src, fill: image.fill } } : {};
-  return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image: cards ? null : image, card };
+  // Always the coffee card (no bare photo), with the saved photo when there's a local copy.
+  const card: Card = { big: c.coffee_name, label: c.roaster ?? '', coffee: image?.fill && PHOTO_RE.test(image.src) ? { photo: { src: image.src, fill: image.fill } } : {} };
+  return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image: null, card };
 }
 
 export function waterPreview(w: { mode: Mode; tip: Tip; recipe: string; ml: number; drops: Drops; gh: number; kh: number; target?: { gh: number; kh: number }; idealMl?: number[] }): Preview {
