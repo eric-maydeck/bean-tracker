@@ -73,6 +73,21 @@ const BAR = '#c06408',
 // edge = the series colour itself; title = the series' -ink mixed 30% into --color-text (#2b211b), >= 5.8:1 on its fill (values are espresso, >= 8.6:1).
 const TILE_COLORS = [['#e9effe', '#4357a1', '#a8bffd'], ['#fef0e2', '#8b4a08', '#fdc58b'], ['#e4f6ea', '#10663a', '#92dba9'],
   ['#f6e9f8', '#824387', '#d9a6e3'], ['#ffedf0', '#9a3948', '#ffb7c1'], ['#dff6fa', '#11646a', '#7fdcea']];
+// A name that starts with a flag emoji ("🇪🇹 Ethiopia", from originWithFlag) draws that flag as its own round image (the vendored
+// circle-flags SVG, flags.ts) `flag` px wide, centred on the line, then the name, which truncates after it. No network, no emoji font.
+const FLAG_START = /^([\u{1F1E6}-\u{1F1FF}]{2}) /u;
+const flagUri = (emoji: string) => {
+  const svg = FLAG_SVG[String.fromCharCode(...[...emoji].map((c) => c.codePointAt(0)! - 0x1f1e6 + 97))];
+  return svg && `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+};
+function named(text: string, flag: number, style: Record<string, unknown>) {
+  const m = FLAG_START.exec(text), uri = m && flagUri(m[1]);
+  if (!uri) return el('div', style, text);
+  return el('div', { ...style, display: 'flex', alignItems: 'center', whiteSpace: 'normal' }, [
+    { type: 'img', props: { src: uri, width: flag, height: flag, style: { flexShrink: 0, marginRight: 10 } } },
+    el('div', { ...clipLine, flexGrow: 1, minWidth: 0 }, text.slice(m![0].length))
+  ]);
+}
 const clipLine = { display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 const karla = { fontFamily: 'Karla', fontWeight: 700 };
 // Values are never truncated, they shrink to fit `avail` px (~0.6em a character). Like values share one size when the longest
@@ -91,7 +106,7 @@ function thumbnail(t: Thumb) {
     const sizes = valueSizes(t.rows.map((r) => r[1]), 30, 150);
     return box(t.rows.map(([label, value, frac], i) => el('div', { display: 'flex', alignItems: 'center', height: THUMB_H / 5, ...karla, fontSize: 30 }, [
       el('div', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 22, marginRight: 16, flexShrink: 0, fontSize: 26, background: !t.plain && i < 3 ? MEDAL_FILL[i] : 'transparent' }, String(i + 1)),
-      el('div', { ...clipLine, width: 380, flexShrink: 0 }, label),
+      named(label, 40, { ...clipLine, width: 380, flexShrink: 0 }),
       el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, background: BAR, borderRadius: 6 })),
       el('div', { display: 'flex', justifyContent: 'flex-end', width: 150, flexShrink: 0, whiteSpace: 'nowrap', fontSize: sizes[i] }, value)
     ])));
@@ -99,7 +114,7 @@ function thumbnail(t: Thumb) {
   if (t.kind === 'tile') {
     return box([
       el('div', { display: 'block', whiteSpace: 'nowrap', fontFamily: 'Lora', fontWeight: 600, fontSize: valueSizes([t.value], 150, WIDTH)[0], lineHeight: 1.1 }, t.value),
-      el('div', { ...clipLine, ...karla, fontSize: 44, marginTop: 8 }, t.holder),
+      named(t.holder, 44, { ...clipLine, ...karla, fontSize: 44, marginTop: 8 }),
       ...(t.date ? [el('div', { ...clipLine, ...karla, fontSize: 34, marginTop: 6, opacity: 0.85 }, t.date)] : [])
     ]);
   }
@@ -135,12 +150,8 @@ export async function cardSvg(c: CardIn): Promise<string> {
       el('div', {}, c.cover ? '' : `${c.year} in coffee`), el('div', {}, 'Bean Tracker')
     ])
   ]);
-  return satori(tree as never, { width: CARD.width, height: CARD.height, fonts: FONTS, graphemeImages: GRAPHEME_IMAGES });
+  return satori(tree as never, { width: CARD.width, height: CARD.height, fonts: FONTS });
 }
-
-// Flag emoji are drawn from the vendored circle-flags SVGs (flags.ts): satori's graphemeImages maps each emoji to a data URI.
-const flagEmoji = (iso: string) => String.fromCodePoint(...[...iso.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
-const GRAPHEME_IMAGES = Object.fromEntries(Object.entries(FLAG_SVG).map(([iso, svg]) => [flagEmoji(iso), `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`]));
 
 export const cardPng = (svg: string): Promise<Buffer> => sharp(Buffer.from(svg)).png().toBuffer();
 
