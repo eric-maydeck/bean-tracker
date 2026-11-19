@@ -34,7 +34,7 @@ test.afterAll(() => {
   db.close();
 });
 
-test('cards: inline edit, Set as roaster default, Save writes the default', { tag: '@coffees' }, async ({ page }) => {
+test('cards: edit overlay, Set as roaster default, Save writes the default', { tag: '@coffees' }, async ({ page }) => {
   await gotoReady(page, '/coffees?status=all&view=cards');
   await page.locator('.card').filter({ hasText: NAME }).getByRole('button', { name: 'Edit', exact: true }).click();
   await page.locator('#image_url').fill(LOGO);
@@ -45,21 +45,41 @@ test('cards: inline edit, Set as roaster default, Save writes the default', { ta
   await expect.poll(read(`SELECT image_url FROM coffees WHERE coffee_name = ?`, NAME)).toEqual({ image_url: null });
 });
 
-test('cards: two inline edits open, Save on A writes A and leaves B open', { tag: '@coffees' }, async ({ page }) => {
+test('cards: Save in the edit overlay writes A; Cancel on B writes nothing', { tag: '@coffees' }, async ({ page }) => {
   await gotoReady(page, '/coffees?status=all&view=cards');
-  for (const [name, probe] of [[A, 'a'], [B, 'b']]) {
-    const card = page.locator('.card').filter({ hasText: name });
-    await card.evaluate((el, p) => (el.dataset.probe = p), probe); // the card element survives the form swap
-    await card.getByRole('button', { name: 'Edit', exact: true }).click();
-    await page.locator(`[data-probe="${probe}"] #processing`).fill(probe === 'a' ? 'Honey' : 'Natural');
-  }
-  await page.locator('[data-probe="a"]').getByRole('button', { name: 'Save', exact: true }).click();
+  const modal = page.locator('.modal');
+  await page.locator('.card').filter({ hasText: A }).getByRole('button', { name: 'Edit', exact: true }).click();
+  await modal.locator('#processing').fill('Honey');
+  await modal.getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(read(`SELECT processing FROM coffees WHERE coffee_name = ?`, A)).toEqual({ processing: 'Honey' });
-  await expect(page.locator('[data-probe="a"] form')).toHaveCount(0);
-  await expect(page.locator('[data-probe="b"] #processing')).toHaveValue('Natural');
-  await page.locator('[data-probe="b"]').getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(page.locator('form #processing')).toHaveCount(0);
+  await expect(modal).toHaveCount(0);
+  await page.locator('.card').filter({ hasText: B }).getByRole('button', { name: 'Edit', exact: true }).click();
+  await modal.locator('#processing').fill('Natural');
+  page.once('dialog', (d) => d.accept()); // typed: Cancel asks before dropping it
+  await modal.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(modal).toHaveCount(0);
   await expect.poll(read(`SELECT processing FROM coffees WHERE coffee_name = ?`, B)).not.toEqual({ processing: 'Natural' });
+});
+
+test('coffee page: a status icon applies at once, stays on the page, and Undo restores it', { tag: '@coffees' }, async ({ page }) => {
+  const { slug, status } = read(`SELECT slug, status FROM coffees WHERE coffee_name = ?`, A)() as { slug: string; status: string };
+  await gotoReady(page, `/coffees/${slug}`);
+  const icons = page.locator('.detail-status .button-icon');
+  // Slots never move: same four boxes before and after, whatever the action did (a toggle swaps in place, a disabled one stays).
+  const boxes = () => icons.evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }));
+  const before = await boxes();
+  expect(before).toHaveLength(4);
+  const icon = page.locator('.detail-status').getByRole('button', { name: status === 'archive' ? 'Unarchive' : 'Archive', exact: true });
+  await icon.click();
+  await expect.poll(read(`SELECT status FROM coffees WHERE coffee_name = ?`, A)).not.toEqual({ status });
+  await expect(page).toHaveURL(new RegExp(`/coffees/${slug}$`));
+  await expect(page.getByRole('button', { name: status === 'archive' ? 'Archive' : 'Unarchive', exact: true })).toBeVisible(); // the slot swapped in place
+  const after = await boxes();
+  expect(after).toHaveLength(4);
+  after.forEach((box, i) => box.forEach((v, j) => expect(Math.abs(v - before[i][j]), `slot ${i} box[${j}] ${before[i][j]} -> ${v}`).toBeLessThanOrEqual(1)));
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect.poll(read(`SELECT status FROM coffees WHERE coffee_name = ?`, A)).toEqual({ status });
+  await expect(page).toHaveURL(new RegExp(`/coffees/${slug}$`));
 });
 
 // The layout workers share the DB and never save, so a household of one is checked here:
@@ -125,6 +145,7 @@ test.describe('coffee added popup', { tag: '@coffees' }, () => {
     // so a target of "now" can already be in the past ("Cannot fast-forward to the past").
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.mouse.move(0, 0); // Save is in the overlay's header, where the toast lands: a pointer left there would pause it
     const toast = page.locator('.added-toast');
     await expect(toast).toBeVisible();
     return toast;
@@ -647,7 +668,7 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
   const STILL = 'Still'; // seeded so a typed "STILL" proposes the site's spelling
   const EDIT = 'Std Edit Me';
   const PIXEL = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#c2185b"/></svg>');
-  const CREATE = 'form[action="?/create"]';
+  const MODAL = '.coffee-edit-modal'; // the add/clone/edit overlay; its Save sits in the sticky header
 
   const withDb = <T>(fn: (d: DatabaseSync) => T): T => {
     const d = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
@@ -678,12 +699,13 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
     await page.locator('#amount_g').fill(amount);
     await page.locator('#roast_date').fill(date);
   };
-  const saveAdd = (page: Page) => page.locator(CREATE).getByRole('button', { name: 'Save', exact: true }).click();
+  const saveAdd = (page: Page) => page.locator(MODAL).getByRole('button', { name: 'Save', exact: true }).click();
   const dialog = (page: Page) => page.locator('dialog.sd-dialog[open]');
   const dsave = (page: Page) => dialog(page).getByRole('button', { name: 'Save', exact: true });
   const openEdit = async (page: Page) => {
     await gotoReady(page, '/coffees?status=all&view=cards');
     await page.locator('.card').filter({ hasText: EDIT }).getByRole('button', { name: 'Edit', exact: true }).click();
+    await expect(page.locator(MODAL)).toBeVisible();
   };
 
   for (const [T, viewport] of [['P', { width: 480, height: 909 }], ['D', { width: 1280, height: 800 }]] as const) {
@@ -760,19 +782,18 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
       test('edit: changing only the name never prompts about stored values', async ({ page }) => {
         await openEdit(page);
         await page.locator('#coffee_name').fill(`Std Edited ${T}`);
-        await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+        await page.locator(MODAL).getByRole('button', { name: 'Save', exact: true }).click();
         await expect.poll(() => coffeeRow(`Std Edited ${T}`)()?.variety).toBe('SL34 / SL28');
         await expect(dialog(page)).toHaveCount(0);
         withDb((d) => d.prepare(`UPDATE coffees SET coffee_name = ? WHERE coffee_name = ?`).run(EDIT, `Std Edited ${T}`));
       });
 
       test('clone: only fields changed from the source are checked', async ({ page }) => {
-        await openEdit(page);
-        await expect(page.locator('#variety')).toHaveValue('SL34 / SL28');
-        await page.locator('#coffee_name').fill(`Std Clone ${T}`); // typed in the edit form, carried into the clone
-        await page.locator('form:has(#slug)').getByRole('button', { name: 'Clone', exact: true }).click();
-        await expect(page.locator(`${CREATE} #variety`)).toHaveValue('SL34 / SL28');
-        await page.locator(`${CREATE} #roaster`).fill(ROASTER);
+        await gotoReady(page, '/coffees?status=all&view=cards');
+        await page.locator('.card').filter({ hasText: EDIT }).getByRole('button', { name: 'Clone', exact: true }).click();
+        await expect(page.locator(`${MODAL} #variety`)).toHaveValue('SL34 / SL28');
+        await page.locator(`${MODAL} #coffee_name`).fill(`Std Clone ${T}`);
+        await page.locator(`${MODAL} #roaster`).fill(ROASTER);
         await saveAdd(page);
         await expect.poll(() => coffeeRow(`Std Clone ${T}`)()?.variety).toBe('SL34 / SL28');
         await expect(dialog(page)).toHaveCount(0);
@@ -849,7 +870,7 @@ test.describe('coffee form data standards', { tag: '@coffees' }, () => {
           await page.locator('#product_url').fill(URL_);
           await page.getByRole('button', { name: 'Fill from page' }).click();
           await expect(page.locator('#producer')).toHaveValue('Ana - Finca Rosa');
-          await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+          await page.locator(MODAL).getByRole('button', { name: 'Save', exact: true }).click();
           await expect.poll(() => saved.length).toBe(1);
           expect(saved[0]).toContain('producer');
           await dialog(page).getByRole('button', { name: 'Cancel' }).click(); // nothing saves

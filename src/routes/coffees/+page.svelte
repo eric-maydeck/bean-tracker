@@ -7,7 +7,6 @@
   import Usd from '#lib/components/Usd.svelte';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import { usd } from '#lib/money.ts';
-  import { tick } from 'svelte';
   import { browser } from '$app/env';
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
   import { coffeeImage } from '#lib/coffeeImage.ts';
@@ -15,6 +14,8 @@
   import { beforeNavigate, afterNavigate, snapshot } from '$app/navigation';
   import { page } from '$app/state';
   import CoffeeForm from '#lib/components/CoffeeForm.svelte';
+  import CoffeeEditModal from '#lib/components/CoffeeEditModal.svelte';
+  import CoffeeStatusActions from '#lib/components/CoffeeStatusActions.svelte';
   import AddedToast from '#lib/components/AddedToast.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import CollapsibleBar from '#lib/components/CollapsibleBar.svelte';
@@ -80,7 +81,7 @@
   // The view state the user explicitly chose (see coffeeViewState.ts):
   // mirrored into the URL and remembered for 12h. Read from the URL here so
   // SSR and the first paint already show the linked view. Untouched fields
-  // fall back to the defaults below. Edit state (editMode, pending, the Add
+  // fall back to the defaults below. Edit state (editAll, pending, the Add
   // form, expandedId...) is deliberately kept out of it. currentParams()
   // (pageUrlState.ts) reads `location` on the client, not `page.url`: a
   // history back to this page reports the URL it was first loaded with,
@@ -97,19 +98,17 @@
   let query = $derived(explicit.query ?? '');
   let view = $derived<CoffeeView>(explicit.view ?? widthView);
 
-  let editMode = $state(false);
-  // A row's own Edit button opens only that row (editIds), which then gets
-  // its own Save/Discard scoped to that coffee; the page-level Edit button
-  // opens every row (editAll) with the toolbar's Save/Discard for all.
+  // The toolbar's Edit opens every row inline (editAll) with the toolbar's Save/Discard for all. A row's own Edit
+  // button opens that coffee in the overlay instead (editingId), whose header has its own Save/Cancel.
   let editAll = $state(false);
-  const editIds = new SvelteSet<number>();
-  function canEdit(id: number) {
-    return editMode && data.isAdmin && (editAll || editIds.has(id));
+  let editingId = $state<number | null>(null);
+  function canEdit(_id: number) {
+    return editAll && data.isAdmin;
   }
   // Rows whose inline edit form is open; several can be open at once, each
   // closing only via its own Save/Cancel/Update (or the toolbar's).
   const openForms = new SvelteSet<number>();
-  // The Add form ('new') or the compact view's (non-edit) detail row.
+  // The Add overlay ('new') or the compact view's (non-edit) detail row.
   let expandedId = $state<number | 'new' | null>(null);
   let addPrefill = $state<Partial<CoffeeRow> | null>(null);
 
@@ -117,7 +116,7 @@
   // row the user opened it from, so it's clear where they were.
   snapshot<number | null>({
     id: 'coffees-expanded-row', // explicit: the default id comes from the call-site stack and changes every build
-    capture: () => (view === 'compact' && !editMode && typeof expandedId === 'number' ? expandedId : null),
+    capture: () => (view === 'compact' && !editAll && typeof expandedId === 'number' ? expandedId : null),
     restore: (id) => {
       if (id != null) expandedId = id;
     }
@@ -138,6 +137,8 @@
   // closed) — plain (not $state): only ever read synchronously from within
   // saveChanges, never rendered.
   const formRefs: Record<number, { applyPendingEdits: () => Promise<boolean> } | null> = {};
+  // The edit overlay's form, applied before its Save commits.
+  let modalRef: { applyPendingEdits: () => Promise<boolean> } | null = null;
 
   // A floating notice over the page, held a second after the reload lands.
   let refreshState = $state<'idle' | 'busy' | 'done'>('idle');
@@ -163,13 +164,10 @@
     expandedId = 'new';
   }
 
-  // Swaps in the Add form pre-filled from the clone source; open edit
-  // forms stay open.
-  async function openClone(prefill: Partial<CoffeeRow>) {
+  // Opens the overlay pre-filled from the clone source.
+  function openClone(prefill: Partial<CoffeeRow>) {
     addPrefill = prefill;
     expandedId = 'new';
-    await tick();
-    document.getElementById('add-coffee')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function closeExpanded() {
@@ -210,8 +208,13 @@
   }
 
   function enterEditMode() {
-    editMode = true;
     editAll = true;
+  }
+
+  // The overlay's Save: its own form first (as Update would), then that one coffee's commit.
+  async function saveOverlay(id: number) {
+    if (pending.get(id)?.statusAction !== 'delete' && modalRef && !(await modalRef.applyPendingEdits())) return;
+    await saveChanges(id);
   }
 
   async function saveChanges(onlyId?: number) {
@@ -259,7 +262,7 @@
         commitErrors = newErrors;
         // Re-open every failing row so its inline error is immediately
         // visible, rather than leaving the user to guess which row failed.
-        for (const e of errors) openForms.add(e.id);
+        if (editAll) for (const e of errors) openForms.add(e.id);
         saving = false;
         return;
       }
@@ -314,39 +317,38 @@
     }
     pending = new SvelteMap();
     commitErrors = new Map();
-    editMode = false;
     editAll = false;
-    editIds.clear();
     openForms.clear();
     saving = false;
     await refreshTracked();
   }
 
-  // A row opened by its own Edit button (not the page-level Edit): it gets
-  // a Save button, and its Cancel discards that coffee's staged changes.
-  function soloEdit(id: number) {
-    return !editAll && editIds.has(id);
-  }
-  function showCancel(id: number) {
-    return openForms.has(id) || soloEdit(id);
-  }
-
+  // Closes a coffee's overlay and drops what was staged for it.
   function discardRow(id: number) {
     pending.delete(id);
     commitErrors = new Map();
-    editIds.delete(id);
     openForms.delete(id);
-    if (!editAll && editIds.size === 0) editMode = false;
+    if (editingId === id) editingId = null;
   }
 
   function discardChanges() {
     pending = new SvelteMap();
     commitErrors = new Map();
-    editMode = false;
     editAll = false;
-    editIds.clear();
     openForms.clear();
   }
+
+  const allCoffees = $derived([...data.backlog, ...data.open, ...data.archive]);
+  const editingCoffee = $derived(editingId == null ? null : (allCoffees.find((c) => c.id === editingId) ?? null));
+  const formProps = $derived({
+    roastLevels: data.roastLevels,
+    roasters: data.roasters,
+    roasterImages: data.roasterImages,
+    origins: data.origins,
+    processingMethods: data.processingMethods,
+    restHistory: allCoffees,
+    subscriptions: data.subscriptions
+  });
 
   function formCoffeeFor(coffee: CoffeeRow): CoffeeRow {
     return mergeStagedCoffee(coffee, pending.get(coffee.id)?.fields);
@@ -562,120 +564,17 @@
     class="button button-secondary" class:button-icon={icons}
     type="button"
     use:labelTip={icons ? 'Edit' : undefined} aria-label={icons ? 'Edit' : undefined}
-    onclick={() => {
-      editMode = true;
-      editIds.add(coffee.id);
-      openForms.add(coffee.id);
-    }}>{#if icons}<Icon name="edit" />{:else}Edit{/if}</button
+    onclick={() => (editingId = coffee.id)}>{#if icons}<Icon name="edit" />{:else}Edit{/if}</button
   >
 {/snippet}
 
-{#snippet adminActions(coffee: CoffeeRow, icons = false)}
-  <!-- Two fixed rows (save/cancel/delete over the status actions) so the
-       Actions column never wraps to a third row and squeezes the table. -->
-  <div class="action-stack">
-    <div class="action-row">
-      {#if soloEdit(coffee.id)}
-        <button class="button button-success button-solid" class:button-icon={icons} type="button" disabled={saving} onclick={() => saveChanges(coffee.id)}
-          use:labelTip={icons ? 'Save' : undefined} aria-label={icons ? 'Save' : undefined}>
-          {#if icons}<Icon name="save" />{:else}{saving ? 'Saving…' : 'Save'}{/if}
-        </button>
-      {/if}
-      <button class="button button-secondary" class:button-icon={icons} class:button-danger={icons && showCancel(coffee.id)} type="button" disabled={saving} onclick={() => (soloEdit(coffee.id) ? discardRow(coffee.id) : toggleEdit(coffee.id))}
-        use:labelTip={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined} aria-label={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined}>
-        {#if icons}<Icon name={showCancel(coffee.id) ? 'cancel' : 'edit'} />{:else}{showCancel(coffee.id) ? 'Cancel' : 'Edit'}{/if}
-      </button>
-      {#if coffee.status !== 'archive'}
-        <button
-          class="button button-danger" class:button-icon={icons}
-          type="button"
-          aria-pressed={pending.get(coffee.id)?.statusAction === 'delete'}
-          disabled={saving}
-          onclick={() => {
-            if (pending.get(coffee.id)?.statusAction === 'delete') {
-              stageStatusAction(pending, coffee.id, 'delete');
-            } else if (confirm(`Delete ${coffee.coffee_name} by ${coffee.roaster}? This cannot be undone.`)) {
-              stageStatusAction(pending, coffee.id, 'delete');
-            }
-          }}
-          use:labelTip={icons ? 'Delete' : undefined} aria-label={icons ? 'Delete' : undefined}
-        >
-          {#if icons}<Icon name="delete" />{:else}Delete{/if}
-        </button>
-      {:else}
-        <button
-          class="button button-secondary" class:button-icon={icons}
-          type="button"
-          aria-pressed={pending.get(coffee.id)?.statusAction === 'unarchive'}
-          disabled={saving}
-          onclick={() => stageStatusAction(pending, coffee.id, 'unarchive')}
-          use:labelTip={icons ? 'Unarchive' : undefined} aria-label={icons ? 'Unarchive' : undefined}
-        >
-          {#if icons}<Icon name="restore" />{:else}Unarchive{/if}
-        </button>
-      {/if}
-    </div>
-    {#if coffee.status !== 'archive'}
-    <div class="action-row">
-        {#if coffee.status === 'backlog'}
-          <button
-            class="button" class:button-icon={icons}
-            type="button"
-            aria-pressed={pending.get(coffee.id)?.statusAction === 'open'}
-            disabled={saving}
-            onclick={() => stageStatusAction(pending, coffee.id, 'open')}
-            use:labelTip={icons ? 'Open' : undefined} aria-label={icons ? 'Open' : undefined}
-          >
-            {#if icons}<Icon name="open" />{:else}Open{/if}
-          </button>
-          {#if coffee.frozen_start_date && !coffee.frozen_end_date}
-            <button
-              class="button button-secondary" class:button-icon={icons}
-              type="button"
-              aria-pressed={pending.get(coffee.id)?.statusAction === 'thaw'}
-              disabled={saving}
-              onclick={() => stageStatusAction(pending, coffee.id, 'thaw')}
-              use:labelTip={icons ? 'Thaw' : undefined} aria-label={icons ? 'Thaw' : undefined}
-            >
-              {#if icons}<Icon name="thaw" />{:else}Thaw{/if}
-            </button>
-          {:else}
-            <button
-              class="button button-secondary" class:button-icon={icons}
-              type="button"
-              aria-pressed={pending.get(coffee.id)?.statusAction === 'freeze'}
-              disabled={saving}
-              onclick={() => stageStatusAction(pending, coffee.id, 'freeze')}
-              use:labelTip={icons ? 'Freeze' : undefined} aria-label={icons ? 'Freeze' : undefined}
-            >
-              {#if icons}<Icon name="freeze" />{:else}Freeze{/if}
-            </button>
-          {/if}
-        {:else if coffee.status === 'open'}
-          <button
-            class="button button-secondary" class:button-icon={icons}
-            type="button"
-            aria-pressed={pending.get(coffee.id)?.statusAction === 'unopen'}
-            disabled={saving}
-            onclick={() => stageStatusAction(pending, coffee.id, 'unopen')}
-            use:labelTip={icons ? 'Unopen' : undefined} aria-label={icons ? 'Unopen' : undefined}
-          >
-            {#if icons}<Icon name="unopen" />{:else}Unopen{/if}
-          </button>
-        {/if}
-        <button
-          class="button button-secondary" class:button-icon={icons}
-          type="button"
-          aria-pressed={pending.get(coffee.id)?.statusAction === 'archive'}
-          disabled={saving}
-          onclick={() => stageStatusAction(pending, coffee.id, 'archive')}
-          use:labelTip={icons ? 'Archive' : undefined} aria-label={icons ? 'Archive' : undefined}
-        >
-          {#if icons}<Icon name="archive" />{:else}Archive{/if}
-        </button>
-    </div>
-    {/if}
-  </div>
+{#snippet adminActions(coffee: CoffeeRow)}
+  <CoffeeStatusActions {coffee} pressed={pending.get(coffee.id)?.statusAction} disabled={saving} onaction={(a) => stageStatusAction(pending, coffee.id, a)}>
+    <button class="button button-secondary button-icon" class:button-danger={openForms.has(coffee.id)} type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}
+      use:labelTip={openForms.has(coffee.id) ? 'Cancel' : 'Edit'} aria-label={openForms.has(coffee.id) ? 'Cancel' : 'Edit'}>
+      <Icon name={openForms.has(coffee.id) ? 'cancel' : 'edit'} />
+    </button>
+  </CoffeeStatusActions>
   {#if pending.has(coffee.id)}
     <span class="badge badge-neutral">
       {pending.get(coffee.id)?.statusAction
@@ -802,7 +701,7 @@
   <span class="text-muted results">
     {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {formatGrams(visibleTotalGrams)}
   </span>
-  {#if data.isAdmin && expandedId !== 'new'}
+  {#if data.isAdmin}
     <button class="button add-coffee-button" type="button" onclick={openAdd}>+ Add Coffee</button>
   {/if}
   {@render sortControl('row')}
@@ -816,25 +715,39 @@
 
 {#if data.isAdmin}
   {#if expandedId === 'new'}
-    <!-- Keyed so a second clone while the form is open starts from a fresh form. -->
+    <!-- Keyed so a second clone while the overlay is open starts from a fresh form. -->
     {#key addPrefill}
-      <div id="add-coffee">
-        <CoffeeForm
-          prefill={addPrefill}
-          cloned={addPrefill != null}
-          roastLevels={data.roastLevels}
-          roasters={data.roasters}
-          roasterImages={data.roasterImages}
-          origins={data.origins}
-          processingMethods={data.processingMethods}
-          restHistory={[...data.backlog, ...data.open, ...data.archive]}
-          subscriptions={data.subscriptions}
-          formError={form?.error ?? null}
-          oncancel={closeExpanded}
-          onsuccess={added}
-        />
-      </div>
+      <CoffeeEditModal
+        mode={addPrefill ? 'clone' : 'add'}
+        prefill={addPrefill}
+        formProps={formProps}
+        formError={form?.error ?? null}
+        oncancel={closeExpanded}
+        onsuccess={added}
+      >
+        {#snippet title()}{addPrefill ? 'Clone coffee' : 'Add Coffee'}{/snippet}
+      </CoffeeEditModal>
     {/key}
+  {:else if editingCoffee}
+    {@const ec = editingCoffee}
+    {@const id = ec.id}
+    <CoffeeEditModal
+      bind:this={modalRef}
+      mode="edit"
+      coffee={formCoffeeFor(ec)}
+      formProps={formProps}
+      formError={commitErrors.get(id) ?? commitErrors.get(-1) ?? null}
+      {saving}
+      hasStaged={pending.has(id)}
+      onstage={(fields) => stageFieldChange(pending, id, fields)}
+      onsave={() => saveOverlay(id)}
+      oncancel={() => discardRow(id)}
+    >
+      {#snippet title()}<CoffeeName name={ec.coffee_name} />{/snippet}
+      {#snippet statusActions()}
+        <CoffeeStatusActions stable coffee={ec} pressed={pending.get(id)?.statusAction} disabled={saving} onaction={(a) => stageStatusAction(pending, id, a)} />
+      {/snippet}
+    </CoffeeEditModal>
   {/if}
 {/if}
 
@@ -848,7 +761,7 @@
             <!-- Save/Cancel under the open form, like Compact: the card's own
                  action row is replaced by the form. -->
             <div class="action-buttons under-form">
-              {@render adminActions(coffee, true)}
+              {@render adminActions(coffee)}
             </div>
           {:else}
             {@const img = coffeeImage(coffee, '')}
@@ -901,7 +814,7 @@
                  action set, so it keeps that row's look too (.under-form). -->
             <div class="action-buttons" class:under-form={canEdit(coffee.id)}>
               {#if canEdit(coffee.id)}
-                {@render adminActions(coffee, true)}
+                {@render adminActions(coffee)}
               {:else}
                 {@render brewButton(coffee)}
                 {@render importButton(coffee)}
@@ -983,7 +896,7 @@
             {@render expandedForm(coffee)}
           {/if}
           <div class="action-buttons">
-            {@render adminActions(coffee, true)}
+            {@render adminActions(coffee)}
           </div>
         {:else}
           <button
@@ -1219,7 +1132,7 @@
                   {#if canEdit(coffee.id)}
                     <!-- While this row's form is open its actions sit under the form (below). -->
                     {#if !openForms.has(coffee.id)}
-                      {@render adminActions(coffee, true)}
+                      {@render adminActions(coffee)}
                     {/if}
                   {:else}
                     {@render brewButton(coffee)}
@@ -1237,7 +1150,7 @@
                 {@render expandedForm(coffee)}
                 <!-- Under the form, like Compact: on a phone the row above is off-screen. -->
                 <div class="action-buttons under-form">
-                  {@render adminActions(coffee, true)}
+                  {@render adminActions(coffee)}
                 </div>
               </td>
             </tr>
