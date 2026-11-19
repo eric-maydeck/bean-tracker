@@ -1647,6 +1647,28 @@ export const STATES: State[] = [
       if (process.env.UI_SHOTS === 'all') await page.screenshot({ path: `.ui-test/screenshots/detail-status-${test.info().project.name}.png` });
       await checkLayout(page);
     } },
+  // Admin: the whole action row (Back, status buttons, Import ... Share) is one line from 1003px (phone landscape) up, with the
+  // status buttons icon-sized below 1126px and Clone-width from there (where the full row first fits with the normal gap).
+  { name: 'coffee-detail-actions-one-line', viewports: 'two', path: (s: Seed) => `/coffees/${s.slugs.frozen}`,
+    act: async (page: Page) => {
+      for (const [width, wide] of [[1003, false], [1125, false], [1126, true], [1280, true]] as const) {
+        await page.setViewportSize({ width, height: 800 });
+        await frames(page);
+        const m = await page.evaluate(() => {
+          const kids = [...document.querySelectorAll<HTMLElement>('.detail-actions > *')].map((c) => c.getBoundingClientRect());
+          const status = document.querySelector('.detail-status .button-icon')!.getBoundingClientRect();
+          const imp = document.querySelector('.detail-import')!.getBoundingClientRect();
+          const back = document.querySelector('.detail-back')!.getBoundingClientRect();
+          const last = document.querySelectorAll('.detail-status .button-icon')[3].getBoundingClientRect();
+          return { tops: kids.map((k) => k.top), sw: status.width, gap: imp.left - last.right, backGap: status.left - back.right, over: document.documentElement.scrollWidth > innerWidth };
+        });
+        expect(Math.max(...m.tops) - Math.min(...m.tops), `${width}px: the action row is one line`).toBeLessThanOrEqual(1);
+        expect(m.over, `${width}px: no sideways scroll`).toBe(false);
+        expect(m.gap, `${width}px: gap between the status buttons and Import`).toBeGreaterThanOrEqual(7.5);
+        expect(m.backGap, `${width}px: gap after Back`).toBeGreaterThanOrEqual(7.5);
+        expect(wide ? m.sw >= 70 : Math.abs(m.sw - 44) <= 1, `${width}px: status width ${m.sw}`).toBe(true);
+      }
+    } },
   {
     name: 'coffee-add-modal',
     path: (s) => `/coffees/${s.slugs.long}`,

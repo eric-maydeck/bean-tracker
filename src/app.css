@@ -1426,11 +1426,19 @@ nav.site-nav a[aria-current='page'] {
   margin-bottom: var(--space-4);
 }
 
-/* The status icons (admin): four equal-width buttons after Back, on the left; the rest of the row stays right-aligned. */
+/* The status icons (admin): four equal-width buttons after Back, on the left; the rest of the row stays right-aligned.
+   Icon-sized (44px, a 4px gap) up to 1125px so the whole row still fits one line at phone landscape (1003px: 971px of row vs
+   969px needed); from 1126px, where the full row fits with Clone-width buttons (1093px + the 32px page gutters), 4.5rem. */
 .detail-status .action-stack {
   display: grid;
-  grid-template-columns: repeat(4, 4.5rem);
-  gap: var(--space-2);
+  grid-template-columns: repeat(4, 44px);
+  gap: 0.25rem;
+}
+@media (min-width: 1126px) {
+  .detail-status .action-stack {
+    grid-template-columns: repeat(4, 4.5rem);
+    gap: var(--space-2);
+  }
 }
 .detail-status .action-row {
   display: contents;
@@ -1466,6 +1474,7 @@ nav.site-nav a[aria-current='page'] {
   }
   .detail-status .action-stack {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
   }
 }
 
