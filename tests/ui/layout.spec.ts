@@ -5829,6 +5829,14 @@ export const STATES: State[] = [
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const show = page.getByRole('button', { name: 'Show', exact: true });
       await expect(show).toBeEnabled({ timeout: 20000 });
+      // Roll sits directly under the lens at the lens's width; the entry row (input + Show) stays on one line.
+      const roll = page.getByRole('button', { name: 'Roll', exact: true });
+      const [lensBox, rollBox] = [(await page.locator('.d20 .lens').boundingBox())!, (await roll.boundingBox())!];
+      expect(rollBox.y, 'Roll below the lens').toBeGreaterThan(lensBox.y + lensBox.height - 1);
+      expect(Math.abs(rollBox.width - lensBox.width), 'Roll as wide as the lens').toBeLessThanOrEqual(10);
+      await expect(page.getByText('Someone rolled for me:')).toBeVisible();
+      const [inBox, showBox] = [(await page.getByLabel('Number someone rolled').boundingBox())!, (await show.boundingBox())!];
+      expect(Math.abs(inBox.y + inBox.height / 2 - (showBox.y + showBox.height / 2)), 'input and Show on one line').toBeLessThanOrEqual(4);
       await page.getByLabel('Number someone rolled').fill('7');
       await show.click();
       await expect(page.locator('.tile.rolled')).toHaveCount(1);

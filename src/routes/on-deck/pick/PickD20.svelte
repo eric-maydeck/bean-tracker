@@ -26,9 +26,8 @@
   let doRoll: ((forced?: number) => void) | null = null;
 
   export function roll() { doRoll?.(); }
-  export function rollAs(n: number) { if (n >= 1 && n <= 20) doRoll?.(n); }
 
-  function show() { const n = Number(rolled); if (Number.isInteger(n)) rollAs(n); }
+  function show() { const n = Number(rolled); if (Number.isInteger(n) && n >= 1 && n <= 20) doRoll?.(n); }
 
   function setLens(n: number) {
     const crit = critFor(n);
@@ -51,7 +50,7 @@
       }
       const { V, F, C, num, trayFor, simulate, symmetry } = sim;
 
-      const W = stage.clientWidth, H = stage.clientHeight;
+      let W = stage.clientWidth, H = stage.clientHeight;
       const dpr = Math.min(devicePixelRatio, 2);
       const renderer: WebGLRenderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(dpr); renderer.setSize(W, H);
@@ -66,7 +65,8 @@
       sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 }); scene.add(sun);
       const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), new THREE.MeshStandardMaterial({ color: '#3b2a1a', roughness: 0.95 }));
       floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-      const { TX, TZ, DR } = trayFor({ w: W, h: H });
+      let { TX, TZ, DR } = trayFor({ w: W, h: H });
+      const DR0 = DR; // the die mesh is built at this radius and scaled on resize
       const trayLine = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(TX * 2, 0.01, TZ * 2)), new THREE.LineBasicMaterial({ color: '#c8925a', transparent: true, opacity: 0.35 }));
       trayLine.position.y = 0.01; scene.add(trayLine);
 
@@ -85,7 +85,7 @@
       const die: Mesh = new THREE.Mesh(geo, mats); die.castShadow = true; die.position.set(0, 1, 0); scene.add(die);
 
       // Close-up lens: a second camera hovering above the die, turned so the top face's number reads upright.
-      const LS = lens.clientWidth;
+      let LS = lens.clientWidth;
       const insetRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       insetRenderer.setPixelRatio(dpr); insetRenderer.setSize(LS, LS); lens.appendChild(insetRenderer.domElement);
       undo.push(() => { insetRenderer.dispose(); insetRenderer.forceContextLoss(); insetRenderer.domElement.remove(); });
@@ -110,12 +110,14 @@
       const glow = (n: number) => { const c = critFor(n); return c === 'success' ? '#7a5a00' : c === 'fail' ? '#6b0000' : '#4a2a10'; };
       const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
       const tmpQ = new THREE.Quaternion();
+      let dirty = true; // render both views only while something moves, plus one frame after any change
       let play: { frames: Float32Array[]; sym: Quaternion; t0: number; n: number } | null = null;
 
       function finish(now: number, n: number) {
         mats[num.indexOf(n)].emissive.set(glow(n));
         setLens(n);
-        play = null; rolling = false; again = false;
+        play = null; rolling = false; again = false; dirty = true;
+        if (resizePending) applySize();
         let to = uprightAngle(); while (to - lensAngle > Math.PI) to -= 2 * Math.PI; while (to - lensAngle < -Math.PI) to += 2 * Math.PI;
         if (reduced()) { lensAngle = to; turn = null; } else turn = { from: lensAngle, to, t0: now };
         onresult(n, { pos: die.position.toArray() as [number, number, number], quat: die.quaternion.toArray().slice(0, 4) as [number, number, number, number], sym: n, lensAngle: to });
@@ -133,9 +135,29 @@
         if (reduced()) { const f = frames[frames.length - 1]; die.position.set(f[0], f[1], f[2]); die.quaternion.copy(tmpQ.set(f[3], f[4], f[5], f[6])).multiply(play.sym); finish(performance.now(), n); }
       };
 
+      // Re-measure when the container changes; the tray, die and lens follow, but never mid-throw.
+      let resizePending = false;
+      function applySize() {
+        const w = stage.clientWidth, h = stage.clientHeight;
+        if (!w || !h || (w === W && h === H && lens.clientWidth === LS)) return;
+        if (play) { resizePending = true; return; }
+        resizePending = false;
+        const old = { TX, DR };
+        W = w; H = h; ({ TX, TZ, DR } = trayFor({ w, h }));
+        renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+        trayLine.geometry.dispose(); trayLine.geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(TX * 2, 0.01, TZ * 2));
+        die.scale.setScalar(DR / DR0);
+        die.position.set(die.position.x * TX / old.TX, die.position.y * DR / old.DR, die.position.z); // ponytail: scaling keeps the resting die inside the new tray; exact only for x/y
+        LS = lens.clientWidth; insetRenderer.setSize(LS, LS);
+        dirty = true;
+      }
+      const ro = new ResizeObserver(applySize); ro.observe(stage); ro.observe(lens);
+      undo.push(() => ro.disconnect());
+
       // Restore a resting die and lens with no animation.
       if (pose) {
         die.position.fromArray(pose.pos); die.quaternion.fromArray(pose.quat);
+        die.position.x = Math.max(-(TX - DR), Math.min(TX - DR, die.position.x)); die.position.z = Math.max(-(TZ - DR), Math.min(TZ - DR, die.position.z));
         lensAngle = pose.lensAngle; mats[num.indexOf(pose.sym)].emissive.set(glow(pose.sym)); setLens(pose.sym);
       }
 
@@ -146,6 +168,8 @@
           if (now - play.t0 > RESTART_MS && !again) again = true;
           if (i === play.frames.length - 1) finish(now, play.n);
         }
+        if (!play && !turn && !dirty) return;
+        dirty = false;
         renderer.render(scene, camera);
         aimCloseCam(now); insetRenderer.render(scene, closeCam);
       });
@@ -170,20 +194,23 @@
     <div class="inset {lensClass}">
       <div class="lens" bind:this={lens}></div>
       <span class="inset-label">{lensLabel}</span>
+      <button type="button" class="roll" class:idle={!blocked} disabled={blocked} onclick={() => roll()}>{rolling ? (again ? 'Roll again' : 'Rolling…') : 'Roll'}</button>
     </div>
   </div>
   {#if failed}<p class="hint">3D dice need WebGL; try the wheel.</p>{/if}
   <div class="row">
-    <button type="button" class="button roll" disabled={blocked} onclick={() => roll()}>{rolling ? (again ? 'Roll for me again' : 'Rolling…') : 'Roll for me'}</button>
-    <span class="hint">or someone rolled:</span>
-    <input type="number" min="1" max="20" placeholder="1–20" aria-label="Number someone rolled" bind:value={rolled} disabled={disabled || !ready} />
-    <button type="button" class="button button-secondary" disabled={blocked} onclick={show}>Show</button>
+    <span class="someone">Someone rolled for me:</span>
+    <span class="entry">
+      <input type="number" min="1" max="20" placeholder="1–20" aria-label="Number someone rolled" bind:value={rolled} disabled={disabled || !ready} />
+      <button type="button" class="button button-secondary" disabled={blocked} onclick={show}>Show</button>
+    </span>
   </div>
 </div>
 
 <style>
+  .d20 { container-type: inline-size; }
   .stage { position: relative; width: 100%; height: 360px; border-radius: var(--radius); overflow: hidden; background: #1b1712; }
-  .inset { position: absolute; z-index: 1; top: 12px; left: 12px; width: clamp(104px, 24vw, 168px); text-align: center; pointer-events: none; }
+  .inset { position: absolute; z-index: 1; top: 12px; left: 12px; width: clamp(104px, 26cqw, 168px); text-align: center; pointer-events: none; }
   .lens { width: 100%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #241b12; border: 4px solid #6b5640;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), inset 0 0 22px rgba(0, 0, 0, 0.7);
     transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s cubic-bezier(0.3, 1.6, 0.6, 1); }
@@ -192,9 +219,22 @@
   .inset.win .lens { border-color: #ffe08a; box-shadow: 0 0 22px #d4a73a, inset 0 0 22px rgba(0, 0, 0, 0.5); transform: scale(1.08); }
   .inset.fail .lens { border-color: #d01c1c; box-shadow: 0 0 22px #7a0a0a, inset 0 0 22px rgba(0, 0, 0, 0.7); transform: scale(1.08); }
   .inset-label { display: inline-block; margin-top: 6px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #f3ece2; background: rgba(22, 19, 15, 0.8); padding: 2px 8px; border-radius: 99px; }
-  .row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: var(--space-3) 0; }
-  .roll { min-width: 11rem; } /* label swaps keep the button's size */
+  /* Primary call to action: same width as the lens, pulses while idle (like the wheel's SPIN hub). */
+  .roll { display: block; width: 100%; min-height: 48px; margin-top: 8px; padding: 0 var(--space-2); pointer-events: auto; cursor: pointer; white-space: nowrap;
+    font: inherit; font-size: clamp(1rem, 4.4cqw, 1.3rem); font-weight: 800; letter-spacing: 0.04em; border-radius: var(--radius);
+    border: 2px solid var(--color-accent); background: var(--color-accent); color: var(--color-accent-contrast); box-shadow: var(--shadow); }
+  .roll.idle { animation: pulse 1.8s infinite; }
+  .roll:hover:not(:disabled) { filter: brightness(1.12); }
+  .roll:disabled { cursor: default; filter: grayscale(0.6) brightness(0.8); }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 70%, transparent); }
+    70% { box-shadow: 0 0 0 16px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+  .row { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; margin: var(--space-3) 0; }
+  .someone { font-size: 1.1rem; font-weight: 700; color: var(--color-accent); }
+  .entry { display: flex; flex-wrap: nowrap; gap: var(--space-2); align-items: center; }
   .hint { font-size: 13px; color: var(--color-text-muted, inherit); }
   input[type='number'] { width: 5rem; min-height: 44px; font: inherit; }
-  @media (prefers-reduced-motion: reduce) { .lens { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .lens { transition: none; } .roll.idle { animation: none; } }
 </style>
