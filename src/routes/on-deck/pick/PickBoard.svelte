@@ -2,7 +2,7 @@
   import { truncTip } from '#lib/components/labelTip.ts';
   import type { PickCoffee, Slot } from '#lib/pick/types.ts';
 
-  let { board, byId, success, fail, rolled }: { board: Slot[]; byId: Map<number, PickCoffee>; success: PickCoffee[]; fail: PickCoffee[]; rolled: number | null } = $props();
+  let { custom = false, board, byId, success, fail, rolled }: { custom?: boolean; board: Slot[]; byId: Map<number, PickCoffee>; success: PickCoffee[]; fail: PickCoffee[]; rolled: number | null } = $props();
 
   const join = (cs: PickCoffee[], f: (c: PickCoffee) => string) => cs.map(f).join(', ');
   const coffeeOf = (s: Slot): PickCoffee[] => (s.kind === 'coffee' ? [byId.get(s.coffeeId)].filter((c): c is PickCoffee => !!c) : s.kind === 'success' ? success : s.kind === 'fail' ? fail : []);
@@ -13,14 +13,14 @@
 <div class="halves-wrap"><div class="halves">
   {#each [board.slice(0, 10), board.slice(10)] as half, h (h)}
     <table class="data-table board" aria-label={h ? 'D20 board, 11 to 20' : 'D20 board, 1 to 10'}>
-      <colgroup><col class="c-n" /><col class="c-name" /><col class="c-roaster" /></colgroup>
-      <thead><tr><th scope="col"><span class="hd">#</span></th><th scope="col"><span class="hd">Coffee</span></th><th scope="col"><span class="hd">Roaster</span></th></tr></thead>
+      <colgroup><col class="c-n" /><col class="c-name" />{#if !custom}<col class="c-roaster" />{/if}</colgroup>
+      <thead><tr><th scope="col"><span class="hd">#</span></th><th scope="col"><span class="hd">Coffee</span></th>{#if !custom}<th scope="col"><span class="hd">Roaster</span></th>{/if}</tr></thead>
       <tbody>
         {#each half as s (s.n)}
           <tr class={s.kind} class:rolled={rolled === s.n} aria-label={`${s.n}: ${label(s)}`}>
             <td class="n">{s.n}</td>
             <td class="name"><div class="cell">{#if s.kind === 'success'}<span class="badge badge-warm">Crit success</span>{:else if s.kind === 'fail'}<span class="badge badge-urgent">Crit fail</span>{/if}<span class="txt" use:truncTip>{label(s)}</span></div></td>
-            <td class="roaster"><span class="txt" use:truncTip>{join(coffeeOf(s), (c) => c.roaster)}</span></td>
+            {#if !custom}<td class="roaster"><span class="txt" use:truncTip>{join(coffeeOf(s), (c) => c.roaster)}</span></td>{/if}
           </tr>
         {/each}
       </tbody>

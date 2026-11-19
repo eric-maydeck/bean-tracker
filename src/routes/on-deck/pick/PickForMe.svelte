@@ -8,23 +8,27 @@
   import { boardMatches, fillBoard } from '#lib/pick/board.ts';
   import { DEFAULT_RULES, rulesDiffer } from '#lib/pick/rules.ts';
   import { cleanName, restoreSelected, type Profiles } from '#lib/pick/profiles.ts';
-  import { discard, markBrewed, resetDay } from '#lib/pick/today.ts';
+  import { customCoffees, customRules } from '#lib/pick/custom.ts';
+  import { discard, freshToday, markBrewed, resetDay } from '#lib/pick/today.ts';
   import { sliceAt, wheelSlices } from '#lib/pick/wheel.ts';
   import type { Game, PickCoffee, PickResult, PickRules, PickToday, Slot, WheelSlice } from '#lib/pick/types.ts';
   import { encodeRulesLink } from '../onDeckUrl';
+  import CustomList from './CustomList.svelte';
   import PickBoard from './PickBoard.svelte';
   import PickCard from './PickCard.svelte';
   import PickD20 from './PickD20.svelte';
   import PickRulesPanel from './PickRules.svelte';
   import PickWheel from './PickWheel.svelte';
-  import { flushToday, loadProfiles, loadRules, loadSelected, loadToday, saveProfiles, saveRules, saveSelected, saveToday } from './store';
+  import { flushToday, loadCustomRules, loadCustomToday, loadList, loadProfiles, loadRules, loadSelected, loadToday, saveCustomRules, saveCustomToday, saveList, saveProfiles, saveRules, saveSelected, saveToday } from './store';
 
   type Shared = { name: string; rules: PickRules; code?: string } | { name: string; missing: true } | { unreadable: true } | { defaults: true } | null;
   // `shared`: a share link's rules (a saved profile, or the defaults) or a profile that was not found; `onunshare` drops them from the URL.
   // `shareRules`: what the page's Share button adds for the rules in play.
-  let { pick, admin, game: urlGame, ongame, shared, onunshare, shareRules = $bindable() }: {
+  // `custom`: the visitor's own list of names (kept in this browser, for everyone) instead of the site's coffees; the page remounts this view to switch, so it never changes here.
+  // `enter`: the switch was just turned on (open the Enter coffees pop-up when there is no list yet).
+  let { pick, admin, custom, oncustom, enter, game: urlGame, ongame, shared, onunshare, shareRules = $bindable() }: {
     pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; profiles: unknown; savedRules: unknown; todayState: unknown; selectedProfile: unknown };
-    admin: boolean; game: Game | undefined; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; rulesCode?: string; defaultRules?: boolean };
+    admin: boolean; custom: boolean; oncustom: (on: boolean) => void; enter: boolean; game: Game | undefined; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; rulesCode?: string; defaultRules?: boolean };
   } = $props();
   // The URL's game (none in a bare link); the game in play falls back to the wheel until today's last game is restored.
   const game = $derived(urlGame ?? 'wheel');
@@ -34,17 +38,19 @@
   // While shared rules are in play nothing is saved over the visitor's (or admin's) own rules; today's state still saves.
   const ownRules = () => loadRules(admin, admin ? pick.rulesLast : null);
 
-  const coffees = untrack(() => pick.coffees);
-  const byId = new Map(coffees.map((c) => [c.id, c]));
-  const names = new Map(coffees.map((c) => [c.id, c.name]));
+  let list = $state<string[]>([]); // custom mode: the saved names (loaded on mount)
+  let listOpen = $state(false);
+  const coffees = $derived(custom ? customCoffees(list) : pick.coffees);
+  const byId = $derived(new Map(coffees.map((c) => [c.id, c])));
+  const names = $derived(new Map(coffees.map((c) => [c.id, c.name])));
 
   // Admins start from the server's values; visitors' live in localStorage, so they load after mount.
-  let ready = $state(untrack(() => admin));
-  let rules = $state<PickRules>(untrack(() => sharedRules ?? (admin ? loadRules(true, pick.rulesLast) : DEFAULT_RULES)));
-  let today = $state<PickToday>(untrack(() => loadToday(admin, admin ? pick.todayState : null, pick.today)));
-  let profiles = $state<Profiles>(untrack(() => (admin ? loadProfiles(true, pick.profiles, pick.savedRules) : {})));
+  let ready = $state(untrack(() => admin && !custom));
+  let rules = $state<PickRules>(untrack(() => sharedRules ?? (admin && !custom ? loadRules(true, pick.rulesLast) : DEFAULT_RULES)));
+  let today = $state<PickToday>(untrack(() => (custom ? freshToday(pick.today) : loadToday(admin, admin ? pick.todayState : null, pick.today))));
+  let profiles = $state<Profiles>(untrack(() => (admin && !custom ? loadProfiles(true, pick.profiles, pick.savedRules) : {})));
   // The profile the rules came from (a base: further edits do not change it until Save). Remembered with the last rules; it comes back only while that profile still holds those rules.
-  let selected = $state(untrack(() => (admin && !sharedRules ? restoreSelected(pick.selectedProfile, profiles) : '')));
+  let selected = $state(untrack(() => (admin && !custom && !sharedRules ? restoreSelected(pick.selectedProfile, profiles) : '')));
   let storedSel = untrack(() => selected);
   let selBefore = '';
   let busy = $state(false);
@@ -89,7 +95,14 @@
   const CONFETTI = Array.from({ length: 28 }, (_, i) => ({ left: (i * 37) % 100, delay: (i % 7) * 0.12, dur: 1.6 + (i % 5) * 0.3, color: ['#ffe08a', '#ffd04d', '#fff6d0', '#c9952c'][i % 4] }));
 
   onMount(() => {
-    if (!admin) {
+    if (custom) {
+      // nothing here reads or writes the site's keys or /api/pick
+      rules = loadCustomRules();
+      today = loadCustomToday(pick.today);
+      list = loadList();
+      if (enter && list.length === 0) listOpen = true;
+      ready = true;
+    } else if (!admin) {
       rules = untrack(() => sharedRules) ?? loadRules(false, null);
       today = loadToday(false, null, pick.today);
       profiles = loadProfiles(false, null, null);
@@ -143,7 +156,7 @@
   const visitorCode = (name: string) => { const code = encodeRulesLink(name, profiles[name]); return code ? { rulesCode: code } : { defaultRules: true }; }; // too many picks for a link: the defaults
   // Share carries the loaded profile (its saved version), else the default rules; visitors have no saved profiles of the owner's.
   $effect(() => {
-    shareRules = !ready ? undefined
+    shareRules = !ready || custom ? undefined
       : shared && 'rules' in shared ? (shared.code ? { rulesCode: shared.code } : { profile: shared.name })
       : shared && 'defaults' in shared ? { defaultRules: true }
       : selected && profiles[selected] ? (admin ? { profile: selected } : visitorCode(selected)) // the saved profile either way; a visitor's is only theirs, so the link carries its rules
@@ -157,17 +170,18 @@
     const snap = $state.snapshot(today);
     const json = JSON.stringify({ ...snap, board: null }); // the board snapshot alone is not a change worth a write
     if (saved === '') return void (saved = json);
-    if (json !== saved) { saved = json; saveToday(admin, snap); }
+    if (json !== saved) { saved = json; if (custom) saveCustomToday(snap); else saveToday(admin, snap); }
   });
 
   const out = $derived(new Set(today.out));
-  const pool = $derived(resolveCrits(coffees, rules, out));
+  const inPlay = $derived(custom ? customRules(rules) : rules); // custom coffees have no categories or decaf
+  const pool = $derived(resolveCrits(coffees, inPlay, out));
   const successC = $derived(pool.success);
   const failC = $derived(pool.fail);
   const slices = $derived(wheelSlices(pool.pool, successC.length > 0, failC.length > 0));
   const empty = $derived(slices.length === 0);
   const eligible = $derived.by(() => {
-    const all = buildPool(coffees, { ...rules, over20: 'first20' }, out);
+    const all = buildPool(coffees, { ...inPlay, over20: 'first20' }, out);
     return [...all.pool, ...all.sittingOut];
   });
   const computeBoard = (): Slot[] => fillBoard(pool.pool, rules, successC.length > 0, failC.length > 0, `${today.date}:${today.out.join(',')}`);
@@ -207,7 +221,7 @@
   const dismissOverlay = () => { shown = false; };
   // Escape closes the pop-up; Tab and Shift+Tab stay inside it while it is open (aria-modal).
   function onKey(e: KeyboardEvent) {
-    if (!overlay || dlg?.open) return;
+    if (!overlay || dlg?.open || listOpen) return;
     if (e.key === 'Escape') return dismissOverlay();
     if (e.key !== 'Tab' || !modalEl) return;
     const els = [...modalEl.querySelectorAll<HTMLElement>('button:not([disabled])')];
@@ -291,6 +305,12 @@
     ongame(g);
   }
 
+  function saveNames(names: string[], cut: boolean) {
+    list = names;
+    saveList(names);
+    showToast(`Saved ${names.length} ${names.length === 1 ? 'coffee' : 'coffees'}.${cut ? ' (first 100 kept)' : ''}`);
+  }
+
   function brew() {
     if (!resultCoffee) return;
     today = markBrewed(today, resultCoffee.id, rules);
@@ -305,7 +325,8 @@
     if (leaving) { leaving = false; leaveShared(); }
     rules = next;
     today = reset ? resetDay(today) : { ...today, board: null };
-    if (!sharedRules || leftShared) saveRules(admin, 'pick.rules.last', next).catch(() => {});
+    if (custom) saveCustomRules(next);
+    else if (!sharedRules || leftShared) saveRules(admin, 'pick.rules.last', next).catch(() => {});
   }
   function edit(next: PickRules) {
     if (!rulesDiffer(rules, next)) { if (leaving) { leaving = false; leaveShared(); } return; }
@@ -381,10 +402,12 @@
       </div>
     </div>
     {#key rev}
-    <PickRulesPanel {rules} {coffees} {eligible} names={Object.keys(profiles).sort((a, b) => a.localeCompare(b))} {selected} {canSave} open={panelOpen} locked={busy}
+    <PickRulesPanel {custom} {rules} {coffees} {eligible} names={Object.keys(profiles).sort((a, b) => a.localeCompare(b))} {selected} {canSave} open={panelOpen} locked={busy}
       ontoggle={(o) => (panelOpen = o)} onchange={edit} onpick={pickProfile} onsave={saveProfile} onsaveas={saveProfileAs} ondelete={deleteProfile} onreset={resetRules} onrevert={revertProfile} />
     {/key}
-    {#if shared}
+    {#if custom}
+      <p class="shared-note plain" role="status">Playing with your custom coffees and their own rules.</p>
+    {:else if shared}
       <p class="shared-note" role="status">
         <span>{#if 'missing' in shared}That rules profile wasn't found.{:else if 'unreadable' in shared}That rules link couldn't be read.{:else if 'defaults' in shared}Playing with the default rules.{:else}Playing with the “{shared.name}” rules.{/if}</span>
         <button type="button" class="button button-secondary" onclick={onunshare}>{'missing' in shared || 'unreadable' in shared ? 'Dismiss' : 'Use my rules'}</button>
@@ -410,7 +433,7 @@
         {#if result && resultCoffee}<h3 class="last">{game === 'd20' ? 'Your last roll' : 'Your last spin'}</h3>{/if}
         <div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
-          <PickCard wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+          <PickCard {custom} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
             onbrew={brew} ondiscard={doDiscard} onopen={openPage} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
@@ -424,9 +447,11 @@
       <span class="label">Out for today:</span>
       {#each outRow as c (c.id)}<span class="badge badge-neutral" tabindex="0" role="note" use:labelTip={outTip(c)}><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
       <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
+      <button type="button" class="button button-secondary" aria-pressed={custom} onclick={() => oncustom(!custom)}>Use custom coffees</button>
+      {#if custom}<button type="button" class="button button-secondary" onclick={() => (listOpen = true)}>Enter coffees</button>{/if}
     </div>
   </div></div>
-  {#if game === 'd20'}<PickBoard {board} {byId} success={successC} fail={failC} rolled={rolledN} />{/if}
+  {#if game === 'd20'}<PickBoard {custom} {board} {byId} success={successC} fail={failC} rolled={rolledN} />{/if}
 
 
   {#if overlay && result && resultCoffee}
@@ -437,15 +462,17 @@
           {#if result.via === 'success'}{#each CONFETTI as c, i (i)}<i style:left="{c.left}%" style:animation-delay="{c.delay}s" style:animation-duration="{c.dur}s" style:background={c.color}></i>{/each}{/if}
         </div>
       {/if}
-      <div class="modal pick-modal {result.via}" class:horizontal={!narrow} role="dialog" aria-modal="true" aria-label="Pick result" tabindex="-1" bind:this={modalEl}>
+      <div class="modal pick-modal {result.via}" class:horizontal={!narrow && !custom} role="dialog" aria-modal="true" aria-label="Pick result" tabindex="-1" bind:this={modalEl}>
         {#if game === 'd20' && result.n}
           <p class="rolled {result.via}" aria-live="polite">You rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
         {/if}
-        <PickCard wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+        <PickCard {custom} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
           onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} />
       </div>
     </div>
   {/if}
+
+  {#if listOpen}<CustomList names={list} onsave={saveNames} onclose={() => (listOpen = false)} />{/if}
 
   <div class="sr-only" aria-live="polite">{announce}</div>
 
@@ -522,6 +549,7 @@
     .result { max-width: none; }
   }
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: 0; }
+  .out-row .button[aria-pressed='true'] { background: color-mix(in srgb, var(--color-accent) 18%, transparent); border-color: var(--color-accent); }
   .out-row .button { margin: 0; padding: 0.35rem 0.5rem; min-height: 36px; font-size: 0.85rem; }
   @media (max-width: 640px) { .out-row .button { min-height: 44px; } }
   .out-row .label { font-weight: 600; }
@@ -531,6 +559,7 @@
   .game-row { margin-bottom: var(--space-2); }
   /* the callout look (a tinted panel); the button sits right of the text and wraps below it on a narrow screen */
   .shared-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0; padding: 0 0 0 var(--space-3); min-width: 0; border: 1px solid var(--color-warm); border-radius: var(--radius); background: color-mix(in srgb, var(--color-warm) 12%, transparent); }
+  .shared-note.plain { padding: var(--space-2) var(--space-3); min-height: 36px; }
   .shared-note .button { margin: 0; padding: 0 0.75rem; min-height: 36px; }
   @media (max-width: 640px) { .shared-note { flex: 1 1 100%; padding: 0 0 0 var(--space-3); } .shared-note .button { min-height: 44px; } }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }
