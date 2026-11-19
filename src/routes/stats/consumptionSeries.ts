@@ -2,6 +2,19 @@ import type { Agg, Measure, Trend, Unit } from '#lib/insightsUrl.ts';
 import type { ConsumptionTab } from '#lib/server/insights/consumption.ts';
 import type { Habits } from '#lib/server/insights/habits.ts';
 import type { ChartSeries } from '#lib/chartThumb.ts';
+import { formatGrams } from '#lib/grams.ts';
+import { hour12 } from '#lib/hours.ts';
+import { WEEKDAYS } from '#lib/insightsUrl.ts';
+
+// Habits' fixed x labels, and the weekend bars' colour (Sat, Sun) as in the Findings bars.
+export const HOUR_LABELS = Array.from({ length: 24 }, (_, i) => hour12(i, true));
+export const WEEKEND_TOKENS = WEEKDAYS.map((_, i) => (i >= 5 ? '--series-brown-3' : null));
+// Value formats of the Consumption charts (tip text, ui-rules 36): `k` is the kg divisor, `avg` the per-day rates' extra decimal.
+export const consumptionFmt = (g: boolean, avg: boolean) => ({
+  fmt: (k: number) => (v: number) => (g ? formatGrams(v * k) : `${Number.isInteger(v) ? v : v.toFixed(avg ? 2 : 1)} bag${v === 1 ? '' : 's'}`),
+  brews: (v: number) => `${Number.isInteger(v) ? v : v.toFixed(avg ? 2 : 1)} brew${v === 1 ? '' : 's'}`,
+  water: (v: number) => `${+v.toFixed(v >= 10 ? 0 : v >= 1 ? 1 : 2)}L`
+});
 
 export const TITLE: Record<Trend, string> = { brews: 'Brews over time', water: 'Water over time', rating: 'Rating over time' };
 type S = ChartSeries & { names?: (string | null)[] };

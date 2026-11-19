@@ -71,3 +71,47 @@ describe('chartThumb', () => {
     expect(chartThumb('lines', [{ label: 'A', values: [1, 2], faded: true }])).toBeNull();
   });
 });
+
+describe('chartThumb labels', () => {
+  const lab = (t: Thumb | null) => t as unknown as { x?: [number, string][]; y?: [string, string]; vals?: string[]; series: { colors?: number[] }[] };
+  const fmt = (v: number) => `${v}g`;
+  const names = (n: number) => Array.from({ length: n }, (_, i) => `L${i}`);
+  it('picks at most 7 ticks, first and last included, no duplicates', () => {
+    for (const n of [2, 3, 7, 24, 100]) {
+      const t = lab(chartThumb('lines', [{ label: 'A', values: vals(n, (i) => i) }], { x: names(n) }));
+      const ix = t.x!.map((a) => a[0]);
+      expect(ix.length).toBeLessThanOrEqual(7);
+      expect(ix[0]).toBe(0);
+      expect(ix.at(-1)).toBe(Math.min(n, 40) - 1);
+      expect(new Set(ix).size).toBe(ix.length);
+    }
+  });
+  it('labels sampled points by their source column, and skips the trimmed lead', () => {
+    const t = lab(chartThumb('lines', [{ label: 'A', values: [null, 1, 2, 3] }], { x: ['a', 'b', 'c', 'd'] }));
+    expect(t.x).toEqual([[0, 'b'], [1, 'c'], [2, 'd']]);
+    const big = lab(chartThumb('lines', [{ label: 'A', values: vals(100, (i) => i) }], { x: names(100) }));
+    expect(big.x!.at(-1)).toEqual([39, 'L99']);
+  });
+  it('formats y from the raw values: bars from 0, lines from the data min', () => {
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: [2, 300] }], { fmt })).y).toEqual(['0g', '300g']);
+    expect(lab(chartThumb('lines', [{ label: 'A', values: [2, 300] }], { fmt })).y).toEqual(['2g', '300g']);
+    expect(lab(chartThumb('lines', [{ label: 'A', values: [2, 300] }], { fmt, yMin: 0 })).y).toEqual(['0g', '300g']);
+  });
+  it('drops labels over 12 characters', () => {
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: [2, 3] }], { fmt: (v) => `${v} avg rating!!` })).y).toBeUndefined();
+  });
+  it('data labels: single or stacked bars up to 12, not grouped, not lines, not 13', () => {
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: [2, 3] }], { fmt })).vals).toEqual(['2g', '3g']);
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: [1, 2] }, { label: 'B', values: [3, 4] }], { fmt, stacked: true })).vals).toEqual(['4g', '6g']);
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: [1, 2] }, { label: 'B', values: [3, 4] }], { fmt })).vals).toBeUndefined();
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: [1, 2] }, { label: 'B', values: [3, 2] }], { fmt, stacked: true })).vals).toBeUndefined(); // every total alike (100% bars): no information
+    expect(lab(chartThumb('lines', [{ label: 'A', values: [1, 2] }], { fmt })).vals).toBeUndefined();
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: vals(13, (i) => i + 1) }], { fmt })).vals).toBeUndefined();
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: vals(12, (i) => i + 1) }], { fmt })).vals).toHaveLength(12);
+  });
+  it('per-point colours on a single bar series', () => {
+    const t = lab(chartThumb('vbars', [{ label: 'A', values: [1, 2, 3] }], { points: [null, '--series-brown-3', null] }));
+    expect(t.series[0].colors).toEqual([idx('--series-11'), idx('--series-brown-3'), idx('--series-11')]);
+    expect(lab(chartThumb('vbars', [{ label: 'A', values: [1, 2] }], { points: [null, null] })).series[0].colors).toBeUndefined();
+  });
+});

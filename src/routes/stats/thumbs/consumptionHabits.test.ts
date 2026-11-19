@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ThumbCtx } from '../thumbTypes';
 import { CONSUMPTION_THUMBS } from './consumption';
+import { THUMB_TOKENS } from '#lib/linkPreview.ts';
 import { HABITS_THUMBS } from './habits';
 
 const tab = { buckets: [{}, {}, {}], ratingFrom: 0, trendLine: null, trendLabel: null, labels: ['a', 'b', 'c'], brewed: [6, 7.5, 8], bought: [5, 0, 4], backlog: [3, 0, 1], compareBrewed: null, compareTitles: null, compareAverage: null };
@@ -39,6 +40,18 @@ describe('habits thumbs', () => {
   it('vbars with their titles', () => {
     expect(HABITS_THUMBS['habits-hour'](ctx({ habits: h }))).toMatchObject({ title: 'By hour of day', thumb: { kind: 'vbars' } });
     expect(HABITS_THUMBS['habits-weekday'](ctx({ habits: h }))).toMatchObject({ title: 'By day of week', thumb: { kind: 'vbars' } });
+  });
+  it('weekday bars colour Sat and Sun brown-3; hours carry 12-hour tick labels and y labels', () => {
+    const full = { ...h, byWeekday: [1, 2, 3, 4, 5, 6, 7] };
+    const w = HABITS_THUMBS['habits-weekday'](ctx({ habits: full }))!.thumb as { series: { color: number; colors?: number[] }[]; x: [number, string][] };
+    const b3 = THUMB_TOKENS.indexOf('--series-brown-3');
+    expect(w.series[0].colors).toEqual([0, 1, 2, 3, 4, 5, 6].map((i) => (i >= 5 ? b3 : w.series[0].color)));
+    expect(w.x.map((t) => t[1])).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    const hr = HABITS_THUMBS['habits-hour'](ctx({ habits: { ...h, byHour: Array.from({ length: 24 }, (_, i) => i) } }))!.thumb as { x: [number, string][]; y: [string, string]; series: { colors?: number[] }[] };
+    expect(hr.x[0]).toEqual([0, '12a']);
+    expect(hr.x.at(-1)).toEqual([23, '11p']);
+    expect(hr.y).toEqual(['0', '23']);
+    expect(hr.series[0].colors).toBeUndefined();
   });
   it('null without data', () => {
     expect(HABITS_THUMBS['habits-hour'](ctx({ habits: null }))).toBeNull();

@@ -12,11 +12,14 @@ import type { Recap } from './server/recaps/recap';
 // `plain`: no medals, as Lowest first), one record tile (value, holder, date line), or a grid of up to 6 tiles (label, value).
 // `vbars`/`lines`: a shape-only chart (src/lib/chartThumb.ts): up to 3 series of 2..40 points, values 0..100, colour = THUMB_TOKENS index.
 export const THUMB_TOKENS = [...Array.from({ length: 14 }, (_, i) => `--series-${i + 1}`), '--series-brown-1', '--series-brown-2', '--series-brown-3', '--series-other'] as const;
-export interface ThumbSeries { label: string; color: number; values: (number | null)[] }
+// `colors`: a per-point colour override (THUMB_TOKENS indices, one per point) on a single vbars series. `x`: tick labels [point index, text] (<=7);
+// `y`: the [baseline, top] value labels; `vals`: a label per bar (vbars, <=12 bars). All optional, strings <=12 chars.
+export interface ThumbSeries { label: string; color: number; values: (number | null)[]; colors?: number[] }
+export interface ThumbLabels { x?: [number, string][]; y?: [string, string]; vals?: string[] }
 export type Thumb =
   | { kind: 'bars'; rows: [string, string, number][]; plain?: boolean }
-  | { kind: 'vbars'; series: ThumbSeries[]; stacked?: boolean }
-  | { kind: 'lines'; series: ThumbSeries[] }
+  | ({ kind: 'vbars'; series: ThumbSeries[]; stacked?: boolean } & ThumbLabels)
+  | ({ kind: 'lines'; series: ThumbSeries[] } & Omit<ThumbLabels, 'vals'>)
   | { kind: 'tile'; value: string; holder: string; date?: string }
   | { kind: 'grid'; tiles: [string, string][] };
 // `coffee`: a coffee's card layout (name from the top, roaster at the bottom), with its saved photo on the right when there is one
@@ -39,9 +42,10 @@ const wire = (t: ChartTimeline) => [
   t.pours.map((p) => [r1(p.startS), r1(p.durationS), r1(p.grams), KINDS.indexOf(p.kind)]),
   t.swirls.map(r1), r1(t.totalS), (t.windows ?? []).map((w) => [r1(w.startS), r1(w.targetS), w.bloom])
 ];
-const wireSeries = (t: { series: ThumbSeries[] }) => t.series.map((s) => [s.label, s.color, s.values]);
+const wireSeries = (t: { series: ThumbSeries[] }) => t.series.map((s) => (s.colors ? [s.label, s.color, s.values, s.colors] : [s.label, s.color, s.values]));
+const trim = <T extends unknown[]>(a: T): T => { while (a.length && a.at(-1) === null) a.pop(); return a; };
 const wireThumb = (t: Thumb) => t.kind === 'bars' ? ['bars', t.rows.map(([l, v, f]) => [l, v, Math.round(f * 1000) / 1000]), t.plain ? 1 : 0]
-  : t.kind === 'vbars' ? ['vbars', wireSeries(t), t.stacked ? 1 : 0] : t.kind === 'lines' ? ['lines', wireSeries(t)]
+  : t.kind === 'vbars' ? trim(['vbars', wireSeries(t), t.stacked ? 1 : 0, t.x ?? null, t.y ?? null, t.vals ?? null]) : t.kind === 'lines' ? trim(['lines', wireSeries(t), t.x ?? null, t.y ?? null])
   : t.kind === 'tile' ? ['tile', t.value, t.holder, t.date ?? ''] : ['grid', t.tiles];
 export function encodeCard(c: Card): string {
   const a = [c.big, c.label, c.timeline?.pours.length ? wire(c.timeline) : null, c.thumb ? wireThumb(c.thumb) : null, c.coffee ? (c.coffee.photo ? [c.coffee.photo.src, c.coffee.photo.fill] : []) : null];

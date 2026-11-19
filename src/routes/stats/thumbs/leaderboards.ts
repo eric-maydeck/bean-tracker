@@ -1,6 +1,6 @@
 import { chartThumb } from '#lib/chartThumb.ts';
 import type { Board } from '#lib/insightsUrl.ts';
-import { BOARD_TITLE } from '../chartLink';
+import { BOARD_TITLE, boardValue } from '../chartLink';
 import { boardTimeLines } from '../multiLine';
 import type { ThumbCtx } from '../thumbTypes';
 
@@ -8,6 +8,6 @@ import type { ThumbCtx } from '../thumbTypes';
 export function leaderboardTimeThumb(c: ThumbCtx, board: Board) {
   const { data, s } = c;
   const t = data.boards && boardTimeLines(data.boards[board], data.boardSeries?.[board], { board, low: s.low ?? [], open: s.open ?? [], views: s.views, rank: s.rank });
-  const thumb = t && chartThumb('lines', t.lines.map((l) => ({ label: l.label, values: l.values })));
+  const thumb = t && chartThumb('lines', t.lines.map((l) => ({ label: l.label, values: l.values })), { x: t.labels, fmt: (v) => boardValue(v, s.rank, c.perPerson) });
   return thumb ? { title: BOARD_TITLE[board], thumb } : null;
 }

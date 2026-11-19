@@ -3,10 +3,11 @@ import type { Eras } from '#lib/server/insights/lab.ts';
 import { nameColors, seriesColors } from '../multiLine';
 import type { ThumbCtx, ThumbFn } from '../thumbTypes';
 
+const pct = (v: number) => `${v}%`; // UsageChart's format
 // The page's choice: Lines (UsageChart's yMin 0) or the 100%-stacked bars.
 function erasThumb(m: Eras | null | undefined, lines: boolean, colors: string[]) {
   if (!m) return null;
-  return chartThumb(lines ? 'lines' : 'vbars', m.lines.map((l, i) => ({ label: l.label, values: l.values, color: colors[i] })), lines ? { yMin: 0 } : { stacked: true });
+  return chartThumb(lines ? 'lines' : 'vbars', m.lines.map((l, i) => ({ label: l.label, values: l.values, color: colors[i] })), lines ? { yMin: 0, x: m.x, fmt: pct } : { stacked: true, x: m.x, fmt: pct });
 }
 
 export const ERAS_THUMBS: Record<string, ThumbFn> = {

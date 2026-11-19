@@ -11,7 +11,7 @@
   import { labelTip } from '#lib/components/labelTip.ts';
   import { useEmptyLine } from './coffeeNote';
   import HeadingAnchor from './HeadingAnchor.svelte';
-  import { habitsCharts } from './consumptionSeries';
+  import { habitsCharts, HOUR_LABELS, WEEKEND_TOKENS } from './consumptionSeries';
   import type { Snippet } from 'svelte';
   import { sampleField } from '#lib/sample.ts';
   import Chart from '#lib/components/Chart.svelte';
@@ -30,7 +30,7 @@
   } = $props();
 
   const LABEL: Record<Measure, string> = { brews: 'Brews', grams: 'Grams', rating: 'Rating' };
-  const HOURS = Array.from({ length: 24 }, (_, i) => hour12(i, true));
+  const HOURS = HOUR_LABELS;
   // Chart tooltips: averages to one decimal, grams with their unit.
   // Avg per day values are small fractions (0.31 brews): two decimals, with " avg" after the unit.
   const avg = $derived(agg !== 'total' && measure !== 'rating');
@@ -92,7 +92,7 @@
     </section>
     <section class="chart-panel">
       <HeadingAnchor id="habits-weekday">By day of week</HeadingAnchor>
-      <Chart type="bar" vertical labels={WEEKDAYS} values={ch.weekday.values} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
+      <Chart type="bar" vertical labels={WEEKDAYS} values={ch.weekday.values} samples={h.bySampleWeekday ?? undefined} barTokens={WEEKEND_TOKENS} datasetLabel={periodLabel}
         series={ch.weekday.series} yMin={ch.weekday.yMin} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
       <p class="chart-note" data-switched-note>{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? (agg === 'brewday' ? 'per brew day, by weekday' : 'per weekday, averaged') : 'total'}`}<br>{'\u00a0'}</p>

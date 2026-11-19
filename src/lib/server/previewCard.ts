@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { PHOTO_RE, THUMB_TOKENS, type Card, type Thumb, type ThumbSeries } from '#lib/linkPreview.ts';
+import { PHOTO_RE, THUMB_TOKENS, type Card, type Thumb, type ThumbLabels, type ThumbSeries } from '#lib/linkPreview.ts';
 import { KINDS, type ChartTimeline } from '#lib/pourShapes.ts';
 
 // Feature flag for epic #27 (link-preview images): off in prod until the epic ships, then delete it and its checks.
@@ -44,15 +44,42 @@ const text = (v: unknown): v is string => typeof v === 'string' && v.length <= M
 
 const MAX_SERIES = 3, MAX_POINTS = 40;
 // A chart thumbnail's series: 1..3, each [label, THUMB_TOKENS index, values]; 2..40 equal-length ints 0..100 (`null` gaps only when `gaps`).
-function decodeSeries(v: unknown, gaps: boolean): ThumbSeries[] | null {
+function decodeSeries(v: unknown, gaps: boolean, pointColors = false): ThumbSeries[] | null {
   if (!list(v, MAX_SERIES) || !v.length) return null;
   const out: ThumbSeries[] = [];
   for (const r of v) {
-    if (!row(r, 3) || !text(r[0]) || !Number.isInteger(r[1]) || (r[1] as number) < 0 || (r[1] as number) >= THUMB_TOKENS.length) return null;
+    if (!Array.isArray(r) || (r.length !== 3 && !(pointColors && r.length === 4)) || !text(r[0]) || !Number.isInteger(r[1]) || (r[1] as number) < 0 || (r[1] as number) >= THUMB_TOKENS.length) return null;
     const vals = r[2];
     if (!Array.isArray(vals) || vals.length < 2 || vals.length > MAX_POINTS || vals.length !== (out[0]?.values.length ?? vals.length)) return null;
     if (!vals.every((x) => (gaps && x === null) || (Number.isInteger(x) && x >= 0 && x <= 100))) return null;
-    out.push({ label: r[0], color: r[1] as number, values: vals });
+    const cs = r[3];
+    if (cs !== undefined && (!Array.isArray(cs) || cs.length !== vals.length || !cs.every((c) => Number.isInteger(c) && c >= 0 && c < THUMB_TOKENS.length))) return null;
+    out.push({ label: r[0], color: r[1] as number, values: vals, ...(cs && { colors: cs as number[] }) });
+  }
+  return out;
+}
+
+const MAX_TICKS = 7, MAX_VALS = 12, MAX_LABEL = 12;
+const short = (v: unknown): v is string => typeof v === 'string' && v.length <= MAX_LABEL;
+// The optional axis and data labels after a chart's series (null/absent = none); false when malformed.
+function decodeLabels(x: unknown, y: unknown, vals: unknown, points: number, allowVals: boolean): ThumbLabels | false {
+  const out: ThumbLabels = {};
+  if (x != null) {
+    if (!list(x, MAX_TICKS)) return false;
+    const ticks: [number, string][] = [];
+    for (const t of x) {
+      if (!row(t, 2) || !Number.isInteger(t[0]) || (t[0] as number) < 0 || (t[0] as number) >= points || !short(t[1])) return false;
+      ticks.push([t[0] as number, t[1]]);
+    }
+    out.x = ticks;
+  }
+  if (y != null) {
+    if (!row(y, 2) || !short(y[0]) || !short(y[1])) return false;
+    out.y = [y[0], y[1]];
+  }
+  if (vals != null) {
+    if (!allowVals || !Array.isArray(vals) || vals.length !== points || points > MAX_VALS || !vals.every(short)) return false;
+    out.vals = vals as string[];
   }
   return out;
 }
@@ -67,13 +94,15 @@ function decodeThumb(t: unknown): Thumb | null {
     }
     return { kind: 'bars', rows, ...(t[2] === 1 && { plain: true }) };
   }
-  if (t[0] === 'vbars' && row(t, 3)) {
-    const series = decodeSeries(t[1], false);
-    return series && { kind: 'vbars', series, ...(t[2] === 1 && { stacked: true }) };
+  if (t[0] === 'vbars' && t.length >= 3 && t.length <= 6) {
+    const series = decodeSeries(t[1], false, true);
+    const lab = series && decodeLabels(t[3], t[4], t[5], series[0].values.length, true);
+    return series && lab ? { kind: 'vbars', series, ...(t[2] === 1 && { stacked: true }), ...lab } : null;
   }
-  if (t[0] === 'lines' && row(t, 2)) {
+  if (t[0] === 'lines' && t.length >= 2 && t.length <= 4) {
     const series = decodeSeries(t[1], true);
-    return series && { kind: 'lines', series };
+    const lab = series && decodeLabels(t[2], t[3], null, series[0].values.length, false);
+    return series && lab ? { kind: 'lines', series, ...lab } : null;
   }
   if (t[0] === 'tile' && row(t, 4) && text(t[1]) && text(t[2]) && text(t[3])) return { kind: 'tile', value: t[1], holder: t[2], ...(t[3] && { date: t[3] }) };
   if (t[0] === 'grid' && row(t, 2) && list(t[1], MAX_TILES) && t[1].length > 0) {

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 import { localToday } from '#lib/server/localToday.ts';
 vi.mock('node:fs', async (orig) => { const a = await orig<typeof import('node:fs')>(); return { ...a, unlinkSync: vi.fn(a.unlinkSync) }; });
-import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard, valueSizes } from './card';
+import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard, linePath, pickTicks, valueSizes } from './card';
 
 const dir = mkdtempSync(join(tmpdir(), 'card-'));
 process.env.DB_PATH = join(dir, 't.db');
@@ -137,5 +137,28 @@ describe('flag emoji on a card', () => {
     // Text is drawn as paths: two values cut to the same visible text draw identically, two short ones differ.
     expect(await grid('x'.repeat(50))).toBe(await grid('x'.repeat(100)));
     expect(await grid('xxxxx')).not.toBe(await grid('xxxxxxx'));
+  });
+});
+
+describe('chart card paths and ticks', () => {
+  it('linePath never overshoots the points it joins, and a straight line stays straight', () => {
+    const pts: [number, number][] = [[0, 100], [10, 20], [20, 20], [30, 80], [40, 10], [50, 12]];
+    const nums = linePath(pts).match(/-?\d+\.?\d*/g)!.map(Number);
+    const ys = nums.filter((_, i) => i % 2 === 1);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(10);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(100);
+    const straight = linePath([[0, 50], [10, 40], [20, 30], [30, 20]]).match(/-?\d+\.?\d*/g)!.map(Number);
+    for (let i = 0; i < straight.length; i += 2) expect(straight[i] + straight[i + 1]).toBeCloseTo(50, 0);
+  });
+  it('linePath breaks at gaps and draws a lone point as a dot', () => {
+    const d = linePath([[0, 1], [10, 2], null, [20, 3], null, [30, 4], [40, 5]]);
+    expect(d.match(/M/g)).toHaveLength(3);
+    expect(d).toContain('M20.0 3.0L20.0 3.0');
+  });
+  it('pickTicks keeps the first and last and drops the ones that would overlap', () => {
+    const t = (n: number, w: number) => Array.from({ length: n }, (_, i) => ({ cx: 50 + i * 100, w }));
+    expect(pickTicks(t(7, 40))).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(pickTicks(t(7, 150))).toEqual([0, 2, 4, 6]);
+    expect(pickTicks(t(4, 150))).toEqual([0, 2, 3].filter((i) => i !== 2));
   });
 });

@@ -8,9 +8,9 @@ import type { ThumbFn } from '../thumbTypes';
 export const ONHAND_THUMBS: Record<string, ThumbFn> = {
   'onhand-age': ({ data, s }) => {
     if (!data.onHand) return null;
-    const { series } = ageChart(data.onHand, s.unit);
+    const { labels, series } = ageChart(data.onHand, s.unit);
     if (!series.some((x) => x.values.some((v) => (v ?? 0) > 0))) return null;
-    const thumb = chartThumb('vbars', series, { stacked: true });
+    const thumb = chartThumb('vbars', series, { stacked: true, x: labels, fmt: unitFmt(s.unit) });
     return thumb && { title: 'Age profile', thumb };
   },
   'onhand-bag-states': ({ data, s }) => {
@@ -28,7 +28,7 @@ export const ONHAND_THUMBS: Record<string, ThumbFn> = {
   'onhand-runway-at-your-pace': ({ data, s, periodLabel }) => {
     if (!data.onHand) return null;
     const r = runwaySeries(data.onHand.onHandG, data.today, runwayPaces({ range: s.range, periodLabel, runwayDays: data.onHand.runway.days, allDays: data.onHand.runwayAll.days }));
-    const thumb = r && chartThumb('lines', r.series, { yMin: 0 });
+    const thumb = r && chartThumb('lines', r.series, { yMin: 0, x: r.labels, fmt: formatGrams });
     return thumb && { title: 'Runway at your pace', thumb };
   }
 };

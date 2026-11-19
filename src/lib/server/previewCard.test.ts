@@ -43,7 +43,9 @@ describe('verifyCard with a thumbnail', () => {
   const chartThumbs = [
     { kind: 'vbars' as const, series: [{ label: 'A', color: 0, values: [0, 50, 100] }, { label: 'B', color: 17, values: [10, 20, 30] }] },
     { kind: 'vbars' as const, stacked: true, series: [{ label: 'A', color: 3, values: [0, 100] }] },
-    { kind: 'lines' as const, series: [{ label: 'A', color: 2, values: [0, null, 100] }] }
+    { kind: 'lines' as const, series: [{ label: 'A', color: 2, values: [0, null, 100] }] },
+    { kind: 'vbars' as const, series: [{ label: 'A', color: 2, values: [0, 50, 100], colors: [2, 16, 16] }], x: [[0, 'Mon'], [2, 'Wed']] as [number, string][], y: ['0g', '9g'] as [string, string], vals: ['0g', '5g', '9g'] },
+    { kind: 'lines' as const, series: [{ label: 'A', color: 2, values: [0, 100] }], x: [[1, 'Nov']] as [number, string][], y: ['0', '9'] as [string, string] }
   ];
   const thumbs = [bars, { ...bars, plain: true }, { kind: 'tile' as const, value: '9.2', holder: 'Lab', date: '2026-08-01' }, { kind: 'tile' as const, value: '9.2', holder: 'Lab' }, { kind: 'grid' as const, tiles: [['Best bag', '9.2']] as [string, string][] }, ...chartThumbs];
   it.each(thumbs.map((t, i) => [`${t.kind} #${i}`, t] as const))('round-trips %s', (_n, thumb) => {
@@ -83,7 +85,19 @@ describe('verifyCard with a thumbnail', () => {
     ['colour out of range', ['lines', [['A', 18, [1, 2]]]]],
     ['long series label', ['lines', [[long, 0, [1, 2]]]]],
     ['missing series', ['lines']],
-    ['series not an array', ['vbars', 'x', 0]]
+    ['series not an array', ['vbars', 'x', 0]],
+    ['8 ticks', ['lines', v([1, 2, 3, 4, 5, 6, 7, 8]), Array.from({ length: 8 }, (_, i) => [i, 'a']), null]],
+    ['tick index out of range', ['lines', v([1, 2]), [[2, 'a']], null]],
+    ['fractional tick index', ['lines', v([1, 2]), [[0.5, 'a']], null]],
+    ['long tick text', ['lines', v([1, 2]), [[0, 'x'.repeat(13)]], null]],
+    ['bad y', ['lines', v([1, 2]), null, ['a']]],
+    ['long y', ['lines', v([1, 2]), null, ['a', 'x'.repeat(13)]]],
+    ['vals on lines', ['lines', v([1, 2]), null, null, ['a', 'b']]],
+    ['vals wrong length', ['vbars', v([1, 2]), 0, null, null, ['a']]],
+    ['13 vals', ['vbars', v(Array(13).fill(1)), 0, null, null, Array(13).fill('a')]],
+    ['colours wrong length', ['vbars', [['A', 0, [1, 2], [1]]], 0]],
+    ['colour out of range', ['vbars', [['A', 0, [1, 2], [1, 18]]], 0]],
+    ['colours on lines', ['lines', [['A', 0, [1, 2], [1, 1]]]]]
   ])('rejects %s', (_n, th) => {
     expect(check(['A', 'B', null, th])).toBeNull();
   });

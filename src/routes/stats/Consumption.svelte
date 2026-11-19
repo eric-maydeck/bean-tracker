@@ -18,7 +18,7 @@
   import { formatGrams } from '#lib/grams.ts';
   import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '#lib/insightsUrl.ts';
   import HeadingAnchor from './HeadingAnchor.svelte';
-  import { consumptionCharts } from './consumptionSeries';
+  import { consumptionCharts, consumptionFmt } from './consumptionSeries';
   import ChartToggle from './ChartToggle.svelte';
   import TimeToOpen from './TimeToOpen.svelte';
 
@@ -38,9 +38,7 @@
   // Per day / per brew day: bars are rates (decimals); Total: whole counts.
   const avg = $derived(agg !== 'total');
   // A tip value carries its unit (ui-rules 36): "1.2kg", "3 bags", "4 brews", "1.2 L".
-  const fmt = (k: number) => (v: number) => (g ? formatGrams(v * k) : `${Number.isInteger(v) ? v : v.toFixed(avg ? 2 : 1)} bag${v === 1 ? '' : 's'}`);
-  const fmtBrews = (v: number) => `${Number.isInteger(v) ? v : v.toFixed(avg ? 2 : 1)} brew${v === 1 ? '' : 's'}`;
-  const fmtWater = (v: number) => `${+v.toFixed(v >= 10 ? 0 : v >= 1 ? 1 : 2)}L`;
+  const { fmt, brews: fmtBrews, water: fmtWater } = $derived(consumptionFmt(g, avg));
   const fmtRating = (v: number) => `${v.toFixed(1)} avg rating`;
   // Brewed over time: the Unit's measure (grams / bags), or the toggle's Brews / Water / Rating.
   const TRENDS: [Trend | undefined, string][] = [[undefined, ''], ['brews', 'Brews'], ['water', 'Water'], ['rating', 'Rating']];
