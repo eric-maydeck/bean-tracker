@@ -2136,6 +2136,12 @@ export const STATES: State[] = [
       expect(t['og:image']).toMatch(new RegExp(`^${origin}/preview\\.png\\?c=[\\w-]+&s=[\\w-]+$`));
       const img = await page.request.get(t['og:image']);
       expect([img.status(), img.headers()['content-type']]).toEqual([200, 'image/png']);
+      // Chart.js tabs draw their chart's shape.
+      for (const p of ['/stats?tab=habits&range=all&chart=habits-hour', '/stats?tab=spend&range=all&chart=spend-chart']) {
+        const og = (await previewTags(page, p))['og:image'];
+        expect(og).toMatch(new RegExp(`^${origin}/preview\\.png\\?c=[\\w-]+&s=[\\w-]+$`));
+        expect((await page.request.get(og)).status()).toBe(200);
+      }
     } },
   { name: 'coffee-detail-no-like', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },
@@ -7858,6 +7864,22 @@ export const STATES: State[] = [
       // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
       await expect(page.locator('#consumption-brewed a.caption-link')).toHaveAttribute('href', '#consumption-brewed');
       const gap = () => anchorGap(page, 'consumption-brewed');
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
+  { name: 'insights-consumption-chart-bought-anchor', path: () => '/stats?tab=consumption#consumption-chart-bought',
+    act: async (page) => {
+      // The heading links to itself; loading the hash puts it just under the sticky bar.
+      await expect(page.locator('#consumption-chart-bought a')).toHaveAttribute('href', /chart=consumption-chart-bought.*#consumption-chart-bought$/);
+      const gap = () => anchorGap(page, 'consumption-chart-bought');
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
+  { name: 'insights-consumption-chart-on-hand-anchor', path: () => '/stats?tab=consumption#consumption-chart-on-hand',
+    act: async (page) => {
+      // The heading links to itself; loading the hash puts it just under the sticky bar.
+      await expect(page.locator('#consumption-chart-on-hand a')).toHaveAttribute('href', /chart=consumption-chart-on-hand.*#consumption-chart-on-hand$/);
+      const gap = () => anchorGap(page, 'consumption-chart-on-hand');
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },

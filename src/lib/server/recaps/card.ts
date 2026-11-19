@@ -9,7 +9,8 @@ import karlaExt from './fonts/karla-latin-ext-700-normal.woff?inline';
 import loraLatin from './fonts/lora-latin-600-normal.woff?inline';
 import loraExt from './fonts/lora-latin-ext-600-normal.woff?inline';
 import { pourShapes, type ChartTimeline } from '#lib/pourShapes.ts';
-import type { Thumb } from '#lib/linkPreview.ts';
+import { THUMB_TOKENS, type Thumb } from '#lib/linkPreview.ts';
+import { smooth } from '#lib/smoothPath.ts';
 import type { Tone } from './types';
 
 export const CARD = { width: 1200, height: 630 };
@@ -66,8 +67,7 @@ function chart(t: ChartTimeline) {
 // A Stats view's thumbnail (the lower part of a page card, THUMB_H tall): app light-theme colours, nothing under 22px, no hairlines.
 // Bars are --series-11 (#c06408) on the page background; medals are the gold/silver/bronze of the text preview's emoji.
 const THUMB_H = 290;
-const BAR = '#c06408',
-   MEDAL_FILL = ['#f5c518', '#cfc9c1', '#d79a62'];
+const MEDAL_FILL = ['#f5c518', '#cfc9c1', '#d79a62'];
 // Grid tiles cycle these by position (neighbours differ): [fill, title, edge] per series colour of src/app.css (light theme), in the order
 // --series-1 blue, -4 orange, -6 green, -2 violet, -3 pink, -7 cyan. Fill = 25% of the series colour over --color-surface (#fff);
 // edge = the series colour itself; title = the series' -ink mixed 30% into --color-text (#2b211b), >= 5.8:1 on its fill (values are espresso, >= 8.6:1).
@@ -100,6 +100,90 @@ export function valueSizes(values: string[], size: number, avail: number, floor 
   const least = Math.min(...need);
   return least >= size * VALUE_STEP ? need.map(() => least) : need;
 }
+// THUMB_TOKENS' light-theme hexes (src/app.css :root), by wire index.
+const TOKEN_HEX = ['#a8bffd', '#d9a6e3', '#ffb7c1', '#fdc58b', '#d8db80', '#92dba9', '#7fdcea', '#698dfd', '#ae57bb', '#fc7184', '#c06408', '#abac11', '#069954', '#01baca', '#d2a679', '#b0703f', '#73503a', '#a8a8a8'];
+if (TOKEN_HEX.length !== THUMB_TOKENS.length) throw new Error('TOKEN_HEX out of step with THUMB_TOKENS');
+const LEGEND_H = 40, GAP = 8, STROKE = 7, LABEL = 28, XROW = 38, VAL_ROOM = 36;
+// The page's soft bar fill (colour at b3 alpha) over the card background.
+const soft = (hex: string, a = 0.7) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * a + parseInt(CREAM.slice(i, i + 2), 16) * (1 - a)).toString(16).padStart(2, '0')).join('');
+const textW = (s: string) => Math.ceil(s.length * LABEL * 0.58); // Karla bold, generous
+// Axis tick labels left to right: the first always shows, the last wins over the ones it would touch, any other that would overlap is dropped.
+export function pickTicks(ticks: { cx: number; w: number }[], min = 10): number[] {
+  const clash = (a: number, b: number) => Math.abs(ticks[a].cx - ticks[b].cx) < (ticks[a].w + ticks[b].w) / 2 + min;
+  const keep: number[] = [];
+  for (let i = 0; i < ticks.length - 1; i++) if (!keep.length || !clash(keep.at(-1)!, i)) keep.push(i);
+  if (ticks.length > 1) {
+    while (keep.length > 1 && clash(keep.at(-1)!, ticks.length - 1)) keep.pop();
+    keep.push(ticks.length - 1);
+  } else if (ticks.length) keep.push(0);
+  return keep;
+}
+// A line's runs as monotone cubic Béziers (the page's Chart.js monotone, smoothPath.ts); a run of one point is a dot (round cap).
+export function linePath(pts: ([number, number] | null)[]): string {
+  const runs: [number, number][][] = [[]];
+  for (const p of pts) { if (p) runs.at(-1)!.push(p); else if (runs.at(-1)!.length) runs.push([]); }
+  const f = ([x, y]: [number, number]) => `${x.toFixed(1)} ${y.toFixed(1)}`;
+  return runs.filter((r) => r.length).map((r) => (r.length === 1 ? `M${f(r[0])}L${f(r[0])}` : smooth(r))).join(' ');
+}
+// A chart (vbars / lines, chartThumb.ts): a legend row (more than one series), then the plot with its y labels on the left, data labels over
+// the bars and a row of x tick labels under it. Everything is measured from the box, nothing overflows it.
+function chartShape(t: Extract<Thumb, { kind: 'vbars' | 'lines' }>) {
+  const node = (type: string, props: Record<string, unknown>) => ({ type, props });
+  const n = t.series[0].values.length, k = t.series.length;
+  const ticks = t.x ?? [];
+  // Data labels go only where each fits over its own bar; they replace the y labels and rules (which would repeat them).
+  const tv = t.kind === 'vbars' ? t.vals : undefined;
+  const vals = tv?.every((v) => textW(v) <= (WIDTH - GAP * (n - 1)) / n + GAP - 4) ? tv : null;
+  const y = vals ? undefined : t.y;
+  const gutter = y ? Math.max(textW(y[0]), textW(y[1])) + 12 : 0;
+  const PW = WIDTH - gutter, w = (PW - GAP * (n - 1)) / n;
+  const top = vals ? VAL_ROOM : y ? LABEL / 2 + 1 : 0, bot = ticks.length ? XROW : 0;
+  const legend = k > 1 ? LEGEND_H : 0, H = THUMB_H - legend - top - bot;
+  const hex = (i: number, c = -1) => TOKEN_HEX[t.series[i].colors?.[c] ?? t.series[i].color];
+  const kids: unknown[] = [];
+  const over: unknown[] = []; // labels, absolutely placed in box coordinates
+  const label = (s: string, left: number, y: number, width: number, align: 'center' | 'flex-end') => over.push(el('div', { position: 'absolute', left, top: y, width, height: LABEL, display: 'flex', justifyContent: align, alignItems: 'center', whiteSpace: 'nowrap', ...karla, fontSize: LABEL, lineHeight: 1, opacity: 0.85 }, s));
+  const cx = (c: number) => gutter + (t.kind === 'vbars' ? c * (w + GAP) + w / 2 : STROKE / 2 + 1 + c * (PW - STROKE - 2) / (n - 1));
+  if (y) { // two faint rules (the top value and the baseline) with their labels in the gutter
+    kids.push(node('rect', { x: gutter, y: 0, width: PW, height: 2, fill: ESPRESSO, opacity: 0.15 }), node('rect', { x: gutter, y: H - 2, width: PW, height: 2, fill: ESPRESSO, opacity: 0.15 }));
+    label(y[1], 0, top - LABEL / 2, gutter - 8, 'flex-end');
+    label(y[0], 0, top + H - LABEL - 3, gutter - 8, 'flex-end'); // above the baseline, clear of the x row
+  }
+  if (t.kind === 'vbars') {
+    const x0 = (c: number) => gutter + c * (w + GAP), bar = (x: number, y: number, bw: number, h: number, fill: string) => kids.push(node('rect', { x, y, width: bw, height: h, rx: Math.min(5, bw / 2, h / 2), fill: soft(fill) }));
+    for (let c = 0; c < n; c++) {
+      let topY = H;
+      if (t.stacked) {
+        t.series.forEach((s, i) => { const h = (s.values[c] ?? 0) / 100 * H; if (h > 0) { topY -= h; bar(x0(c), topY, w, h, hex(i, c)); } });
+      } else {
+        t.series.forEach((s, i) => { const h = Math.max(3, (s.values[c] ?? 0) / 100 * H); topY = Math.min(topY, H - h); bar(x0(c) + i * w / k, H - h, w / k, h, hex(i, c)); });
+      }
+      if (vals) label(vals[c], x0(c) - GAP / 2, top + topY - LABEL - 4, w + GAP, 'center');
+    }
+  } else {
+    const pad = STROKE / 2 + 1;
+    t.series.forEach((s, i) => {
+      const d = linePath(s.values.map((v, c) => (v == null ? null : [cx(c), H - pad - v / 100 * (H - 2 * pad)] as [number, number])));
+      kids.push(node('path', { d, fill: 'none', stroke: hex(i), strokeWidth: STROKE, strokeLinecap: 'round', strokeLinejoin: 'round' }));
+    });
+  }
+  if (ticks.length) {
+    const spans = ticks.map(([i, s]) => ({ cx: cx(i), w: textW(s) }));
+    for (const j of pickTicks(spans)) {
+      const left = Math.min(WIDTH - spans[j].w, Math.max(0, spans[j].cx - spans[j].w / 2));
+      label(ticks[j][1], left, top + H + (XROW - LABEL) / 2 + 2, spans[j].w, 'center');
+    }
+  }
+  return [
+    ...(k > 1 ? [el('div', { display: 'flex', alignItems: 'center', height: LEGEND_H, flexShrink: 0, overflow: 'hidden', ...karla, fontSize: 28 },
+      t.series.map((s, i) => el('div', { display: 'flex', alignItems: 'center', marginRight: 32, whiteSpace: 'nowrap', maxWidth: WIDTH / k - 32, minWidth: 0, flexShrink: 1 }, [
+        el('div', { width: 26, height: 26, borderRadius: 6, marginRight: 10, flexShrink: 0, background: soft(hex(i)) }), el('div', { ...clipLine, minWidth: 0 }, s.label)])))] : []),
+    el('div', { display: 'flex', position: 'relative', width: WIDTH, height: top + H + bot, flexShrink: 0 }, [
+      node('svg', { width: WIDTH, height: H, viewBox: `0 0 ${WIDTH} ${H}`, style: { position: 'absolute', left: 0, top }, children: kids }),
+      ...over
+    ])
+  ];
+}
 function thumbnail(t: Thumb) {
   const box = (children: unknown) => el('div', { display: 'flex', flexDirection: 'column', height: THUMB_H, flexShrink: 0, marginTop: 12, marginBottom: 24 }, children);
   if (t.kind === 'bars') {
@@ -107,10 +191,11 @@ function thumbnail(t: Thumb) {
     return box(t.rows.map(([label, value, frac], i) => el('div', { display: 'flex', alignItems: 'center', height: THUMB_H / 5, ...karla, fontSize: 30 }, [
       el('div', { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 50, height: 50, borderRadius: 25, marginRight: 14, flexShrink: 0, fontSize: 34, background: !t.plain && i < 3 ? MEDAL_FILL[i] : 'transparent' }, String(i + 1)),
       named(label, 40, { ...clipLine, width: 380, flexShrink: 0 }),
-      el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, background: BAR, borderRadius: 6 })),
+      el('div', { display: 'flex', flexGrow: 1, height: 28, margin: '0 20px' }, el('div', { width: `${Math.max(2, Math.round(frac * 100))}%`, height: 28, background: soft('#d2a679'), borderRadius: 6 })),
       el('div', { display: 'flex', justifyContent: 'flex-end', width: 150, flexShrink: 0, whiteSpace: 'nowrap', fontSize: sizes[i] }, value)
     ])));
   }
+  if (t.kind === 'vbars' || t.kind === 'lines') return box(chartShape(t));
   if (t.kind === 'tile') {
     return box([
       el('div', { display: 'block', whiteSpace: 'nowrap', fontFamily: 'Lora', fontWeight: 600, fontSize: valueSizes([t.value], 150, WIDTH)[0], lineHeight: 1.1 }, t.value),
