@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.2.0...v2.3.0) (2026-11-19)
+
+
+### Features
+
+* link-preview images always on, copy-link icon on recipe titles ([#27](https://github.com/eric-maydeck/bean-tracker/issues/27)) ([bd21129](https://github.com/eric-maydeck/bean-tracker/commit/bd21129d034378d914b4b662be4663f1498705db))
+
 # [2.2.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.1.0...v2.2.0) (2026-11-19)
 
 
