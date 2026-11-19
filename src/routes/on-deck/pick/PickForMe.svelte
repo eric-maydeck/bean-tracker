@@ -22,10 +22,12 @@
   type Shared = { name: string; rules: PickRules; code?: string } | { name: string; missing: true } | { unreadable: true } | { defaults: true } | null;
   // `shared`: a share link's rules (a saved profile, or the defaults) or a profile that was not found; `onunshare` drops them from the URL.
   // `shareRules`: what the page's Share button adds for the rules in play.
-  let { pick, admin, game, ongame, shared, onunshare, shareRules = $bindable() }: {
+  let { pick, admin, game: urlGame, ongame, shared, onunshare, shareRules = $bindable() }: {
     pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; profiles: unknown; savedRules: unknown; todayState: unknown; selectedProfile: unknown };
-    admin: boolean; game: Game; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; rulesCode?: string; defaultRules?: boolean };
+    admin: boolean; game: Game | undefined; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; rulesCode?: string; defaultRules?: boolean };
   } = $props();
+  // The URL's game (none in a bare link); the game in play falls back to the wheel until today's last game is restored.
+  const game = $derived(urlGame ?? 'wheel');
   // Who the shared rules are: a change of it (another profile=, or none) re-seeds the rules; a missing profile plays the visitor's own.
   const sharedKey = $derived(shared && 'rules' in shared ? `${shared.code ? 'c' : 'p'}:${shared.code ?? shared.name}` : shared && 'defaults' in shared ? 'defaults' : '');
   const sharedRules = $derived(shared && 'rules' in shared ? shared.rules : shared && 'defaults' in shared ? DEFAULT_RULES : null);
@@ -109,7 +111,7 @@
     untrack(() => {
       if (!restored) {
         restored = true;
-        if (g === 'wheel' && today.game === 'd20') return void tick().then(() => ongame('d20'));
+        if (!urlGame && today.game === 'd20') return void tick().then(() => ongame('d20'));
       }
       if (today.game !== g) today.game = g;
     });
@@ -476,6 +478,10 @@
   .pick-modal :global(.pick-card) { margin: 0 auto; }
   /* where the inline card is horizontal (beside layout, see `narrow`) the pop-up shows that card too: a `card` container for its own query, wide enough for the 4 buttons */
   .pick-modal.horizontal { container: card / inline-size; width: 760px; max-width: calc(100vw - 2 * var(--space-4)); }
+  /* the pop-up has no tray height to match: the card is as tall as its content (the pop-up's padding below the buttons, as beside them)
+     and the thumbnail runs from the card's top to the buttons' bottom */
+  .pick-modal.horizontal :global(.pick-card.wide:not(.noimg)) { height: auto; }
+  .pick-modal.horizontal :global(.pick-card.wide .card-thumb) { aspect-ratio: auto; height: 100%; min-height: calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px); } /* never under square */
   .rolled { margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
   .rolled b { display: block; font-size: 3.5rem; line-height: 1; letter-spacing: 0; color: var(--color-accent); }
   /* a crit: a dark panel (the same dark in both themes, like the D20 tray, so the colours keep their contrast) with its glow; a normal roll stays plain */
