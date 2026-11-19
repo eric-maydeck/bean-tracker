@@ -38,6 +38,11 @@
   let chosen = false; // A or B picked; otherwise a closed dialog is a cancel
   let rev = $state(0); // bumped on cancel so the panel re-reads `rules`
   let restored = false;
+  let phone = $state(false);
+  let shown = $state(true); // phone overlay: appears ~1.5s after a result lands
+  let showTimer: ReturnType<typeof setTimeout> | undefined;
+  const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const CONFETTI = Array.from({ length: 28 }, (_, i) => ({ left: (i * 37) % 100, delay: (i % 7) * 0.12, dur: 1.6 + (i % 5) * 0.3, color: ['#ffe08a', '#ffd04d', '#fff6d0', '#c9952c'][i % 4] }));
 
   onMount(() => {
     if (!admin) {
@@ -45,11 +50,15 @@
       today = loadToday(false, null, pick.today);
       ready = true;
     }
+    const mq = matchMedia('(max-width: 640px)');
+    const onMq = () => (phone = mq.matches);
+    onMq();
+    mq.addEventListener('change', onMq);
     const hide = () => flushToday();
     const vis = () => document.visibilityState === 'hidden' && flushToday();
     addEventListener('pagehide', hide);
     document.addEventListener('visibilitychange', vis);
-    return () => { removeEventListener('pagehide', hide); document.removeEventListener('visibilitychange', vis); };
+    return () => { mq.removeEventListener('change', onMq); clearTimeout(showTimer); removeEventListener('pagehide', hide); document.removeEventListener('visibilitychange', vis); };
   });
 
   // Coming back: the URL's game wins; with none, today's last game returns. After that the URL drives `today.game`.
@@ -98,6 +107,7 @@
     const k = board[n - 1]?.kind;
     return k === 'success' || k === 'fail' ? k : null;
   };
+  const overlay = $derived(phone && shown && !!result);
   const rolledN = $derived(game === 'd20' ? (result?.n ?? null) : null);
 
   const any = <T,>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)];
@@ -110,6 +120,9 @@
   function land(r: PickResult) {
     busy = false;
     today.result = r;
+    shown = false;
+    clearTimeout(showTimer);
+    showTimer = setTimeout(() => (shown = true), reduced() ? 0 : 1500);
     say(`Picked ${byId.get(r.coffeeId)?.name ?? ''}`);
   }
   function again() {
@@ -122,6 +135,7 @@
     if (busy || empty || !wheel) return;
     rollAgain = false;
     busy = true;
+    shown = false;
     wheel.spinTo(sliceAt(slices, Math.random() * TAU));
   }
   function wheelResult(s: WheelSlice, angle: number) {
@@ -141,6 +155,7 @@
   function startD20() {
     rollAgain = false;
     busy = true;
+    shown = false;
   }
 
   function setGame(g: Game) {
@@ -204,6 +219,8 @@
   }
 </script>
 
+<svelte:window onkeydown={(e) => e.key === 'Escape' && overlay && !dlg?.open && close()} />
+
 {#if ready}
   <div class="form-field group-field">
     <span>Game</span>
@@ -232,14 +249,14 @@
     </section>
 
     <div class="side">
-      <div class="result card">
+      {#if !phone}<div class="result card">
         {#if result && resultCoffee}
           <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
             onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={close} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
         {/if}
-      </div>
+      </div>{/if}
       {#if game === 'd20'}<PickBoard {board} {byId} success={successC} fail={failC} rolled={rolledN} />{/if}
     </div>
   </div>
@@ -249,6 +266,21 @@
     {#each outRow as c (c.id)}<span class="badge badge-neutral"><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
     <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
   </div>
+
+  {#if overlay && result && resultCoffee}
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Escape is handled on the window) -->
+    <div class="modal-backdrop" onclick={(e) => e.target === e.currentTarget && close()}>
+      {#if result.via !== 'normal'}
+        <div class="fx {result.via}" aria-hidden="true">
+          {#if result.via === 'success'}{#each CONFETTI as c, i (i)}<i style:left="{c.left}%" style:animation-delay="{c.delay}s" style:animation-duration="{c.dur}s" style:background={c.color}></i>{/each}{/if}
+        </div>
+      {/if}
+      <div class="modal pick-modal {result.via}" role="dialog" aria-modal="true" aria-label="Pick result">
+        <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+          onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={close} />
+      </div>
+    </div>
+  {/if}
 
   <div class="sr-only" aria-live="polite">{announce}</div>
 
@@ -269,6 +301,16 @@
   .game { min-width: 0; }
   .wheel-wrap { max-width: 560px; margin: 0 auto; }
   .result { min-height: 7.5rem; }
+  .pick-modal { position: relative; max-width: 28rem; }
+  .pick-modal.success { box-shadow: 0 0 0 3px #ffe08a, 0 0 32px #d4a73a; }
+  .pick-modal.fail { box-shadow: 0 0 0 3px #d01c1c, 0 0 32px #7a0a0a; }
+  .fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .fx.fail { background: radial-gradient(circle, transparent 30%, rgba(90, 0, 0, 0.85) 100%); animation: fade-in 0.6s; }
+  .fx.success { background: radial-gradient(circle, rgba(255, 224, 138, 0.25), transparent 70%); }
+  .fx i { position: absolute; top: -12px; width: 8px; height: 8px; border-radius: 2px; animation: fall linear 1 both; }
+  @keyframes fall { to { transform: translateY(105vh) rotate(540deg); opacity: 0; } }
+  @keyframes fade-in { from { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .fx i { display: none; } .fx.fail { animation: none; } }
   /* the card sits beside the game on desktop: wheel left, or a narrower die area with the board under the card */
   @media (min-width: 641px) {
     .stage { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); }

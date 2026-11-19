@@ -59,6 +59,11 @@ async function expectRecapTiles(page: Page, years: string[]) {
   }
 }
 
+// On a phone a result opens an overlay over the page; Escape dismisses it so the controls behind it can be reached.
+const dismissPickOverlay = async (page: Page) => {
+  const modal = page.getByRole('dialog', { name: 'Pick result' });
+  if (await modal.isVisible()) { await page.keyboard.press('Escape'); await expect(modal).toBeHidden(); }
+};
 // Pick for me saves through /api/pick; states never write, so the endpoint is stubbed.
 const stubPickApi = (page: Page) => page.route('**/api/pick**', (route) => route.request().method() === 'PUT' ? route.fulfill({ status: 204 }) : route.fulfill({ json: { value: null } }));
 
@@ -5828,9 +5833,10 @@ export const STATES: State[] = [
       await expect(page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Pick for me' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
       expect((await page.locator('.wheel').boundingBox())!.width).toBeLessThanOrEqual(561);
-      const [w, r] = [(await page.locator('.wheel').boundingBox())!, (await page.locator('.result').boundingBox())!];
-      if ((page.viewportSize()?.width ?? 0) > 640) expect(r.x, 'desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
-      else expect(r.y, 'phone: the card sits below the wheel').toBeGreaterThan(w.y + w.height - 1);
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        const [w, r] = [(await page.locator('.wheel').boundingBox())!, (await page.locator('.result').boundingBox())!];
+        expect(r.x, 'desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
+      } else await expect(page.locator('.result')).toHaveCount(0); // phone: results show in the overlay
       await expectGroupsLabelled(page);
       const rules = page.getByRole('button', { name: 'Rules', exact: true });
       await rules.click();
@@ -5864,6 +5870,7 @@ export const STATES: State[] = [
       await expect(page.locator('tr.rolled td.n')).toHaveText('7');
       await expect(page.locator('.pick-card')).toBeVisible();
       await expect(page).toHaveURL(/game=d20/);
+      await dismissPickOverlay(page);
       await page.getByRole('button', { name: 'Wheel', exact: true }).click();
       await expect(page).not.toHaveURL(/game=/);
     }
@@ -5889,8 +5896,36 @@ export const STATES: State[] = [
       await expect(page.locator('.out-row s')).toHaveCount(1);
       const after = (await card.boundingBox())!;
       expect(Math.abs(after.height - before.height), 'card keeps its height').toBeLessThanOrEqual(2);
+      await dismissPickOverlay(page);
       await page.getByRole('button', { name: 'Reset today' }).click();
       await expect(page.locator('.out-row s')).toHaveCount(0);
+    }
+  },
+  {
+    // Phone: the result shows in a focused overlay (Close, Escape and Brew work); desktop keeps the card beside the wheel.
+    name: 'pick-overlay', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await stubPickApi(page);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const spin = page.getByRole('button', { name: 'Spin', exact: true });
+      await spin.click();
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        await expect(page.locator('.result .pick-card')).toBeVisible();
+        await expect(page.locator('.modal')).toHaveCount(0);
+        return;
+      }
+      const modal = page.getByRole('dialog', { name: 'Pick result' });
+      await expect(modal).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(modal).toBeHidden();
+      await spin.click();
+      await expect(modal).toBeVisible();
+      await modal.getByRole('button', { name: 'Close' }).click();
+      await expect(modal).toBeHidden();
+      await spin.click();
+      await modal.getByRole('button', { name: 'Brew', exact: true }).click();
+      await expect(page).toHaveURL(/\/brew$/);
     }
   },
   {
@@ -5902,6 +5937,7 @@ export const STATES: State[] = [
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.getByRole('button', { name: 'Spin', exact: true }).click();
       await page.locator('.pick-card').getByRole('button', { name: 'Discard' }).click();
+      await dismissPickOverlay(page);
       await page.getByRole('button', { name: 'Rules', exact: true }).click();
       const sort = page.getByLabel('Sort');
       await expect(sort).toHaveValue('urgency-desc');
