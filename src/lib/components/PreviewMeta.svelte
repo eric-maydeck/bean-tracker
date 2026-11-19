@@ -4,10 +4,10 @@
 
   let { preview }: { preview: Preview } = $props();
   // A page without a usable image (none, or a data: URI) gets a card with its own text (src/routes/preview.png;
-  // hooks.server.ts signs the URL in the SSR HTML). Behind the PREVIEW_CARDS flag (server/previewCard.ts) until epic #27 ships.
+  // hooks.server.ts signs the URL in the SSR HTML).
   let own = $derived(preview.image && absoluteImage(preview.image.src, page.url.origin));
   let image = $derived(own ? { src: own, alt: preview.image?.alt ?? '' }
-    : page.data.previewCards ? { src: `${page.url.origin}/preview.png?c=${encodeCard(previewCard(preview))}`, alt: preview.title } : null);
+    : { src: `${page.url.origin}/preview.png?c=${encodeCard(previewCard(preview))}`, alt: preview.title });
 </script>
 
 <svelte:head>

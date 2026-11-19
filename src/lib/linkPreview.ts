@@ -8,7 +8,24 @@ import { KINDS, type ChartTimeline } from './pourShapes';
 import type { Recap } from './server/recaps/recap';
 
 // `card`: the text of the default image card (/preview.png) when there's no image; else derived from the title.
-export interface Card { big: string; label: string; timeline?: ChartTimeline }
+// `thumb`: a small picture of a Stats view under the title (server/recaps/card.ts): top-5 bars (label, value, 0..1 length;
+// `plain`: no medals, as Lowest first), one record tile (value, holder, date line), or a grid of up to 6 tiles (label, value).
+// `vbars`/`lines`: a shape-only chart (src/lib/chartThumb.ts): up to 3 series of 2..40 points, values 0..100, colour = THUMB_TOKENS index.
+export const THUMB_TOKENS = [...Array.from({ length: 14 }, (_, i) => `--series-${i + 1}`), '--series-brown-1', '--series-brown-2', '--series-brown-3', '--series-other'] as const;
+// `colors`: a per-point colour override (THUMB_TOKENS indices, one per point) on a single vbars series. `x`: tick labels [point index, text] (<=7);
+// `y`: the [baseline, top] value labels; `vals`: a label per bar (vbars, <=12 bars). All optional, strings <=12 chars.
+export interface ThumbSeries { label: string; color: number; values: (number | null)[]; colors?: number[] }
+export interface ThumbLabels { x?: [number, string][]; y?: [string, string]; vals?: string[] }
+export type Thumb =
+  | { kind: 'bars'; rows: [string, string, number][]; plain?: boolean }
+  | ({ kind: 'vbars'; series: ThumbSeries[]; stacked?: boolean } & ThumbLabels)
+  | ({ kind: 'lines'; series: ThumbSeries[] } & Omit<ThumbLabels, 'vals'>)
+  | { kind: 'tile'; value: string; holder: string; date?: string }
+  | { kind: 'grid'; tiles: [string, string][] };
+// `coffee`: a coffee's card layout (name from the top, roaster at the bottom), with its saved photo on the right when there is one
+// (a local /img/ copy only, never a remote URL) on its backdrop fill.
+export interface Card { big: string; label: string; timeline?: ChartTimeline; thumb?: Thumb; coffee?: { photo?: { src: string; fill: string } } }
+export const PHOTO_RE = /^\/img\/(coffees|roasters)\/[0-9a-f]{64}\.webp$/;
 export interface Preview { title: string; description: string; image?: { src: string; alt: string } | null; card?: Card }
 
 // "Stats: Roasters" -> big "Roasters", label "Stats"; a title without "Page: " is big alone.
@@ -18,16 +35,23 @@ export function previewCard(p: Preview): Card {
   return i < 0 ? { big: p.title, label: '' } : { big: p.title.slice(i + 2), label: p.title.slice(0, i) };
 }
 
-// base64url of [big, label, timeline?] (UTF-8): no characters that need escaping in a URL or an HTML attribute. The server signs
+// base64url of [big, label, timeline?, thumb?, coffee? ([] or [photo src, fill])] (UTF-8; a missing field before a present one is null): no characters that need escaping in a URL or an HTML attribute. The server signs
 // it (server/previewCard.ts). The timeline is compact: pours [startS, durationS, grams, kind index], swirls, totalS, windows [startS, targetS, bloom].
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const wire = (t: ChartTimeline) => [
   t.pours.map((p) => [r1(p.startS), r1(p.durationS), r1(p.grams), KINDS.indexOf(p.kind)]),
   t.swirls.map(r1), r1(t.totalS), (t.windows ?? []).map((w) => [r1(w.startS), r1(w.targetS), w.bloom])
 ];
-export const encodeCard = (c: Card): string =>
-  btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(c.timeline?.pours.length ? [c.big, c.label, wire(c.timeline)] : [c.big, c.label]))))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const wireSeries = (t: { series: ThumbSeries[] }) => t.series.map((s) => (s.colors ? [s.label, s.color, s.values, s.colors] : [s.label, s.color, s.values]));
+const trim = <T extends unknown[]>(a: T): T => { while (a.length && a.at(-1) === null) a.pop(); return a; };
+const wireThumb = (t: Thumb) => t.kind === 'bars' ? ['bars', t.rows.map(([l, v, f]) => [l, v, Math.round(f * 1000) / 1000]), t.plain ? 1 : 0]
+  : t.kind === 'vbars' ? trim(['vbars', wireSeries(t), t.stacked ? 1 : 0, t.x ?? null, t.y ?? null, t.vals ?? null]) : t.kind === 'lines' ? trim(['lines', wireSeries(t), t.x ?? null, t.y ?? null])
+  : t.kind === 'tile' ? ['tile', t.value, t.holder, t.date ?? ''] : ['grid', t.tiles];
+export function encodeCard(c: Card): string {
+  const a = [c.big, c.label, c.timeline?.pours.length ? wire(c.timeline) : null, c.thumb ? wireThumb(c.thumb) : null, c.coffee ? (c.coffee.photo ? [c.coffee.photo.src, c.coffee.photo.fill] : []) : null];
+  while (a.at(-1) === null) a.pop();
+  return btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(a)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
 
 export const DESCRIPTION_MAX = 300;
 
@@ -54,7 +78,7 @@ export function fitList(items: string[], sep: string, more: boolean, max = DESCR
 
 export function coffeePreview(
   c: Pick<CoffeeRow, 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'amount_g' | 'roast_date' | 'grams_left'>,
-  image: { src: string; alt: string } | null
+  image: { src: string; alt: string; fill?: string } | null
 ): Preview {
   const details = join([
     c.origin?.trim() && originWithFlag(c.origin.trim()),
@@ -62,7 +86,9 @@ export function coffeePreview(
     c.amount_g != null && formatBag(c.amount_g, c.grams_left != null && c.grams_left < c.amount_g ? c.grams_left : null),
     c.roast_date && `Roasted ${c.roast_date}`
   ]);
-  return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image, card: { big: c.coffee_name, label: c.roaster ?? '' } };
+  // Always the coffee card (no bare photo), with the saved photo when there's a local copy.
+  const card: Card = { big: c.coffee_name, label: c.roaster ?? '', coffee: image?.fill && PHOTO_RE.test(image.src) ? { photo: { src: image.src, fill: image.fill } } : {} };
+  return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image: null, card };
 }
 
 export function waterPreview(w: { mode: Mode; tip: Tip; recipe: string; ml: number; drops: Drops; gh: number; kh: number; target?: { gh: number; kh: number }; idealMl?: number[] }): Preview {

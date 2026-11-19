@@ -74,6 +74,7 @@
     series = [],
     yMin,
     samples,
+    barTokens,
     format,
     tickFormat,
     tipOf,
@@ -138,6 +139,8 @@
     integer?: boolean;
     // Vertical bars: per-bar samples (sample.ts); a small one is striped over its color, its tip adds a Sample row.
     samples?: Sample[];
+    // Vertical bars: a series token (`--series-brown-3`) per bar to colour it differently (null = the series colour), e.g. Habits' weekend bars.
+    barTokens?: (string | null)[];
     // Always show the legend, so paired charts' plot areas line up.
     legend?: boolean;
     // Lines: one color token per line (`var(--series-3)`, the page's per-name colors), in line order; else by position.
@@ -383,7 +386,7 @@
                 fill: false
               }
             : vbar
-            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: barLine, borderWidth: 0.75, ...(stacked && { stack: 'main' }) }
+            ? { label: datasetLabel, data: values, backgroundColor: samples || barTokens ? values.map((_, i) => { const c = barTokens?.[i] ? themeColor(barTokens[i]!) : lineColor; return samples ? (samples[i]?.small ? hatch(c, surfaceColor) : c) : soft(c); }) : soft(lineColor), borderColor: barTokens ? values.map((_, i) => (barTokens[i] ? themeColor(`${barTokens[i]}-ink`) : barLine)) : barLine, borderWidth: 0.75, ...(stacked && { stack: 'main' }) }
             : {
                 label: datasetLabel,
                 data: values,
@@ -583,7 +586,7 @@
     void format;
     void tipFormat;
     void tickFormat;
-    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked, band, !!tipOf]);
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, barTokens, integer, dashGaps, legend, colors, stacked, band, !!tipOf]);
     if (chart && sig === lastSig) return;
     lastSig = sig;
     render();

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 import { localToday } from '#lib/server/localToday.ts';
 vi.mock('node:fs', async (orig) => { const a = await orig<typeof import('node:fs')>(); return { ...a, unlinkSync: vi.fn(a.unlinkSync) }; });
-import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard } from './card';
+import { cardFontSize, cardPng, cardSvg, cardsRoot, cachedCard, linePath, pickTicks, valueSizes } from './card';
 
 const dir = mkdtempSync(join(tmpdir(), 'card-'));
 process.env.DB_PATH = join(dir, 't.db');
@@ -98,5 +98,67 @@ describe('endpoint', () => {
     const b = Buffer.from(await ((await call(cur - 1, 'total', '?people=person')) as Response).arrayBuffer());
     expect(b.equals(a)).toBe(true);
     expect(existsSync(cardsRoot())).toBe(true);
+  });
+});
+
+describe('thumbnail legend', () => {
+  it('long series names are clipped with an ellipsis and every entry renders', async () => {
+    const values = [10, 40, 80, 30];
+    const thumb = { kind: 'vbars' as const, series: ['x'.repeat(60), 'y'.repeat(60), 'Other'].map((label, color) => ({ label, color, values })) };
+    const input = { big: 'Water', label: 'Stats', year: 0, cover: true, page: true, thumb } as never;
+    const svg = await cardSvg(input);
+    expect(svg).toContain('<svg'); // text is outlined to paths, so the ellipsis shows only in the PNG
+    expect((await sharp(await cardPng(svg)).metadata()).format).toBe('png');
+  });
+});
+
+describe('valueSizes', () => {
+  it('fitting values keep the default size', () => expect(valueSizes(['9.2', '41 days'], 52, 288)).toEqual([52, 52]));
+  it('a small step down for the longest applies to every value', () =>
+    expect(valueSizes(['9.2', 'x'.repeat(10)], 52, 288)).toEqual([48, 48]));
+  it('a big step down shrinks that value alone', () => {
+    const [a, b] = valueSizes(['9.2', 'x'.repeat(30)], 52, 288);
+    expect([a, b]).toEqual([52, 22]);
+  });
+  it('never goes under 22', () => expect(valueSizes(['x'.repeat(200)], 52, 288)).toEqual([22]));
+  it('an unreasonably long text stops at the floor, short values are not held back', () =>
+    expect(valueSizes(['9.2', 'x'.repeat(50)], 52, 288, 30)).toEqual([52, 30]));
+  it('short and numeric values never reach the floor', () => expect(valueSizes(['$0.09/g', '41 days', '1kg'], 52, 288, 30)).toEqual([52, 52, 52]));
+});
+
+describe('flag emoji on a card', () => {
+  it('draws a flag image instead of tofu', async () => {
+    const thumb = { kind: 'bars' as const, rows: [['\u{1F1EA}\u{1F1F9} Ethiopia', '8.4', 1]] as [string, string, number][] };
+    const svg = await cardSvg({ big: 'Origins', label: 'Stats', year: 0, cover: true, page: true, thumb });
+    expect(svg).toContain('data:image/svg+xml;base64,');
+  });
+  it('cuts an unreasonably long grid value with an ellipsis and keeps short ones whole', async () => {
+    const grid = (v: string) => cardSvg({ big: 'Money', label: 'Stats', year: 0, cover: true, page: true, thumb: { kind: 'grid', tiles: [['A', v]] } });
+    // Text is drawn as paths: two values cut to the same visible text draw identically, two short ones differ.
+    expect(await grid('x'.repeat(50))).toBe(await grid('x'.repeat(100)));
+    expect(await grid('xxxxx')).not.toBe(await grid('xxxxxxx'));
+  });
+});
+
+describe('chart card paths and ticks', () => {
+  it('linePath never overshoots the points it joins, and a straight line stays straight', () => {
+    const pts: [number, number][] = [[0, 100], [10, 20], [20, 20], [30, 80], [40, 10], [50, 12]];
+    const nums = linePath(pts).match(/-?\d+\.?\d*/g)!.map(Number);
+    const ys = nums.filter((_, i) => i % 2 === 1);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(10);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(100);
+    const straight = linePath([[0, 50], [10, 40], [20, 30], [30, 20]]).match(/-?\d+\.?\d*/g)!.map(Number);
+    for (let i = 0; i < straight.length; i += 2) expect(straight[i] + straight[i + 1]).toBeCloseTo(50, 0);
+  });
+  it('linePath breaks at gaps and draws a lone point as a dot', () => {
+    const d = linePath([[0, 1], [10, 2], null, [20, 3], null, [30, 4], [40, 5]]);
+    expect(d.match(/M/g)).toHaveLength(3);
+    expect(d).toContain('M20.0 3.0L20.0 3.0');
+  });
+  it('pickTicks keeps the first and last and drops the ones that would overlap', () => {
+    const t = (n: number, w: number) => Array.from({ length: n }, (_, i) => ({ cx: 50 + i * 100, w }));
+    expect(pickTicks(t(7, 40))).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(pickTicks(t(7, 150))).toEqual([0, 2, 4, 6]);
+    expect(pickTicks(t(4, 150))).toEqual([0, 2, 3].filter((i) => i !== 2));
   });
 });

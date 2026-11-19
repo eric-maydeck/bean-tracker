@@ -9,7 +9,6 @@ import { localToday } from '#lib/server/localToday.ts';
 import { ensureRecapAlerts, recapReadyYear } from '#lib/server/recaps/store.ts';
 import { coverTone } from '#lib/server/recaps/select.ts';
 import { version } from '../../package.json';
-import { previewCardsOn } from '#lib/server/previewCard.ts';
 
 export const load: LayoutServerLoad = ({ locals, url, cookies }) => {
   const db = getDb();
@@ -32,6 +31,6 @@ export const load: LayoutServerLoad = ({ locals, url, cookies }) => {
   const coloredNames = names.map((r) => r.n).filter((n) => nameColor(n));
   const recapReady = recapReadyYear(db, localToday(), locals.isAdmin);
   return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts, coloredNames, site: siteFor(url.host),
-    recapReady, brewingZone: brewingZone(), previewCards: previewCardsOn(),
+    recapReady, brewingZone: brewingZone(),
     displayZone: resolveDisplayZone({ signedIn: locals.isAdmin, setting: getDisplayZone(db), cookie: cookies.get('tz') ?? null }), dateFormat: locals.isAdmin ? getDateFormat(db) : DEFAULT_DATE_FORMAT, recapTone: recapReady ? coverTone(recapReady) : null };
 };

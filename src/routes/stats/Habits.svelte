@@ -11,6 +11,7 @@
   import { labelTip } from '#lib/components/labelTip.ts';
   import { useEmptyLine } from './coffeeNote';
   import HeadingAnchor from './HeadingAnchor.svelte';
+  import { habitsCharts, HOUR_LABELS, WEEKEND_TOKENS } from './consumptionSeries';
   import type { Snippet } from 'svelte';
   import { sampleField } from '#lib/sample.ts';
   import Chart from '#lib/components/Chart.svelte';
@@ -29,7 +30,7 @@
   } = $props();
 
   const LABEL: Record<Measure, string> = { brews: 'Brews', grams: 'Grams', rating: 'Rating' };
-  const HOURS = Array.from({ length: 24 }, (_, i) => hour12(i, true));
+  const HOURS = HOUR_LABELS;
   // Chart tooltips: averages to one decimal, grams with their unit.
   // Avg per day values are small fractions (0.31 brews): two decimals, with " avg" after the unit.
   const avg = $derived(agg !== 'total' && measure !== 'rating');
@@ -50,15 +51,7 @@
   const dayText = $derived(textOf(false)); // the calendar is per day in either mode
   const what = $derived(measure === 'grams' ? 'Grams' : 'Brews');
   let empty = $derived(h.tiles.brewDays === 0);
-  // A compare window with no data adds no series (and no legend entry).
-  const compare = (values: (number | null)[] | null) =>
-    comparing && values?.some((v) => v) ? [{ label: compareLabel, values, faded: true }] : [];
-  // Ratings sit high on a 1–10 scale: fit the axis floor a point below the lowest bar.
-  const yMin = (...vs: ((number | null)[] | null)[]) => {
-    if (measure !== 'rating') return undefined;
-    const lo = Math.min(...vs.flatMap((v) => v ?? []).filter((v): v is number => v !== null));
-    return Number.isFinite(lo) ? Math.max(0, Math.floor(lo) - 1) : undefined;
-  };
+  const ch = $derived(habitsCharts(h, { measure, agg, comparing, periodLabel, compareLabel }));
   const emptyLine = useEmptyLine();
 </script>
 
@@ -92,15 +85,15 @@
   <div class="insights-charts">
     <section class="chart-panel">
       <HeadingAnchor id="habits-hour">By hour of day</HeadingAnchor>
-      <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
-        series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
+      <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={ch.hour.values} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
+        series={ch.hour.series} yMin={ch.hour.yMin} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
       <!-- Switched notes: sentence, then the suffix on its own line (blank placeholder when none), so a measure switch never moves the page. -->
       <p class="chart-note" data-switched-note>{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? unitWord : 'total'}`}<br>Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
     </section>
     <section class="chart-panel">
       <HeadingAnchor id="habits-weekday">By day of week</HeadingAnchor>
-      <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
-        series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
+      <Chart type="bar" vertical labels={WEEKDAYS} values={ch.weekday.values} samples={h.bySampleWeekday ?? undefined} barTokens={WEEKEND_TOKENS} datasetLabel={periodLabel}
+        series={ch.weekday.series} yMin={ch.weekday.yMin} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
       <p class="chart-note" data-switched-note>{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? (agg === 'brewday' ? 'per brew day, by weekday' : 'per weekday, averaged') : 'total'}`}<br>{'\u00a0'}</p>
     </section>

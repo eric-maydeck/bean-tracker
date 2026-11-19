@@ -45,6 +45,7 @@
   import Spend, { jumpLinks as spendLinks } from './Spend.svelte';
   import OnHand, { jumpLinks as onHandLinks } from './OnHand.svelte';
   import RunwayChart from './RunwayChart.svelte';
+  import { paceName, runwayPaces } from './onHandSeries';
   import CapItem from '#lib/components/CapItem.svelte';
   import type { Snippet } from 'svelte';
   import Recent from './Recent.svelte';
@@ -394,14 +395,14 @@
   ]);
   // Runway: the days left at the Period's pace and at the all-time pace (one tile when the Period is all time).
   // "last 12 months pace"; a custom window's dates stay as they are.
-  const paceName = $derived(s.range === 'all' || /^[A-Z][a-z]{2} \d/.test(periodLabel) ? periodLabel : periodLabel.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase()));
+  const pace = $derived(paceName(s.range, periodLabel));
   // Per pace: days left, the run-out date (the value is the days; its format is the date) and the daily grams.
   const paceTiles = (k: 'pace' | 'all', name: string): Tile[] => [
     { key: `${k}Days`, row: name, split: true, label: 'Days left', fmt: days, suffix: 'days' },
     { key: `${k}Out`, row: name, split: true, label: 'Runs out', fmt: outDate },
     { key: `${k}PerDay`, row: name, split: true, label: 'A day', fmt: formatGrams }
   ];
-  let RUNWAY = $derived<Tile[]>([...(s.range === 'all' ? [] : paceTiles('pace', `At your ${paceName} pace`)), ...paceTiles('all', 'At your all-time pace')]);
+  let RUNWAY = $derived<Tile[]>([...(s.range === 'all' ? [] : paceTiles('pace', `At your ${pace} pace`)), ...paceTiles('all', 'At your all-time pace')]);
   let HABITS = $derived<Tile[]>(
     data.habits
       ? [
@@ -595,6 +596,7 @@
     tab: s.tab, owner: page.data.site.contactName, tabLabel: TAB_LABEL[s.tab], period: periodLabel, brews: data.tiles.brews, avgRating: data.tiles.avgRating,
     filters: [...coffeeChips.map(([, v]) => v), ...brewChips.map((k) => brewFilterText(k, s[k]!))],
     chart: s.chart, rank: s.rank, low: s.low, perPerson: perPersonOn, boards: data.boards, records: data.records,
+    ctx: { data, s, periodLabel, compareLabel, perPerson: perPersonOn },
     line: data.onHand ? `${plural(data.onHand.tiles.bagsWaiting, 'bag')} waiting · ${formatGrams(data.onHand.tiles.gramsWaiting)} · ${usd(data.onHand.tiles.tiedUp)} tied up` : !data.spend ? undefined : `Spent ${usd(data.spend.tiles.spent)} · ${plural(data.spend.tiles.bags, 'bag')}${data.spend.tiles.avgPpg === null ? '' : ` · ${usd(data.spend.tiles.avgPpg)}/g avg`}`
   })}
 />
@@ -1007,7 +1009,7 @@
   <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
 {:else if s.tab === 'onhand' && data.onHand}
   {#snippet runwayChart()}
-    <RunwayChart t={data.onHand!} today={data.today} paces={[...(s.range === 'all' ? [] : [{ name: paceName, days: data.onHand!.runway.days }]), { name: 'all-time pace', days: data.onHand!.runwayAll.days }]} />
+    <RunwayChart t={data.onHand!} today={data.today} paces={runwayPaces({ range: s.range, periodLabel, runwayDays: data.onHand!.runway.days, allDays: data.onHand!.runwayAll.days })} />
     <p class="chart-note">{#if perPersonOn}Per person divides the pace, so the same shelf lasts longer.{' '}{/if}<a href={link('/stats?tab=insights&chart=insights-what-if#insights-what-if')}>Plan it: What if</a></p>
   {/snippet}
   {#snippet runwayPanel()}{@render panel('Runway at your pace', RUNWAY, { paceDays: data.onHand!.runway.days, paceOut: data.onHand!.runway.days, pacePerDay: data.onHand!.runway.perDay, allDays: data.onHand!.runwayAll.days, allOut: data.onHand!.runwayAll.days, allPerDay: data.onHand!.runwayAll.perDay }, null, undefined, runwayChart)}{/snippet}

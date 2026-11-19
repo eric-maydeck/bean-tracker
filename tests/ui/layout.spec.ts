@@ -431,26 +431,69 @@ async function expectFieldRowsAligned(page: Page) {
   }
 }
 
-type View = 'cards' | 'list' | 'compact';
-// A row's own Edit on /coffees (solo edit: Save + Cancel scoped to that coffee).
-async function openSoloEdit(page: Page, view: View, name: string) {
-  if (view === 'list') {
-    await page.getByRole('row', { name: new RegExp(name) }).getByRole('button', { name: 'Edit', exact: true }).click();
-    return;
+// The edit overlay's sticky header (title, status icons, Save / Cancel): focus starts in the dialog, and the header stays pinned
+// to the top, fully on screen with 44px targets, while the form is scrolled to its end.
+async function expectOverlayHeader(page: Page) {
+  const modal = page.locator('.modal');
+  await expect(modal).toHaveAttribute('role', 'dialog');
+  await expect(modal).toHaveAttribute('aria-modal', 'true');
+  await expect(modal).toHaveAccessibleName(/\S/);
+  await expect(modal).toBeFocused();
+  await modal.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await frames(page);
+  if (process.env.UI_SHOTS === 'all') await page.screenshot({ path: `.ui-test/screenshots/edit-overlay-${test.info().project.name}.png` });
+  const vp = page.viewportSize()!;
+  const [m, h] = [(await modal.boundingBox())!, (await modal.locator('.modal-head').boundingBox())!];
+  expect(Math.abs(h.y - m.y), 'header pinned to the top of the overlay while the form is scrolled').toBeLessThanOrEqual(1);
+  const buttons = modal.locator('.modal-head .button');
+  expect(await buttons.count()).toBeGreaterThanOrEqual(2);
+  // Equal-size buttons spanning the form's content width: the last one's right edge is the inputs' right edge.
+  const boxes = await Promise.all((await buttons.all()).map((b) => b.boundingBox().then((r) => r!)));
+  boxes.forEach((r, i) => expect(Math.abs(r.width - boxes[0].width), `header button ${i} width ${r.width} vs ${boxes[0].width}`).toBeLessThanOrEqual(1));
+  const inputRight = await modal.locator('.modal-body input:visible, .modal-body select:visible').evaluateAll((els) => Math.max(...els.map((e) => e.getBoundingClientRect().right)));
+  const last = boxes[boxes.length - 1];
+  expect(Math.abs(last.x + last.width - inputRight), `last header button right ${last.x + last.width} vs inputs ${inputRight}`).toBeLessThanOrEqual(1);
+  expect(Math.abs(boxes[0].x - (await modal.locator('.modal-body form').boundingBox())!.x), 'first button at the form content left').toBeLessThanOrEqual(1);
+  for (const b of await buttons.all()) {
+    const r = (await b.boundingBox())!;
+    const what = (await b.getAttribute('aria-label')) ?? (await b.innerText());
+    expect(r.x, `${what} left of the screen`).toBeGreaterThanOrEqual(0);
+    expect(r.x + r.width, `${what} past the right edge`).toBeLessThanOrEqual(vp.width);
+    expect(r.y + r.height, `${what} below the screen`).toBeLessThanOrEqual(vp.height);
+    expect(r.height, `${what} height`).toBeGreaterThanOrEqual(43.5);
+    expect(r.width, `${what} width`).toBeGreaterThanOrEqual(43.5);
   }
-  const item = page.locator(view === 'cards' ? '.card' : '.compact-row-wrap').filter({ hasText: name });
-  if (view === 'compact') await item.locator('.compact-row').click();
-  await item.getByRole('button', { name: 'Edit', exact: true }).click();
 }
 
-// ui-rules 19. After "Set as roaster default", Save and Cancel are below the
+type View = 'cards' | 'list' | 'compact';
+// A row's own Edit on /coffees opens that coffee in the overlay (header: status icons + Save / Cancel).
+async function openEditOverlay(page: Page, view: View, name: string) {
+  if (view === 'list') {
+    await page.getByRole('row', { name: new RegExp(name) }).getByRole('button', { name: 'Edit', exact: true }).click();
+  } else {
+    const item = page.locator(view === 'cards' ? '.card' : '.compact-row-wrap').filter({ hasText: name });
+    if (view === 'compact') await item.locator('.compact-row').click();
+    await item.getByRole('button', { name: 'Edit', exact: true }).click();
+  }
+  await expect(page.locator('.modal')).toBeVisible();
+}
+// The toolbar's Edit (every row inline), then this row's own Edit toggle opens its inline form (Update + Cancel under it).
+async function openInlineEdit(page: Page, view: View, name: string) {
+  const toolbarEdit = page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true });
+  if (await toolbarEdit.count()) await toolbarEdit.click();
+  const item = view === 'list' ? page.getByRole('row', { name: new RegExp(name) }) : page.locator(view === 'cards' ? '.card' : '.compact-row-wrap').filter({ hasText: name });
+  await item.getByRole('button', { name: 'Edit', exact: true }).click();
+  await expect(page.locator('form:has(#coffee_name)').first()).toBeVisible();
+}
+
+// ui-rules 19. After "Set as roaster default" in an Edit-all inline form, Update and Cancel are below the
 // form's image row and within a screen of it: reachable by scrolling down from where the
 // user just tapped, not missing (Cards bug) or above, off-screen (List bug).
 async function expectActionsUnderForm(page: Page) {
   await page.locator('#image_url').fill('https://img.example/pink-bourbon.png');
   await page.getByRole('button', { name: 'Set as roaster default' }).click();
   const marked = page.getByRole('button', { name: 'Will be set as default' });
-  for (const name of ['Save', 'Cancel']) {
+  for (const name of ['Update', 'Cancel']) {
     const b = page.getByRole('button', { name, exact: true });
     await b.scrollIntoViewIfNeeded();
     await expect(b).toBeInViewport();
@@ -466,12 +509,12 @@ async function expectActionsUnderForm(page: Page) {
   // (Measured at sideways-scroll start: List's action row is sticky.)
   const formEl = page.locator('form').filter({ has: marked });
   await formEl.evaluate((f) => { for (let e: Element | null = f; e; e = e.parentElement) e.scrollLeft = 0; });
-  const save = (await page.getByRole('button', { name: 'Save', exact: true }).boundingBox())!;
+  const save = (await page.getByRole('button', { name: 'Cancel', exact: true }).boundingBox())!;
   const form = (await formEl.boundingBox())!;
   expect(Math.abs(save.x - form.x)).toBeLessThan(1);
   // ui-rules 20: the action row is one line (every button at the same top)
   // whenever its buttons fit the container; same in every view.
-  const row = await page.getByRole('button', { name: 'Save', exact: true }).evaluate((save) => {
+  const row = await page.getByRole('button', { name: 'Cancel', exact: true }).evaluate((save) => {
     const stack = save.closest('.action-stack')!;
     const bs = [...stack.querySelectorAll('button')].map((b) => b.getBoundingClientRect());
     return { tops: [...new Set(bs.map((b) => Math.round(b.top)))], total: bs.reduce((a, b) => a + b.width, 0), room: stack.closest('.action-buttons')!.getBoundingClientRect().width };
@@ -484,7 +527,7 @@ async function expectActionsUnderForm(page: Page) {
 // (from the form) and below (to the item's edge) match Compact's, in every view.
 const ACTION_GAP = { above: 16, belowMin: 12, belowMax: 18 }; // Compact/Cards, px (Compact 13, Cards 17)
 async function expectActionRow(page: Page) {
-  const m = await page.getByRole('button', { name: 'Save', exact: true }).evaluate((save) => {
+  const m = await page.getByRole('button', { name: 'Cancel', exact: true }).evaluate((save) => {
     const wrap = save.closest('.action-buttons')!;
     const bs = [...wrap.querySelectorAll('button')].map((b) => b.getBoundingClientRect());
     const item = wrap.closest('.card, .compact-row-wrap, tr')!.getBoundingClientRect();
@@ -505,7 +548,7 @@ async function expectActionRow(page: Page) {
     };
   });
   const vw = page.viewportSize()!.width;
-  expect(m.n).toBe(6);
+  expect(m.n).toBe(5); // Cancel, Delete, Open, Freeze, Archive
   expect(m.right, 'an action button spills past the right edge').toBeLessThanOrEqual(vw);
   expect(m.left).toBeGreaterThanOrEqual(0);
   // ...and inside its own card/row: a desktop card is narrower than the viewport,
@@ -526,7 +569,7 @@ async function expectActionRow(page: Page) {
   // List: the row is also inside the sideways-scrolling table's visible box,
   // with the table scrolled fully left (as opened) and fully right (where the
   // Edit button is), not clipped by .table-scroll at either end.
-  const clipped = await page.getByRole('button', { name: 'Save', exact: true }).evaluate((save) => {
+  const clipped = await page.getByRole('button', { name: 'Cancel', exact: true }).evaluate((save) => {
     const scroller = save.closest('.table-scroll');
     if (!scroller) return [];
     const out: string[] = [];
@@ -1411,8 +1454,8 @@ export const STATES: State[] = [
     name: `coffees-bar-inline-edit-${view}`, viewports: 'two' as const,
     path: () => `/coffees?status=all&view=${view}`,
     act: async (page: Page) => {
-      await openSoloEdit(page, view, 'Colombia Pink Bourbon');
-      const save = page.getByRole('button', { name: 'Save', exact: true });
+      await openInlineEdit(page, view, 'Colombia Pink Bourbon');
+      const save = page.getByRole('button', { name: 'Update', exact: true });
       await save.evaluate((el) => el.scrollIntoView({ block: 'start' }));
       await frames(page);
       const covered = await save.evaluate((el) => {
@@ -1516,9 +1559,8 @@ export const STATES: State[] = [
     path: () => '/coffees?status=backlog&view=list',
     act: async (page, s) => {
       const row = page.getByRole('row', { name: new RegExp(s.names.everyAction) });
-      await row.getByRole('button', { name: 'Edit', exact: true }).click();
-      // The open row's actions sit under its form (one Archive on the page).
-      await page.getByRole('button', { name: 'Archive', exact: true }).click();
+      await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
+      await row.getByRole('button', { name: 'Archive', exact: true }).click();
       await expect(page.getByText(/^Pending: /).first()).toBeVisible();
     }
   },
@@ -1528,7 +1570,7 @@ export const STATES: State[] = [
     act: async (page, s) => {
       await page.getByRole('button', { name: '+ Add Coffee' }).click();
       await fakeAdd(page, s.slugs.long);
-      await expect(page.locator('#add-coffee')).toHaveCount(0);
+      await expect(page.locator('.modal')).toHaveCount(0);
     }
   },
   {
@@ -1543,12 +1585,134 @@ export const STATES: State[] = [
     }
   },
   {
+    // /coffees: a row's Edit opens the overlay (not an inline form); status icons stage until Save; Cancel and Escape close it
+    // (asking first when something is staged) and focus returns to the row's Edit.
+    name: 'coffees-edit-overlay', path: () => '/coffees?status=backlog&view=cards',
+    act: async (page: Page, s: Seed) => {
+      const edit = page.locator('.card').filter({ hasText: s.names.everyAction }).getByRole('button', { name: 'Edit', exact: true });
+      await edit.click();
+      await expect(page.locator('.card form')).toHaveCount(0);
+      await expectOverlayHeader(page);
+      await checkLayout(page);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.modal')).toHaveCount(0);
+      await expect(edit).toBeFocused();
+      await edit.click();
+      const archive = page.locator('.modal').getByRole('button', { name: 'Archive', exact: true });
+      await archive.click();
+      await expect(archive).toHaveAttribute('aria-pressed', 'true');
+      await checkLayout(page);
+      page.once('dialog', (d) => d.dismiss()); // staged: Cancel asks first; keep editing
+      await page.locator('.modal').getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(page.locator('.modal')).toBeVisible();
+      page.once('dialog', (d) => d.accept());
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.modal')).toHaveCount(0);
+    } },
+  { name: 'coffee-edit-overlay', path: (s: Seed) => `/coffees/${s.slugs.frozen}`,
+    act: async (page: Page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.locator('article.detail')).toBeVisible(); // the page stays behind the overlay
+      await expectOverlayHeader(page);
+      await expect(page.getByRole('button', { name: 'Delete this coffee' })).toHaveCount(0);
+      await checkLayout(page);
+    } },
+  // The status icons sit in their own row above the coffee name (admin), the same four slots in the same order (a toggle swaps
+  // in place, an action that does not apply is disabled), 44px, on screen. Brew now's text is centered in its box like its siblings'.
+  { name: 'coffee-detail-quick-actions', path: (s: Seed) => `/coffees/${s.slugs.frozen}`,
+    act: async (page: Page) => {
+      const textOffset = (loc: Locator) => loc.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const [t, b] = [range.getBoundingClientRect(), el.getBoundingClientRect()];
+        return (t.top + t.bottom) / 2 - (b.top + b.bottom) / 2;
+      });
+      const brew = await textOffset(page.locator('.detail-brew'));
+      for (const sib of ['.detail-clone', '.detail-edit']) {
+        expect(Math.abs(brew - (await textOffset(page.locator(sib)))), `Brew now text offset ${brew} vs ${sib} ${await textOffset(page.locator(sib))}`).toBeLessThanOrEqual(1);
+      }
+      const row = page.locator('.detail-status');
+      const icons = row.locator('.button-icon');
+      await expect(icons).toHaveCount(4);
+      expect((await icons.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')!.replace(/^Un/, '').replace(/^Thaw$/, 'Freeze')))), 'slots: Delete, Open, Freeze, Archive').toEqual(['Delete', 'Open', 'Freeze', 'Archive']);
+      const vp = page.viewportSize()!;
+      const bx = async (l: Locator) => (await l.boundingBox())!;
+      const [icon, back, edit] = [await Promise.all((await icons.all()).map(bx)), await bx(page.locator('.detail-back')), await bx(page.locator('.detail-edit'))];
+      for (const r of icon) {
+        expect(r.x + r.width).toBeLessThanOrEqual(vp.width);
+        expect(r.height).toBeGreaterThanOrEqual(43.5);
+        expect(r.width).toBeGreaterThanOrEqual(43.5);
+        expect(Math.abs(r.width - icon[0].width), 'four equal widths').toBeLessThanOrEqual(1);
+        expect(Math.abs(r.y - icon[0].y), 'one row').toBeLessThanOrEqual(1);
+      }
+      // In the top action row, never crowding another button: on a shared line at least the normal gap apart, else on their own line.
+      const others = await Promise.all((await page.locator('.detail-actions .detail-right > *, .detail-actions > .detail-back').all()).map(bx));
+      for (const o of others) {
+        const sameLine = Math.min(o.y + o.height, icon[0].y + icon[0].height) - Math.max(o.y, icon[0].y) > 4;
+        if (!sameLine) continue;
+        const gap = o.x >= icon[3].x + icon[3].width - 1 ? o.x - (icon[3].x + icon[3].width) : icon[0].x - (o.x + o.width);
+        expect(gap, 'gap between the status buttons and a neighbour on their line').toBeGreaterThanOrEqual(7);
+      }
+      expect(icon[0].y, 'the row holds the status buttons, not the header').toBeLessThan((await bx(page.locator('.detail-body h1'))).y);
+      if (vp.width <= 640) {
+        expect(icon[0].y, 'phone: directly under Brew / Add / Clone / Edit').toBeGreaterThan(edit.y + edit.height - 1);
+        expect(icon[0].y - (edit.y + edit.height), 'phone: one gap under them').toBeLessThanOrEqual(14);
+      } else if (icon[0].y < edit.y + edit.height) {
+        expect(icon[0].x, 'desktop: after Back').toBeGreaterThanOrEqual(back.x + back.width + 7);
+      }
+      if (process.env.UI_SHOTS === 'all') await page.screenshot({ path: `.ui-test/screenshots/detail-status-${test.info().project.name}.png` });
+      await checkLayout(page);
+    } },
+  // Admin: the whole action row (Back, status buttons, Import ... Share) is one line from 1003px (phone landscape) up, with the
+  // status buttons icon-sized below 1126px and Clone-width from there (where the full row first fits with the normal gap).
+  { name: 'coffee-detail-actions-one-line', viewports: 'two', path: (s: Seed) => `/coffees/${s.slugs.frozen}`,
+    act: async (page: Page) => {
+      for (const [width, wide] of [[1003, false], [1125, false], [1126, true], [1280, true]] as const) {
+        await page.setViewportSize({ width, height: 800 });
+        await frames(page);
+        const m = await page.evaluate(() => {
+          const kids = [...document.querySelectorAll<HTMLElement>('.detail-actions > :not(.detail-right), .detail-right > *')].map((c) => c.getBoundingClientRect());
+          const status = document.querySelector('.detail-status .button-icon')!.getBoundingClientRect();
+          const imp = document.querySelector('.detail-import')!.getBoundingClientRect();
+          const back = document.querySelector('.detail-back')!.getBoundingClientRect();
+          const last = document.querySelectorAll('.detail-status .button-icon')[3].getBoundingClientRect();
+          return { tops: kids.map((k) => k.top), sw: status.width, gap: imp.left - last.right, backGap: status.left - back.right, over: document.documentElement.scrollWidth > innerWidth };
+        });
+        expect(Math.max(...m.tops) - Math.min(...m.tops), `${width}px: the action row is one line`).toBeLessThanOrEqual(1);
+        expect(m.over, `${width}px: no sideways scroll`).toBe(false);
+        expect(m.gap, `${width}px: gap between the status buttons and Import`).toBeGreaterThanOrEqual(7.5);
+        expect(m.backGap, `${width}px: gap after Back`).toBeGreaterThanOrEqual(7.5);
+        expect(wide ? m.sw >= 70 : Math.abs(m.sw - 44) <= 1, `${width}px: status width ${m.sw}`).toBe(true);
+      }
+      // Where the row has to wrap (768px), the right-hand buttons stay anchored top right: each line of them ends at the row's
+      // right edge, and Back, the status buttons and the first of them share the first line's top.
+      await page.setViewportSize({ width: 768, height: 800 });
+      await frames(page);
+      const w = await page.evaluate(() => {
+        const box = (e: Element) => { const r = e.getBoundingClientRect(); return { top: r.top, right: r.right, left: r.left }; };
+        const row = box(document.querySelector('.detail-actions')!);
+        return {
+          rowRight: row.right,
+          rows: [...document.querySelectorAll('.detail-right > *')].map(box),
+          left: [box(document.querySelector('.detail-back')!), box(document.querySelector('.detail-status .button-icon')!)]
+        };
+      });
+      const lines = new Map<number, typeof w.rows>();
+      for (const b of w.rows) lines.set(Math.round(b.top), [...(lines.get(Math.round(b.top)) ?? []), b]);
+      expect(lines.size, '768px: the right-hand buttons wrap').toBeGreaterThan(1);
+      for (const b of w.rows) expect(b.right, '768px: inside the row').toBeLessThanOrEqual(w.rowRight + 1);
+      for (const [, l] of lines) expect(Math.abs(Math.max(...l.map((b) => b.right)) - w.rowRight), '768px: each line ends at the row edge').toBeLessThanOrEqual(1);
+      const first = Math.min(...w.rows.map((b) => b.top));
+      for (const b of w.left) expect(Math.abs(b.top - first), '768px: Back and the status buttons share the first line').toBeLessThanOrEqual(1);
+    } },
+  {
     name: 'coffee-add-modal',
     path: (s) => `/coffees/${s.slugs.long}`,
     act: async (page) => {
       await page.getByRole('button', { name: '+ Add Coffee' }).click();
       await expect(page.getByRole('heading', { name: 'Add Coffee' })).toBeVisible();
       await expect(page.locator('.modal #coffee_name')).toHaveValue('');
+      await expectOverlayHeader(page); // Save and Cancel: two equal columns across the form's width
     }
   },
   {
@@ -1561,7 +1725,7 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(new RegExp(`/coffees/${s.slugs.long}$`));
     }
   },
-  // Admin edit mode: the bag's subscription plan; saved through the staged batch; the list's inline edit has none.
+  // Admin edit overlay: the bag's subscription plan; saved through the staged batch; the list's overlay has the same select.
   { name: 'coffees-detail-subscription-select', viewports: 'two', path: (s) => `/coffees/${s.slugs.sey}`,
     act: async (page, s) => {
       await expect(page.locator('.stat', { hasText: 'Subscription' }).getByRole('link')).toHaveText('Sey · 1x250g');
@@ -1580,22 +1744,22 @@ export const STATES: State[] = [
       await expect(sel.locator('option:checked')).toHaveText('Sey · 1x250g');
       await expect(page.locator('#cost')).toHaveValue('22'); // opening edit on a linked bag leaves its cost alone
       await sel.selectOption({ label: 'Ceto · Paused Monthly · 1x250g (paused)' });
-      await page.getByRole('button', { name: 'Save changes' }).click();
-      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
-      await page.reload();
+      await page.locator('.modal').getByRole('button', { name: 'Save', exact: true }).click();
+      await expect(page.locator('.modal')).toHaveCount(0);
+      await reloadReady(page);
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByLabel('Subscription', { exact: true }).locator('option:checked')).toHaveText('Ceto · Paused Monthly · 1x250g (paused)');
       await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'None' });
       await expect(page.locator('#cost')).toHaveValue('22'); // no fill since this mount: None changes nothing
       await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'Sey · 1x250g' }); // restore for other states
       await page.locator('#cost').fill('22');
-      await page.getByRole('button', { name: 'Save changes' }).click();
+      await page.locator('.modal').getByRole('button', { name: 'Save', exact: true }).click();
       // The standards check runs before the POST, so wait for the save to land before navigating away.
-      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible({ timeout: 15000 });
-      await page.goto('/coffees?view=list&status=all');
+      await expect(page.locator('.modal')).toHaveCount(0, { timeout: 15000 });
+      await gotoReady(page, '/coffees?view=list&status=all');
       await page.getByRole('row', { name: /Kenya Kiambu/ }).first().getByRole('button', { name: 'Edit', exact: true }).click();
-      await expect(page.locator('#coffee_name')).toBeVisible();
-      await expect(page.getByLabel('Subscription', { exact: true })).toHaveCount(0);
+      await expect(page.locator('.modal #coffee_name')).toBeVisible();
+      await expect(page.locator('.modal').getByLabel('Subscription', { exact: true })).toBeVisible(); // the overlay is the detail form
     } },
   // Add and Clone: the select starts on None; picking a plan fills Cost with price / bags, still editable.
   { name: 'coffees-add-subscription', viewports: 'two', path: (s) => `/coffees/${s.slugs.long}`,
@@ -1625,6 +1789,7 @@ export const STATES: State[] = [
         await expect(cost).toHaveValue('22.25');
         await sel.selectOption({ label: 'None' });
         await expect(cost).toHaveValue('23'); // Sey -> Explorer -> None: back to the cost from before the first fill (23)
+        page.once('dialog', (d) => d.accept()); // typed in it: Cancel asks first
         await modal.getByRole('button', { name: 'Cancel' }).click();
         await expect(modal).toHaveCount(0);
       }
@@ -1835,7 +2000,7 @@ export const STATES: State[] = [
       await expect(page.locator('[data-testid="favorite-grind"]')).toHaveCount(0);
       await expect(page.getByText('Recommended rest')).toBeVisible();
     } },
-  // Link previews: the coffee page's SSR tags (text from coffeePreview; no image or a data: one gives the default card).
+  // Link previews: the coffee page's SSR tags (text from coffeePreview; the coffee card, with the saved photo when there's a local copy).
   { name: 'link-preview-coffee', viewports: 'two', path: (s) => `/coffees/${s.slugs.long}`,
     act: async (page, s) => {
       const origin = new URL(page.url()).origin;
@@ -1855,7 +2020,7 @@ export const STATES: State[] = [
       expect([img.status(), img.headers()['content-type']]).toEqual([200, 'image/png']);
       for (const slug of [s.slugs.wide, s.slugs.frozen]) {
         const d = await previewTags(page, `/coffees/${slug}`);
-        expect(d['og:image'], 'a data: image gives the default card').toMatch(/\/preview\.png\?c=[\w-]+&s=[\w-]+$/);
+        expect(d['og:image'], 'no local photo copy still gives the coffee card').toMatch(/\/preview\.png\?c=[\w-]+&s=[\w-]+$/);
         expect(d['twitter:card']).toBe('summary_large_image');
       }
       expect(await page.title()).toBe(`Bean Tracker - ${s.names.long}`);
@@ -1981,6 +2146,17 @@ export const STATES: State[] = [
         expect(t.description).toBe(t['og:description']);
         expect(t.description.length).toBeLessThanOrEqual(300);
         expect(t['og:url']).toBe(origin + path);
+      }
+      // A leaderboard link's card carries its thumbnail in the signed URL and renders.
+      const t = await previewTags(page, '/stats?tab=leaderboards&range=all&chart=leaderboard-origins');
+      expect(t['og:image']).toMatch(new RegExp(`^${origin}/preview\\.png\\?c=[\\w-]+&s=[\\w-]+$`));
+      const img = await page.request.get(t['og:image']);
+      expect([img.status(), img.headers()['content-type']]).toEqual([200, 'image/png']);
+      // Chart.js tabs draw their chart's shape.
+      for (const p of ['/stats?tab=habits&range=all&chart=habits-hour', '/stats?tab=spend&range=all&chart=spend-chart']) {
+        const og = (await previewTags(page, p))['og:image'];
+        expect(og).toMatch(new RegExp(`^${origin}/preview\\.png\\?c=[\\w-]+&s=[\\w-]+$`));
+        expect((await page.request.get(og)).status()).toBe(200);
       }
     } },
   { name: 'coffee-detail-no-like', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
@@ -2814,10 +2990,13 @@ export const STATES: State[] = [
       const un = page.getByRole('button', { name: 'Unarchive' }).first();
       await expect(un).toBeVisible();
       await expect(page.getByRole('button', { name: 'Restore', exact: true })).toHaveCount(0);
-      // Edit's Cancel and Unarchive sit side by side on one row.
+      // Edit's Cancel, Delete (enabled, like every status) and Unarchive share the one icon row, in that order.
       const row = un.locator('xpath=ancestor::*[contains(@class,"action-stack")][1]');
-      const [ub, cb] = [(await un.boundingBox())!, (await row.getByRole('button', { name: /^(Cancel|Edit)$/ }).boundingBox())!];
+      const [ub, cb, db] = [(await un.boundingBox())!, (await row.getByRole('button', { name: /^(Cancel|Edit)$/ }).boundingBox())!, (await row.getByRole('button', { name: 'Delete', exact: true }).boundingBox())!];
+      expect(Math.abs(db.y - cb.y)).toBeLessThan(4);
       expect(Math.abs(ub.y - cb.y)).toBeLessThan(4);
+      expect(db.x).toBeGreaterThan(cb.x);
+      expect(ub.x).toBeGreaterThan(db.x);
     }
   },
   {
@@ -2864,7 +3043,7 @@ export const STATES: State[] = [
     viewports: 'two',
     path: (s: Seed) => `/coffees/${s.slugs.brew}?edit=1`,
     act: async (page: Page) => {
-      await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
+      await expect(page.locator('.modal').getByRole('button', { name: 'Save', exact: true })).toBeVisible();
       await expect(page).toHaveURL(/\/coffees\/[^?]+$/); // the param is dropped once used
     }
   },
@@ -3522,6 +3701,33 @@ export const STATES: State[] = [
           await expect(page.locator('.cell-tip:popover-open')).toContainText('Start this pour when the water is low');
           await page.mouse.click(1, 1);
           await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 24 with notes only')).toBeVisible();
+        }
+      },
+      {
+        // A recipe title follows its link; the link icon after it copies the recipe page's full URL (as Stats headings do).
+        name: 'recipes-copy-link', viewports: 'two' as const,
+        path: () => '/recipes',
+        act: async (page: Page) => {
+          await page.evaluate(() => {
+            const w = window as unknown as { copies: string[] };
+            w.copies = [];
+            Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t: string) => void w.copies.push(t) }, configurable: true });
+          });
+          const h = panel(page, 'Your recipes').locator('li.item').filter({ hasText: 'Seed equal pours' }).locator('h3');
+          await expect(h).toHaveAccessibleName('Seed equal pours');
+          const icon = h.locator('.copy-link');
+          const touch = await page.evaluate(() => matchMedia('(hover: none)').matches);
+          if (!touch) {
+            await page.mouse.move(0, 0);
+            await expect(icon).toHaveCSS('opacity', '0');
+            await h.hover();
+          }
+          await expect(icon).toHaveCSS('opacity', '1');
+          await (touch ? icon.tap() : icon.click());
+          await expect(page.locator('.toast', { hasText: 'Link copied' })).toBeVisible();
+          const href = await h.locator('a').getAttribute('href');
+          expect(await page.evaluate(() => (window as unknown as { copies: string[] }).copies)).toEqual([new URL(href!, page.url()).href]);
+          expect(new URL(page.url()).pathname, 'the icon leaves the address bar alone').toBe('/recipes');
         }
       },
       {
@@ -8184,6 +8390,22 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
+  { name: 'insights-consumption-chart-bought-anchor', path: () => '/stats?tab=consumption#consumption-chart-bought',
+    act: async (page) => {
+      // The heading links to itself; loading the hash puts it just under the sticky bar.
+      await expect(page.locator('#consumption-chart-bought a')).toHaveAttribute('href', /chart=consumption-chart-bought.*#consumption-chart-bought$/);
+      const gap = () => anchorGap(page, 'consumption-chart-bought');
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
+  { name: 'insights-consumption-chart-on-hand-anchor', path: () => '/stats?tab=consumption#consumption-chart-on-hand',
+    act: async (page) => {
+      // The heading links to itself; loading the hash puts it just under the sticky bar.
+      await expect(page.locator('#consumption-chart-on-hand a')).toHaveAttribute('href', /chart=consumption-chart-on-hand.*#consumption-chart-on-hand$/);
+      const gap = () => anchorGap(page, 'consumption-chart-on-hand');
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
   { name: 'insights-records-soup', viewports: 'two', path: () => '/stats?tab=records&brewer=soup',
     act: async (page) => expect(page.getByRole('button', { name: 'Soup', pressed: true })).toBeVisible() },
   { name: 'insights-records-compare', path: () => '/stats?tab=records&range=1w&compare=1' },
@@ -11482,14 +11704,15 @@ export const STATES: State[] = [
     }
   },
   {
-    // Discard is the undo: reopening the form after Discard changes shows no mark.
+    // Discard is the undo: reopening the form after Cancel shows no mark.
     name: 'coffee-edit-roaster-default-discarded', viewports: 'two',
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await page.locator('#image_url').fill('https://img.example/moonwake-bag.png');
       await page.getByRole('button', { name: 'Set as roaster default' }).click();
-      await page.getByRole('button', { name: 'Discard changes' }).click();
+      page.once('dialog', (d) => d.accept()); // edited: Cancel asks first
+      await page.locator('.modal').getByRole('button', { name: 'Cancel', exact: true }).click();
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('input[name="set_roaster_default"]')).toHaveCount(0);
       await expect(page.getByText('Roaster default', { exact: true })).toBeVisible();
@@ -11823,7 +12046,8 @@ export const STATES: State[] = [
       await openSuggest(page, reply(SUGGEST_UNSTORED));
       await page.locator('.suggest-pick').nth(0).click();
       await expect(page.locator('input[name="roaster_website"]')).toHaveCount(1);
-      await page.getByRole('button', { name: 'Discard changes' }).click();
+      page.once('dialog', (d) => d.accept()); // edited: Cancel asks first
+      await page.locator('.modal').getByRole('button', { name: 'Cancel', exact: true }).click();
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('input[name="roaster_website"]')).toHaveCount(0);
     }
@@ -11889,7 +12113,7 @@ export const STATES: State[] = [
       const posts: string[] = [];
       page.on('request', (r) => r.method() === 'POST' && !/image-(suggest|fill)/.test(r.url()) && posts.push(r.url()));
       await page.route('**/api/coffees/image-suggest', reply(SUGGEST_UNSTORED));
-      await openSoloEdit(page, 'cards', 'Ethiopia Bensa Bombe');
+      await openEditOverlay(page, 'cards', 'Ethiopia Bensa Bombe');
       await page.getByRole('button', { name: 'Suggest', exact: true }).click();
       await expect(dlg(page).locator('.suggest-pick')).toHaveCount(6);
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
@@ -11940,7 +12164,7 @@ export const STATES: State[] = [
     name: `coffees-${view}-inline-edit-actions`,
     path: () => `/coffees?status=all&view=${view}`,
     act: async (page: Page) => {
-      await openSoloEdit(page, view, 'Colombia Pink Bourbon');
+      await openInlineEdit(page, view, 'Colombia Pink Bourbon');
       await expectActionsUnderForm(page);
     }
   })),
@@ -11948,8 +12172,8 @@ export const STATES: State[] = [
     name: `coffees-${view}-inline-edit-action-row`,
     path: () => `/coffees?status=backlog&view=${view}`,
     act: async (page: Page, s: Seed) => {
-      await openSoloEdit(page, view, s.names.everyAction);
-      await page.getByRole('button', { name: 'Save', exact: true }).scrollIntoViewIfNeeded();
+      await openInlineEdit(page, view, s.names.everyAction);
+      await page.getByRole('button', { name: 'Cancel', exact: true }).scrollIntoViewIfNeeded();
       await expectActionRow(page);
     }
   })),
@@ -11969,7 +12193,7 @@ export const STATES: State[] = [
     name: 'coffees-cards-inline-edit-aligned',
     path: () => '/coffees?status=all&view=cards',
     act: async (page: Page) => {
-      await openSoloEdit(page, 'cards', 'Colombia Pink Bourbon');
+      await openEditOverlay(page, 'cards', 'Colombia Pink Bourbon');
       await expectFieldRowsAligned(page);
     }
   },
@@ -12017,9 +12241,9 @@ export const STATES: State[] = [
     act: async (page: Page, s: Seed) => {
       const posts: string[] = [];
       page.on('request', (r) => r.method() === 'POST' && !/image-fill/.test(r.url()) && posts.push(r.url())); // image-fill: the read-only probe
-      await openSoloEdit(page, view, s.names.everyAction);
+      await openInlineEdit(page, view, s.names.everyAction);
       await page.locator('form #processing').fill('Honey');
-      await openSoloEdit(page, view, 'Colombia Pink Bourbon');
+      await openInlineEdit(page, view, 'Colombia Pink Bourbon');
       const processing = page.locator('form #processing');
       await expect(processing).toHaveCount(2);
       expect((await processing.evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value))).filter((v) => v === 'Honey')).toHaveLength(1);

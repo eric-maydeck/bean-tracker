@@ -17,7 +17,8 @@
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
   import { coffeeImage } from '#lib/coffeeImage.ts';
   import { isFrozen } from '#lib/coffeeFilters.ts';
-  import CoffeeForm from '#lib/components/CoffeeForm.svelte';
+  import CoffeeEditModal from '#lib/components/CoffeeEditModal.svelte';
+  import CoffeeStatusActions from '#lib/components/CoffeeStatusActions.svelte';
   import { originWithFlag } from '#lib/countryFlags.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import Stamp from '#lib/components/Stamp.svelte';
@@ -111,8 +112,9 @@
   }
 
   // A /coffees row's import icon links here with ?bq=import.
+  // Edit opens the overlay (the article stays visible behind it).
   let editMode = $state(false);
-  // On Deck's tile menu links here with ?edit=1: enter Edit mode once, then drop the param (after the router is up).
+  // On Deck's tile menu links here with ?edit=1: open the edit overlay once, then drop the param (after the router is up).
   onMount(() => {
     if (bqImportRequested(page.url.searchParams)) void shareToBeanConqueror();
   });
@@ -129,7 +131,6 @@
     }
     setTimeout(() => writeUrlParams(q), 0); // after afterNavigate returns: a shallow goto isn't allowed inside it
   });
-  let canEdit = $derived(editMode && data.isAdmin);
   let detailImage = $derived(coffeeImage(data.coffee, `${data.coffee.coffee_name} label`));
 
   // Plain `$state(new Map())` does NOT give reactive Map operations in
@@ -144,9 +145,8 @@
   let saving = $state(false);
   let savedSlug: string | undefined;
 
-  // The edit form's instance, when rendered (canEdit) — plain (not
-  // $state): only ever read synchronously from within saveChanges.
-  let formRef: { applyPendingEdits: () => Promise<boolean> } | null = null;
+  // The edit overlay's form, when open — plain (not $state): only ever read synchronously from within saveChanges.
+  let modalRef: { applyPendingEdits: () => Promise<boolean> } | null = null;
 
   // SvelteKit reuses this component when navigating from one coffee to
   // another (e.g. landing on a freshly saved clone), so per-coffee UI state
@@ -169,14 +169,15 @@
     stageFieldChange(pending, data.coffee.id, fields);
   }
 
-  function stageDelete() {
-    if (pending.get(data.coffee.id)?.statusAction === 'delete') {
-      stageStatusAction(pending, data.coffee.id, 'delete');
-    } else if (confirm(`Delete ${data.coffee.coffee_name} by ${data.coffee.roaster}? This cannot be undone.`)) {
-      stageStatusAction(pending, data.coffee.id, 'delete');
-    }
-  }
-
+  const formProps = $derived({
+    roastLevels: data.roastLevels,
+    roasters: data.roasters,
+    roasterImages: data.roasterImages,
+    origins: data.origins,
+    processingMethods: data.processingMethods,
+    restHistory: data.restHistory,
+    subscriptions: data.subscriptions
+  });
   let formCoffee = $derived.by(() => mergeStagedCoffee(data.coffee, pending.get(data.coffee.id)?.fields));
 
   async function saveChanges() {
@@ -185,15 +186,14 @@
     // "Save changes" would silently ignore whatever is still sitting in the
     // form. A validation failure there (native required-field UI) aborts
     // the save, matching what clicking Update itself would do. Skipped when
-    // this coffee is staged for deletion: the form stays mounted alongside
-    // the "Delete this coffee" button on this page, and
+    // this coffee is staged for deletion: the overlay's form is still mounted, and
     // stageStatusAction deliberately drops any staged field edit when
     // staging 'delete' (pendingChanges.ts) — applying the open form here
     // would silently re-attach fields onto that delete, letting a field
     // validation error block the delete or running a pointless update
     // right before it.
     const isDeleting = pending.get(data.coffee.id)?.statusAction === 'delete';
-    if (canEdit && !isDeleting && formRef && !(await formRef.applyPendingEdits())) return;
+    if (editMode && !isDeleting && modalRef && !(await modalRef.applyPendingEdits())) return;
 
     saving = true;
     commitError = null;
@@ -264,6 +264,27 @@
     await refreshTracked();
   }
 
+  // The top-row icons apply at once (no Edit, no staging) with an Undo toast, and stay on this page. A delete keeps its
+  // confirm (in CoffeeStatusActions) and has no page left to stay on, so it goes to /coffees and offers no Undo.
+  async function quickAction(statusAction: string) {
+    const changes = [{ id: data.coffee.id, statusAction }];
+    let states: States;
+    try {
+      states = await commitChanges(changes);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Something went wrong.');
+      return;
+    }
+    const text = coffeeToast(changes, () => data.coffee.coffee_name) ?? '';
+    if (statusAction === 'delete') {
+      showToast(text);
+      await goto('/coffees');
+      return;
+    }
+    showToast(text, { undo: async () => { await restoreStates(states); await refreshTracked(); } });
+    await refreshTracked();
+  }
+
   function discardChanges() {
     pending = new SvelteMap();
     commitError = null;
@@ -311,20 +332,25 @@
 
 <div class="detail-actions">
   <a class="button button-ghost detail-back" href="/coffees" onclick={back}>&larr; Back</a>
-  <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
-    Import into Bean Conqueror
-  </button>
-  <a class="button button-secondary detail-brew" href="/coffees/{data.coffee.slug}/brew">Brew now</a>
   {#if data.isAdmin}
-    <button class="button button-secondary detail-add" type="button" onclick={() => openModal({}, true)}>+ Add Coffee</button>
-    <button class="button button-secondary detail-clone" type="button" onclick={() => openModal(clonePrefill(formCoffee))}>
-      Clone
+    <div class="detail-status"><CoffeeStatusActions stable coffee={data.coffee} onaction={quickAction} /></div>
+  {/if}
+  <div class="detail-right">
+    <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
+      Import into Bean Conqueror
     </button>
-  {/if}
-  {#if data.isAdmin && !editMode}
-    <button class="button button-secondary detail-edit" type="button" onclick={() => (editMode = true)}>Edit</button>
-  {/if}
-  <ShareButton />
+    <a class="button button-secondary detail-brew" href="/coffees/{data.coffee.slug}/brew">Brew now</a>
+    {#if data.isAdmin}
+      <button class="button button-secondary detail-add" type="button" onclick={() => openModal({}, true)}>+ Add Coffee</button>
+      <button class="button button-secondary detail-clone" type="button" onclick={() => openModal(clonePrefill(formCoffee))}>
+        Clone
+      </button>
+    {/if}
+    {#if data.isAdmin}
+      <button class="button button-secondary detail-edit" type="button" onclick={() => (editMode = true)}>Edit</button>
+    {/if}
+    <ShareButton />
+  </div>
 </div>
 
 {#if shareUrl && shareQrDataUrl}
@@ -353,39 +379,6 @@
   </div>
 {/if}
 
-{#if data.isAdmin && editMode}
-  <div class="search-row detail-edit-row">
-    <button class="button button-success button-solid" type="button" disabled={saving} onclick={saveChanges}>
-      {saving ? 'Saving…' : 'Save changes'}
-    </button>
-    <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
-  </div>
-{/if}
-{#if data.isAdmin && commitError}
-  <p class="badge badge-urgent">{commitError}</p>
-{/if}
-
-{#if canEdit}
-  <CoffeeForm
-    bind:this={formRef}
-    coffee={formCoffee}
-    roastLevels={data.roastLevels}
-    roasters={data.roasters}
-    roasterImages={data.roasterImages}
-    origins={data.origins}
-    processingMethods={data.processingMethods}
-    restHistory={data.restHistory}
-    subscriptions={data.subscriptions}
-    onstage={stageFields}
-    onclone={(prefill) => openModal(prefill)}
-    showSubmit={false}
-    showClone={false}
-  />
-
-  <button class="button button-danger" type="button" disabled={saving} onclick={stageDelete}>
-    {pending.get(data.coffee.id)?.statusAction === 'delete' ? 'Pending: delete (Save to confirm)' : 'Delete this coffee'}
-  </button>
-{:else}
   <article class="detail">
     <div class="detail-media">
       {#if detailImage}
@@ -601,28 +594,38 @@
       {/if}
     </div>
   </article>
+
+{#if data.isAdmin && editMode}
+  <CoffeeEditModal
+    bind:this={modalRef}
+    mode="edit"
+    coffee={formCoffee}
+    formProps={formProps}
+    formError={commitError}
+    {saving}
+    hasStaged={pending.has(data.coffee.id)}
+    onstage={stageFields}
+    onsave={saveChanges}
+    oncancel={discardChanges}
+  >
+    {#snippet title()}<CoffeeName name={data.coffee.coffee_name} />{/snippet}
+    {#snippet statusActions()}
+      <CoffeeStatusActions stable coffee={data.coffee} pressed={pending.get(data.coffee.id)?.statusAction} disabled={saving} onaction={(a) => stageStatusAction(pending, data.coffee.id, a)} />
+    {/snippet}
+  </CoffeeEditModal>
 {/if}
 
 {#if clonePrefillData}
-  <div class="modal-backdrop">
-    <div class="modal">
-      <h2>{adding ? 'Add Coffee' : 'Clone '}{#if !adding}<CoffeeName name={data.coffee.coffee_name} />{/if}</h2>
-      <CoffeeForm
-        prefill={clonePrefillData}
-        cloned
-        roastLevels={data.roastLevels}
-        roasters={data.roasters}
-        roasterImages={data.roasterImages}
-        origins={data.origins}
-        processingMethods={data.processingMethods}
-        restHistory={data.restHistory}
-        subscriptions={data.subscriptions}
-        formError={form?.error ?? null}
-        oncancel={() => (clonePrefillData = null)}
-        onsuccess={cloneCreated}
-      />
-    </div>
-  </div>
+  <CoffeeEditModal
+    mode={adding ? 'add' : 'clone'}
+    prefill={clonePrefillData}
+    formProps={formProps}
+    formError={form?.error ?? null}
+    oncancel={() => (clonePrefillData = null)}
+    onsuccess={cloneCreated}
+  >
+    {#snippet title()}{adding ? 'Add Coffee' : 'Clone '}{#if !adding}<CoffeeName name={data.coffee.coffee_name} />{/if}{/snippet}
+  </CoffeeEditModal>
 {/if}
 
 <AddedToast bind:slug={addedSlug} undo={undoAdded} />
