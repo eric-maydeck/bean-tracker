@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from 'svelte';
+  import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { buildPool, critPool } from '#lib/pick/pool.ts';
   import { fillBoard } from '#lib/pick/board.ts';
@@ -36,12 +36,34 @@
   let wheel = $state<PickWheel>();
   let d20 = $state<PickD20>();
   let dlg: HTMLDialogElement;
+  let chosen = false; // A or B picked; otherwise a closed dialog is a cancel
+  let rev = $state(0); // bumped on cancel so the panel re-reads `rules`
+  let restored = false;
 
   onMount(() => {
-    if (admin) return;
-    rules = loadRules(false, null);
-    today = loadToday(false, null, pick.today);
-    ready = true;
+    if (!admin) {
+      rules = loadRules(false, null);
+      today = loadToday(false, null, pick.today);
+      ready = true;
+    }
+    const hide = () => flushToday();
+    const vis = () => document.visibilityState === 'hidden' && flushToday();
+    addEventListener('pagehide', hide);
+    document.addEventListener('visibilitychange', vis);
+    return () => { removeEventListener('pagehide', hide); document.removeEventListener('visibilitychange', vis); };
+  });
+
+  // Coming back: the URL's game wins; with none, today's last game returns. After that the URL drives `today.game`.
+  $effect(() => {
+    if (!ready) return;
+    const g = game;
+    untrack(() => {
+      if (!restored) {
+        restored = true;
+        if (g === 'wheel' && today.game === 'd20') return void tick().then(() => ongame('d20'));
+      }
+      if (today.game !== g) today.game = g;
+    });
   });
   onDestroy(flushToday);
 
@@ -78,15 +100,21 @@
   const rolledN = $derived(game === 'd20' ? (result?.n ?? null) : null);
 
   const any = <T,>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)];
+  // Clearing first makes a repeated message ("Roll again" twice) announce again.
+  async function say(text: string) {
+    announce = '';
+    await tick();
+    announce = text;
+  }
   function land(r: PickResult) {
     busy = false;
     today.result = r;
-    announce = `Picked ${names.get(r.coffeeId) ?? ''}`;
+    say(`Picked ${names.get(r.coffeeId) ?? ''}`);
   }
   function again() {
     busy = false;
     rollAgain = true;
-    announce = 'Roll again';
+    say('Roll again');
   }
 
   function spin() {
@@ -143,12 +171,18 @@
     if (!rulesDiffer(rules, next)) return;
     if (today.out.length === 0) return apply(next, false);
     pendingRules = next;
+    chosen = false;
     dlg.showModal();
   }
   function choose(reset: boolean) {
     const next = pendingRules;
+    chosen = true;
     dlg.close();
     if (next) apply(next, reset);
+  }
+  function onDialogClose() {
+    pendingRules = null;
+    if (!chosen) { rev++; note = ''; } // Cancel or Escape: the controls go back to the unchanged rules
   }
   async function save() {
     try {
@@ -156,7 +190,7 @@
       hasSaved = true;
       note = 'Saved.';
     } catch {
-      note = 'Could not save.';
+      note = "Couldn't save.";
     }
   }
   async function load() {
@@ -175,16 +209,17 @@
     </div>
   </div>
 
+  {#key rev}
   <PickRulesPanel {rules} {coffees} {eligible} {admin} {hasSaved} open={today.panelOpen} {note}
     ontoggle={(o) => (today.panelOpen = o)} onchange={edit} onsave={save} onload={load} onreset={() => edit(DEFAULT_RULES)} />
+  {/key}
 
   <section class="game" aria-label={game === 'd20' ? 'D20' : 'Wheel'}>
-    {#if empty && game === 'wheel'}
-      <p class="text-muted">No coffees in play. Change the rules or reset today.</p>
-    {:else if game === 'wheel'}
+    {#if game === 'wheel'}
       <div class="wheel-wrap">
         <PickWheel bind:this={wheel} {slices} {names} angle={today.wheelAngle} disabled={empty} onspin={spin} onresult={wheelResult} />
       </div>
+      {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
     {:else}
       {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
       <PickD20 bind:this={d20} pose={today.d20Pose} disabled={empty} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
@@ -200,13 +235,13 @@
   </div>
 
   {#if result && resultCoffee}
-    <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+    <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy} againDisabled={empty}
       againLabel={game === 'd20' ? 'Roll again' : 'Spin again'} onbrew={brew} ondiscard={doDiscard} onopen={openPage} onagain={spinAgain} onclose={close} />
   {/if}
 
   <div class="sr-only" aria-live="polite">{announce}</div>
 
-  <dialog class="rules-dialog" aria-labelledby="pick-dlg-title" bind:this={dlg} onclose={() => (pendingRules = null)}>
+  <dialog class="rules-dialog" aria-labelledby="pick-dlg-title" bind:this={dlg} onclose={onDialogClose}>
     <h2 id="pick-dlg-title">Change the rules</h2>
     <p>Something is already out for today.</p>
     <div class="dlg-buttons">

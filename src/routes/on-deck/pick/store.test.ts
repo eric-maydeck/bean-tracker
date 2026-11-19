@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_RULES } from '#lib/pick/rules.ts';
 import { freshToday } from '#lib/pick/today.ts';
-import { loadRules, loadToday, saveToday } from './store';
+import { loadRules, loadToday, saveRules, saveToday } from './store';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -17,5 +17,10 @@ describe('pick store', () => {
   it('falls back to defaults on garbage from the server', () => {
     expect(loadRules(true, 'garbage')).toEqual(DEFAULT_RULES);
     expect(loadRules(true, null)).toEqual(DEFAULT_RULES);
+  });
+
+  it('saveRules rejects when the server says no', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 401 })));
+    await expect(saveRules(true, 'pick.rules.saved', DEFAULT_RULES)).rejects.toThrow();
   });
 });

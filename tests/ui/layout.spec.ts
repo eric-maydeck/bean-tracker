@@ -5865,6 +5865,29 @@ export const STATES: State[] = [
     }
   },
   {
+    // Changing rules with something out opens the dialog; Cancel puts the control back on its old value and applies nothing.
+    name: 'pick-dialog', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await stubPickApi(page);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.getByRole('button', { name: 'Spin', exact: true }).click();
+      await page.locator('.pick-card').getByRole('button', { name: 'Discard' }).click();
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      const sort = page.getByLabel('Sort');
+      await expect(sort).toHaveValue('urgency-desc');
+      await sort.selectOption('name');
+      const dlg = page.getByRole('dialog', { name: 'Change the rules' });
+      await expect(dlg).toBeVisible();
+      await expect(dlg.getByRole('button', { name: 'Reset today and use the new rules' })).toBeVisible();
+      await expect(dlg.getByRole('button', { name: "Keep today's out list with the new rules" })).toBeVisible();
+      await dlg.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dlg).toBeHidden();
+      await expect(page.getByLabel('Sort')).toHaveValue('urgency-desc');
+      await expect(page.locator('.out-row s')).toHaveCount(1);
+    }
+  },
+  {
     // No coffee in play: a message replaces the wheel; changing rules with nothing out needs no dialog.
     name: 'pick-empty', viewports: 'two',
     path: () => '/on-deck?view=pick',
@@ -5874,7 +5897,7 @@ export const STATES: State[] = [
       await page.getByLabel('Open', { exact: true }).uncheck();
       await page.getByLabel('Backlog', { exact: true }).uncheck();
       await expect(page.getByText('No coffees in play.')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeDisabled();
       await page.getByLabel('Open', { exact: true }).check();
       await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
     }

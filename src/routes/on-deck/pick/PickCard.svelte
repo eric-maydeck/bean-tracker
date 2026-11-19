@@ -2,8 +2,8 @@
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import type { PickCoffee, PickResult } from '#lib/pick/types.ts';
 
-  let { coffee, result, out, brewed, busy, againLabel, onbrew, ondiscard, onopen, onagain, onclose }: {
-    coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; againLabel: string;
+  let { coffee, result, out, brewed, busy, againDisabled, againLabel, onbrew, ondiscard, onopen, onagain, onclose }: {
+    coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; againDisabled: boolean; againLabel: string;
     onbrew: () => void; ondiscard: () => void; onopen: () => void; onagain: () => void; onclose: () => void;
   } = $props();
 
@@ -28,7 +28,7 @@
       <button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>
       <button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>
       <button type="button" class="button button-secondary" disabled={busy} onclick={onopen}>Open coffee page</button>
-      <button type="button" class="button button-secondary" disabled={busy} onclick={onagain}>{againLabel}</button>
+      <button type="button" class="button button-secondary" disabled={busy || againDisabled} onclick={onagain}>{againLabel}</button>
       <button type="button" class="button button-secondary" disabled={busy} onclick={onclose}>Close</button>
     </div>
   </div>

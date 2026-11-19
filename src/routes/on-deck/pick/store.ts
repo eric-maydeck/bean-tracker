@@ -20,8 +20,10 @@ const write = (key: string, value: unknown) => {
   }
 };
 
-const put = (key: string, value: unknown) =>
-  fetch('/api/pick', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key, value }), keepalive: true });
+const put = async (key: string, value: unknown) => {
+  const res = await fetch('/api/pick', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ key, value }), keepalive: true });
+  if (!res.ok) throw new Error(`Save failed (${res.status})`);
+};
 
 /** Admins get the server's last-used rules; visitors the browser's. Never throws. */
 export function loadRules(admin: boolean, serverLast: unknown): PickRules {
