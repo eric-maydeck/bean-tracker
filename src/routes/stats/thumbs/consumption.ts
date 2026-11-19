@@ -1,0 +1,20 @@
+import { chartThumb } from '#lib/chartThumb.ts';
+import type { ThumbCtx, ThumbFn } from '../thumbTypes';
+import { consumptionCharts, consumptionFmt } from '../consumptionSeries';
+
+// The link-preview thumbnails of the Consumption tab's charts, drawn from the same series and value formats as the tab (labels clipped to the wire's 80).
+const of = (pick: (ch: ReturnType<typeof consumptionCharts>, f: ReturnType<typeof consumptionFmt>, c: ThumbCtx) => ReturnType<ThumbFn>): ThumbFn => (c) => {
+  const t = c.data.consumptionTab;
+  return t && t.buckets.length ? pick(consumptionCharts(t, { unit: c.s.unit, trend: c.s.trend, agg: c.s.agg, periodLabel: c.periodLabel, compareLabel: c.compareLabel, compareDates: '' }), consumptionFmt(c.s.unit === 'grams', c.s.agg !== 'total'), c) : null;
+};
+const card = (title: string, thumb: ReturnType<typeof chartThumb>) => (thumb ? { title, thumb } : null);
+
+export const CONSUMPTION_THUMBS: Record<string, ThumbFn> = {
+  'consumption-chart-brewed': of(({ brewed: b }, f, c) => {
+    // The Brewed chart's per-measure format; the rating line's axis text drops the page's " avg rating" tail.
+    const fmt = c.s.trend === 'rating' ? (v: number) => v.toFixed(1) : c.s.trend === 'brews' ? f.brews : c.s.trend === 'water' ? f.water : f.fmt(b.k);
+    return card(b.title, chartThumb(b.type === 'bar' ? 'vbars' : 'lines', [{ label: b.datasetLabel, values: b.values }, ...b.series], { yMin: b.yMin, x: b.labels, fmt }));
+  }),
+  'consumption-chart-bought': of(({ bought: b }, f) => card('Bought vs brewed', chartThumb('vbars', [{ label: b.datasetLabel, values: b.values }, ...b.series], { x: b.labels, fmt: f.fmt(b.k) }))),
+  'consumption-chart-on-hand': of(({ onHand: b }, f) => card('On hand over time', chartThumb('lines', [{ label: b.datasetLabel, values: b.values }], { x: b.labels, fmt: f.fmt(b.k) })))
+};

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { insightsPreview, recordAnchor } from './chartLink';
+import type { ThumbCtx } from './thumbTypes';
 import type { RecordsTab } from '#lib/server/insights/records.ts';
 import type { BoardRow } from '#lib/server/insights/leaderboards.ts';
 
@@ -125,5 +126,46 @@ describe('insightsPreview', () => {
     const d = insightsPreview({ ...base, boards: { ...none, roasters: long }, chart: 'leaderboard-roasters' }).description;
     expect(d.length).toBeLessThanOrEqual(300);
     expect(d.startsWith('Avg rating · All time\n🥇 8.0 · x')).toBe(true);
+  });
+});
+
+describe('insightsPreview chart thumbnails', () => {
+  const tab = { buckets: [{}, {}, {}], ratingFrom: 0, trendLine: null, trendLabel: null, labels: ['a', 'b', 'c'], brewed: [6, 7.5, 8], bought: [5, 0, 4], backlog: [3, 0, 1], compareBrewed: null, compareTitles: null, compareAverage: null };
+  const h = { tiles: { brewDays: 3 }, byHour: [1, 2, 3], byWeekday: [4, 5, 6, 7], compareHour: null, compareWeekday: null };
+  const ctx = (data: object, s: object = {}) => ({ data, s: { unit: 'bags', agg: 'total', measure: 'brews', ...s }, periodLabel: 'All time', compareLabel: 'p', perPerson: false }) as unknown as ThumbCtx;
+  const page = { ...base, tab: 'habits' as const, tabLabel: 'Habits' };
+  it('habits and consumption links add a card; text is the page text', () => {
+    const r = insightsPreview({ ...page, chart: 'habits-hour', ctx: ctx({ habits: h }) });
+    expect(r.title).toBe('Stats: Habits');
+    expect(r.description).toBe(insightsPreview({ ...page, chart: 'habits-hour' }).description);
+    expect(r.card).toMatchObject({ big: 'By hour of day', label: 'Stats · All time', thumb: { kind: 'vbars' } });
+    expect(insightsPreview({ ...page, chart: 'consumption-chart-on-hand', ctx: ctx({ consumptionTab: tab }) }).card?.thumb?.kind).toBe('lines');
+  });
+  it('unknown chart or no data: no card', () => {
+    expect(insightsPreview({ ...page, chart: 'nope', ctx: ctx({ habits: h }) }).card).toBeUndefined();
+    expect(insightsPreview({ ...page, chart: 'habits-hour', ctx: ctx({ habits: null }) }).card).toBeUndefined();
+  });
+  it('leaderboard List view keeps the bars', () => {
+    expect(insightsPreview({ ...base, chart: 'leaderboard-origins', ctx: ctx({ boards: none, boardSeries: null }) }).card?.thumb?.kind).toBe('bars');
+  });
+  it.each([
+    ['onhand-age', { onHand: { age: { labels: ['a', 'b', 'c'], bags: { before: [1, 0, 2], inside: [0, 1, 1], past: [1, 1, 1], noWindow: [0, 0, 0] }, grams: { before: [1, 0, 2], inside: [0, 1, 1], past: [1, 1, 1], noWindow: [0, 0, 0] } } } }, 'Age profile', 'vbars'],
+    ['spend-chart', { spend: { tiles: { bags: 3 }, series: { by: 'month', labels: ['a', 'b', 'c'], sub: [1, 2, 3], oneOff: [3, 2, 1], ppg: { all: [0.1, 0.2, 0.3], sub: [0.1, 0.2, 0.3], oneOff: [0.1, 0.2, 0.3] }, compare: null, compareAverage: null, comparePpg: null, compareSplit: null, comparePpgSplit: null, compareAverageSplit: null } } }, 'Spend over time', 'vbars'],
+    ['brewing-best', { brewing: { bestAt: [{ label: '#1', bags: 2 }, { label: '#2', bags: 1 }, { label: '#3', bags: 1 }] } }, 'Brews until dialed', 'vbars'],
+    ['gear-eras', { gear: { eras: { x: ['a', 'b', 'c'], lines: [{ label: 'V60', values: [60, 50, 40] }, { label: 'Kalita', values: [40, 50, 60] }], other: [] } } }, 'Gear usage over time', 'vbars']
+  ])('%s link adds its card', (chart, data, big, kind) => {
+    const pg = { ...page, tab: chart.split('-')[0] as never };
+    const r = insightsPreview({ ...pg, chart, ctx: ctx(data) });
+    expect(r.card).toMatchObject({ big, label: chart.startsWith('onhand-') ? 'Stats' : 'Stats · All time', thumb: { kind } });
+    expect(r.description).toBe(insightsPreview({ ...pg, chart }).description);
+  });
+  it('leaderboard time view draws lines under the page text; List view keeps bars', () => {
+    const sr = { by: 'month', labels: ['Jan', 'Feb', 'Mar'], titles: [], lines: [{ label: 'Sey', values: [1, 2, 3] }, { label: 'Onyx', values: [3, 2, 1] }] };
+    const data = { boards: { ...none, dripper: rows([['Sey', 8], ['Onyx', 7]]) }, boardSeries: { dripper: sr } };
+    const time = insightsPreview({ ...base, chart: 'leaderboard-dripper', boards: data.boards, ctx: ctx(data, { rank: 'rating', low: [], open: [], views: { dripper: 'time' } }) });
+    expect(time.card).toMatchObject({ big: 'Dripper', label: 'Stats · All time', thumb: { kind: 'lines' } });
+    expect(time.title).toBe(PAGE.title);
+    expect(time.description).toBe(PAGE.description);
+    expect(insightsPreview({ ...base, chart: 'leaderboard-dripper', boards: data.boards, ctx: ctx(data, { rank: 'rating', low: [], open: [] }) }).card?.thumb?.kind).toBe('bars');
   });
 });

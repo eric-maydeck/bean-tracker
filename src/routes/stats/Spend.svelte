@@ -15,7 +15,7 @@
   import HeadingAnchor from './HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import { SAMPLE_HELP } from '#lib/sample.ts';
-  import { usd, wholeUsd } from '#lib/money.ts';
+  import { usd } from '#lib/money.ts';
   import LabHead from './LabHead.svelte';
   import ValueMap from './ValueMap.svelte';
   import ReportCard from './ReportCard.svelte';
@@ -23,7 +23,7 @@
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import StackedBars from './StackedBars.svelte';
   import { fitPairs } from './fitPairs';
-  import { seriesToken } from '#lib/components/chartColor.ts';
+  import { NAME, spendPlans, spendWhole, type Kind } from './spendSeries';
   import type { Tip, Mark } from '#lib/components/TipBody.svelte';
 
   let { t, choose, tiles, spendView, spendSeries, rcSort, rcDir, rcTop, compareLabel, compareDates, link, placeTip }: {
@@ -38,36 +38,8 @@
   const sr = $derived(t.series);
   const ppg = $derived(spendView === 'ppg');
   // The series selector: Overall, the split (default), One-off, Subscription, or All (overall beside the split).
-  type Kind = 'oneOff' | 'sub' | 'overall';
   const SERIES_OPTIONS: readonly (readonly [SpendSeries | 'split', string])[] = [['overall', 'Overall'], ['split', 'One-off vs sub'], ['oneoff', 'One-off'], ['sub', 'Subscription'], ['all', 'All']];
-  const NAME: Record<Kind, string> = { oneOff: 'One-off', sub: 'Subscription', overall: 'Overall' };
-  // The chart's colors are its dataset order, applied fresh to each selection (ui-rules 42: the first series is the primary
-  // brown, then the next ones); a compare series takes its current partner's color.
-  // Bars: All is the stacked split (its tip adds the overall total); the $/g lines of All add the overall line.
-  const kindsOf = (lineChart: boolean): Kind[] => spendSeries === 'overall' ? ['overall'] : spendSeries === 'oneoff' ? ['oneOff'] : spendSeries === 'sub' ? ['sub'] : spendSeries === 'all' && lineChart ? ['oneOff', 'sub', 'overall'] : ['oneOff', 'sub'];
-  const sum = (a: (number | null)[], b: (number | null)[]) => a.map((v, i) => (v ?? 0) + (b[i] ?? 0));
-  type Series = { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; names?: (string | null)[]; hue?: string };
-  type Vals = Record<Kind, (number | null)[]>;
-  // The chart's datasets for the selection: the current window's series, then the compare window's, each in its partner's
-  // color: bars faded, lines dashed.
-  function plan(kinds: Kind[], cur: Vals, cmp: Vals | null, avg: Record<Kind, number | null> | null, lineChart: boolean) {
-    const one = kinds.length === 1;
-    const token = (k: Kind) => seriesToken(kinds.indexOf(k), kinds.length);
-    const tone = (k: Kind) => `var(${token(k)})`;
-    const own = kinds.map((k): Series => ({ label: NAME[k], values: cur[k] }));
-    const past: Series[] = cmp
-      ? kinds.flatMap((k) => (cmp[k].some((v) => v) ? [{ label: one ? compareLabel : `${compareLabel} · ${NAME[k]}`, values: cmp[k], hue: tone(k), ...(lineChart ? { dashed: true } : { faded: true }) }] : []))
-      : avg ? kinds.flatMap((k) => (avg[k] == null ? [] : [{ label: one ? `${compareLabel} (avg)` : `${compareLabel} (avg) · ${NAME[k]}`, values: sr.labels.map(() => avg[k]), dashed: true, hue: tone(k) }])) : [];
-    return { kinds, cur, cmp, avg, lineChart, token, compared: past.length > 0, first: own[0], rest: [...own.slice(1), ...past], colors: [...kinds.map(tone), ...past.filter((x) => !x.dashed).map((x) => x.hue!)] };
-  }
-  const total = $derived(sum(sr.sub, sr.oneOff));
-  const bars = $derived(plan(kindsOf(false),
-    { oneOff: sr.oneOff, sub: sr.sub, overall: total },
-    sr.compareSplit ? { oneOff: sr.compareSplit.oneOff, sub: sr.compareSplit.sub, overall: sr.compare ?? [] } : null,
-    sr.compareAverageSplit ? { oneOff: sr.compareAverageSplit.oneOff, sub: sr.compareAverageSplit.sub, overall: sr.compareAverage } : null, false));
-  const lines = $derived(plan(kindsOf(true),
-    { oneOff: sr.ppg.oneOff, sub: sr.ppg.sub, overall: sr.ppg.all },
-    sr.comparePpgSplit ? { oneOff: sr.comparePpgSplit.oneOff, sub: sr.comparePpgSplit.sub, overall: sr.comparePpg ?? [] } : null, null, true));
+  const { total, bars, lines } = $derived(spendPlans(sr, spendSeries, compareLabel));
   // The Compare label as an offset, "3 months prior" ("Previous 3 months" is the same-length window right before the Period);
   // labels that already say "ago" become "prior", and a year stays as it is.
   const prior = (l: string) => l.replace(/^Previous (\d+ )?(week|month|year)s?$/, (_, n, u) => `${n ?? '1 '}${u}${(n ?? '1 ') === '1 ' ? '' : 's'} prior`).replace(/ ago$/, ' prior');
@@ -75,7 +47,7 @@
   // The tip of a bucket: every series' row (a missing value says "No data"), a swatch (bars) or line sample (lines, dashed for the
   // previous period) before each label; with a compare window, one group per period, each titled with its dates and, for the
   // previous one, its offset ("Jun 8–14, 2026 (3 months prior)"). All's bars add the overall total.
-  function tipper(pl: ReturnType<typeof plan>, fmt: (v: number) => string, withTotal: boolean) {
+  function tipper(pl: ReturnType<typeof spendPlans>['bars'], fmt: (v: number) => string, withTotal: boolean) {
     const group = (title: string, get: (k: Kind) => number | null | undefined, past: boolean) => {
       const got = pl.kinds.map((k) => get(k) ?? null);
       const rows: [string, string][] = pl.kinds.map((k, j) => [NAME[k], got[j] === null ? 'No data' : fmt(got[j]!)]);
@@ -95,9 +67,7 @@
   }
   const barTip = $derived(tipper(bars, (v) => usd(v, false), spendSeries === 'all'));
   const lineTip = $derived(tipper(lines, (v) => `${usd(v)}/g`, false));
-  // Money axis: whole dollars when any amount shown (either window, any series) is $1,000 or more.
-  const amounts = $derived([...total, ...(sr.compare ?? []), sr.compareAverage]);
-  const whole = $derived(wholeUsd(amounts));
+  const whole = $derived(spendWhole(sr, total));
   const money = (v: number) => usd(v, whole);
   const perG = (v: number) => `${usd(v)}/g`;
   const noPrice = $derived(sr.ppg.all.every((v) => v === null));
