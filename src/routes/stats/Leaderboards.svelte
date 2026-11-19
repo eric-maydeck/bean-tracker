@@ -32,9 +32,10 @@
   import { MediaQuery } from 'svelte/reactivity';
   import { allShownLine, hiddenLine, BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '#lib/sample.ts';
   import type { Tip } from '#lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '#lib/insightsUrl.ts';
+  import { BAG_BOARDS, BOARDS, BOARD_NOUN, lowFirst, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '#lib/insightsUrl.ts';
   import LikeLine from './LikeLine.svelte';
   import { RANK_LABEL, boardValue } from './chartLink';
+  import { boardSize, boardView } from './multiLine';
   import { labelTip } from '#lib/components/labelTip.ts';
   import Chart from '#lib/components/Chart.svelte';
   import type { BoardSeries } from '#lib/server/insights/leaderboards.ts';
@@ -54,7 +55,7 @@
   } = $props();
 
   // Top 10 where there are many items, top 5 for small sets (spec "Boards").
-  const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' || b === 'varieties' || b === 'producers' ? 10 : 5);
+  const SIZE = boardSize;
 
   // Each board's Show all is its own: toggling one leaves the others as they are.
   const toggle = (b: Board) => {
@@ -68,7 +69,6 @@
   };
   const listed = (b: Board) => (low.includes(b) ? lowFirst(b, boards[b]) : boards[b]);
   const VIEWS = [['list', 'List'], ['time', 'Over time']] as const;
-  const viewOf = (b: Board) => (views as Partial<Record<Board, BoardView>> | undefined)?.[b];
   // v: undefined = List. Switching to Over time keeps an expansion already there.
   const setView = (b: Board, v: BoardView | undefined) => {
     const next = { ...views, [b]: v };
@@ -267,16 +267,15 @@
   {@const costWhole = rank === 'ppg' && wholeUsd(rows.map((r) => r.cost))}
   {@const fixed = b === 'caffeine'}
   {@const isLow = low.includes(b) && !fixed}
-  {@const ordered = isLow ? lowFirst(b, rows) : rows}
+  {@const bv = boardView(rows, series?.[b], { board: b, low, open, views, rank })}
+  {@const ordered = bv.ordered}
   {@const shown = isOpen ? ordered : ordered.slice(0, size)}
   {@const top = Math.max(...shown.map((r) => r.value), 0)}
   <!-- Over time under Lowest first: the lowest groups' lines, lowest first (the server sends them best first). -->
-  {@const pool = !isLow ? (series?.[b]?.lines ?? []) : ordered.flatMap((r) => series?.[b]?.lines.find((l) => l.label === r.label) ?? [])}
+  {@const pool = bv.pool}
   <!-- rank=like: a zero-centred bar, scaled to the board's largest |gap| (signed values, ui gate P4). -->
   {@const span = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9)}
-  {@const switchable = (VIEW_BOARDS as readonly Board[]).includes(b) && !unranked(b) && rows.length > 0}
-  {@const pick = switchable ? viewOf(b) : undefined}
-  {@const view = pick || fixed ? 'time' : 'list'}
+  {@const { switchable, pick, view } = bv}
   <!-- Caffeine is always Over time, in a fixed-height chart, and spans its row (CSS): no List, Lowest first or Expand. -->
   {@const wide = pick === 'wide'}
   <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:timeview={view === 'time'} class:fixed class:wide data-board={b} style:--rows={size}
@@ -313,7 +312,7 @@
       {:else if view === 'time'}
         {@const sr = series?.[b]}
         <!-- The server sends every group's line, best first (colors follow that order, so Show all keeps the top ones'). -->
-        {@const lines = isOpen ? pool : pool.slice(0, size)}
+        {@const lines = bv.lines}
         {#if sr && lines.length && sr.labels.length}
           <!-- The chart fills the List's body height, so neither switching views nor Show all resizes the card (the legend grows
                inside it). -->

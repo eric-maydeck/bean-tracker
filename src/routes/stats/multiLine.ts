@@ -1,4 +1,6 @@
 import type { Multi } from '#lib/server/insights/insightGenerators.ts';
+import type { BoardRow, BoardSeries } from '#lib/server/insights/leaderboards.ts';
+import { BAG_BOARDS, VIEW_BOARDS, lowFirst, type Board, type BoardView, type BoardViews, type Rank } from '#lib/insightsUrl.ts';
 
 // One shared y scale over a 100×40 box (2 units of padding top and bottom).
 function frame(m: Multi) {
@@ -87,4 +89,25 @@ export function lines(m: Multi) {
     if (run.length) runs.push(smooth(run));
     return { label: l.label, runs, color: inkOf(colors[k]) }; // strokes use the -ink token
   });
+}
+
+// Leaderboards' Over time: what a board draws, shared by the page and its link-preview thumbnail. `view` is the
+// page's pick (Over time for a switched board and always for Caffeine), `pool` every group's line (lowest first under Lowest first).
+export const boardSize = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' || b === 'varieties' || b === 'producers' ? 10 : 5);
+interface BoardOpts { board: Board; low: Board[]; open: Board[]; views?: BoardViews; rank: Rank }
+export function boardView(rows: BoardRow[], sr: BoardSeries | undefined, o: BoardOpts) {
+  const b = o.board, fixed = b === 'caffeine';
+  const ordered = o.low.includes(b) && !fixed ? lowFirst(b, rows) : rows;
+  const pool = !(o.low.includes(b) && !fixed) ? (sr?.lines ?? []) : ordered.flatMap((r) => sr?.lines.find((l) => l.label === r.label) ?? []);
+  const unranked = (o.rank === 'spend' || o.rank === 'ppg') && !BAG_BOARDS.includes(b);
+  const switchable = (VIEW_BOARDS as readonly Board[]).includes(b) && !unranked && rows.length > 0;
+  const pick = switchable ? (o.views as Partial<Record<Board, BoardView>> | undefined)?.[b] : undefined;
+  const view = pick || fixed ? 'time' : 'list';
+  const lines = o.open.includes(b) ? pool : pool.slice(0, boardSize(b));
+  return { ordered, pool, unranked, switchable, pick, view, lines } as const;
+}
+// The lines the page draws for this board, or null when it draws the List, a note or nothing.
+export function boardTimeLines(rows: BoardRow[], sr: BoardSeries | undefined, o: BoardOpts) {
+  const v = boardView(rows, sr, o);
+  return v.view === 'time' && !v.unranked && rows.length && sr && v.lines.length && sr.labels.length ? { labels: sr.labels, lines: v.lines } : null;
 }
