@@ -372,7 +372,7 @@
       {/if}
       <div class="modal pick-modal {result.via}" role="dialog" aria-modal="true" aria-label="Pick result" bind:this={modalEl}>
         {#if game === 'd20' && result.n}
-          <p class="rolled {result.via}" aria-live="polite">{result.via === 'success' ? 'Crit success' : result.via === 'fail' ? 'Crit fail' : 'Rolled'}<b>{result.n}</b></p>
+          <p class="rolled {result.via}" aria-live="polite">Rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
         {/if}
         <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
           onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} />
@@ -411,6 +411,7 @@
   .rolled { margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
   .rolled b { display: block; font-size: 3.5rem; line-height: 1; letter-spacing: 0; color: var(--color-accent); }
   /* a crit: a dark panel (the same dark in both themes, like the D20 tray, so the colours keep their contrast) with its glow; a normal roll stays plain */
+  .crit-word { display: block; margin-top: var(--space-1); font-size: 0.85rem; }
   .rolled.success, .rolled.fail { position: relative; overflow: hidden; padding: var(--space-3) var(--space-2); border-radius: var(--radius); }
   .rolled.success { color: #ffe08a; background: radial-gradient(ellipse 70% 80% at 50% 62%, rgba(255, 208, 77, 0.55), transparent 70%), #2a1d05; box-shadow: 0 0 22px rgba(255, 208, 77, 0.45); }
   .rolled.success b { color: transparent; background: linear-gradient(100deg, #b8860b 0%, #ffe08a 35%, #fff6d0 50%, #ffd04d 65%, #b8860b 100%) 40% 0 / 250% 100%; -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 8px rgba(255, 208, 77, 0.7)); animation: shimmer 2.4s linear infinite; }
