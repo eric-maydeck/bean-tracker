@@ -23,12 +23,18 @@ function sorter(rules: PickRules): (a: PickCoffee, b: PickCoffee) => number {
   }
 }
 
+/** The coffee ids held by crits in 'specific' mode (enabled ones only). */
+const specificIds = (rules: PickRules): number[] => [
+  ...(rules.critSuccessOn && rules.critSuccessMode === 'specific' ? rules.critSuccess : []),
+  ...(rules.critFailOn && rules.critFailMode === 'specific' ? rules.critFail : [])
+];
+
 export function buildPool(
   coffees: PickCoffee[],
   rules: PickRules,
   out: Set<number>
 ): { pool: PickCoffee[]; sittingOut: PickCoffee[] } {
-  const crit = new Set([...rules.critSuccess, ...rules.critFail]);
+  const crit = new Set(specificIds(rules));
   // includeFrozenDecaf only matters when Frozen is selected and decaf is included
   const skipFrozenDecaf = !rules.includeFrozenDecaf && rules.categories.includes('frozen') && rules.includeDecaf;
   let list = coffees
@@ -44,4 +50,26 @@ export function buildPool(
 export function critPool(coffees: PickCoffee[], ids: number[], out: Set<number>): PickCoffee[] {
   const byId = new Map(coffees.map((c) => [c.id, c]));
   return ids.filter((id) => !out.has(id)).flatMap((id) => byId.get(id) ?? []);
+}
+
+/**
+ * The pool and both crits for a day. Specific crits come from their chosen coffees; spot crits take the coffee in
+ * #1 (fail) and #20 (success) of the sorted pool, or the last coffee when fewer than 20 and `highestIsCrit`.
+ * Spot crits need at least 3 coffees, so a normal slot is always left; a spot-crit coffee leaves the normal pool.
+ */
+export function resolveCrits(coffees: PickCoffee[], rules: PickRules, out: Set<number>): { pool: PickCoffee[]; sittingOut: PickCoffee[]; success: PickCoffee[]; fail: PickCoffee[] } {
+  const { pool, sittingOut } = buildPool(coffees, rules, out);
+  const specific = (on: boolean, mode: PickRules['critFailMode'], ids: number[]) => (on && mode === 'specific' ? critPool(coffees, ids, out) : []);
+  let success = specific(rules.critSuccessOn, rules.critSuccessMode, rules.critSuccess);
+  let fail = specific(rules.critFailOn, rules.critFailMode, rules.critFail);
+  let normal = pool;
+  if (pool.length >= 3) {
+    const wantFail = rules.critFailOn && rules.critFailMode === 'spot';
+    const idx = pool.length >= CAP ? CAP - 1 : rules.highestIsCrit ? pool.length - 1 : -1;
+    const wantSuccess = rules.critSuccessOn && rules.critSuccessMode === 'spot' && idx >= 0;
+    if (wantFail) fail = [pool[0]];
+    if (wantSuccess) success = [pool[idx]];
+    normal = pool.filter((_, i) => !(wantFail && i === 0) && !(wantSuccess && i === idx));
+  }
+  return { pool: normal, sittingOut, success, fail };
 }

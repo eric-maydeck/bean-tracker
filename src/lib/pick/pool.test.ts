@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_RULES } from './rules';
-import { buildPool, critPool } from './pool';
+import { buildPool, critPool, resolveCrits } from './pool';
 import type { PickCoffee, PickRules } from './types';
 
 const mk = (id: number, o: Partial<PickCoffee> = {}): PickCoffee => ({
@@ -44,7 +44,7 @@ describe('buildPool', () => {
     expect(ids(buildPool(fixture, r, new Set()).pool)).toContain(26);
   });
   it('crit coffee absent from pool', () => {
-    const { pool } = buildPool(fixture, R({ critSuccess: [22], critFail: [21] }), new Set());
+    const { pool } = buildPool(fixture, R({ critSuccess: [22], critFail: [21], critSuccessMode: 'specific', critFailMode: 'specific' }), new Set());
     expect(ids(pool)).not.toContain(22);
     expect(ids(pool)).not.toContain(21);
   });
@@ -94,5 +94,35 @@ describe('buildPool', () => {
 describe('critPool', () => {
   it('drops out and unknown ids, keeps order of ids', () => {
     expect(ids(critPool(fixture, [3, 999, 5, 7], new Set([5])))).toEqual([3, 7]);
+  });
+});
+
+describe('resolveCrits', () => {
+  const some = (n: number) => Array.from({ length: n }, (_, i) => mk(i + 1)); // urgency i+1: sorted high first, so #1 is the last id
+  it('pool of 25: fail is #1, success is #20, both leave the normal pool', () => {
+    const r = resolveCrits(some(25), R(), new Set());
+    expect(ids(r.fail)).toEqual([25]);
+    expect(ids(r.success)).toEqual([6]); // 25..6 are the top 20
+    expect(r.pool).toHaveLength(18);
+    expect(ids(r.pool)).not.toContain(25);
+    expect(ids(r.pool)).not.toContain(6);
+  });
+  it('pool of 12: highest is the success unless the option is off', () => {
+    expect(ids(resolveCrits(some(12), R(), new Set()).success)).toEqual([1]);
+    const off = resolveCrits(some(12), R({ highestIsCrit: false }), new Set());
+    expect(off.success).toEqual([]);
+    expect(ids(off.fail)).toEqual([12]);
+    expect(off.pool).toHaveLength(11);
+  });
+  it('fewer than 3 coffees: no spot crits', () => {
+    const r = resolveCrits(some(2), R(), new Set());
+    expect(r).toMatchObject({ success: [], fail: [] });
+    expect(r.pool).toHaveLength(2);
+  });
+  it('disabled crits and specific mode', () => {
+    expect(resolveCrits(some(12), R({ critFailOn: false, critSuccessOn: false }), new Set())).toMatchObject({ success: [], fail: [] });
+    const s = resolveCrits(some(12), R({ critSuccessMode: 'specific', critSuccess: [3], critFailOn: false }), new Set());
+    expect(ids(s.success)).toEqual([3]);
+    expect(ids(s.pool)).not.toContain(3);
   });
 });

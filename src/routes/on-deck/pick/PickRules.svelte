@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Category, Fill, Iteration, PickCoffee, PickRules, SortGroup, SortRule } from '#lib/pick/types.ts';
+  import type { Category, CritMode, Fill, Iteration, PickCoffee, PickRules, SortGroup, SortRule } from '#lib/pick/types.ts';
   import CritPicker from './CritPicker.svelte';
 
   let { rules, coffees, eligible, admin, hasSaved, open, ontoggle, onchange, onsave, onload, onreset, note, locked }: {
@@ -28,9 +28,32 @@
     set({ [which]: ids, [other]: rules[other].filter((x) => !ids.includes(x)) });
   };
 
+  const on = (which: 'critSuccess' | 'critFail') => (which === 'critSuccess' ? rules.critSuccessOn : rules.critFailOn);
+  const mode = (which: 'critSuccess' | 'critFail') => (which === 'critSuccess' ? rules.critSuccessMode : rules.critFailMode);
+  const setOn = (which: 'critSuccess' | 'critFail', v: boolean) => set(which === 'critSuccess' ? { critSuccessOn: v } : { critFailOn: v });
+  const setMode = (which: 'critSuccess' | 'critFail', v: CritMode) => set(which === 'critSuccess' ? { critSuccessMode: v } : { critFailMode: v });
+
   // Escape closes the panel, unless a dialog (the rule-change confirm) is on top of it.
   const onkey = (e: KeyboardEvent) => e.key === 'Escape' && open && !document.querySelector('dialog[open]') && ontoggle(false);
 </script>
+
+{#snippet crit(label: string, which: 'critSuccess' | 'critFail', spot: string)}
+  <div class="crit">
+    <label><input type="checkbox" checked={on(which)} onchange={(e) => setOn(which, e.currentTarget.checked)} /> {label}</label>
+    {#if on(which)}
+      <div class="sub" role="radiogroup" aria-label={`${label} holds`}>
+        <label><input type="radio" name={`${which}-mode`} checked={mode(which) === 'spot'} onchange={() => setMode(which, 'spot')} /> The coffee in that spot ({spot})</label>
+        <label><input type="radio" name={`${which}-mode`} checked={mode(which) === 'specific'} onchange={() => setMode(which, 'specific')} /> Specific coffees</label>
+        {#if which === 'critSuccess' && mode(which) === 'spot'}
+          <label class="sub"><input type="checkbox" checked={rules.highestIsCrit} onchange={(e) => set({ highestIsCrit: e.currentTarget.checked })} /> Highest number is crit success <span class="text-muted">when fewer than 20 coffees</span></label>
+        {/if}
+        {#if mode(which) === 'specific'}
+          <CritPicker label={`${label} coffees`} {coffees} selected={rules[which]} onchange={(ids) => setCrit(which, ids)} />
+        {/if}
+      </div>
+    {/if}
+  </div>
+{/snippet}
 
 <svelte:window onkeydown={onkey} />
 
@@ -85,8 +108,8 @@
 
         <fieldset>
           <legend>Crits</legend>
-          <CritPicker label="Critical success (gold, 20)" {coffees} selected={rules.critSuccess} onchange={(ids) => setCrit('critSuccess', ids)} />
-          <CritPicker label="Critical fail (black, 1)" {coffees} selected={rules.critFail} onchange={(ids) => setCrit('critFail', ids)} />
+          {@render crit('Crit fail', 'critFail', '#1')}
+          {@render crit('Crit success', 'critSuccess', '#20')}
         </fieldset>
 
         <fieldset>
@@ -135,6 +158,9 @@
   label { display: inline-flex; gap: var(--space-2); align-items: center; min-height: 30px; }
   .field { display: grid; gap: var(--space-1); min-height: 0; }
   .sub { margin-left: var(--space-5); }
+  .crit { display: grid; gap: var(--space-1); }
+  .crit .sub { display: grid; gap: 0; }
+  .crit .sub .sub { margin-left: var(--space-5); }
   .checks { list-style: none; margin: 0; padding: 0; max-height: 14rem; overflow: auto; }
   .checks label { align-items: baseline; }
   .order { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-1); }

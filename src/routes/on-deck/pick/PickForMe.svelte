@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
-  import { buildPool, critPool } from '#lib/pick/pool.ts';
+  import { buildPool, resolveCrits } from '#lib/pick/pool.ts';
   import { boardMatches, fillBoard } from '#lib/pick/board.ts';
   import { DEFAULT_RULES, rulesDiffer } from '#lib/pick/rules.ts';
   import { discard, markBrewed, resetDay } from '#lib/pick/today.ts';
@@ -75,15 +75,20 @@
   });
   onDestroy(flushToday);
 
+  // Save only real changes (not the state just loaded).
+  let saved = '';
   $effect(() => {
     if (!ready) return;
-    saveToday(admin, $state.snapshot(today));
+    const snap = $state.snapshot(today);
+    const json = JSON.stringify(snap);
+    if (saved === '') return void (saved = json);
+    if (json !== saved) { saved = json; saveToday(admin, snap); }
   });
 
   const out = $derived(new Set(today.out));
-  const pool = $derived(buildPool(coffees, rules, out));
-  const successC = $derived(critPool(coffees, rules.critSuccess, out));
-  const failC = $derived(critPool(coffees, rules.critFail, out));
+  const pool = $derived(resolveCrits(coffees, rules, out));
+  const successC = $derived(pool.success);
+  const failC = $derived(pool.fail);
   const slices = $derived(wheelSlices(pool.pool, successC.length > 0, failC.length > 0));
   const empty = $derived(slices.length === 0);
   const eligible = $derived.by(() => {

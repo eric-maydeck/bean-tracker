@@ -37,6 +37,12 @@ describe('pick rules', () => {
     expect(parseRules({ skipFrozenDecaf: false }).includeFrozenDecaf).toBe(true);
     expect(parseRules({ skipFrozenDecaf: false, includeFrozenDecaf: false }).includeFrozenDecaf).toBe(false);
   });
+  it('old rules: a crit id list means specific coffees, an empty one the new defaults', () => {
+    const r = parseRules({ critSuccess: [5], critFail: [] });
+    expect(r).toMatchObject({ critSuccessMode: 'specific', critSuccessOn: true, critFailMode: 'spot', critFailOn: true });
+    expect(parseRules({ critSuccess: [5], critSuccessMode: 'spot' }).critSuccessMode).toBe('spot');
+    expect(parseRules({}).highestIsCrit).toBe(true);
+  });
   it('rulesDiffer', () => {
     expect(rulesDiffer(DEFAULT_RULES, { ...DEFAULT_RULES, sort: 'name' })).toBe(true);
     expect(rulesDiffer(DEFAULT_RULES, { ...DEFAULT_RULES, excluded: [1] })).toBe(true);

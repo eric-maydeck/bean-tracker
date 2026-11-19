@@ -4,6 +4,7 @@ export type SortRule = 'urgency-desc' | 'urgency-asc' | 'name' | 'category';
 export type Iteration = 'asc' | 'desc' | 'evens' | 'odds' | 'random';
 export type Fill = 'wrap' | 'snake' | 'shuffle' | 'cross';
 export type Over20 = 'first20' | 'byHand';
+export type CritMode = 'spot' | 'specific';
 export type Game = 'wheel' | 'd20';
 
 export interface PickRules {
@@ -15,8 +16,13 @@ export interface PickRules {
   categoryOrder: SortGroup[]; // all four, user order
   over20: Over20;
   excluded: number[]; // coffee ids unchecked by hand
-  critSuccess: number[]; // empty = 20 is a normal slot / no gold slice
-  critFail: number[]; // empty = 1 is a normal slot / no black slice
+  critSuccessOn: boolean; // gold crit: 20 on the D20, a gold slice on the wheel
+  critSuccessMode: CritMode; // spot = the coffee in the last spot; specific = the ids below
+  critSuccess: number[]; // coffee ids for 'specific' mode
+  critFailOn: boolean; // black crit: 1 on the D20, a black slice
+  critFailMode: CritMode; // spot = the coffee in #1
+  critFail: number[];
+  highestIsCrit: boolean; // spot success with fewer than 20 coffees: the last coffee
   fillEnds: boolean; // normal 1 and 20 take part in the fill
   iteration: Iteration;
   fill: Fill;

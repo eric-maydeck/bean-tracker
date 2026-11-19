@@ -5810,7 +5810,6 @@ export const STATES: State[] = [
     name: 'pick-tabs', viewports: 'two',
     path: () => '/on-deck',
     act: async (page) => {
-      await stubPickApi(page);
       const view = page.getByRole('group', { name: 'View' });
       await view.getByRole('button', { name: 'Pick for me' }).click();
       await expect(page).toHaveURL(/view=pick/);
@@ -5828,7 +5827,6 @@ export const STATES: State[] = [
     name: 'pick-wheel', viewports: 'two',
     path: () => '/on-deck?view=pick',
     act: async (page) => {
-      await stubPickApi(page);
       await expect(page.getByRole('heading', { name: 'Pick for me' })).toBeVisible();
       await expect(page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Pick for me' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
@@ -5852,7 +5850,6 @@ export const STATES: State[] = [
     name: 'pick-rules-sidebar', viewports: 'two',
     path: () => '/on-deck?view=pick',
     act: async (page) => {
-      await stubPickApi(page);
       const stage = page.locator('.stage');
       const before = (await stage.boundingBox())!;
       await page.getByRole('button', { name: 'Rules', exact: true }).click();
@@ -5870,6 +5867,14 @@ export const STATES: State[] = [
         expect(box.width).toBeLessThanOrEqual(vw);
         await expect(page.locator('.modal-backdrop')).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
       }
+      // Crits default to the coffee in the spot, both on; the highest-number option sits under crit success.
+      await expect(panel.getByLabel('Crit fail', { exact: true })).toBeChecked();
+      await expect(panel.getByLabel('The coffee in that spot (#1)')).toBeChecked();
+      await expect(panel.getByLabel('The coffee in that spot (#20)')).toBeChecked();
+      await expect(panel.getByLabel(/Highest number is crit success/)).toBeChecked();
+      await panel.getByLabel('Specific coffees').last().check();
+      await expect(panel.getByLabel(/Highest number is crit success/)).toHaveCount(0);
+      await expect(panel.getByRole('button', { name: 'Select all', exact: true })).toBeVisible();
       await panel.getByRole('button', { name: 'Close' }).click();
       await expect(panel).toBeHidden();
       await page.getByRole('button', { name: 'Rules', exact: true }).click();
@@ -5883,7 +5888,6 @@ export const STATES: State[] = [
     name: 'pick-d20', viewports: 'two',
     path: () => '/on-deck?view=pick&game=d20',
     act: async (page) => {
-      await stubPickApi(page);
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const show = page.getByRole('button', { name: 'Show', exact: true });
       await expect(show).toBeEnabled({ timeout: 20000 });
@@ -5912,7 +5916,6 @@ export const STATES: State[] = [
     name: 'pick-discard', viewports: 'two',
     path: () => '/on-deck?view=pick',
     act: async (page) => {
-      await stubPickApi(page);
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.getByRole('button', { name: 'Spin', exact: true }).click();
       const card = page.locator('.pick-card');
@@ -5937,7 +5940,6 @@ export const STATES: State[] = [
     name: 'pick-overlay', viewports: 'two',
     path: () => '/on-deck?view=pick',
     act: async (page) => {
-      await stubPickApi(page);
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const spin = page.getByRole('button', { name: 'Spin', exact: true });
       await spin.click();
@@ -5967,7 +5969,6 @@ export const STATES: State[] = [
     name: 'pick-dialog', viewports: 'two',
     path: () => '/on-deck?view=pick',
     act: async (page) => {
-      await stubPickApi(page);
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.getByRole('button', { name: 'Spin', exact: true }).click();
       await page.locator('.pick-card').getByRole('button', { name: 'Discard' }).click();
@@ -5991,7 +5992,6 @@ export const STATES: State[] = [
     name: 'pick-empty', viewports: 'two',
     path: () => '/on-deck?view=pick',
     act: async (page) => {
-      await stubPickApi(page);
       await page.getByRole('button', { name: 'Rules', exact: true }).click();
       await page.getByLabel('Open', { exact: true }).uncheck();
       await page.getByLabel('Backlog', { exact: true }).uncheck();
@@ -12486,8 +12486,11 @@ const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   test(state.name, { tag: [routeTag(state), ...tabTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
     const s = seed();
+    if (state.name.startsWith('pick-')) await stubPickApi(page); // before the page loads: Pick saves its state on load
     await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);
+    // Flush Pick's debounced save while the stub is still up: closing the page would send it for real and leave a result behind for the next state.
+    if (state.name.startsWith('pick-')) await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
     if (state.name.startsWith('insights-')) await expectStatRowsFull(page);
     await expectTipsFormatted(page);
     await expectNoTitleTips(page);
