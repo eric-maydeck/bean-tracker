@@ -745,7 +745,7 @@
     >
       {#snippet title()}<CoffeeName name={ec.coffee_name} />{/snippet}
       {#snippet statusActions()}
-        <CoffeeStatusActions coffee={ec} pressed={pending.get(id)?.statusAction} disabled={saving} onaction={(a) => stageStatusAction(pending, id, a)} />
+        <CoffeeStatusActions stable coffee={ec} pressed={pending.get(id)?.statusAction} disabled={saving} onaction={(a) => stageStatusAction(pending, id, a)} />
       {/snippet}
     </CoffeeEditModal>
   {/if}

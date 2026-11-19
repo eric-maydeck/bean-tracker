@@ -525,6 +525,13 @@ input:focus-visible {
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
+/* An <a> does not center its text in a taller box the way a <button> does (a flex row stretching it beside a taller sibling). */
+:where(a).button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .button-danger {
   --button-color: var(--color-urgency-high);
 }
@@ -1386,7 +1393,7 @@ nav.site-nav a[aria-current='page'] {
   }
 }
 
-/* Coffee detail page: Back/Import/Clone/Edit/status icons/Share as a flex-wrap row
+/* Coffee detail page: Back/Import/Clone/Edit/Share as a flex-wrap row
    spaced by gap (button margins zeroed), and its stacked blocks (this row,
    the BQ share panel, the article) all var(--space-4)
    apart. Desktop puts Back on the left and pushes the rest right, Share
@@ -1412,21 +1419,26 @@ nav.site-nav a[aria-current='page'] {
   margin-bottom: var(--space-4);
 }
 
-/* The status icons (admin) join the row as its own flex items, after Edit; the rows around them dissolve. */
-.detail-actions .action-stack,
-.detail-actions .action-row {
+/* The status icons (admin): their own left-aligned row above the coffee name, wider than the list's narrow column. */
+.detail-status {
+  margin-bottom: var(--space-2);
+}
+.detail-status .action-stack {
+  flex-direction: row;
+}
+.detail-status .action-row {
   display: contents;
 }
-.detail-actions .button.button-icon {
-  flex: 0 0 auto;
-  min-width: 44px;
+.detail-status .button.button-icon {
+  min-width: 3.5rem;
   min-height: 44px;
+  margin: 0;
 }
 
 @media (max-width: 640px) {
   /* Labels stay on one line and the row wraps instead when they don't fit
      side by side. */
-  .detail-actions .button:not(.button-icon) {
+  .detail-actions .button {
     flex: 1 1 auto;
     white-space: nowrap;
   }

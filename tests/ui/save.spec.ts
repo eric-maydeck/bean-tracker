@@ -64,10 +64,19 @@ test('cards: Save in the edit overlay writes A; Cancel on B writes nothing', { t
 test('coffee page: a status icon applies at once, stays on the page, and Undo restores it', { tag: '@coffees' }, async ({ page }) => {
   const { slug, status } = read(`SELECT slug, status FROM coffees WHERE coffee_name = ?`, A)() as { slug: string; status: string };
   await gotoReady(page, `/coffees/${slug}`);
-  const icon = page.locator('.detail-actions').getByRole('button', { name: status === 'archive' ? 'Unarchive' : 'Archive', exact: true });
+  const icons = page.locator('.detail-status .button-icon');
+  // Slots never move: same four boxes before and after, whatever the action did (a toggle swaps in place, a disabled one stays).
+  const boxes = () => icons.evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }));
+  const before = await boxes();
+  expect(before).toHaveLength(4);
+  const icon = page.locator('.detail-status').getByRole('button', { name: status === 'archive' ? 'Unarchive' : 'Archive', exact: true });
   await icon.click();
   await expect.poll(read(`SELECT status FROM coffees WHERE coffee_name = ?`, A)).not.toEqual({ status });
   await expect(page).toHaveURL(new RegExp(`/coffees/${slug}$`));
+  await expect(page.getByRole('button', { name: status === 'archive' ? 'Archive' : 'Unarchive', exact: true })).toBeVisible(); // the slot swapped in place
+  const after = await boxes();
+  expect(after).toHaveLength(4);
+  after.forEach((box, i) => box.forEach((v, j) => expect(Math.abs(v - before[i][j]), `slot ${i} box[${j}] ${before[i][j]} -> ${v}`).toBeLessThanOrEqual(1)));
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect.poll(read(`SELECT status FROM coffees WHERE coffee_name = ?`, A)).toEqual({ status });
   await expect(page).toHaveURL(new RegExp(`/coffees/${slug}$`));

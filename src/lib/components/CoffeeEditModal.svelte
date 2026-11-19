@@ -118,7 +118,7 @@
     min-height: 44px;
   }
   .modal-head :global(.button.button-icon) {
-    min-width: 44px;
+    min-width: 3rem; /* wider than the list's icons, yet icons + Save + Cancel still share one line on a 480px phone */
   }
   .modal-head :global(.action-stack) {
     flex-direction: row;

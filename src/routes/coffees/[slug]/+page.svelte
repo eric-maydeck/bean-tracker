@@ -344,7 +344,6 @@
   {/if}
   {#if data.isAdmin}
     <button class="button button-secondary detail-edit" type="button" onclick={() => (editMode = true)}>Edit</button>
-    <CoffeeStatusActions coffee={data.coffee} onaction={quickAction} />
   {/if}
   <ShareButton />
 </div>
@@ -392,6 +391,9 @@
     <div class="detail-body">
       <div class="detail-header">
         <div>
+          {#if data.isAdmin}
+            <div class="detail-status"><CoffeeStatusActions stable coffee={data.coffee} onaction={quickAction} /></div>
+          {/if}
           <h1>
             <CoffeeName name={data.coffee.coffee_name} />
             {#if data.coffee.status === 'archive'}
@@ -606,7 +608,7 @@
   >
     {#snippet title()}<CoffeeName name={data.coffee.coffee_name} />{/snippet}
     {#snippet statusActions()}
-      <CoffeeStatusActions coffee={data.coffee} pressed={pending.get(data.coffee.id)?.statusAction} disabled={saving} onaction={(a) => stageStatusAction(pending, data.coffee.id, a)} />
+      <CoffeeStatusActions stable coffee={data.coffee} pressed={pending.get(data.coffee.id)?.statusAction} disabled={saving} onaction={(a) => stageStatusAction(pending, data.coffee.id, a)} />
     {/snippet}
   </CoffeeEditModal>
 {/if}

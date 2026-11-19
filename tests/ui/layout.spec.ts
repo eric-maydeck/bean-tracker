@@ -1594,20 +1594,37 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Delete this coffee' })).toHaveCount(0);
       await checkLayout(page);
     } },
-  // The status icons sit in the coffee page's top row for an admin (no Edit first), 44px, on screen.
+  // The status icons sit in their own row above the coffee name (admin), the same four slots in the same order (a toggle swaps
+  // in place, an action that does not apply is disabled), 44px, on screen. Brew now's text is centered in its box like its siblings'.
   { name: 'coffee-detail-quick-actions', path: (s: Seed) => `/coffees/${s.slugs.frozen}`,
     act: async (page: Page) => {
-      const row = page.locator('.detail-actions');
+      const textOffset = (loc: Locator) => loc.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const [t, b] = [range.getBoundingClientRect(), el.getBoundingClientRect()];
+        return (t.top + t.bottom) / 2 - (b.top + b.bottom) / 2;
+      });
+      const brew = await textOffset(page.locator('.detail-brew'));
+      for (const sib of ['.detail-clone', '.detail-edit']) {
+        expect(Math.abs(brew - (await textOffset(page.locator(sib)))), `Brew now text offset ${brew} vs ${sib} ${await textOffset(page.locator(sib))}`).toBeLessThanOrEqual(1);
+      }
+      const row = page.locator('.detail-status');
       const icons = row.locator('.button-icon');
-      expect(await icons.count()).toBeGreaterThanOrEqual(3);
-      await expect(row.getByRole('button', { name: 'Delete', exact: true })).toBeVisible();
+      await expect(icons).toHaveCount(4);
+      expect((await icons.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')!.replace(/^Un/, '').replace(/^Thaw$/, 'Freeze')))), 'slots: Delete, Open, Freeze, Archive').toEqual(['Delete', 'Open', 'Freeze', 'Archive']);
+      await expect(page.locator('.detail-actions .button-icon')).toHaveCount(0);
       const vp = page.viewportSize()!;
+      const h1 = (await page.locator('.detail-body h1').boundingBox())!;
       for (const b of await icons.all()) {
         const r = (await b.boundingBox())!;
         expect(r.x + r.width).toBeLessThanOrEqual(vp.width);
         expect(r.height).toBeGreaterThanOrEqual(43.5);
         expect(r.width).toBeGreaterThanOrEqual(43.5);
+        expect(r.y + r.height, 'icons sit above the name').toBeLessThanOrEqual(h1.y + 1);
+        expect(Math.abs(r.y - (await icons.first().boundingBox())!.y), 'one row').toBeLessThanOrEqual(1);
       }
+      expect(Math.abs((await icons.first().boundingBox())!.x - h1.x), 'left-aligned with the name').toBeLessThanOrEqual(1);
+      if (process.env.UI_SHOTS === 'all') await page.screenshot({ path: `.ui-test/screenshots/detail-status-${test.info().project.name}.png` });
       await checkLayout(page);
     } },
   {
@@ -11076,14 +11093,15 @@ export const STATES: State[] = [
     }
   },
   {
-    // Discard is the undo: reopening the form after Discard changes shows no mark.
+    // Discard is the undo: reopening the form after Cancel shows no mark.
     name: 'coffee-edit-roaster-default-discarded', viewports: 'two',
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await page.locator('#image_url').fill('https://img.example/moonwake-bag.png');
       await page.getByRole('button', { name: 'Set as roaster default' }).click();
-      await page.getByRole('button', { name: 'Discard changes' }).click();
+      page.once('dialog', (d) => d.accept()); // edited: Cancel asks first
+      await page.locator('.modal').getByRole('button', { name: 'Cancel', exact: true }).click();
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('input[name="set_roaster_default"]')).toHaveCount(0);
       await expect(page.getByText('Roaster default', { exact: true })).toBeVisible();
@@ -11417,7 +11435,8 @@ export const STATES: State[] = [
       await openSuggest(page, reply(SUGGEST_UNSTORED));
       await page.locator('.suggest-pick').nth(0).click();
       await expect(page.locator('input[name="roaster_website"]')).toHaveCount(1);
-      await page.getByRole('button', { name: 'Discard changes' }).click();
+      page.once('dialog', (d) => d.accept()); // edited: Cancel asks first
+      await page.locator('.modal').getByRole('button', { name: 'Cancel', exact: true }).click();
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('input[name="roaster_website"]')).toHaveCount(0);
     }
