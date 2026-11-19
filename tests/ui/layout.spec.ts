@@ -6530,6 +6530,29 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
     }
   },
+  {
+    // The Pick view's Share link carries the loaded profile, or rules=default when none is loaded (also after Reset to defaults).
+    name: 'pick-share-link', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await page.evaluate(() => { (window as unknown as { __shared: string[] }).__shared = []; navigator.share = async (d) => { (window as unknown as { __shared: string[] }).__shared.push(d!.url!); }; });
+      const shared = () => page.evaluate(() => (window as unknown as { __shared: string[] }).__shared.at(-1)!);
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'no profile loaded: the default rules').toMatch(/\/on-deck\?view=pick&game=d20&rules=default$/);
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      await panel.getByLabel('Profile', { exact: true }).selectOption('Shared Rules');
+      await panel.getByLabel('Sort').selectOption('urgency-asc'); // an unsaved edit does not stop the profile riding along
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'the loaded profile').toMatch(/\/on-deck\?view=pick&game=d20&profile=Shared\+Rules$/);
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await panel.getByRole('button', { name: 'Reset to defaults' }).click();
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await shared(), 'after Reset to defaults').toMatch(/rules=default$/);
+    }
+  },
   { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-subscriptions', path: () => '/subscriptions', act: (page) => expectGroupsLabelled(page) },
   {
@@ -13124,6 +13147,35 @@ test.describe('signed out', () => {
     await checkLayout(page);
     expect((await page.goto('/recaps'))!.status(), '/recaps lands on the tab').toBe(200);
     await expect(page).toHaveURL(/\/stats\?tab=recaps$/);
+  });
+  // A shared Pick for me link: the visitor plays the owner's saved profile (or the defaults) for this visit and nothing of their own is overwritten.
+  test('pick-shared-profile', { tag: ['@on-deck', '@two'] }, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const note = page.locator('.shared-note');
+    const rules = page.getByRole('dialog', { name: 'Rules' });
+    await gotoReady(page, '/on-deck?view=pick&game=d20&profile=Shared+Rules');
+    await expect(note).toContainText('Playing with the “Shared Rules” rules');
+    await page.getByRole('button', { name: 'Rules', exact: true }).click();
+    await expect(rules.getByLabel('Sort')).toHaveValue('name'); // the shared profile's rules, not the defaults
+    await expect(rules.getByLabel('Crit fail', { exact: true })).not.toBeChecked();
+    await page.keyboard.press('Escape');
+    await expect(rules).toBeHidden();
+    expect(await page.evaluate(() => localStorage.getItem('pick.rules.last')), 'nothing saved over the visitor\'s own rules').toBeNull();
+    await checkLayout(page);
+    await page.getByRole('button', { name: 'Use my rules' }).click();
+    await expect(note).toHaveCount(0);
+    await expect(page).not.toHaveURL(/profile=/);
+    await expect(page).toHaveURL(/view=pick&game=d20/);
+    // the default-rules link, and a name that is not there
+    await gotoReady(page, '/on-deck?view=pick&rules=default');
+    await expect(note).toContainText('Playing with the default rules');
+    await checkLayout(page);
+    await gotoReady(page, '/on-deck?view=pick&profile=Nope');
+    await expect(note).toContainText("That rules profile wasn't found.");
+    await checkLayout(page);
+    await note.getByRole('button', { name: 'Dismiss' }).click();
+    await expect(note).toHaveCount(0);
+    await expect(page).not.toHaveURL(/profile=/);
   });
   test('account-signed-out', async ({ page }) => {
     await page.goto('/account');
