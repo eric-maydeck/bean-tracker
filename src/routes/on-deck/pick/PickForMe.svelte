@@ -34,7 +34,6 @@
   let note = $state('');
   let pendingRules = $state<PickRules | null>(null);
   let wheel = $state<PickWheel>();
-  let d20 = $state<PickD20>();
   let dlg: HTMLDialogElement;
   let chosen = false; // A or B picked; otherwise a closed dialog is a cancel
   let rev = $state(0); // bumped on cancel so the panel re-reads `rules`
@@ -111,7 +110,7 @@
   function land(r: PickResult) {
     busy = false;
     today.result = r;
-    say(`Picked ${names.get(r.coffeeId) ?? ''}`);
+    say(`Picked ${byId.get(r.coffeeId)?.name ?? ''}`);
   }
   function again() {
     busy = false;
@@ -161,7 +160,6 @@
   }
   const doDiscard = () => resultCoffee && (today = discard(today, resultCoffee.id));
   const openPage = () => resultCoffee && goto(`/coffees/${resultCoffee.slug}`);
-  const spinAgain = () => (game === 'd20' ? d20?.roll() : spin());
   const close = () => (today.result = null);
 
   function apply(next: PickRules, reset: boolean) {
@@ -220,30 +218,37 @@
     ontoggle={(o) => (today.panelOpen = o)} onchange={edit} onsave={save} onload={load} onreset={() => edit(DEFAULT_RULES)} />
   {/key}
 
-  <section class="game" aria-label={game === 'd20' ? 'D20' : 'Wheel'}>
-    {#if game === 'wheel'}
-      <div class="wheel-wrap">
-        <PickWheel bind:this={wheel} {slices} {names} angle={today.wheelAngle} disabled={empty} onspin={spin} onresult={wheelResult} />
+  <div class="stage" class:d20={game === 'd20'}>
+    <section class="game" aria-label={game === 'd20' ? 'D20' : 'Wheel'}>
+      {#if game === 'wheel'}
+        <div class="wheel-wrap">
+          <PickWheel bind:this={wheel} {slices} {names} angle={today.wheelAngle} disabled={empty} onspin={spin} onresult={wheelResult} />
+        </div>
+      {:else}
+        <PickD20 pose={today.d20Pose} disabled={empty} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
+      {/if}
+      {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
+      {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
+    </section>
+
+    <div class="side">
+      <div class="result card">
+        {#if result && resultCoffee}
+          <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+            onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={close} />
+        {:else}
+          <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
+        {/if}
       </div>
-      {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
-    {:else}
-      {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
-      <PickD20 bind:this={d20} pose={today.d20Pose} disabled={empty} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
-      <PickBoard {board} {names} rolled={rolledN} />
-    {/if}
-    {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
-  </section>
+      {#if game === 'd20'}<PickBoard {board} {byId} success={successC} fail={failC} rolled={rolledN} />{/if}
+    </div>
+  </div>
 
   <div class="out-row">
     <span class="label">Out for today:</span>
     {#each outRow as c (c.id)}<span class="badge badge-neutral"><s>{c.name}</s></span>{:else}<span class="text-muted">nothing yet</span>{/each}
     <button type="button" class="button button-secondary" disabled={today.out.length === 0 && today.brewed.length === 0} onclick={() => (today = resetDay(today))}>Reset today</button>
   </div>
-
-  {#if result && resultCoffee}
-    <PickCard coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy} againDisabled={empty}
-      againLabel={game === 'd20' ? 'Roll again' : 'Spin again'} onbrew={brew} ondiscard={doDiscard} onopen={openPage} onagain={spinAgain} onclose={close} />
-  {/if}
 
   <div class="sr-only" aria-live="polite">{announce}</div>
 
@@ -259,8 +264,16 @@
 {/if}
 
 <style>
-  .game { margin: var(--space-3) 0; }
+  .stage { margin: var(--space-3) 0; display: grid; gap: var(--space-4); align-items: start; }
+  .side { display: grid; gap: var(--space-3); min-width: 0; }
+  .game { min-width: 0; }
   .wheel-wrap { max-width: 560px; margin: 0 auto; }
+  .result { min-height: 7.5rem; }
+  /* the card sits beside the game on desktop: wheel left, or a narrower die area with the board under the card */
+  @media (min-width: 641px) {
+    .stage { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); }
+    .stage.d20 { grid-template-columns: minmax(0, 620px) minmax(0, 1fr); }
+  }
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: var(--space-3) 0; }
   .out-row .label { font-weight: 600; }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }

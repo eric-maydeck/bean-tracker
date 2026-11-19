@@ -5828,6 +5828,9 @@ export const STATES: State[] = [
       await expect(page.getByRole('group', { name: 'View' }).getByRole('button', { name: 'Pick for me' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
       expect((await page.locator('.wheel').boundingBox())!.width).toBeLessThanOrEqual(561);
+      const [w, r] = [(await page.locator('.wheel').boundingBox())!, (await page.locator('.result').boundingBox())!];
+      if ((page.viewportSize()?.width ?? 0) > 640) expect(r.x, 'desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
+      else expect(r.y, 'phone: the card sits below the wheel').toBeGreaterThan(w.y + w.height - 1);
       await expectGroupsLabelled(page);
       const rules = page.getByRole('button', { name: 'Rules', exact: true });
       await rules.click();
@@ -5857,8 +5860,8 @@ export const STATES: State[] = [
       expect(Math.abs(inBox.y + inBox.height / 2 - (showBox.y + showBox.height / 2)), 'input and Show on one line').toBeLessThanOrEqual(4);
       await page.getByLabel('Number someone rolled').fill('7');
       await show.click();
-      await expect(page.locator('.tile.rolled')).toHaveCount(1);
-      await expect(page.locator('.tile.rolled b')).toHaveText('7');
+      await expect(page.locator('tr.rolled')).toHaveCount(1);
+      await expect(page.locator('tr.rolled td.n')).toHaveText('7');
       await expect(page.locator('.pick-card')).toBeVisible();
       await expect(page).toHaveURL(/game=d20/);
       await page.getByRole('button', { name: 'Wheel', exact: true }).click();

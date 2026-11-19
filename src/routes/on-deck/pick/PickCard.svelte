@@ -2,25 +2,24 @@
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import type { PickCoffee, PickResult } from '#lib/pick/types.ts';
 
-  let { coffee, result, out, brewed, busy, againDisabled, againLabel, onbrew, ondiscard, onopen, onagain, onclose }: {
-    coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; againDisabled: boolean; againLabel: string;
-    onbrew: () => void; ondiscard: () => void; onopen: () => void; onagain: () => void; onclose: () => void;
+  let { coffee, result, out, brewed, busy, onbrew, ondiscard, onopen, onclose }: {
+    coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean;
+    onbrew: () => void; ondiscard: () => void; onopen: () => void; onclose: () => void;
   } = $props();
 
   const locked = $derived(busy || out);
 </script>
 
-<article class="pick-card card" aria-label="Pick result">
+<article class="pick-card" aria-label="Pick result">
   {#if coffee.image}<img class="thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{/if}
   <div class="info">
     <h3 class="name">
-      {#if result.n}<span class="num">{result.n}</span>{/if}
       {#if out}<s><CoffeeName name={coffee.name} /></s>{:else}<CoffeeName name={coffee.name} />{/if}
       <span class="badges">
-      {#if result.via === 'success'}<span class="badge badge-warm">Critical success</span>{/if}
-      {#if result.via === 'fail'}<span class="badge badge-urgent">Critical fail</span>{/if}
-      {#if out}<span class="badge badge-neutral">Out for today</span>{/if}
-      {#if brewed && !out}<span class="badge badge-fresh">Brewed today</span>{/if}
+        {#if result.via === 'success'}<span class="badge badge-warm">Critical success</span>{/if}
+        {#if result.via === 'fail'}<span class="badge badge-urgent">Critical fail</span>{/if}
+        {#if out}<span class="badge badge-neutral">Out for today</span>{/if}
+        {#if brewed && !out}<span class="badge badge-fresh">Brewed today</span>{/if}
       </span>
     </h3>
     <p class="text-muted">{coffee.roaster}</p>
@@ -28,20 +27,19 @@
       <button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>
       <button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>
       <button type="button" class="button button-secondary" disabled={busy} onclick={onopen}>Open coffee page</button>
-      <button type="button" class="button button-secondary" disabled={busy || againDisabled} onclick={onagain}>{againLabel}</button>
       <button type="button" class="button button-secondary" disabled={busy} onclick={onclose}>Close</button>
     </div>
   </div>
 </article>
 
 <style>
-  .pick-card { display: flex; gap: var(--space-4); align-items: flex-start; margin: var(--space-3) 0; }
+  .pick-card { display: flex; gap: var(--space-4); align-items: flex-start; }
   .thumb { width: 84px; height: 104px; object-fit: contain; border-radius: var(--radius); flex-shrink: 0; }
   .info { min-width: 0; flex: 1; }
   .name { margin: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
   .badges { display: contents; }
   @media (max-width: 640px) { .badges { display: flex; flex-basis: 100%; gap: var(--space-2); min-height: 1.7rem; } } /* a reserved line: a badge never moves the buttons */
-  .num { display: inline-grid; place-items: center; min-width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--color-accent); color: var(--color-accent-contrast); font-size: 0.85rem; }
-  .buttons { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+  .info p { margin: var(--space-1) 0 0; }
+  .buttons { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-2); }
   .buttons :global(.button) { min-height: 44px; }
 </style>
