@@ -100,7 +100,7 @@
   <ShareButton />
 </div>
 
-<div class="search-row">
+<div class="search-row controls">
   <div class="form-field group-field">
     <span>View</span>
     <div class="tab-group" role="group" aria-label="View">
@@ -137,7 +137,7 @@
 {/snippet}
 
 {#if view === 'open'}
-  <section>
+  <section class="detail-section">
     <h2>Currently open</h2>
     {#if current.open.length === 0}
       <p class="text-muted">Nothing open right now.</p>
@@ -219,8 +219,13 @@
     {/if}
   </section>
 {:else}
-  <section>
+  <section class="detail-section">
     <h2>Pick for me</h2>
     <PickForMe pick={data.pick} admin={page.data.isAdmin} game={explicitGame ?? 'wheel'} ongame={(g) => (explicitGame = g === 'd20' ? 'd20' : undefined)} />
   </section>
 {/if}
+
+<style>
+  /* room between the View and Show groups */
+  .controls { column-gap: var(--space-5); }
+</style>
