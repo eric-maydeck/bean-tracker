@@ -3,7 +3,7 @@ import type { ThumbCtx } from '../thumbTypes';
 import { CONSUMPTION_THUMBS } from './consumption';
 import { HABITS_THUMBS } from './habits';
 
-const tab = { ratingFrom: 0, trendLine: null, trendLabel: null, labels: ['a', 'b', 'c'], brewed: [6, 7.5, 8], bought: [5, 0, 4], backlog: [3, 0, 1], compareBrewed: null, compareTitles: null, compareAverage: null };
+const tab = { buckets: [{}, {}, {}], ratingFrom: 0, trendLine: null, trendLabel: null, labels: ['a', 'b', 'c'], brewed: [6, 7.5, 8], bought: [5, 0, 4], backlog: [3, 0, 1], compareBrewed: null, compareTitles: null, compareAverage: null };
 const ctx = (data: object, s: object = {}): ThumbCtx => ({ data, s: { unit: 'bags', agg: 'total', measure: 'brews', ...s }, periodLabel: 'This month', compareLabel: 'Last month', perPerson: false, explicitAvg: false }) as unknown as ThumbCtx;
 const c = ctx({ consumptionTab: tab });
 
@@ -30,7 +30,12 @@ describe('consumption thumbs', () => {
 });
 
 describe('habits thumbs', () => {
-  const h = { byHour: [1, 2, 3], byWeekday: [4, 5, 6, 7], compareHour: null, compareWeekday: null };
+  const h = { tiles: { brewDays: 3 }, byHour: [1, 2, 3], byWeekday: [4, 5, 6, 7], compareHour: null, compareWeekday: null };
+  it('null for an empty period (the page shows one empty panel)', () => {
+    const e = { ...h, tiles: { brewDays: 0 }, byHour: [0, 0, 0], byWeekday: [0, 0, 0, 0] };
+    for (const f of Object.values(HABITS_THUMBS)) expect(f(ctx({ habits: e }))).toBeNull();
+    for (const f of Object.values(CONSUMPTION_THUMBS)) expect(f(ctx({ consumptionTab: { ...tab, buckets: [] } }))).toBeNull();
+  });
   it('vbars with their titles', () => {
     expect(HABITS_THUMBS['habits-hour'](ctx({ habits: h }))).toMatchObject({ title: 'By hour of day', thumb: { kind: 'vbars' } });
     expect(HABITS_THUMBS['habits-weekday'](ctx({ habits: h }))).toMatchObject({ title: 'By day of week', thumb: { kind: 'vbars' } });

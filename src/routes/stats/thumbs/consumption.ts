@@ -6,7 +6,7 @@ import { consumptionCharts } from '../consumptionSeries';
 const clip = (s: string) => (s.length > 80 ? s.slice(0, 79) + '…' : s);
 const of = (pick: (ch: ReturnType<typeof consumptionCharts>) => ReturnType<ThumbFn>): ThumbFn => (c) => {
   const t = c.data.consumptionTab;
-  return t ? pick(consumptionCharts(t, { unit: c.s.unit, trend: c.s.trend, agg: c.s.agg, periodLabel: c.periodLabel, compareLabel: c.compareLabel, compareDates: '' })) : null;
+  return t && t.buckets.length ? pick(consumptionCharts(t, { unit: c.s.unit, trend: c.s.trend, agg: c.s.agg, periodLabel: c.periodLabel, compareLabel: c.compareLabel, compareDates: '' })) : null;
 };
 const card = (title: string, thumb: ReturnType<typeof chartThumb>) => (thumb ? { title, thumb } : null);
 
