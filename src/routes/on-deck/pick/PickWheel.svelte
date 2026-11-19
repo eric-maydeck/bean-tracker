@@ -20,8 +20,8 @@
   let fx: HTMLCanvasElement;
   let rot = 0; // current rotation, radians
   let shimmer = 0;
-  let spinRaf = 0, shakeRaf = 0;
-  let palette: string[] = [];
+  let shakeRaf = 0;
+  let palette: string[] = $state([]);
   let confetti: { x: number; y: number; vx: number; vy: number; life: number; r: number; c: string }[] = [];
   let kindOfBurst: 'success' | 'fail' = 'success';
 
@@ -42,10 +42,21 @@
     for (const dx of [-0.22, -0.06, 0.1]) ctx.fillRect(x + r * dx, y + r * 0.3, r * 0.05, r * 0.35);
   }
 
-  function truncate(ctx: CanvasRenderingContext2D, name: string, max: number) {
-    let label = name;
-    while (ctx.measureText(label).width > max && label.length > 4) label = label.slice(0, -2);
-    return label === name ? name : label.trimEnd() + '…';
+  const FONT = '600 13px system-ui'; // drawing space, so labels never depend on the canvas size
+  const LABEL_MAX = BASE / 2 - 18 - 75;
+  let labelKey: unknown[] = [];
+  let labels: string[] = [];
+  // Labels are measured and truncated once per slices/names change, never per frame.
+  function layoutLabels(ctx: CanvasRenderingContext2D) {
+    if (labelKey[0] === slices && labelKey[1] === names) return;
+    labelKey = [slices, names];
+    ctx.font = FONT;
+    labels = slices.map((s) => {
+      const name = s.kind === 'coffee' ? (names.get(s.coffeeId!) ?? '') : '';
+      let label = name;
+      while (ctx.measureText(label).width > LABEL_MAX && label.length > 4) label = label.slice(0, -2);
+      return label === name ? name : label.trimEnd() + '…';
+    });
   }
 
   function drawWheel() {
@@ -55,8 +66,9 @@
     ctx.setTransform(k, 0, 0, k, 0, 0);
     const cx = BASE / 2, cy = BASE / 2, R = BASE / 2 - 18;
     ctx.clearRect(0, 0, BASE, BASE);
+    layoutLabels(ctx);
     let ci = 0;
-    for (const s of slices) {
+    for (const [i, s] of slices.entries()) {
       const color = s.kind === 'coffee' ? palette[ci++ % palette.length] : '';
       ctx.save(); ctx.translate(cx, cy); ctx.rotate(rot);
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, s.a0, s.a1); ctx.closePath();
@@ -73,11 +85,9 @@
       ctx.lineWidth = s.kind === 'coffee' ? 2 : 2.5; ctx.stroke();
       ctx.rotate(mid);
       if (s.kind === 'coffee') {
-        const flip = Math.cos(mid + rot) < 0; // keep labels readable on the left half
-        ctx.fillStyle = '#f6eee2'; ctx.font = '600 13px system-ui'; ctx.textBaseline = 'middle';
-        const label = truncate(ctx, names.get(s.coffeeId!) ?? '', R - 75);
-        if (flip) { ctx.rotate(Math.PI); ctx.textAlign = 'left'; ctx.fillText(label, -(R - 14), 0); }
-        else { ctx.textAlign = 'right'; ctx.fillText(label, R - 14, 0); }
+        // same rule for every wedge: along the centre radius, top of the text toward the wedge's counter-clockwise side
+        ctx.fillStyle = '#f6eee2'; ctx.font = FONT; ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+        ctx.fillText(labels[i], R - 14, 0);
       } else if (s.kind === 'success') {
         ctx.fillStyle = '#fff8dc'; star(ctx, R - 26, 0, 10); ctx.fillStyle = 'rgba(255,255,255,.9)'; star(ctx, R - 60 - 8 * Math.sin(shimmer * 1.7), 0, 4);
       } else skull(ctx, R - 26, 0, 12);
@@ -85,8 +95,8 @@
     }
     ctx.beginPath(); ctx.arc(cx, cy, R + 6, 0, 7); ctx.lineWidth = 10; ctx.strokeStyle = '#3b2a1a'; ctx.stroke();
     for (let i = 0; i < 24; i++) { const a = (i * Math.PI) / 12; ctx.beginPath(); ctx.arc(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6), 2.5, 0, 7); ctx.fillStyle = '#e8c88a'; ctx.fill(); }
-    // pointer at the top
-    ctx.beginPath(); ctx.moveTo(cx - 14, 4); ctx.lineTo(cx + 14, 4); ctx.lineTo(cx, 34); ctx.closePath();
+    // pointer at 3 o'clock, tip pointing into the wheel
+    ctx.beginPath(); ctx.moveTo(BASE - 4, cy - 14); ctx.lineTo(BASE - 4, cy + 14); ctx.lineTo(BASE - 34, cy); ctx.closePath();
     ctx.fillStyle = '#f3ece2'; ctx.fill(); ctx.strokeStyle = '#16130f'; ctx.lineWidth = 2; ctx.stroke();
   }
 
@@ -110,14 +120,34 @@
     const ok = kind === 'success', gold = ['#ffe08a', '#ffd04d', '#fff6d0', '#c9952c'], dark = ['#a31515', '#1a0000', '#5c0a0a'];
     confetti = Array.from({ length: ok ? 90 : 40 }, () => {
       const a = Math.random() * TAU, s = 2 + Math.random() * (ok ? 6 : 3), pal = ok ? gold : dark;
-      return { x: BASE / 2, y: 40, vx: Math.cos(a) * s, vy: Math.sin(a) * s - (ok ? 2 : 0), life: 1, r: 2 + Math.random() * 3, c: pal[Math.floor(Math.random() * pal.length)] };
+      return { x: BASE - 40, y: BASE / 2, vx: Math.cos(a) * s, vy: Math.sin(a) * s - (ok ? 2 : 0), life: 1, r: 2 + Math.random() * 3, c: pal[Math.floor(Math.random() * pal.length)] };
     });
   }
+
+  // Render only while something moves: a spin, confetti, or the gold shimmer.
+  let raf = 0;
+  let spin: { start: number; over: number; end: number; t0: number; u: number } | null = null;
+  const hasSuccess = () => slices.some((s) => s.kind === 'success');
+  function tick(now: number) {
+    raf = 0;
+    if (spin) {
+      const el = now - spin.t0, dur = 5200, back = 450;
+      if (el < dur) rot = spin.start + (spin.over - spin.start) * (1 - Math.pow(1 - el / dur, 4));
+      else rot = spin.over + (spin.end - spin.over) * (1 - Math.pow(1 - Math.min((el - dur) / back, 1), 3));
+      if (el >= dur + back) { const { end, u } = spin; spin = null; rot = end % TAU; settle(sliceAt(slices, u)); }
+    }
+    if (hasSuccess()) shimmer += 0.04;
+    drawWheel(); drawConfetti();
+    if (spin || confetti.length || hasSuccess()) raf = requestAnimationFrame(tick);
+  }
+  const kick = () => { if (!raf) raf = requestAnimationFrame(tick); };
+  $effect(() => { void [slices, names, angle, width, palette]; kick(); });
 
   function settle(s: WheelSlice) {
     spinning = false;
     if (s.kind === 'fail') { vignette = true; shake = false; shakeRaf = requestAnimationFrame(() => (shake = true)); }
     if (s.kind !== 'coffee' && !reduced()) burst(s.kind);
+    kick();
     onresult(s, rot);
   }
 
@@ -125,30 +155,22 @@
   export function spinTo(target: WheelSlice) {
     if (spinning || disabled) return;
     vignette = false; shake = false;
-    const u = target.a0 + (0.1 + Math.random() * 0.8) * (target.a1 - target.a0); // wheel-space angle under the pointer
+    const u = target.a0 + (0.1 + Math.random() * 0.8) * (target.a1 - target.a0); // wheel-space angle under the pointer (3 o'clock)
     const start = rot;
-    let end = -Math.PI / 2 - u;
+    let end = -u;
     while (end < start + 6 * TAU) end += TAU;
     if (reduced()) { rot = end % TAU; settle(sliceAt(slices, u)); return; }
     spinning = true;
-    const over = end + 0.05; // slight overshoot, then settle back
-    const t0 = performance.now(), dur = 5200, back = 450;
-    (function frame(now: number) {
-      const el = now - t0;
-      if (el < dur) rot = start + (over - start) * (1 - Math.pow(1 - el / dur, 4));
-      else { const t = Math.min((el - dur) / back, 1); rot = over + (end - over) * (1 - Math.pow(1 - t, 3)); }
-      if (el < dur + back) return void (spinRaf = requestAnimationFrame(frame));
-      rot = end % TAU;
-      settle(sliceAt(slices, u));
-    })(t0);
+    // slight overshoot, then settle back
+    spin = { start, over: end + 0.05, end, t0: performance.now(), u };
+    kick();
   }
 
   onMount(() => {
     const cs = getComputedStyle(document.documentElement);
     palette = PALETTE_VARS.map((v) => cs.getPropertyValue(v).trim() || '#8a5a3b');
-    let raf = 0;
-    (function idle() { shimmer += 0.04; drawWheel(); drawConfetti(); raf = requestAnimationFrame(idle); })();
-    return () => { cancelAnimationFrame(raf); cancelAnimationFrame(spinRaf); cancelAnimationFrame(shakeRaf); };
+    kick();
+    return () => { cancelAnimationFrame(raf); cancelAnimationFrame(shakeRaf); };
   });
 </script>
 
