@@ -19,7 +19,7 @@
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { onDeckPreview, pickPreview } from '#lib/linkPreview.ts';
   import PickForMe from './pick/PickForMe.svelte';
-  import { onDeckParams, parseGame, parseOnDeckView, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
+  import { onDeckParams, parseDefaultRules, parseGame, parseOnDeckView, parseProfile, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
 
   let { data } = $props();
 
@@ -38,7 +38,13 @@
   let explicitView = $state<'next' | 'pick' | undefined>(parseOnDeckView(currentParams(page.url)));
   // The Pick for me game: only `d20` is explicit (the wheel is the default).
   let explicitGame = $state<'d20' | undefined>(parseGame(currentParams(page.url)));
+  // A shared link's rules: `profile=<name>` or `rules=default` (only while that is what is being played; Use my rules drops it).
+  let explicitProfile = $state<string | undefined>(parseProfile(currentParams(page.url)));
+  let explicitDefaults = $state(parseDefaultRules(currentParams(page.url)));
+  // What the Share button adds on the Pick view: the loaded profile, or the default rules (set by PickForMe once it is ready).
+  let shareRules = $state<{ profile?: string; defaultRules?: boolean }>();
   let view = $derived<OnDeckView>(explicitView ?? 'open');
+  const sharePath = $derived(view === 'pick' && shareRules ? `/on-deck?${onDeckParams({ show: explicit, view: 'pick', game: explicitGame, ...shareRules })}` : undefined);
   let loaded = $state(false);
   let filter = $derived(explicit ?? 'all');
   let current = $derived(data[filter]);
@@ -54,6 +60,8 @@
     }
     explicitView = parseOnDeckView(currentParams(page.url));
     explicitGame = parseGame(currentParams(page.url));
+    explicitProfile = parseProfile(currentParams(page.url));
+    explicitDefaults = parseDefaultRules(currentParams(page.url));
     loaded = true;
   });
 
@@ -63,7 +71,7 @@
 
   $effect(() => {
     if (!loaded) return;
-    writeUrlParams(onDeckParams({ show: explicit, view: explicitView, game: explicitGame }));
+    writeUrlParams(onDeckParams({ show: explicit, view: explicitView, game: explicitGame, profile: explicitProfile, defaultRules: explicitDefaults }));
     try {
       if (explicit) localStorage.setItem(STORAGE_KEY, serializeChoice(explicit, Date.now()));
     } catch {
@@ -97,7 +105,7 @@
 
 <div class="toolbar">
   <h1>On Deck</h1>
-  <ShareButton />
+  <ShareButton path={sharePath} />
 </div>
 
 <div class="search-row controls">
@@ -221,7 +229,7 @@
 {:else}
   <section class="detail-section">
     <h2>Pick for me</h2>
-    <PickForMe pick={data.pick} admin={page.data.isAdmin} game={explicitGame ?? 'wheel'} ongame={(g) => (explicitGame = g === 'd20' ? 'd20' : undefined)} />
+    <PickForMe pick={data.pick} admin={page.data.isAdmin} shared={explicitProfile || explicitDefaults ? data.pick.shared : null} onunshare={() => { explicitProfile = undefined; explicitDefaults = false; }} bind:shareRules game={explicitGame ?? 'wheel'} ongame={(g) => (explicitGame = g === 'd20' ? 'd20' : undefined)} />
   </section>
 {/if}
 

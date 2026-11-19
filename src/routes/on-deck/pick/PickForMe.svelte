@@ -18,10 +18,16 @@
   import PickWheel from './PickWheel.svelte';
   import { flushToday, loadProfiles, loadRules, loadToday, saveProfiles, saveRules, saveToday } from './store';
 
-  let { pick, admin, game, ongame }: {
+  type Shared = { name: string; rules: PickRules } | { name: string; missing: true } | { defaults: true } | null;
+  // `shared`: a share link's rules (a saved profile, or the defaults) or a profile that was not found; `onunshare` drops them from the URL.
+  // `shareRules`: what the page's Share button adds for the rules in play.
+  let { pick, admin, game, ongame, shared, onunshare, shareRules = $bindable() }: {
     pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; profiles: unknown; savedRules: unknown; todayState: unknown };
-    admin: boolean; game: Game; ongame: (g: Game) => void;
+    admin: boolean; game: Game; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; defaultRules?: boolean };
   } = $props();
+  const sharedRules = $derived(shared && 'rules' in shared ? shared.rules : shared && 'defaults' in shared ? DEFAULT_RULES : null);
+  // While shared rules are in play nothing is saved over the visitor's (or admin's) own rules; today's state still saves.
+  const ownRules = () => loadRules(admin, admin ? pick.rulesLast : null);
 
   const coffees = untrack(() => pick.coffees);
   const byId = new Map(coffees.map((c) => [c.id, c]));
@@ -29,7 +35,7 @@
 
   // Admins start from the server's values; visitors' live in localStorage, so they load after mount.
   let ready = $state(untrack(() => admin));
-  let rules = $state<PickRules>(untrack(() => (admin ? loadRules(true, pick.rulesLast) : DEFAULT_RULES)));
+  let rules = $state<PickRules>(untrack(() => sharedRules ?? (admin ? loadRules(true, pick.rulesLast) : DEFAULT_RULES)));
   let today = $state<PickToday>(untrack(() => loadToday(admin, admin ? pick.todayState : null, pick.today)));
   let profiles = $state<Profiles>(untrack(() => (admin ? loadProfiles(true, pick.profiles, pick.savedRules) : {})));
   let selected = $state(''); // the profile the rules came from (a base: further edits do not change it until Save)
@@ -77,7 +83,7 @@
 
   onMount(() => {
     if (!admin) {
-      rules = loadRules(false, null);
+      rules = untrack(() => sharedRules) ?? loadRules(false, null);
       today = loadToday(false, null, pick.today);
       profiles = loadProfiles(false, null, null);
       ready = true;
@@ -102,6 +108,19 @@
     });
   });
   onDestroy(flushToday);
+
+  // Use my rules (the shared ones dropped from the URL): back to the saved own rules.
+  let wasShared = untrack(() => !!sharedRules);
+  $effect(() => {
+    const now = !!sharedRules;
+    if (!ready || now === wasShared) return;
+    wasShared = now;
+    untrack(() => { rules = ownRules(); selected = ''; rev++; today = { ...today, board: null }; });
+  });
+  // Share carries the loaded profile (its saved version), else the default rules; visitors have no saved profiles of the owner's.
+  $effect(() => {
+    shareRules = !ready ? undefined : shared && 'rules' in shared ? { profile: shared.name } : shared && 'defaults' in shared ? { defaultRules: true } : admin && selected && profiles[selected] ? { profile: selected } : { defaultRules: true };
+  });
 
   // Save only real changes (not the state just loaded).
   let saved = '';
@@ -257,7 +276,7 @@
   function apply(next: PickRules, reset: boolean) {
     rules = next;
     today = reset ? resetDay(today) : { ...today, board: null };
-    saveRules(admin, 'pick.rules.last', next).catch(() => {});
+    if (!sharedRules) saveRules(admin, 'pick.rules.last', next).catch(() => {});
   }
   function edit(next: PickRules) {
     if (!rulesDiffer(rules, next)) return;
@@ -334,6 +353,12 @@
       ontoggle={(o) => (panelOpen = o)} onchange={edit} onpick={pickProfile} onsave={saveProfile} onsaveas={saveProfileAs} ondelete={deleteProfile} onreset={resetRules} onrevert={revertProfile} />
     {/key}
   </div>
+  {#if shared}
+    <p class="shared-note" role="status">
+      <span>{#if 'missing' in shared}That rules profile wasn't found.{:else if 'defaults' in shared}Playing with the default rules.{:else}Playing with the “{shared.name}” rules.{/if}</span>
+      <button type="button" class="button button-secondary" onclick={onunshare}>{'missing' in shared ? 'Dismiss' : 'Use my rules'}</button>
+    </p>
+  {/if}
 
   <div class="stage-box"><div class="stage" class:d20={game === 'd20'} bind:this={stageEl}>
     <section class="game" aria-label={game === 'd20' ? 'D20' : 'Wheel'}>
@@ -468,6 +493,10 @@
   /* compact: the Game label beside its buttons, tight gaps, so Out for today stays on screen */
   .game-row .group-field { flex-direction: row; align-items: center; gap: var(--space-2); }
   .game-row { margin-bottom: var(--space-2); }
+  /* the callout look (a tinted panel); the button sits right of the text and wraps below it on a narrow screen */
+  .shared-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-warm); border-radius: var(--radius); background: color-mix(in srgb, var(--color-warm) 12%, transparent); max-width: 620px; }
+  .shared-note .button { margin: 0; padding: 0.35rem 0.75rem; min-height: 36px; }
+  @media (max-width: 640px) { .shared-note .button { min-height: 44px; } }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }
   .rules-dialog h2 { padding: 0; border: 0; margin: 0 0 var(--space-2); } /* not the section heading's divider */
   .dlg-buttons { display: grid; gap: var(--space-2); }
