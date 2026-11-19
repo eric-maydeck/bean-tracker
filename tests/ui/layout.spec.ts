@@ -59,6 +59,9 @@ async function expectRecapTiles(page: Page, years: string[]) {
   }
 }
 
+// Pick for me saves through /api/pick; states never write, so the endpoint is stubbed.
+const stubPickApi = (page: Page) => page.route('**/api/pick**', (route) => route.request().method() === 'PUT' ? route.fulfill({ status: 204 }) : route.fulfill({ json: { value: null } }));
+
 interface State {
   name: string;
   path: (s: Seed) => string;
@@ -5795,6 +5798,85 @@ export const STATES: State[] = [
       await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Currently open' })).toHaveCount(0);
       await expect(page.locator('.card').first().or(page.getByText('Backlog is empty.'))).toBeVisible();
+    }
+  },
+  {
+    // Pick for me: wheel by default, the rules panel opens and closes, nothing about Pick but view/game in the URL.
+    name: 'pick-wheel', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await stubPickApi(page);
+      await expect(page.getByRole('heading', { name: 'Pick for me' })).toBeVisible();
+      await expect(page.getByLabel('View')).toHaveValue('pick');
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
+      expect((await page.locator('.wheel').boundingBox())!.width).toBeLessThanOrEqual(561);
+      await expectGroupsLabelled(page);
+      const rules = page.getByRole('button', { name: 'Rules', exact: true });
+      await rules.click();
+      await expect(page.getByRole('group', { name: 'Pool' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Reset to defaults' })).toBeVisible();
+      await rules.click();
+      await expect(page.getByRole('button', { name: 'Reset to defaults' })).toHaveCount(0);
+      await expect(page).toHaveURL(/view=pick$/);
+    }
+  },
+  {
+    // The D20 view after "someone rolled 7": the board marks 7, a card shows the coffee, and game=d20 is in the URL.
+    name: 'pick-d20', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20',
+    act: async (page) => {
+      await stubPickApi(page);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const show = page.getByRole('button', { name: 'Show', exact: true });
+      await expect(show).toBeEnabled({ timeout: 20000 });
+      await page.getByLabel('Number someone rolled').fill('7');
+      await show.click();
+      await expect(page.locator('.tile.rolled')).toHaveCount(1);
+      await expect(page.locator('.tile.rolled b')).toHaveText('7');
+      await expect(page.locator('.pick-card')).toBeVisible();
+      await expect(page).toHaveURL(/game=d20/);
+      await page.getByRole('button', { name: 'Wheel', exact: true }).click();
+      await expect(page).not.toHaveURL(/game=/);
+    }
+  },
+  {
+    // Discard: the name is struck through with an "Out for today" badge, Brew and Discard are disabled, Open stays enabled;
+    // the card does not move or resize.
+    name: 'pick-discard', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await stubPickApi(page);
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.getByRole('button', { name: 'Spin', exact: true }).click();
+      const card = page.locator('.pick-card');
+      await expect(card).toBeVisible();
+      const before = (await card.boundingBox())!;
+      await card.getByRole('button', { name: 'Discard' }).click();
+      await expect(card.getByText('Out for today')).toBeVisible();
+      await expect(card.locator('s')).toHaveCount(1);
+      await expect(card.getByRole('button', { name: 'Brew', exact: true })).toBeDisabled();
+      await expect(card.getByRole('button', { name: 'Discard' })).toBeDisabled();
+      await expect(card.getByRole('button', { name: 'Open coffee page' })).toBeEnabled();
+      await expect(page.locator('.out-row s')).toHaveCount(1);
+      const after = (await card.boundingBox())!;
+      expect(Math.abs(after.height - before.height), 'card keeps its height').toBeLessThanOrEqual(2);
+      await page.getByRole('button', { name: 'Reset today' }).click();
+      await expect(page.locator('.out-row s')).toHaveCount(0);
+    }
+  },
+  {
+    // No coffee in play: a message replaces the wheel; changing rules with nothing out needs no dialog.
+    name: 'pick-empty', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await stubPickApi(page);
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      await page.getByLabel('Open', { exact: true }).uncheck();
+      await page.getByLabel('Backlog', { exact: true }).uncheck();
+      await expect(page.getByText('No coffees in play.')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toHaveCount(0);
+      await page.getByLabel('Open', { exact: true }).check();
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
     }
   },
   { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },
