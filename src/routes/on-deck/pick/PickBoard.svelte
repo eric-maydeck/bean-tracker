@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { truncTip } from '#lib/components/labelTip.ts';
   import type { PickCoffee, Slot } from '#lib/pick/types.ts';
 
   let { board, byId, success, fail, rolled }: { board: Slot[]; byId: Map<number, PickCoffee>; success: PickCoffee[]; fail: PickCoffee[]; rolled: number | null } = $props();
@@ -18,8 +19,8 @@
         {#each half as s (s.n)}
           <tr class={s.kind} class:rolled={rolled === s.n} aria-label={`${s.n}: ${label(s)}`}>
             <td class="n">{s.n}</td>
-            <td class="name">{#if s.kind === 'success'}<span class="badge badge-warm">Crit success</span>{:else if s.kind === 'fail'}<span class="badge badge-urgent">Crit fail</span>{/if}<span class="txt">{label(s)}</span></td>
-            <td class="roaster">{join(coffeeOf(s), (c) => c.roaster)}</td>
+            <td class="name"><div class="cell">{#if s.kind === 'success'}<span class="badge badge-warm">Crit success</span>{:else if s.kind === 'fail'}<span class="badge badge-urgent">Crit fail</span>{/if}<span class="txt" use:truncTip>{label(s)}</span></div></td>
+            <td class="roaster"><span class="txt" use:truncTip>{join(coffeeOf(s), (c) => c.roaster)}</span></td>
           </tr>
         {/each}
       </tbody>
@@ -39,12 +40,17 @@
     .halves > :global(.board + .board .hd) { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
   }
   .board { font-size: 0.85rem; table-layout: fixed; }
+  table.data-table.board { table-layout: fixed; min-width: 0; } /* a phone: the site's 700px table minimum would scroll the page sideways; the cells ellipsize */
   .board :global(th), .board :global(td) { padding: 0.2rem var(--space-2); }
   .board tbody tr:nth-child(even) { background: color-mix(in srgb, var(--color-text-muted) 7%, transparent); }
   .c-n { width: 2.2rem; }
   .c-roaster { width: 38%; }
   .n { font-variant-numeric: tabular-nums; font-weight: 600; }
-  .name, .roaster { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* the cell never overflows: a name or roaster ellipsizes inside it (full text in the tip) */
+  .cell { display: flex; align-items: center; min-width: 0; }
+  .txt { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .name, .roaster { overflow: hidden; }
+  .name .badge { flex: none; }
   .name .badge { margin-right: var(--space-2); font-size: 0.7rem; padding: 0.05rem 0.4rem; }
   tr.success { background: #3b2d0c !important; color: #ffe08a; }
   tr.fail { background: #1a0000 !important; color: #f3b4b4; }
