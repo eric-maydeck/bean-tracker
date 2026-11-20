@@ -6651,11 +6651,12 @@ export const STATES: State[] = [
       await expect(panel.getByRole('button', { name: 'Reset to defaults' })).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(panel).toBeHidden();
-      // A spin: the simple card (badges, big name, Discard), no Brew.
+      // A spin: the regular card's frame with a name tile in the thumbnail's place and Discard; no Brew or Open coffee.
       await page.getByRole('button', { name: 'Spin', exact: true }).click();
       const card = page.locator('.pick-card');
       await expect(card).toBeVisible({ timeout: 15000 });
-      await expect(card.locator('.big')).toBeVisible();
+      await expect(card.locator('.card-thumb.tile')).toBeVisible();
+      await expect(card.getByText(/^Your list · #\d+ of 5$/)).toBeVisible();
       await expect(card.getByRole('button', { name: 'Brew', exact: true })).toHaveCount(0);
       await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toHaveCount(0);
       const before = (await card.boundingBox())!;
@@ -6676,7 +6677,7 @@ export const STATES: State[] = [
     }
   },
   {
-    // Custom coffees on the D20: the board has no Roaster column; someone rolled lands on the simple card; the list loads from this browser.
+    // Custom coffees on the D20: the board has no Roaster column; someone rolled lands on the card with a name tile; the list loads from this browser.
     name: 'pick-custom-d20', viewports: 'two',
     path: () => '/on-deck?view=pick&game=d20&coffees=custom',
     act: async (page) => {
@@ -6690,9 +6691,14 @@ export const STATES: State[] = [
       await show.click();
       await expect(page.locator('tr.rolled td.n')).toHaveText('2');
       const card = page.locator('.pick-card');
-      await expect(card.locator('.big')).toBeVisible();
+      await expect(card.locator('.card-thumb.tile')).toBeVisible();
       await dismissPickOverlay(page);
-      await expect(page.locator('.pick-card.fill .big')).toBeVisible();
+      // the inline card: the same tray-height frame as a site coffee with a photo (tile square, detail beside it where there is room)
+      const inline = page.locator('.result .pick-card');
+      await expect(inline.locator('.card-thumb.tile')).toBeVisible();
+      const [t, c] = [(await inline.locator('.card-thumb.tile').boundingBox())!, (await inline.boundingBox())!];
+      expect(Math.abs(t.width - t.height), 'the tile is square').toBeLessThanOrEqual(1);
+      if (c.width >= 640) expect(Math.abs(t.height - c.height), 'beside: the tile is as tall as the card').toBeLessThanOrEqual(1);
     }
   },
   {

@@ -194,6 +194,8 @@
   });
 
   const result = $derived(today.result);
+  // custom mode: the card's sub line (where the result sits in the visitor's list)
+  const listPlace = $derived(custom ? `Your list · #${coffees.findIndex((c) => c.id === today.result?.coffeeId) + 1} of ${coffees.length}` : undefined);
   const resultCoffee = $derived(result ? byId.get(result.coffeeId) : undefined);
   const outRow = $derived(today.out.flatMap((id) => byId.get(id) ?? []));
   // The out-for-today badge's tip: who it is, a detail line as on the /coffees card, and why it is out.
@@ -433,7 +435,7 @@
         {#if result && resultCoffee}<h3 class="last">{game === 'd20' ? 'Your last roll' : 'Your last spin'}</h3>{/if}
         <div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
-          <PickCard {custom} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+          <PickCard custom={listPlace} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
             onbrew={brew} ondiscard={doDiscard} onopen={openPage} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
@@ -462,11 +464,11 @@
           {#if result.via === 'success'}{#each CONFETTI as c, i (i)}<i style:left="{c.left}%" style:animation-delay="{c.delay}s" style:animation-duration="{c.dur}s" style:background={c.color}></i>{/each}{/if}
         </div>
       {/if}
-      <div class="modal pick-modal {result.via}" class:horizontal={!narrow && !custom} role="dialog" aria-modal="true" aria-label="Pick result" tabindex="-1" bind:this={modalEl}>
+      <div class="modal pick-modal {result.via}" class:horizontal={!narrow} role="dialog" aria-modal="true" aria-label="Pick result" tabindex="-1" bind:this={modalEl}>
         {#if game === 'd20' && result.n}
           <p class="rolled {result.via}" aria-live="polite">You rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
         {/if}
-        <PickCard {custom} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+        <PickCard custom={listPlace} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
           onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} />
       </div>
     </div>

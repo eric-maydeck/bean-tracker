@@ -12,8 +12,8 @@
   // `wide` (the inline card, and the result pop-up where the layout is wide): the coffee page's detail as stats (origin, roast level, producer,
   // region, ...) in place of the plain lines, one fixed gap between rows. `onclose` is set only where the card can be dismissed
   // (the result pop-up).
-  let { custom = false, coffee, result, out, brewed, busy, wide = false, onbrew, ondiscard, onopen, onclose }: {
-    custom?: boolean; // a custom coffee is only a name: badges, the name big, Discard (and Close)
+  let { custom, coffee, result, out, brewed, busy, wide = false, onbrew, ondiscard, onopen, onclose }: {
+    custom?: string; // a custom coffee (only a name): this sub line in place of the roaster, the name on a tile in the thumbnail's place, no Brew or Open
     coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; wide?: boolean;
     onbrew: () => void; ondiscard: () => void; onopen: () => void; onclose?: () => void;
   } = $props();
@@ -62,35 +62,20 @@
       {#if brewed && !out}<span class="badge badge-fresh">Brewed today</span>{/if}
     </div>
     {#if wide}
-      <p class="sub"><span class="text-muted" use:truncTip>{coffee.roaster}</span><span class="badges">{@render badges()}</span></p>
+      <p class="sub"><span class="text-muted" use:truncTip>{custom ?? coffee.roaster}</span><span class="badges">{@render badges()}</span></p>
     {:else}
-      <p class="text-muted">{coffee.roaster}</p>
+      <p class="text-muted">{custom ?? coffee.roaster}</p>
+      {#if !custom}
       <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
       <p class="roast-row"><RoastBeans degrees={info?.degrees ?? 0} /><span class="text-muted">{coffee.roastLevel ?? 'Roast level unknown'}</span></p>
+      {/if}
     {/if}
   </div>
 {/snippet}
 
-{#if custom}
-<article class="pick-card simple" class:fill={wide} aria-label="Pick result">
-  <div class="rest">
-    <div class="card-body">
-      <p class="flags">
-        {#if result.via === 'success'}<span class="badge badge-warm">Critical success</span>{/if}
-        {#if result.via === 'fail'}<span class="badge badge-urgent">Critical fail</span>{/if}
-        {#if out}<span class="badge badge-neutral">Out for today</span>{/if}
-      </p>
-      <h3 class="big">{#if out}<s>{coffee.name}</s>{:else}{coffee.name}{/if}</h3>
-    </div>
-    <div class="buttons two">
-      <button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>
-      {#if onclose}<button type="button" class="button button-secondary" data-close disabled={busy} onclick={onclose}>Close</button>{/if}
-    </div>
-  </div>
-</article>
-{:else}
-<article class="pick-card" class:wide class:noimg={!coffee.image} aria-label="Pick result">
-  {#if coffee.image}<img class="card-thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{/if}
+<article class="pick-card" class:wide class:noimg={!coffee.image && !custom} aria-label="Pick result">
+  {#if custom}<div class="card-thumb tile" aria-hidden="true"><span>{coffee.name}</span></div>
+  {:else if coffee.image}<img class="card-thumb" src={coffee.image} alt="" style:background-color={coffee.fill} />{/if}
   <div class="rest">
   <div class="card-body">
   {#if wide}
@@ -136,24 +121,21 @@
   {/if}
   </div>
   <div class="buttons" class:four={!!onclose}>
-    <button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>
+    {#if !custom}<button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>{/if}
     <button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>
-    <button type="button" class="button button-secondary" disabled={busy} onclick={onopen}>Open coffee</button>
+    {#if !custom}<button type="button" class="button button-secondary" disabled={busy} onclick={onopen}>Open coffee</button>{/if}
     {#if onclose}<button type="button" class="button button-secondary" data-close disabled={busy} onclick={onclose}>Close</button>{/if}
   </div>
   </div>
 </article>
-{/if}
 
 <style>
   /* the thumbnail fills the width, so the card's padding is the same left, top and right of it */
   .pick-card { width: 280px; max-width: 100%; display: flex; flex-direction: column; }
   .pick-card.wide { width: 100%; } /* inline: the card's whole width (the overlay's stays 280px) */
-  .pick-card.simple { width: min(100%, 24rem); }
-  .pick-card.simple.fill { width: 100%; }
-  .flags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0 0 var(--space-2); min-height: 1.5rem; } /* a badge appearing never changes the height */
-  .big { margin: 0; padding: 0; border: 0; font-family: var(--font-display); font-size: 2rem; line-height: 1.15; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .buttons.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* a custom coffee's stand-in for the photo: its name on a tinted square, the same size and place as a thumbnail */
+  .tile { display: grid; place-items: center; padding: var(--space-4); box-sizing: border-box; background: color-mix(in srgb, var(--color-warm) 14%, var(--color-surface)); border: 1px solid color-mix(in srgb, var(--color-warm) 40%, transparent); }
+  .tile span { font-family: var(--font-display); font-size: 1.75rem; line-height: 1.2; text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 5; line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
   .rest { display: flex; flex-direction: column; flex: 1; min-width: 0; }
   .card-body { margin-bottom: var(--space-3); }
   .name-row { display: flex; align-items: center; gap: var(--space-2); min-height: 1.9rem; }
