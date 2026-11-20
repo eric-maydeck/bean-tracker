@@ -1,3 +1,10 @@
+## [2.4.1](https://github.com/eric-maydeck/bean-tracker/compare/v2.4.0...v2.4.1) (2026-11-20)
+
+
+### Bug Fixes
+
+* pick-for-me wheel gets game=wheel in the url; desktop result pop-up spacing ([642c5b3](https://github.com/eric-maydeck/bean-tracker/commit/642c5b340e3c36c15b998c186f4599dd5b225d9e))
+
 ## [2.4.1](https://github.com/eric-maydeck/bean-tracker/compare/v2.4.0...v2.4.1) (2026-11-19)
 
 
