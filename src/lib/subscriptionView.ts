@@ -54,6 +54,21 @@ export function togglePauseStage(pending: Map<number, PendingChange>, id: number
   else pending.delete(id);
 }
 
+// The toast after a save: names the subscription (or counts a batch). `undo` is the reverse batch, offered only when the
+// whole save was Pause/Resume toggles (the flipped `paused` values re-posted); anything else gets no Undo.
+export function saveToast(
+  changes: { id: number; fields?: Record<string, string>; statusAction?: string }[],
+  nameOf: (id: number) => string
+): { text: string; undo: { id: number; fields: { paused: string } }[] | null } {
+  const toggles = changes.every((c) => c.fields && !c.statusAction && Object.keys(c.fields).length === 1 && 'paused' in c.fields);
+  const undo = toggles ? changes.map((c) => ({ id: c.id, fields: { paused: c.fields!.paused === '1' ? '0' : '1' } })) : null;
+  const [one] = changes;
+  const text = changes.length === 1
+    ? `Subscription "${nameOf(one.id)}" ${one.statusAction === 'delete' ? 'deleted' : 'saved'}.`
+    : `${changes.length} subscriptions updated.`;
+  return { text, undo };
+}
+
 export function stagedPause(change: PendingChange | undefined): 'pause' | 'resume' | null {
   const p = change?.fields?.paused;
   return p === '1' ? 'pause' : p === '0' ? 'resume' : null;
