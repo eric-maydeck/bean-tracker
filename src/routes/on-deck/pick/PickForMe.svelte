@@ -20,6 +20,7 @@
   import PickD20 from './PickD20.svelte';
   import PickRulesPanel from './PickRules.svelte';
   import PickWheel from './PickWheel.svelte';
+  import ShareButton from '#lib/components/ShareButton.svelte';
   import { flushToday, loadCustomRules, loadCustomToday, loadList, loadProfiles, loadRules, loadSelected, loadToday, saveCustomRules, saveCustomToday, saveList, saveProfiles, saveRules, saveSelected, saveToday } from './store';
 
   type Shared = { name: string; rules: PickRules; code?: string } | { name: string; missing: true } | { unreadable: true } | { defaults: true } | null;
@@ -474,10 +475,11 @@
 
     <div class="side">
       {#if inlineCard}
-        {#if result && resultCoffee}<h3 class="last">{viewing ? (game === 'd20' ? 'Shared roll' : 'Shared spin') : game === 'd20' ? 'Your last roll' : 'Your last spin'}</h3>{/if}
+        <!-- Share (top right, as in the pop-up): the link that replays this result; disabled with none (a wheel result put out for today) -->
+        {#if result && resultCoffee}<div class="last"><h3>{viewing ? (game === 'd20' ? 'Shared roll' : 'Shared spin') : game === 'd20' ? 'Your last roll' : 'Your last spin'}</h3><ShareButton path={sharePath} disabled={!sharePath} /></div>{/if}
         <div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
-          <PickCard custom={listPlace} {customStats} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy} {sharePath}
+          <PickCard custom={listPlace} {customStats} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
             onbrew={brew} ondiscard={doDiscard} onopen={openPage} onback={viewing ? leaveRoll : undefined} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
@@ -507,10 +509,13 @@
         </div>
       {/if}
       <div class="modal pick-modal {result.via}" class:horizontal={!narrow} role="dialog" aria-modal="true" aria-label="Pick result" tabindex="-1" bind:this={modalEl}>
-        {#if game === 'd20' && result.n}
-          <p class="rolled {result.via}" aria-live="polite">You rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
-        {/if}
-        <PickCard custom={listPlace} {customStats} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy} {sharePath}
+        <div class="modal-top">
+          {#if game === 'd20' && result.n}
+            <p class="rolled {result.via}" aria-live="polite">You rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
+          {/if}
+          <span class="modal-share"><ShareButton path={sharePath} disabled={!sharePath} /></span>
+        </div>
+        <PickCard custom={listPlace} {customStats} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
           onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} onback={viewing ? () => { shown = false; leaveRoll(); } : undefined} />
       </div>
     </div>
@@ -538,7 +543,11 @@
   .game { min-width: 0; max-width: 620px; display: flex; flex-direction: column; }
   .out-row { max-width: 620px; }
   .side { position: relative; display: flex; flex-direction: column; min-width: 0; }
-  .last { margin: 0 0 var(--space-2); font-size: 1rem; } /* stacked: in the flow above the card */
+  .last { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin: 0 0 var(--space-2); } /* stacked: in the flow above the card */
+  .last h3 { margin: 0; font-size: 1rem; }
+  /* the pop-up's top line: You rolled (d20) with Share at its right; the wheel's has Share alone, right-aligned */
+  .modal-top { display: flex; align-items: flex-start; justify-content: flex-end; gap: var(--space-2); }
+  .modal-top .rolled { flex: 1; min-width: 0; }
   .wheel-wrap { width: 100%; --wheel-size: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
   .result { display: flex; align-self: start; width: 100%; max-width: 674px; } /* .card sizes by its container, so the width is explicit */
   @media (max-width: 720px) { .result { max-width: 480px; } } /* the vertical card: the /coffees card's width on a phone (its thumbnail the full content width) */
@@ -589,7 +598,7 @@
     .game { grid-row: 1; }
     .out-row { grid-row: 2; }
     .side { grid-column: 2; grid-row: 1 / span 2; }
-    .last { position: absolute; bottom: 100%; margin: 0 0 var(--space-2); } /* beside: in the space above the card (level with the Game row), the card stays level with the game */
+    .last { position: absolute; bottom: 100%; left: 0; right: 0; margin: 0 0 var(--space-2); } /* beside: in the space above the card (level with the Game row), the card stays level with the game */
     .result { max-width: none; }
   }
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: 0; }

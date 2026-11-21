@@ -6278,8 +6278,8 @@ export const STATES: State[] = [
       await expect(page.locator('.pick-modal .rolled b'), 'the overlay shows the rolled number').toHaveText('7');
       await expect(page.locator('.pick-modal .rolled'), 'the header reads You rolled').toContainText('You rolled');
       await dismissPickOverlay(page);
-      await expect(page.locator('.side .last'), 'the inline card has its heading').toHaveText('Your last roll');
-      const [hb, cb0, gr] = [(await page.locator('.side .last').boundingBox())!, (await page.locator('.result').boundingBox())!, (await page.locator('.game-row').boundingBox())!];
+      await expect(page.locator('.side .last h3'), 'the inline card has its heading').toHaveText('Your last roll');
+      const [hb, cb0, gr] = [(await page.locator('.side .last h3').boundingBox())!, (await page.locator('.result').boundingBox())!, (await page.locator('.game-row').boundingBox())!];
       expect(hb.y + hb.height - 1, 'heading above the card').toBeLessThanOrEqual(cb0.y);
       if ((page.viewportSize()?.width ?? 0) >= 1280) {
         expect(hb.y, 'beside the game: the heading sits in the Game row band, not off the page').toBeGreaterThanOrEqual(gr.y - 2);
@@ -6369,7 +6369,7 @@ export const STATES: State[] = [
       await expect(modal.getByRole('button', { name: 'Close' })).toBeVisible();
       await dismissPickOverlay(page);
       if ((page.viewportSize()?.width ?? 0) <= 640) return;
-      await expect(page.locator('.side .last'), 'the wheel result has its heading').toHaveText('Your last spin');
+      await expect(page.locator('.side .last h3'), 'the wheel result has its heading').toHaveText('Your last spin');
       const card = page.locator('.result');
       if ((page.viewportSize()?.width ?? 0) >= 1280) expect(Math.abs((await card.boundingBox())!.y - (await page.locator('.game').boundingBox())!.y), 'card top level with the game top').toBeLessThanOrEqual(2);
       await expect(card.locator('.pick-card')).toBeVisible();

@@ -6,16 +6,15 @@
   import { originWithFlag } from '#lib/countryFlags.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import { formatBag } from '#lib/grams.ts';
-  import ShareButton from '#lib/components/ShareButton.svelte';
   import type { PickCoffee, PickResult } from '#lib/pick/types.ts';
 
   // The /coffees cards view's card (same fields, order and classes) with Brew, Discard and Open coffee under it.
   // `wide` (the inline card, and the result pop-up where the layout is wide): the coffee page's detail as stats (origin, roast level, producer,
   // region, ...) in place of the plain lines, one fixed gap between rows. `onclose` is set only where the card can be dismissed
   // (the result pop-up).
-  // `sharePath`: the link that replays this result (a Share button). `onback`: a shared result being viewed, which only views: no Brew or Discard, a Back to my board button instead.
-  let { custom, customStats = [], coffee, result, out, brewed, busy, wide = false, sharePath, onbrew, ondiscard, onopen, onclose, onback }: {
-    sharePath?: string; onback?: () => void;
+  // `onback`: a shared result being viewed, which only views: no Brew or Discard, a Back to my board button instead.
+  let { custom, customStats = [], coffee, result, out, brewed, busy, wide = false, onbrew, ondiscard, onopen, onclose, onback }: {
+    onback?: () => void;
     custom?: string; // a custom coffee (only a name): this sub line in place of the roaster, the name on a tile in the thumbnail's place, no Brew or Open
     customStats?: { label: string; text: string }[]; // a custom coffee's detail (today's game), in place of the coffee page's
     coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; wide?: boolean;
@@ -126,8 +125,7 @@
     {@render badges()}
   {/if}
   </div>
-  <!-- A shared result: Back to my board (two columns wide) where Brew and Discard sit. Share: a row of its own under the buttons, always there
-       (disabled with no link, e.g. a wheel result put out for today) so the card keeps its height. -->
+  <!-- A shared result: Back to my board (two columns wide) where Brew and Discard sit. -->
   <div class="buttons" class:four={!!onclose}>
     {#if onback}<button type="button" class="button button-secondary back" disabled={busy} onclick={onback}>Back to my board</button>
     {:else}
@@ -136,7 +134,6 @@
     {/if}
     {#if !custom}<button type="button" class="button button-secondary" disabled={busy} onclick={onopen}>Open coffee</button>{/if}
     {#if onclose}<button type="button" class="button button-secondary" data-close disabled={busy} onclick={onclose}>Close</button>{/if}
-    <ShareButton path={sharePath} disabled={!sharePath} />
   </div>
   </div>
 </article>
@@ -166,9 +163,7 @@
   /* same size, close together, one aligned row at the card's foot */
   .buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-top: auto; }
   .buttons.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .buttons .back { grid-column: span 2; }
-  .buttons :global(.share-button) { grid-column: 1 / -1; }
-  .buttons :global(.button) { margin: 0; padding: 0.35rem 0.25rem; min-height: 36px; font-size: 0.85rem; justify-content: center; white-space: nowrap; }
+  .buttons .back { grid-column: span 2; }  .buttons :global(.button) { margin: 0; padding: 0.35rem 0.25rem; min-height: 36px; font-size: 0.85rem; justify-content: center; white-space: nowrap; }
   @media (max-width: 640px) { .buttons :global(.button) { min-height: 44px; } }
   /* The inline card on a desktop: as tall as the D20 tray (--pick-h), the thumbnail a square of that height (the same padding all round)
      with the detail beside it. A card with an image keeps that height and spreads its groups; one without is as tall as its content.
