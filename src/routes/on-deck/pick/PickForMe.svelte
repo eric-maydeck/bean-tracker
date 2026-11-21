@@ -553,7 +553,7 @@
   .crit-tag.success { color: var(--color-warm); }
   .crit-tag.fail { color: var(--color-urgent); }
   /* Share sits in the pop-up banner's top-right corner (inside its padding), out of the text's flow; the wheel's banner is as tall as the button */
-  .banner-share { position: absolute; top: var(--space-1); right: var(--space-1); text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .banner-share { position: absolute; top: var(--space-1); right: var(--space-1); text-transform: none; letter-spacing: 0; font-weight: 400; font-family: var(--font-sans); font-size: 0.875rem; }
   .banner-share :global(.share-button) { padding-inline: 0.5rem; gap: var(--space-1); }
   .rolled.spun { min-height: calc(2.75rem + var(--space-2)); display: flex; flex-direction: column; justify-content: center; }
   .rolled.success .banner-share :global(.share-button) { color: #ffe08a; }

@@ -125,9 +125,9 @@
     {@render badges()}
   {/if}
   </div>
-  <!-- A shared result: Back to my board (two columns wide) where Brew and Discard sit. -->
-  <div class="buttons" class:four={!!onclose}>
-    {#if onback}<button type="button" class="button button-secondary back" disabled={busy} onclick={onback}>Back to my board</button>
+  <!-- A shared result: Back to my board (two columns wide) where Brew and Discard sit; in the custom pop-up it pairs with Close. -->
+  <div class="buttons" class:four={!!onclose} class:pair={!!(custom && onback && onclose)}>
+    {#if onback}<button type="button" class="button button-secondary" class:back={!(custom && onclose)} disabled={busy} onclick={onback}>Back to my board</button>
     {:else}
       {#if !custom}<button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>{/if}
       <button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>
@@ -176,7 +176,7 @@
     .wide .card-body { margin: 0 0 var(--space-2); flex: 1; min-height: 0; overflow: hidden; }
     /* two columns (origin left, roast level right ...); one fixed gap between every row, the slack (a sparse coffee) goes above the buttons */
     .wide .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; row-gap: var(--space-2); }
-    .wide .buttons.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .wide .buttons.four:not(.pair) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .wide .name-row { min-height: 1.5rem; } /* a badge appearing never changes the height */
   }
 </style>
