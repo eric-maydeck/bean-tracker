@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_RULES } from '#lib/pick/rules.ts';
-import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile, parseCoffees, parseRoll, parseCoffeeParam, parseCrit } from './onDeckUrl';
+import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile, parseCoffees, parseRoll, parseCoffeeParam, parseCrit, parseName } from './onDeckUrl';
 
 const p = (q: string) => new URLSearchParams(q);
 
@@ -125,6 +125,18 @@ describe('shared result params', () => {
   it('c is a positive integer', () => {
     expect(parseCoffeeParam(p('c=42'))).toBe(42);
     for (const bad of ['0', '-1', '1.5', 'x', '', '99999999999999999999']) expect(parseCoffeeParam(p(`c=${bad}`))).toBeUndefined();
+  });
+  it('name is trimmed and cut to the list name length', () => {
+    expect(parseName(p('name=Blue+Bottle'))).toBe('Blue Bottle');
+    expect(parseName(p('name=%20%20x%20'))).toBe('x');
+    expect(parseName(p(`name=${'a'.repeat(200)}`))).toHaveLength(80);
+    for (const bad of ['', '%20%20']) expect(parseName(p(`name=${bad}`))).toBeUndefined();
+    expect(parseName(p(''))).toBeUndefined();
+  });
+  it('name rides only with coffees=custom (and view=pick); crit rides with it', () => {
+    expect(onDeckParams({ view: 'pick', game: 'd20', coffees: 'custom', roll: 4, name: 'Blue Bottle', crit: 'success' }).toString()).toBe('view=pick&game=d20&coffees=custom&roll=4&name=Blue+Bottle&crit=success');
+    expect(onDeckParams({ view: 'pick', game: 'wheel', name: 'Blue Bottle', crit: 'fail' }).toString()).toBe('view=pick&game=wheel');
+    expect(onDeckParams({ view: 'next', coffees: 'custom', name: 'x' }).toString()).toBe('view=next');
   });
   it('crit is success or fail, any case', () => {
     expect(parseCrit(p('crit=success'))).toBe('success');

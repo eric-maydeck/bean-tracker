@@ -6780,6 +6780,14 @@ export const STATES: State[] = [
       await gotoReady(page, '/on-deck?view=pick&game=wheel&c=999999');
       await expect(page).toHaveURL(/\/on-deck\?view=pick&game=wheel$/); // a coffee this site does not have, and no number: ignored
       await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
+      // A custom coffee by name, on a visitor with no list: straight to the result (no spin, no die), the name on the card, Share inside the banner.
+      for (const game of ['wheel', 'd20']) {
+        await gotoReady(page, `/on-deck?view=pick&game=${game}&coffees=custom&name=Blue+Bottle&crit=success${game === 'd20' ? '&roll=20' : ''}`);
+        await expect(modal).toBeVisible({ timeout: 15_000 });
+        await expect(modal.locator('.pick-card .name')).toHaveText('Blue Bottle');
+        await expect(modal.locator('.rolled.success .banner-share').getByRole('button', { name: 'Share', exact: true })).toBeVisible();
+        await expect(modal.getByText('Shared coffee')).toBeVisible();
+      }
     }
   },
   {

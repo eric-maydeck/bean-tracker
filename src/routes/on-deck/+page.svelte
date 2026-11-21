@@ -21,7 +21,7 @@
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { onDeckPreview, pickPreview } from '#lib/linkPreview.ts';
   import PickForMe from './pick/PickForMe.svelte';
-  import { onDeckParams, parseCoffees, parseDefaultRules, parseGame, parseOnDeckView, parseProfile, parseRoll, parseCoffeeParam, parseCrit, parseRulesCode, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
+  import { onDeckParams, parseCoffees, parseDefaultRules, parseGame, parseOnDeckView, parseProfile, parseRoll, parseCoffeeParam, parseCrit, parseName, parseRulesCode, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
 
   let { data } = $props();
 
@@ -49,7 +49,7 @@
   const COFFEES_VALUES = ['custom', 'site'] as const;
   let coffeesChoice = $state<'custom' | 'site' | undefined>(parseCoffees(currentParams(page.url)));
   // A shared result to replay (view only, see PickForMe): `roll=<n>` and a crit's `c=<coffee id>`; dropped when the visitor leaves it.
-  const parseLink = (p: URLSearchParams): SharedLink | undefined => { const l = { roll: parseRoll(p), c: parseCoffeeParam(p), crit: parseCrit(p) }; return l.roll || l.c ? l : undefined; };
+  const parseLink = (p: URLSearchParams): SharedLink | undefined => { const l = { roll: parseRoll(p), c: parseCoffeeParam(p), name: parseName(p), crit: parseCrit(p) }; return l.roll || l.c || l.name ? l : undefined; };
   let explicitLink = $state<SharedLink | undefined>(parseLink(currentParams(page.url)));
   const leaveRoll = () => { explicitLink = undefined; };
   let enterList = $state(false); // the switch was just turned on: PickForMe opens the Enter coffees pop-up when no list is saved

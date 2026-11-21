@@ -1,5 +1,6 @@
 import { pickOne } from '#lib/pageUrlState.ts';
 import { cleanName } from '#lib/pick/profiles.ts';
+import { MAX_NAME } from '#lib/pick/custom.ts';
 import { DEFAULT_RULES, parseRules } from '#lib/pick/rules.ts';
 import type { Game, PickRules } from '#lib/pick/types.ts';
 
@@ -27,6 +28,8 @@ export function parseCoffeeParam(p: URLSearchParams): number | undefined {
   const n = v && /^\d+$/.test(v) ? Number(v) : 0;
   return Number.isSafeInteger(n) && n > 0 ? n : undefined;
 }
+/** `name=<coffee name>`: a custom list's coffee that came up (with `coffees=custom`), trimmed and cut to the list's own name length. */
+export const parseName = (p: URLSearchParams): string | undefined => p.get('name')?.trim().slice(0, MAX_NAME).trim() || undefined;
 /** `crit=success|fail`: the shared result was that crit (with `c`). */
 export const parseCrit = (p: URLSearchParams): 'success' | 'fail' | undefined => pickOne(p, 'crit', ['success', 'fail']);
 
@@ -72,7 +75,7 @@ export function decodeRulesLink(code: string): { name: string; rules: PickRules 
   }
 }
 
-export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: Game; profile?: string; rulesCode?: string; defaultRules?: boolean; coffees?: 'custom'; roll?: number; c?: number; crit?: 'success' | 'fail' }): URLSearchParams {
+export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: Game; profile?: string; rulesCode?: string; defaultRules?: boolean; coffees?: 'custom'; roll?: number; c?: number; name?: string; crit?: 'success' | 'fail' }): URLSearchParams {
   const p = new URLSearchParams();
   if (s.show) p.set('show', s.show);
   if (s.view) p.set('view', s.view);
@@ -82,6 +85,8 @@ export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: 
   else if (s.view === 'pick' && s.rulesCode) p.set('rules', s.rulesCode);
   else if (s.view === 'pick' && s.defaultRules) p.set('rules', 'default'); // a profile wins, then a code
   if (s.view === 'pick' && s.roll) p.set('roll', String(s.roll)); // a shared result: the face or slice number,
-  if (s.view === 'pick' && s.c) { p.set('c', String(s.c)); if (s.crit) p.set('crit', s.crit); } // the coffee, and the crit it was
+  if (s.view === 'pick' && s.coffees === 'custom' && s.name) p.set('name', s.name); // a custom list's coffee (its ids are its own, so by name)
+  if (s.view === 'pick' && s.c) p.set('c', String(s.c));
+  if (s.view === 'pick' && (s.c || (s.coffees === 'custom' && s.name)) && s.crit) p.set('crit', s.crit); // the crit it was
   return p;
 }
