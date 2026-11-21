@@ -2,6 +2,8 @@
   import { goto } from '$app/navigation';
   import { recipeFollow } from '#lib/recipeNav.ts';
   import { enhance } from '$app/forms';
+  import { showToast } from '#lib/toast.svelte.ts';
+  import { postAction } from '#lib/postAction.ts';
   import Icon from '#lib/components/Icon.svelte';
   import PourTimeline from '#lib/components/PourTimeline.svelte';
   import TipBody from '#lib/components/TipBody.svelte';
@@ -153,10 +155,17 @@
   method="POST"
   action="?/saveRecipe"
   class="editor"
-  use:enhance={() => {
+  use:enhance={({ formData }) => {
     tried = true;
+    // Undo: a new recipe is deleted, an edited one gets its earlier name, tags and definition back.
+    const before = { name, tags: tags.join(', '), definition: JSON.stringify(def) };
+    const saved = String(formData.get('name'));
     return async ({ result, update }) => {
-    if (result.type === 'success') ondone();
+    if (result.type === 'success') {
+      ondone();
+      const newId = (result.data as { saved?: number } | undefined)?.saved;
+      showToast(`Recipe "${saved}" saved.`, { undo: id == null ? () => postAction('?/deleteRecipe', { id: newId! }) : () => postAction('?/saveRecipe', { id, ...before }) });
+    }
     const to = recipeFollow(result, focusId);
     if (to) { await goto(to, { refreshAll: true, reset: false }); return; } // reset: false: a goto resets to the page top; the closed editor already put its card there
     await update({ reset: false, navigate: false });
