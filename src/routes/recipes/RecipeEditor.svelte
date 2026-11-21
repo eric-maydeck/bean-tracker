@@ -4,6 +4,7 @@
   import { enhance } from '$app/forms';
   import { showToast } from '#lib/toast.svelte.ts';
   import { postAction } from '#lib/postAction.ts';
+  import { refreshTracked } from '#lib/urlState.ts';
   import Icon from '#lib/components/Icon.svelte';
   import PourTimeline from '#lib/components/PourTimeline.svelte';
   import TipBody from '#lib/components/TipBody.svelte';
@@ -164,7 +165,7 @@
     if (result.type === 'success') {
       ondone();
       const newId = (result.data as { saved?: number } | undefined)?.saved;
-      showToast(`Recipe "${saved}" saved.`, { undo: id == null ? () => postAction('?/deleteRecipe', { id: newId! }) : () => postAction('?/saveRecipe', { id, ...before }) });
+      showToast(`Recipe "${saved}" saved.`, { undo: id == null ? () => postAction('?/deleteRecipe', { id: newId! }) : () => postAction('?/saveRecipe', { id, ...before }, async (d) => { const to = recipeFollow({ type: 'success', status: 200, data: d } as never, focusId); if (to) await goto(to, { refreshAll: true, reset: false }); else await refreshTracked(); }) });
     }
     const to = recipeFollow(result, focusId);
     if (to) { await goto(to, { refreshAll: true, reset: false }); return; } // reset: false: a goto resets to the page top; the closed editor already put its card there
