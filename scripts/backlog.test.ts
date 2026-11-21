@@ -18,6 +18,15 @@ describe('formatItems', () => {
     const out = formatItems([it_({ id: '1', want: 3, size: 'L' }), it_({ id: '2', want: 3, size: 'S' })], 'next');
     expect(out.indexOf('#2')).toBeLessThan(out.indexOf('#1'));
   });
+  it('all follows the Queue view: want, then size, status ignored, ties keep input order', () => {
+    const out = formatItems([
+      it_({ id: '1', status: 'Next', want: 2 }),
+      it_({ id: '2', status: 'Backlog', want: 5, size: 'L' }),
+      it_({ id: '3', status: 'In progress', want: 5, size: 'S' }),
+      it_({ id: '4', status: 'Backlog', want: 2 }),
+    ], 'all').split('\n');
+    expect(out.map((l) => l.match(/#(\d)/)![1])).toEqual(['3', '2', '1', '4']);
+  });
   it('all excludes done', () => {
     const out = formatItems([it_({ id: '1', status: 'Backlog' }), it_({ id: '2', status: 'Done' })], 'all');
     expect(out).toContain('#1');
