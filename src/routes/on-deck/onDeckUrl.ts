@@ -12,6 +12,9 @@ export const VIEW_LABEL: Record<OnDeckView, string> = { open: 'Currently open', 
 export const parseOnDeckView = (p: URLSearchParams): 'next' | 'pick' | undefined => pickOne(p, 'view', ['next', 'pick']);
 export const parseGame = (p: URLSearchParams): Game | undefined => pickOne(p, 'game', ['wheel', 'd20']);
 
+/** `coffees=custom`: play with the visitor's own list (kept in their browser, so never in a share link). Bare = the site's coffees. */
+export const parseCoffees = (p: URLSearchParams): 'custom' | undefined => pickOne(p, 'coffees', ['custom']);
+
 /** `profile`: a saved rules profile's name, trimmed; empty or over 60 characters is ignored. Matching against the owner's names is the server's. */
 export const MAX_PROFILE_PARAM = 60;
 export function parseProfile(p: URLSearchParams): string | undefined {
@@ -54,11 +57,12 @@ export function decodeRulesLink(code: string): { name: string; rules: PickRules 
   }
 }
 
-export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: Game; profile?: string; rulesCode?: string; defaultRules?: boolean }): URLSearchParams {
+export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: Game; profile?: string; rulesCode?: string; defaultRules?: boolean; coffees?: 'custom' }): URLSearchParams {
   const p = new URLSearchParams();
   if (s.show) p.set('show', s.show);
   if (s.view) p.set('view', s.view);
   if (s.view === 'pick' && s.game) p.set('game', s.game);
+  if (s.view === 'pick' && s.coffees) p.set('coffees', s.coffees);
   if (s.view === 'pick' && s.profile) p.set('profile', s.profile);
   else if (s.view === 'pick' && s.rulesCode) p.set('rules', s.rulesCode);
   else if (s.view === 'pick' && s.defaultRules) p.set('rules', 'default'); // a profile wins, then a code

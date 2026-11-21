@@ -6605,6 +6605,119 @@ export const STATES: State[] = [
     }
   },
   {
+    // Custom coffees (#137): the switch opens the Enter coffees pop-up; Reset today stays put; a spin lands on the simple card;
+    // nothing reaches /api/pick; switching off puts the site's coffees back.
+    name: 'pick-custom', viewports: 'two',
+    path: () => '/on-deck?view=pick',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const puts: string[] = [];
+      page.on('request', (r) => { if (r.method() === 'PUT' && r.url().includes('/api/pick')) puts.push(r.url()); });
+      const reset = page.getByRole('button', { name: 'Reset today' });
+      const toggle = page.getByRole('button', { name: 'Use custom coffees' });
+      const [r0, t0] = [(await reset.boundingBox())!, (await toggle.boundingBox())!];
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+      const pop = page.getByRole('dialog', { name: 'Enter coffees' });
+      await expect(pop).toBeVisible();
+      await expect(pop).toContainText('One coffee per line (commas work too). Saved in this browser only');
+      const save = pop.getByRole('button', { name: 'Save' });
+      await expect(save).toBeDisabled();
+      for (const b of await pop.getByRole('button').all()) expect((await b.boundingBox())!.height, 'tap target').toBeGreaterThanOrEqual(page.viewportSize()!.width <= 640 ? 43.5 : 30);
+      await pop.getByRole('textbox').fill('Ethiopia Guji, Kenya AA\nethiopia guji\n\nBrazil Santos\nColombia Huila\nPeru');
+      await save.click();
+      await expect(pop.getByRole('textbox')).toHaveValue('Ethiopia Guji\nKenya AA\nBrazil Santos\nColombia Huila\nPeru');
+      await expect(page.getByText('Saved 5 coffees.')).toBeVisible();
+      await expect(save).toBeDisabled();
+      await pop.getByRole('button', { name: 'Close' }).click();
+      await expect(pop).toBeHidden();
+      await expect(page).toHaveURL(/view=pick&coffees=custom$/);
+      await expect(page.getByRole('button', { name: 'Enter coffees' })).toBeVisible();
+      await expect(page.locator('.shared-note')).toHaveText('Playing with your custom coffees and their own rules.');
+      const [r1, t1] = [(await reset.boundingBox())!, (await toggle.boundingBox())!];
+      // The note is content: on a phone it takes its own line above the game (an accepted push), beside the Rules button on a desktop (no push).
+      const dy = page.viewportSize()!.width <= 640 ? r1.y - r0.y : 0;
+      const note = (await page.locator('.shared-note').boundingBox())!;
+      expect(Math.abs(r1.y - r0.y - dy), 'Reset today moves only by the note row').toBeLessThanOrEqual(2);
+      if (dy) expect(Math.abs(dy - (note.height + 8)), 'the push is the note and its gap').toBeLessThanOrEqual(8);
+      expect([r1.x, r1.width, r1.height], 'Reset today keeps its size and column').toEqual([r0.x, r0.width, r0.height]);
+      expect([t1.x, t1.y - dy, t1.width, t1.height].map(Math.round), 'the switch keeps its size and place').toEqual([t0.x, t0.y, t0.width, t0.height].map(Math.round));
+      // Rules: no categories, decaf or profiles; custom sort names; Reset to defaults stays.
+      await page.getByRole('button', { name: 'Rules', exact: true }).click();
+      const panel = page.getByRole('dialog', { name: 'Rules' });
+      await expect(panel.getByText('Include decaf')).toHaveCount(0);
+      await expect(panel.getByText('Profiles')).toHaveCount(0);
+      await expect(panel.getByLabel('Sort').locator('option')).toHaveText(['List order', 'Reverse list order', 'A–Z']);
+      await expect(panel.getByRole('button', { name: 'Reset to defaults' })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(panel).toBeHidden();
+      // A spin: the regular card's frame with a name tile in the thumbnail's place and Discard; no Brew or Open coffee.
+      await page.getByRole('button', { name: 'Spin', exact: true }).click();
+      const card = page.locator('.pick-card');
+      await expect(card).toBeVisible({ timeout: 15000 });
+      await expect(card.locator('.card-thumb.tile')).toBeVisible();
+      await expect(card.getByText(/^Your list · #\d+ of 5$/)).toBeVisible();
+      await expect(card.getByRole('button', { name: 'Brew', exact: true })).toHaveCount(0);
+      await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toHaveCount(0);
+      const before = (await card.boundingBox())!;
+      await card.getByRole('button', { name: 'Discard' }).click();
+      await expect(card.getByText('Out for today')).toBeVisible();
+      expect(Math.abs((await card.boundingBox())!.height - before.height), 'the card keeps its height').toBeLessThanOrEqual(1);
+      await dismissPickOverlay(page);
+      await expect(page.locator('.out-row s')).toHaveCount(1);
+      // Off: the site's coffees are back, nothing was written to the server meanwhile.
+      await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      expect(puts, 'custom mode never writes to /api/pick').toEqual([]);
+      await toggle.click();
+      await expect(page).toHaveURL(/view=pick$/);
+      await expect(page.locator('.out-row s')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Spin', exact: true }).click();
+      await expect(page.locator('.pick-card').getByRole('button', { name: 'Brew', exact: true })).toBeVisible({ timeout: 15000 });
+      await dismissPickOverlay(page);
+    }
+  },
+  {
+    // Custom coffees on the D20: the board has no Roaster column; someone rolled lands on the card with a name tile; the list loads from this browser.
+    name: 'pick-custom-d20', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=d20&coffees=custom',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.evaluate(() => localStorage.setItem('pick.custom.list', JSON.stringify(['A Very Long Custom Coffee Name That Goes On And On Past Any Sensible Width Limit', 'Kenya AA', 'Brazil Santos'])));
+      await gotoReady(page, '/on-deck?view=pick&game=d20&coffees=custom');
+      const show = page.getByRole('button', { name: 'Show', exact: true });
+      await expect(show).toBeEnabled({ timeout: 20000 });
+      await expect(page.locator('table.board').first().locator('th')).toHaveText(['#', 'Coffee']);
+      await page.getByLabel('Number someone rolled').fill('2');
+      await show.click();
+      await expect(page.locator('tr.rolled td.n')).toHaveText('2');
+      const card = page.locator('.pick-card');
+      await expect(card.locator('.card-thumb.tile')).toBeVisible();
+      // the detail a custom coffee has: its D20 numbers and today's out count
+      await expect(card.getByText(/D20 numbers/)).toBeVisible();
+      await expect(card.getByText(/Out today/)).toBeVisible();
+      await dismissPickOverlay(page);
+      // the inline card: the same tray-height frame as a site coffee with a photo (tile square, detail beside it where there is room)
+      const inline = page.locator('.result .pick-card');
+      await expect(inline.locator('.card-thumb.tile')).toBeVisible();
+      const [t, c] = [(await inline.locator('.card-thumb.tile').boundingBox())!, (await inline.boundingBox())!];
+      expect(Math.abs(t.width - t.height), 'the tile is square').toBeLessThanOrEqual(1);
+      if (c.width >= 640) expect(Math.abs(t.height - c.height), 'beside: the tile is as tall as the card').toBeLessThanOrEqual(1);
+    }
+  },
+  {
+    // A share link with rules shows the site's coffees even when custom is remembered.
+    name: 'pick-custom-share-link', viewports: 'two',
+    path: () => '/on-deck?view=pick&coffees=custom',
+    act: async (page) => {
+      await page.evaluate(() => { (window as unknown as { __shared: string[] }).__shared = []; navigator.share = async (d) => { (window as unknown as { __shared: string[] }).__shared.push(d!.url!); }; });
+      await page.getByRole('button', { name: 'Share', exact: true }).click();
+      expect(await page.evaluate(() => (window as unknown as { __shared: string[] }).__shared.at(-1)!), 'never carries the custom list').toMatch(/\/on-deck\?view=pick$/);
+      await gotoReady(page, '/on-deck?view=pick&rules=default');
+      await expect(page.getByRole('button', { name: 'Use custom coffees' })).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.locator('.shared-note')).toContainText('default rules');
+    }
+  },
+  {
     // The Pick view's Share link carries the loaded profile, or rules=default when none is loaded (also after Reset to defaults).
     name: 'pick-share-link', viewports: 'two',
     path: () => '/on-deck?view=pick&game=d20',

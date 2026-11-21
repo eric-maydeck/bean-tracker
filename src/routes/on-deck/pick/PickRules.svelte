@@ -5,11 +5,11 @@
   import { cleanName } from '#lib/pick/profiles.ts';
   import CritPicker from './CritPicker.svelte';
 
-  let { rules, coffees, eligible, names, selected, open, ontoggle, onchange, onpick, onsave, onsaveas, ondelete, onreset, onrevert, canSave, locked }: {
+  let { custom = false, rules, coffees, eligible, names, selected, open, ontoggle, onchange, onpick, onsave, onsaveas, ondelete, onreset, onrevert, canSave, locked }: {
     rules: PickRules; coffees: PickCoffee[]; eligible: PickCoffee[]; names: string[]; selected: string; canSave: boolean; open: boolean;
     ontoggle: (open: boolean) => void; onchange: (next: PickRules) => void;
     onpick: (name: string) => void; onsave: () => void; onsaveas: (name: string) => Promise<boolean>; ondelete: () => Promise<boolean>; onreset: () => void; onrevert: () => void;
-    locked: boolean;
+    locked: boolean; custom?: boolean; // custom: the visitor's own list, no categories, decaf or profiles
   } = $props();
 
   // Inline profile prompts (no window.prompt): naming a new profile, confirming an overwrite or a delete.
@@ -58,6 +58,7 @@
 
   const CATEGORIES: [Category, string][] = [['open', 'Open'], ['backlog', 'Backlog'], ['frozen', 'Frozen']];
   const SORTS: [SortRule, string][] = [['urgency-desc', 'Urgency, high first'], ['urgency-asc', 'Urgency, low first'], ['name', 'A to Z'], ['category', 'By category']];
+  const CUSTOM_SORTS: [SortRule, string][] = [['urgency-desc', 'List order'], ['urgency-asc', 'Reverse list order'], ['name', 'A–Z']];
   const ITERATIONS: [Iteration, string][] = [['asc', 'Sequential, ascending'], ['desc', 'Sequential, descending'], ['evens', 'Evens first, then odds'], ['odds', 'Odds first, then evens'], ['random', 'Random (fixed for the day)']];
   const FILLS: [Fill, string][] = [['wrap', 'Repeat from the beginning'], ['snake', 'Snake (1 to 20 and back)'], ['shuffle', 'Shuffle everything'], ['cross', 'Cross out (roll again)']];
   const GROUP_LABEL: Record<SortGroup, string> = { open: 'Open', backlog: 'Backlog', frozen: 'Frozen', decaf: 'Decaf' };
@@ -134,6 +135,7 @@
       <fieldset class="body" disabled={locked}>
         <fieldset>
           <legend>Pool</legend>
+          {#if !custom}
           <div class="line">
             {#each CATEGORIES as [k, label] (k)}
               <label class="filter-value"><input type="checkbox" checked={rules.categories.includes(k)} onchange={(e) => toggleCategory(k, e.currentTarget.checked)} /> {label}</label>
@@ -141,12 +143,13 @@
           </div>
           <label class="filter-value"><input type="checkbox" checked={rules.includeDecaf} onchange={(e) => set({ includeDecaf: e.currentTarget.checked })} /> Include decaf</label>
           <label class="filter-value sub"><input type="checkbox" checked={rules.includeFrozenDecaf} disabled={!rules.includeDecaf} onchange={(e) => set({ includeFrozenDecaf: e.currentTarget.checked })} /> Include frozen decaf</label>
+          {/if}
           <label class="field">Sort
             <select class="ctl-select" value={rules.sort} onchange={(e) => set({ sort: e.currentTarget.value as SortRule })}>
-              {#each SORTS as [k, label] (k)}<option value={k}>{label}</option>{/each}
+              {#each custom ? CUSTOM_SORTS : SORTS as [k, label] (k)}<option value={k}>{label}</option>{/each}
             </select>
           </label>
-          {#if rules.sort === 'category'}
+          {#if rules.sort === 'category' && !custom}
             <ol class="order" aria-label="Category order">
               {#each rules.categoryOrder as g, i (g)}
                 <li>
@@ -188,6 +191,9 @@
           <label class="filter-value"><input type="checkbox" checked={rules.repeats} onchange={(e) => set({ repeats: e.currentTarget.checked })} /> Repeats (a brewed coffee stays in play)</label>
         </fieldset>
 
+        {#if custom}
+          <button type="button" class="button button-ghost" onclick={onreset}>Reset to defaults</button>
+        {:else}
         <fieldset class="profiles">
           <legend>Profiles</legend>
           <label class="field">Profile
@@ -223,6 +229,7 @@
             </div>
           {/if}
         </fieldset>
+        {/if}
       </fieldset>
     </section>
   </div>

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_RULES } from '#lib/pick/rules.ts';
-import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile } from './onDeckUrl';
+import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile, parseCoffees } from './onDeckUrl';
 
 const p = (q: string) => new URLSearchParams(q);
 
@@ -97,5 +97,20 @@ describe('on-deck view param', () => {
     // invalid rule values fall back field by field to the defaults
     expect(decodeRulesLink(b64('{"n":"A","r":{"sort":"bogus","includeDecaf":true,"categories":7}}'))).toEqual({ name: 'A', rules: { ...DEFAULT_RULES, includeDecaf: true } });
     expect(decodeRulesLink(b64(String.fromCharCode(0xff, 0xfe)))).toBeNull(); // not UTF-8
+  });
+});
+
+describe('coffees param', () => {
+  it('only custom is explicit, case-insensitive', () => {
+    expect(parseCoffees(p('coffees=custom'))).toBe('custom');
+    expect(parseCoffees(p('coffees=CUSTOM'))).toBe('custom');
+    expect(parseCoffees(p('coffees=site'))).toBeUndefined();
+    expect(parseCoffees(p(''))).toBeUndefined();
+  });
+  it('written only with the pick view; a share path (no coffees passed) never has it', () => {
+    expect(onDeckParams({ view: 'pick', game: 'd20', coffees: 'custom' }).toString()).toBe('view=pick&game=d20&coffees=custom');
+    expect(onDeckParams({ view: 'next', coffees: 'custom' }).toString()).toBe('view=next');
+    expect(onDeckParams({ coffees: 'custom' }).toString()).toBe('');
+    expect(onDeckParams({ view: 'pick', defaultRules: true }).toString()).toBe('view=pick&rules=default');
   });
 });
