@@ -276,7 +276,7 @@
     expandedId = null;
     saving = false;
     const nameOf = (id: number) => changes.find((c) => c.id === id)?.fields?.roaster_service?.trim() || data.subscriptions.find((s: SubscriptionRow) => s.id === id)?.roaster_service || '';
-    const { text, undo } = saveToast(changes, nameOf);
+    const { text, undo } = saveToast(changes, nameOf, (id) => ({ ...data.subscriptions.find((s: SubscriptionRow) => s.id === id) }));
     await refreshTracked();
     showToast(text, { undo: undo ? () => postBatch(undo) : undefined });
   }

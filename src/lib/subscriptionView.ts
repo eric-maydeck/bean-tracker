@@ -54,18 +54,40 @@ export function togglePauseStage(pending: Map<number, PendingChange>, id: number
   else pending.delete(id);
 }
 
-// The toast after a save: names the subscription (or counts a batch). `undo` is the reverse batch, offered only when the
-// whole save was Pause/Resume toggles (the flipped `paused` values re-posted); anything else gets no Undo.
+// What a field is called in a save toast.
+const FIELD_NAME: Record<string, string> = {
+  roaster_service: 'roaster/service', subscription_name: 'name', price: 'price', bag_count: 'bags',
+  amount_per_bag_g: 'g/bag', renewal_day: 'renewal day', subscription_url: 'page', paused: 'paused'
+};
+const same = (a: unknown, b: unknown) => {
+  const [x, y] = [String(a ?? '').trim(), String(b ?? '').trim()];
+  return x === y || (x !== '' && y !== '' && Number.isFinite(+x) && +x === +y);
+};
+
+// The toast after a save: says what changed (paused, resumed, the edited fields) or counts a batch. `undo` is the reverse
+// batch, offered only when the whole save was Pause/Resume toggles (the flipped `paused` values re-posted).
+// `was` gives a subscription's saved values, to name which staged fields really differ.
 export function saveToast(
   changes: { id: number; fields?: Record<string, string>; statusAction?: string }[],
-  nameOf: (id: number) => string
+  nameOf: (id: number) => string,
+  was: (id: number) => Record<string, unknown> = () => ({})
 ): { text: string; undo: { id: number; fields: { paused: string } }[] | null } {
   const toggles = changes.every((c) => c.fields && !c.statusAction && Object.keys(c.fields).length === 1 && 'paused' in c.fields);
   const undo = toggles ? changes.map((c) => ({ id: c.id, fields: { paused: c.fields!.paused === '1' ? '0' : '1' } })) : null;
+  const verb = (c: (typeof changes)[number]) => (c.fields!.paused === '1' ? 'paused' : 'resumed');
+  const verbs = toggles ? new Set(changes.map(verb)) : null;
   const [one] = changes;
-  const text = changes.length === 1
-    ? `Subscription "${nameOf(one.id)}" ${one.statusAction === 'delete' ? 'deleted' : 'saved'}.`
-    : `${changes.length} subscriptions updated.`;
+  let text = `${changes.length} subscriptions ${verbs?.size === 1 ? [...verbs][0] : 'updated'}.`;
+  if (changes.length === 1) {
+    const name = nameOf(one.id);
+    if (one.statusAction === 'delete') text = `Subscription "${name}" deleted.`;
+    else if (toggles) text = `Subscription "${name}" ${verb(one)}.`;
+    else {
+      const old = was(one.id);
+      const diff = Object.keys(one.fields ?? {}).filter((k) => (k === 'paused' ? String(old.paused ?? '') !== one.fields!.paused : !same(old[k], one.fields![k])));
+      text = `Subscription "${name}" ${diff.length ? `updated: ${diff.map((k) => FIELD_NAME[k] ?? k).join(', ')}` : 'saved'}.`;
+    }
+  }
   return { text, undo };
 }
 
