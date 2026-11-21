@@ -16,6 +16,7 @@ export interface PickRules {
   categoryOrder: SortGroup[]; // all four, user order
   over20: Over20;
   excluded: number[]; // coffee ids unchecked by hand
+  groupBags: boolean; // bags of one coffee (same name and roaster) are one entry; off = each bag its own
   critSuccessOn: boolean; // gold crit: 20 on the D20, a gold slice on the wheel
   critSuccessMode: CritMode; // spot = the coffee in the last spot; specific = the ids below
   critSuccess: number[]; // coffee ids for 'specific' mode

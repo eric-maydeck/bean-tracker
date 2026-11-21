@@ -113,7 +113,7 @@
           <label class="filter-value sub"><input type="checkbox" checked={rules.highestIsCrit} onchange={(e) => set({ highestIsCrit: e.currentTarget.checked })} /> <span>Highest number is crit success <span class="text-muted">when fewer than 20 coffees</span></span></label>
         {/if}
         {#if mode(which) === 'specific'}
-          <CritPicker label={`${label} coffees`} {coffees} selected={rules[which]} onchange={(ids) => setCrit(which, ids)} />
+          <CritPicker label={`${label} coffees`} {coffees} group={rules.groupBags} selected={rules[which]} onchange={(ids) => setCrit(which, ids)} />
         {/if}
       </div>
     {/if}
@@ -144,6 +144,7 @@
           <label class="filter-value"><input type="checkbox" checked={rules.includeDecaf} onchange={(e) => set({ includeDecaf: e.currentTarget.checked })} /> Include decaf</label>
           <label class="filter-value sub"><input type="checkbox" checked={rules.includeFrozenDecaf} disabled={!rules.includeDecaf} onchange={(e) => set({ includeFrozenDecaf: e.currentTarget.checked })} /> Include frozen decaf</label>
           {/if}
+          <label class="filter-value"><input type="checkbox" checked={rules.groupBags} onchange={(e) => set({ groupBags: e.currentTarget.checked })} /> <span>Group bags of the same coffee <span class="text-muted">(open bag first)</span></span></label>
           <label class="field">Sort
             <select class="ctl-select" value={rules.sort} onchange={(e) => set({ sort: e.currentTarget.value as SortRule })}>
               {#each custom ? CUSTOM_SORTS : SORTS as [k, label] (k)}<option value={k}>{label}</option>{/each}
@@ -165,7 +166,7 @@
             <label class="filter-value"><input type="radio" name="over20" checked={rules.over20 === 'byHand'} onchange={() => set({ over20: 'byHand' })} /> Exclude specific coffees</label>
           </div>
           {#if rules.over20 === 'byHand'}
-            <CritPicker label="Excluded coffees" requireSearch coffees={eligible} known={coffees} selected={rules.excluded} onchange={(ids) => set({ excluded: ids })} />
+            <CritPicker label="Excluded coffees" group={rules.groupBags} requireSearch coffees={eligible} known={coffees} selected={rules.excluded} onchange={(ids) => set({ excluded: ids })} />
           {/if}
         </fieldset>
 

@@ -1,19 +1,21 @@
 <script lang="ts">
   import { truncTip } from '#lib/components/labelTip.ts';
-  import { keyOf } from '#lib/pick/pool.ts';
+  import { keyOf as coffeeKey } from '#lib/pick/pool.ts';
   import type { PickCoffee } from '#lib/pick/types.ts';
 
   // A searchable multi-select: chips of the picked coffees on top (x removes), a filter box, and a list of checkboxes.
-  let { label, coffees, known = coffees, selected, onchange, requireSearch = false }: { requireSearch?: boolean; known?: PickCoffee[]; label: string; coffees: PickCoffee[]; selected: number[]; onchange: (ids: number[]) => void } = $props();
+  let { label, coffees, known = coffees, selected, onchange, requireSearch = false, group = true }: { group?: boolean; requireSearch?: boolean; known?: PickCoffee[]; label: string; coffees: PickCoffee[]; selected: number[]; onchange: (ids: number[]) => void } = $props();
 
   let query = $state('');
   const byName = (a: PickCoffee, b: PickCoffee) => a.name.localeCompare(b.name);
-  const sorted = $derived([...coffees].sort(byName));
+  // Bags of one coffee are one pick when grouped: one row per coffee, checked when any bag of it is selected (`known` resolves ids this list may not show).
+  // Separate: each bag is its own row and pick.
+  const keyOf = (c: PickCoffee) => (group ? coffeeKey(c) : String(c.id));
+  const sorted = $derived([...coffees].sort(byName).filter((c, i, all) => all.findIndex((d) => keyOf(d) === keyOf(c)) === i));
   const visible = $derived(sorted.filter((c) => `${c.name} ${c.roaster}`.toLowerCase().includes(query.trim().toLowerCase())));
-  // Bags of one coffee are one pick: a row is checked when any bag of its coffee is selected (`known` resolves ids this list may not show).
   const keyById = $derived(new Map(known.map((c) => [c.id, keyOf(c)])));
   const pickedKeys = $derived(new Set(selected.flatMap((id) => keyById.get(id) ?? [])));
-  const picked = $derived(coffees.filter((c, i) => pickedKeys.has(keyOf(c)) && coffees.findIndex((d) => keyOf(d) === keyOf(c)) === i));
+  const picked = $derived(sorted.filter((c) => pickedKeys.has(keyOf(c))));
   const toggle = (c: PickCoffee, on: boolean) => onchange(on ? [...selected, c.id] : selected.filter((x) => keyById.get(x) !== keyOf(c)));
   const selectVisible = () => onchange([...new Set([...selected, ...visible.map((c) => c.id)])]);
 </script>
