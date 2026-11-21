@@ -6278,8 +6278,8 @@ export const STATES: State[] = [
       await expect(page.locator('.pick-modal .rolled b'), 'the overlay shows the rolled number').toHaveText('7');
       await expect(page.locator('.pick-modal .rolled'), 'the header reads You rolled').toContainText('You rolled');
       await dismissPickOverlay(page);
-      await expect(page.locator('.side .last'), 'the inline card has its heading').toHaveText('Your last roll');
-      const [hb, cb0, gr] = [(await page.locator('.side .last').boundingBox())!, (await page.locator('.result').boundingBox())!, (await page.locator('.game-row').boundingBox())!];
+      await expect(page.locator('.side .last h3'), 'the inline card has its heading and the rolled number').toHaveText('Your last roll · 7');
+      const [hb, cb0, gr] = [(await page.locator('.side .last h3').boundingBox())!, (await page.locator('.result').boundingBox())!, (await page.locator('.game-row').boundingBox())!];
       expect(hb.y + hb.height - 1, 'heading above the card').toBeLessThanOrEqual(cb0.y);
       if ((page.viewportSize()?.width ?? 0) >= 1280) {
         expect(hb.y, 'beside the game: the heading sits in the Game row band, not off the page').toBeGreaterThanOrEqual(gr.y - 2);
@@ -6369,7 +6369,7 @@ export const STATES: State[] = [
       await expect(modal.getByRole('button', { name: 'Close' })).toBeVisible();
       await dismissPickOverlay(page);
       if ((page.viewportSize()?.width ?? 0) <= 640) return;
-      await expect(page.locator('.side .last'), 'the wheel result has its heading').toHaveText('Your last spin');
+      await expect(page.locator('.side .last h3'), 'the wheel result has its heading').toContainText('Your last spin');
       const card = page.locator('.result');
       if ((page.viewportSize()?.width ?? 0) >= 1280) expect(Math.abs((await card.boundingBox())!.y - (await page.locator('.game').boundingBox())!.y), 'card top level with the game top').toBeLessThanOrEqual(2);
       await expect(card.locator('.pick-card')).toBeVisible();
@@ -6758,6 +6758,36 @@ export const STATES: State[] = [
       await expect(page.locator('.shared-note')).toHaveCount(0);
       await page.getByRole('button', { name: 'Share', exact: true }).click();
       expect(await shared(), 'Reset to defaults from a shared link').toMatch(/rules=default$/);
+    }
+  },
+  {
+    // A shared result (`roll=`) replays on the wheel and is view-only: the pop-up and card have Share and Back to my board but no Brew or Discard,
+    // Back drops the param, and a bad `roll` is dropped with the wheel played normally.
+    name: 'pick-shared-roll', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=wheel&roll=1',
+    act: async (page) => {
+      const modal = page.getByRole('dialog', { name: 'Pick result' });
+      await expect(modal).toBeVisible({ timeout: 15_000 });
+      await expect(modal.getByRole('button', { name: 'Brew', exact: true })).toHaveCount(0);
+      await expect(modal.getByRole('button', { name: 'Discard', exact: true })).toHaveCount(0);
+      await expect(modal.getByRole('button', { name: 'Share', exact: true })).toBeVisible();
+      await expect(modal.locator('.rolled'), 'the wheel pop-up has its title').toContainText('You spun');
+      await expect(page).toHaveURL(/roll=1$/);
+      await checkLayout(page);
+      await modal.getByRole('button', { name: 'Back to my board' }).click();
+      await expect(modal).toHaveCount(0);
+      await expect(page).toHaveURL(/\/on-deck\?view=pick&game=wheel$/);
+      await gotoReady(page, '/on-deck?view=pick&game=wheel&c=999999');
+      await expect(page).toHaveURL(/\/on-deck\?view=pick&game=wheel$/); // a coffee this site does not have, and no number: ignored
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
+      // A custom coffee by name, on a visitor with no list: straight to the result (no spin, no die), the name on the card, Share inside the banner.
+      for (const game of ['wheel', 'd20']) {
+        await gotoReady(page, `/on-deck?view=pick&game=${game}&coffees=custom&name=Blue+Bottle&crit=success${game === 'd20' ? '&roll=20' : ''}`);
+        await expect(modal).toBeVisible({ timeout: 15_000 });
+        await expect(modal.locator('.pick-card .name')).toHaveText('Blue Bottle');
+        await expect(modal.locator('.rolled.success .banner-share').getByRole('button', { name: 'Share', exact: true })).toBeVisible();
+        await expect(modal.getByText('Coffee shared by another user')).toBeVisible();
+      }
     }
   },
   {

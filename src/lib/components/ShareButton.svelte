@@ -9,7 +9,8 @@
   // doesn't follow the URL mirror (see urlState.ts).
   const SHORTEN_OVER = 60;
   // `path`: share this path (+ query) instead of the current one (a recap slide's own link).
-  let { path: given }: { path?: string } = $props();
+  // `disabled`: nothing to share right now, the button holding its place (the pick card's result once it is out for today).
+  let { path: given, disabled = false }: { path?: string; disabled?: boolean } = $props();
   let copied = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -46,7 +47,7 @@
   }
 </script>
 
-<button type="button" class="button button-ghost share-button" onclick={share} aria-live="polite">
+<button type="button" class="button button-ghost share-button" {disabled} onclick={share} aria-live="polite">
   <Icon name="share-network" />
   {copied ? 'Link copied' : 'Share'}
 </button>

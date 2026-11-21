@@ -11,6 +11,7 @@
   import { customCoffees, customDefaults, customRules } from '#lib/pick/custom.ts';
   import { discard, freshToday, markBrewed, resetDay } from '#lib/pick/today.ts';
   import { sliceAt, wheelSlices } from '#lib/pick/wheel.ts';
+  import { linkFor, resolveShared, type SharedLink } from '#lib/pick/shared.ts';
   import type { Game, PickCoffee, PickResult, PickRules, PickToday, Slot, WheelSlice } from '#lib/pick/types.ts';
   import { encodeRulesLink } from '../onDeckUrl';
   import CustomList from './CustomList.svelte';
@@ -19,6 +20,7 @@
   import PickD20 from './PickD20.svelte';
   import PickRulesPanel from './PickRules.svelte';
   import PickWheel from './PickWheel.svelte';
+  import ShareButton from '#lib/components/ShareButton.svelte';
   import { flushToday, loadCustomRules, loadCustomToday, loadList, loadProfiles, loadRules, loadSelected, loadToday, saveCustomRules, saveCustomToday, saveList, saveProfiles, saveRules, saveSelected, saveToday } from './store';
 
   type Shared = { name: string; rules: PickRules; code?: string } | { name: string; missing: true } | { unreadable: true } | { defaults: true } | null;
@@ -26,7 +28,10 @@
   // `shareRules`: what the page's Share button adds for the rules in play.
   // `custom`: the visitor's own list of names (kept in this browser, for everyone) instead of the site's coffees; the page remounts this view to switch, so it never changes here.
   // `enter`: the switch was just turned on (open the Enter coffees pop-up when there is no list yet).
-  let { pick, admin, custom, oncustom, enter, game: urlGame, ongame, shared, onunshare, shareRules = $bindable() }: {
+  // `link`: a share link's result, replayed once as a view-only result; `onleaveroll` drops it from the URL;
+  // `pathFor` builds the link that replays a result (the page knows the rest of the view's params).
+  let { pick, admin, custom, oncustom, enter, game: urlGame, ongame, shared, onunshare, shareRules = $bindable(), link, onleaveroll, pathFor }: {
+    link?: SharedLink; onleaveroll: () => void; pathFor: (game: Game, link: SharedLink) => string | undefined;
     pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; profiles: unknown; savedRules: unknown; todayState: unknown; selectedProfile: unknown };
     admin: boolean; custom: boolean; oncustom: (on: boolean) => void; enter: boolean; game: Game | undefined; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; rulesCode?: string; defaultRules?: boolean };
   } = $props();
@@ -193,13 +198,21 @@
     if (ready && board !== untrack(() => today.board)) today.board = board;
   });
 
-  const result = $derived(today.result);
+  // A shared result is view-only and kept apart from `today` (nothing of it is saved); it shows until Back to my board or the visitor plays.
+  let viewing = $state<PickResult | null>(null);
+  let replaying: PickResult | null = null; // the shared result while its die or wheel is still moving
+  let viewCoffee = $state<PickCoffee | null>(null); // a shared custom coffee that is not on this visitor's list: built from its name
+  const result = $derived(viewing ?? today.result);
+  const resultCoffee = $derived(result ? (byId.get(result.coffeeId) ?? (viewing ? viewCoffee : null) ?? undefined) : undefined);
+  const inList = $derived(!!result && byId.has(result.coffeeId)); // a shared name off the visitor's list has no place in it, no numbers of its own and no out count
   // custom mode: the card's sub line (where the result sits in the visitor's list)
-  const listPlace = $derived(custom ? `Your list · #${coffees.findIndex((c) => c.id === today.result?.coffeeId) + 1} of ${coffees.length}` : undefined);
-  const resultCoffee = $derived(result ? byId.get(result.coffeeId) : undefined);
+  const listPlace = $derived(custom ? (inList ? `Your list · #${coffees.findIndex((c) => c.id === result?.coffeeId) + 1} of ${coffees.length}` : 'Coffee shared by another user') : undefined);
+  // The link that replays the result: the coffee (a site one by id, a custom one by name), as a crit when it was one, and a d20's face.
+  const sharePath = $derived(result && resultCoffee ? pathFor(game, linkFor(game, result, custom, resultCoffee.name)) : undefined);
+  const leaveRoll = () => { viewing = null; viewCoffee = null; if (link) onleaveroll(); };
   // custom mode: the card's detail, from today's game (a custom coffee has no coffee page data)
   const customStats = $derived.by(() => {
-    if (!custom || !result) return [];
+    if (!custom || !result || !inList) return [];
     const nums = board.flatMap((s) => (s.kind === 'coffee' && s.coffeeId === result.coffeeId ? [s.n] : []));
     return [
       ...(game === 'd20' ? [{ label: 'D20 numbers', text: nums.length ? nums.join(', ') : 'None' }] : []),
@@ -216,6 +229,8 @@
   const canSave = $derived(!!selected && !!profiles[selected] && rulesDiffer(profiles[selected], rules));
   const TAU = Math.PI * 2;
   const critFor = (n: number) => {
+    const shared = replaying ?? viewing; // a shared roll's lens follows the link's crit, not this board's face
+    if (shared?.n === n) return shared.via === 'normal' ? null : shared.via;
     const k = board[n - 1]?.kind;
     return k === 'success' || k === 'fail' ? k : null;
   };
@@ -264,12 +279,12 @@
   }
   function land(r: PickResult) {
     busy = false;
-    today.result = r;
+    if (replaying) { replaying = null; replayN = undefined; viewing = r; } else today.result = r;
     shown = false;
     landing = true;
     clearTimeout(showTimer);
     showTimer = setTimeout(() => { landing = false; shown = true; }, reduced() ? 0 : 1500);
-    say(`Picked ${byId.get(r.coffeeId)?.name ?? ''}`);
+    say(`Picked ${(byId.get(r.coffeeId) ?? viewCoffee)?.name ?? ''}`);
   }
   function again() {
     busy = false;
@@ -279,6 +294,7 @@
 
   function spin() {
     if (busy || empty || !wheel) return;
+    leaveRoll();
     rollAgain = false;
     busy = true;
     shown = false;
@@ -287,6 +303,7 @@
     wheel.spinTo(sliceAt(slices, Math.random() * TAU));
   }
   function wheelResult(s: WheelSlice, angle: number) {
+    if (replaying) return land(replaying); // view-only: the wheel's angle is not saved
     today.wheelAngle = angle;
     if (s.kind === 'coffee') return land({ coffeeId: s.coffeeId!, via: 'normal' });
     const c = any(s.kind === 'success' ? successC : failC);
@@ -294,6 +311,7 @@
     else busy = false;
   }
   function d20Result(n: number, pose: PickToday['d20Pose']) {
+    if (replaying) return land(replaying); // view-only: the die's pose is not saved
     today.d20Pose = pose;
     const s = board[n - 1];
     const c = s?.kind === 'coffee' ? byId.get(s.coffeeId) : s?.kind === 'success' ? any(successC) : s?.kind === 'fail' ? any(failC) : undefined;
@@ -301,6 +319,7 @@
     land({ coffeeId: c.id, via: s.kind === 'coffee' ? 'normal' : (s.kind as 'success' | 'fail'), n });
   }
   function startD20() {
+    if (!replaying) leaveRoll(); // the visitor's own roll (or typed number); the replay's throw keeps the shared result
     rollAgain = false;
     busy = true;
     shown = false;
@@ -308,8 +327,27 @@
     clearTimeout(showTimer);
   }
 
+  // A share link's result: once the board and the die or wheel are ready, throw it (the D20 as if typed into "Someone rolled for me"). One that does not fit this board is dropped.
+  let replayed = false;
+  let replayN = $state<number>();
+  $effect(() => {
+    if (!ready || !link || replayed || (game === 'wheel' && !wheel)) return;
+    replayed = true;
+    untrack(() => {
+      const { roll, c, name, crit } = link; // a custom list's ids are its own: it shares names, a site list ids
+      const hit = resolveShared(game, custom ? { roll, name, crit } : { roll, c, crit }, { board, slices, byId, success: successC, fail: failC });
+      if (!hit) return onleaveroll();
+      if (custom && name && !byId.has(hit.result.coffeeId)) viewCoffee = customCoffees([name])[0];
+      replaying = hit.result;
+      if (game === 'd20') replayN = roll; // the die throws even with nothing on this board (a custom link opened without the list)
+      else if (hit.slice === null) land(hit.result); // not on this wheel: no spin, straight to the result
+      else { busy = true; wheel!.spinTo(slices[hit.slice]); }
+    });
+  });
+
   function setGame(g: Game) {
     if (g === game) return;
+    leaveRoll();
     busy = false;
     rollAgain = false;
     today.game = g;
@@ -434,7 +472,7 @@
           <PickWheel bind:this={wheel} {slices} {names} angle={today.wheelAngle} disabled={empty} onspin={spin} onresult={wheelResult} />
         </div>
       {:else}
-        <PickD20 pose={today.d20Pose} disabled={empty} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
+        <PickD20 pose={today.d20Pose} replay={replayN} disabled={empty && !replayN} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
       {/if}
       {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
       {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
@@ -442,11 +480,12 @@
 
     <div class="side">
       {#if inlineCard}
-        {#if result && resultCoffee}<h3 class="last">{game === 'd20' ? 'Your last roll' : 'Your last spin'}</h3>{/if}
+        <!-- Share (top right, as in the pop-up): the link that replays this result; disabled with none (a wheel result put out for today) -->
+        {#if result && resultCoffee}<div class="last"><h3>{game === 'd20' ? 'Your last roll' : 'Your last spin'}{#if game === 'd20' && result.n}{' · '}<b class="n">{result.n}</b>{/if}{#if result.via !== 'normal'}{' '}<span class="crit-tag {result.via}">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</h3><ShareButton path={sharePath} disabled={!sharePath} /></div>{/if}
         <div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
           <PickCard custom={listPlace} {customStats} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
-            onbrew={brew} ondiscard={doDiscard} onopen={openPage} />
+            onbrew={brew} ondiscard={doDiscard} onopen={openPage} onback={viewing ? leaveRoll : undefined} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
         {/if}
@@ -475,11 +514,11 @@
         </div>
       {/if}
       <div class="modal pick-modal {result.via}" class:horizontal={!narrow} role="dialog" aria-modal="true" aria-label="Pick result" tabindex="-1" bind:this={modalEl}>
-        {#if game === 'd20' && result.n}
-          <p class="rolled {result.via}" aria-live="polite">You rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
+        {#if game === 'wheel' || result.n}
+          <p class="rolled {result.via}" class:spun={game === 'wheel'} aria-live="polite">{game === 'd20' ? 'You rolled' : 'You spun'}{#if game === 'd20'}<b>{result.n}</b>{/if}{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}<span class="banner-share"><ShareButton path={sharePath} disabled={!sharePath} /></span></p>
         {/if}
         <PickCard custom={listPlace} {customStats} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
-          onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} />
+          onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} onback={viewing ? () => { shown = false; leaveRoll(); } : undefined} />
       </div>
     </div>
   {/if}
@@ -506,7 +545,21 @@
   .game { min-width: 0; max-width: 620px; display: flex; flex-direction: column; }
   .out-row { max-width: 620px; }
   .side { position: relative; display: flex; flex-direction: column; min-width: 0; }
-  .last { margin: 0 0 var(--space-2); font-size: 1rem; } /* stacked: in the flow above the card */
+  .last { display: flex; align-items: last baseline; justify-content: space-between; gap: var(--space-2); margin: 0 0 var(--space-1); } /* stacked: in the flow above the card; the heading sits at the row's foot, close to the card */
+  .last h3 { margin: 0; font-size: 1rem; line-height: 1.25; }
+  .last :global(.share-button) { margin-block: -0.25rem; } /* its padding never sets the row's height: the heading stays close to the card */
+  .last .n { font-size: 1.25rem; color: var(--color-accent); }
+  .crit-tag { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+  .crit-tag.success { color: var(--color-warm); }
+  .crit-tag.fail { color: var(--color-urgent); }
+  /* Share sits in the pop-up banner's top-right corner (inside its padding), out of the text's flow; the wheel's banner is as tall as the button */
+  .banner-share { position: absolute; top: var(--space-1); right: var(--space-1); text-transform: none; letter-spacing: 0; font-weight: 400; font-family: var(--font-sans); font-size: 0.875rem; }
+  .banner-share :global(.share-button) { padding-inline: 0.5rem; gap: var(--space-1); }
+  .rolled.spun { min-height: calc(2.75rem + var(--space-2)); display: flex; flex-direction: column; justify-content: center; }
+  .rolled.success .banner-share :global(.share-button) { color: #ffe08a; }
+  .rolled.success .banner-share :global(.share-button:hover:not(:disabled)) { background: rgba(255, 224, 138, 0.2); }
+  .rolled.fail .banner-share :global(.share-button) { color: #f3b4b4; }
+  .rolled.fail .banner-share :global(.share-button:hover:not(:disabled)) { background: rgba(243, 180, 180, 0.2); }
   .wheel-wrap { width: 100%; --wheel-size: var(--wheel-max, clamp(320px, 100vh - 400px, 460px)); } /* ponytail: the CSS estimate (stage top about 310px + the out row) until measured */
   .result { display: flex; align-self: start; width: 100%; max-width: 674px; } /* .card sizes by its container, so the width is explicit */
   @media (max-width: 720px) { .result { max-width: 480px; } } /* the vertical card: the /coffees card's width on a phone (its thumbnail the full content width) */
@@ -521,7 +574,7 @@
      and the thumbnail runs from the card's top to the buttons' bottom */
   .pick-modal.horizontal :global(.pick-card.wide:not(.noimg)) { height: auto; }
   .pick-modal.horizontal :global(.pick-card.wide .card-thumb) { aspect-ratio: auto; height: 100%; min-height: calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px); } /* never under square */
-  .rolled { margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+  .rolled { position: relative; margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
   .rolled b { display: block; font-size: 3.5rem; line-height: 1; letter-spacing: 0; color: var(--color-accent); }
   /* a crit: a dark panel (the same dark in both themes, like the D20 tray, so the colours keep their contrast) with its glow; a normal roll stays plain */
   .crit-word { display: block; margin-top: var(--space-1); font-size: 0.85rem; }
@@ -534,6 +587,7 @@
   .rolled.success::after { bottom: 12%; right: 18%; font-size: 0.8rem; animation-delay: 0.8s; }
   .rolled.fail { color: #f3b4b4; background: radial-gradient(ellipse 70% 80% at 50% 62%, rgba(208, 28, 28, 0.5), transparent 70%), #150303; box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.85), 0 0 18px rgba(122, 10, 10, 0.6); animation: shake 0.5s 1; }
   .rolled.fail b { color: #ff5a4a; text-shadow: 0 0 14px rgba(208, 28, 28, 0.9); animation: ember 3s ease-in-out infinite; }
+  @media (max-width: 640px) { .rolled, .rolled.success, .rolled.fail { padding-right: 5.25rem; } .banner-share :global(.share-button) { padding-inline: 0.4rem; } } /* the narrow pop-up: the full-size label sits left of Share rather than shrinking */
   @keyframes shimmer { to { background-position: -160% 0; } }
   @keyframes twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.15); } }
   @keyframes ember { 50% { text-shadow: 0 0 26px rgba(208, 28, 28, 1); opacity: 0.82; } }
@@ -557,7 +611,7 @@
     .game { grid-row: 1; }
     .out-row { grid-row: 2; }
     .side { grid-column: 2; grid-row: 1 / span 2; }
-    .last { position: absolute; bottom: 100%; margin: 0 0 var(--space-2); } /* beside: in the space above the card (level with the Game row), the card stays level with the game */
+    .last { position: absolute; bottom: 100%; left: 0; right: 0; margin: 0 0 var(--space-1); } /* beside: in the space above the card (level with the Game row), the card stays level with the game */
     .result { max-width: none; }
   }
   .out-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin: 0; }

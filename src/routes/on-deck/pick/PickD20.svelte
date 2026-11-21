@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { Mesh, MeshStandardMaterial, Quaternion, WebGLRenderer } from 'three';
   import type { D20Pose } from '#lib/pick/types.ts';
 
-  let { pose, disabled, onresult, critFor, onfail, onstart }: {
+  let { pose, disabled, onresult, critFor, onfail, onstart, replay }: {
     pose: D20Pose | null;
+    replay?: number; // a shared link's face: thrown once, as if typed into "Someone rolled for me", as soon as the die is ready (or WebGL failed)
     disabled: boolean;
     onresult: (n: number, pose: D20Pose | null) => void;
     onfail?: () => void;
@@ -29,6 +30,9 @@
 
   // Without WebGL there is no die to throw: a number someone rolled goes straight to the result.
   function show() { const n = Number(rolled); if (Number.isInteger(n) && n >= 1 && n <= 20) { if (failed) { setLens(n); onresult(n, null); } else doRoll?.(n); } }
+
+  let replayed = false;
+  $effect(() => { if (replay && !replayed && (ready || failed)) { replayed = true; untrack(() => { rolled = String(replay); show(); }); } });
 
   function setLens(n: number) {
     const crit = critFor(n);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_RULES } from '#lib/pick/rules.ts';
-import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile, parseCoffees } from './onDeckUrl';
+import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile, parseCoffees, parseRoll, parseCoffeeParam, parseCrit, parseName } from './onDeckUrl';
 
 const p = (q: string) => new URLSearchParams(q);
 
@@ -112,5 +112,45 @@ describe('coffees param', () => {
     expect(onDeckParams({ view: 'next', coffees: 'custom' }).toString()).toBe('view=next');
     expect(onDeckParams({ coffees: 'custom' }).toString()).toBe('');
     expect(onDeckParams({ view: 'pick', defaultRules: true }).toString()).toBe('view=pick&rules=default');
+  });
+});
+
+describe('shared result params', () => {
+  it('roll is an integer 1-20', () => {
+    expect(parseRoll(p('roll=7'))).toBe(7);
+    expect(parseRoll(p('roll=20'))).toBe(20);
+    for (const bad of ['0', '21', '-3', '2.5', 'abc', '', '1e1']) expect(parseRoll(p(`roll=${bad}`))).toBeUndefined();
+    expect(parseRoll(p(''))).toBeUndefined();
+  });
+  it('c is a positive integer', () => {
+    expect(parseCoffeeParam(p('c=42'))).toBe(42);
+    for (const bad of ['0', '-1', '1.5', 'x', '', '99999999999999999999']) expect(parseCoffeeParam(p(`c=${bad}`))).toBeUndefined();
+  });
+  it('name is trimmed and cut to the list name length', () => {
+    expect(parseName(p('name=Blue+Bottle'))).toBe('Blue Bottle');
+    expect(parseName(p('name=%20%20x%20'))).toBe('x');
+    expect(parseName(p(`name=${'a'.repeat(200)}`))).toHaveLength(80);
+    for (const bad of ['', '%20%20']) expect(parseName(p(`name=${bad}`))).toBeUndefined();
+    expect(parseName(p(''))).toBeUndefined();
+  });
+  it('name rides only with coffees=custom (and view=pick); crit rides with it', () => {
+    expect(onDeckParams({ view: 'pick', game: 'd20', coffees: 'custom', roll: 4, name: 'Blue Bottle', crit: 'success' }).toString()).toBe('view=pick&game=d20&coffees=custom&roll=4&name=Blue+Bottle&crit=success');
+    expect(onDeckParams({ view: 'pick', game: 'wheel', name: 'Blue Bottle', crit: 'fail' }).toString()).toBe('view=pick&game=wheel');
+    expect(onDeckParams({ view: 'next', coffees: 'custom', name: 'x' }).toString()).toBe('view=next');
+  });
+  it('crit is success or fail, any case', () => {
+    expect(parseCrit(p('crit=success'))).toBe('success');
+    expect(parseCrit(p('crit=FAIL'))).toBe('fail');
+    for (const bad of ['', 'normal', '1']) expect(parseCrit(p(`crit=${bad}`))).toBeUndefined();
+    expect(parseCrit(p(''))).toBeUndefined();
+  });
+  it('rides along only with view=pick; c stands alone; crit only with c', () => {
+    expect(onDeckParams({ view: 'pick', game: 'd20', roll: 20, c: 5, crit: 'success' }).toString()).toBe('view=pick&game=d20&roll=20&c=5&crit=success');
+    expect(onDeckParams({ view: 'pick', game: 'wheel', c: 5 }).toString()).toBe('view=pick&game=wheel&c=5');
+    expect(onDeckParams({ view: 'pick', game: 'wheel', coffees: 'custom', roll: 3 }).toString()).toBe('view=pick&game=wheel&coffees=custom&roll=3');
+    expect(onDeckParams({ view: 'pick', crit: 'fail' }).toString()).toBe('view=pick');
+    expect(onDeckParams({ view: 'next', c: 5, crit: 'fail' }).toString()).toBe('view=next');
+    expect(onDeckParams({ view: 'next', roll: 4, c: 5 }).toString()).toBe('view=next');
+    expect(onDeckParams({ roll: 4 }).toString()).toBe('');
   });
 });

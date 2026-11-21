@@ -1,5 +1,6 @@
 import { pickOne } from '#lib/pageUrlState.ts';
 import { cleanName } from '#lib/pick/profiles.ts';
+import { MAX_NAME } from '#lib/pick/custom.ts';
 import { DEFAULT_RULES, parseRules } from '#lib/pick/rules.ts';
 import type { Game, PickRules } from '#lib/pick/types.ts';
 
@@ -14,6 +15,23 @@ export const parseGame = (p: URLSearchParams): Game | undefined => pickOne(p, 'g
 
 /** `coffees=custom`: play with the visitor's own list (kept in their browser, so never in a share link). Bare = the site's coffees. */
 export const parseCoffees = (p: URLSearchParams): 'custom' | undefined => pickOne(p, 'coffees', ['custom']);
+
+/** `roll=<n>`: the result a share link replays, 1-20 (a d20 face, or the wheel's slice number; whether it fits the board is checked where the board is known). */
+export function parseRoll(p: URLSearchParams): number | undefined {
+  const v = p.get('roll')?.trim();
+  const n = v && /^\d+$/.test(v) ? Number(v) : 0;
+  return n >= 1 && n <= 20 ? n : undefined;
+}
+/** `c=<coffee id>`: the site coffee a shared result was (positive integer). Alone it replays on the wheel; the d20 needs `roll` too. */
+export function parseCoffeeParam(p: URLSearchParams): number | undefined {
+  const v = p.get('c')?.trim();
+  const n = v && /^\d+$/.test(v) ? Number(v) : 0;
+  return Number.isSafeInteger(n) && n > 0 ? n : undefined;
+}
+/** `name=<coffee name>`: a custom list's coffee that came up (with `coffees=custom`), trimmed and cut to the list's own name length. */
+export const parseName = (p: URLSearchParams): string | undefined => p.get('name')?.trim().slice(0, MAX_NAME).trim() || undefined;
+/** `crit=success|fail`: the shared result was that crit (with `c`). */
+export const parseCrit = (p: URLSearchParams): 'success' | 'fail' | undefined => pickOne(p, 'crit', ['success', 'fail']);
 
 /** `profile`: a saved rules profile's name, trimmed; empty or over 60 characters is ignored. Matching against the owner's names is the server's. */
 export const MAX_PROFILE_PARAM = 60;
@@ -57,7 +75,7 @@ export function decodeRulesLink(code: string): { name: string; rules: PickRules 
   }
 }
 
-export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: Game; profile?: string; rulesCode?: string; defaultRules?: boolean; coffees?: 'custom' }): URLSearchParams {
+export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: Game; profile?: string; rulesCode?: string; defaultRules?: boolean; coffees?: 'custom'; roll?: number; c?: number; name?: string; crit?: 'success' | 'fail' }): URLSearchParams {
   const p = new URLSearchParams();
   if (s.show) p.set('show', s.show);
   if (s.view) p.set('view', s.view);
@@ -66,5 +84,9 @@ export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: 
   if (s.view === 'pick' && s.profile) p.set('profile', s.profile);
   else if (s.view === 'pick' && s.rulesCode) p.set('rules', s.rulesCode);
   else if (s.view === 'pick' && s.defaultRules) p.set('rules', 'default'); // a profile wins, then a code
+  if (s.view === 'pick' && s.roll) p.set('roll', String(s.roll)); // a shared result: the face or slice number,
+  if (s.view === 'pick' && s.coffees === 'custom' && s.name) p.set('name', s.name); // a custom list's coffee (its ids are its own, so by name)
+  if (s.view === 'pick' && s.c) p.set('c', String(s.c));
+  if (s.view === 'pick' && (s.c || (s.coffees === 'custom' && s.name)) && s.crit) p.set('crit', s.crit); // the crit it was
   return p;
 }
