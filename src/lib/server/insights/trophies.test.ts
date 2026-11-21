@@ -27,6 +27,13 @@ describe('trophyCase', () => {
       firstUsed: '2026-10-01', lastUsed: '2026-10-21', favorite: { name: 'Abaca', brews: 2 }, retired: false });
     expect(trophyCase(xs, none, T).map((t) => t.key)).toEqual(['dripper-v60', 'filter-abaca', 'filter-sibarist', 'grinder-zp6']);
   });
+  it('gear names that slug alike still get unique keys (a duplicate key crashes the Gear tab)', () => {
+    const xs = ['Cafec Abaca', 'Cafec Abaca+', 'cafec abaca', 'Cafec-Abaca'].map((filter) => brew({ dripper: 'V60', filter }));
+    expect(Object.fromEntries(trophyCase(xs, none, T).filter((t) => t.kind === 'filter').map((t) => [t.name, t.key]))).toEqual({
+      'Cafec Abaca': 'filter-cafec-abaca', 'Cafec Abaca+': 'filter-cafec-abaca-plus',
+      'Cafec-Abaca': 'filter-cafec-abaca-2', 'cafec abaca': 'filter-cafec-abaca-3'
+    });
+  });
   it('no rated brews: rating and best are null', () => {
     const t = trophyCase([brew({ dripper: 'V60', rating: null }), brew({ dripper: 'V60', rating: 0 })], none, T)[0];
     expect(t).toMatchObject({ rating: null, best: null });

@@ -1,6 +1,6 @@
 import { pooled, single, type Sample } from '#lib/sample.ts';
 import { DOSE_BANDS, MON, BREW_FILTER_KEYS, type BrewFilterKey, type BrewFilters, type Ratings, type Slice } from '#lib/insightsUrl.ts';
-import { slugify } from '#lib/server/slug.ts';
+import { slugify, gearSlugs } from '#lib/slugify.ts';
 import { grindKey, MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { monthlyMulti, settleGroups, type Multi } from './insightGenerators';
 import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, doseBand, grindSteps, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
@@ -287,6 +287,8 @@ export interface LabOptions {
 // Roast levels need ≥ MIN_BAGS brewed bags (spec "Bands"); every slugged bag parses (an archived bag's
 // link still works), the Bag select shows the on-hand ones.
 export function labOptions(brews: readonly BrewFact[], bags: readonly BagFact[]): LabOptions {
+  const grinders = [...groupBy(brews.filter((b) => b.rating! > 0), (b) => b.grinder)].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name]) => name);
+  const grinderSlugs = gearSlugs(grinders);
   const brewed = bags.filter((b) => b.firstBrew);
   const values = (f: (b: BagFact) => string | null, min = 1) =>
     [...groupBy(brewed, f)].filter(([, g]) => g.length >= min).map(([k]) => k).sort((a, b) => a.localeCompare(b));
@@ -296,8 +298,7 @@ export function labOptions(brews: readonly BrewFact[], bags: readonly BagFact[])
   return {
     bags: bags.filter((b) => b.slug).map((b) => ({ slug: b.slug!, label: `${b.roaster} ${b.name}`, onHand: b.status !== 'archive', roast: b.roastLevel, process: b.processGroup })),
     roasts: values((b) => b.roastLevel, MIN_BAGS), processes: values((b) => b.processGroup), origins: values((b) => b.origin), roasters: values((b) => b.roaster),
-    grinders: [...groupBy(brews.filter((b) => b.rating! > 0), (b) => b.grinder)]
-      .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name]) => ({ slug: slugify(name), name })),
+    grinders: grinders.map((name) => ({ slug: grinderSlugs.get(name)!, name })),
     drippers: uniq((b) => b.dripper), filters: uniq((b) => (b.filter === MIXED_FILTER ? null : b.filter)), waters: uniq((b) => b.water),
     doses: DOSE_BANDS.map((d) => d.slug).filter((s) => dosesPresent.has(s)),
     temps: [...new Set(brews.map((b) => b.tempC).filter((t): t is number => t !== null))].sort((a, b) => a - b).map(String)
