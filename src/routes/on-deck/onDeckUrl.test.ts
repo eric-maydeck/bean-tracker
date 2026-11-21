@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_RULES } from '#lib/pick/rules.ts';
-import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile, parseCoffees, parseRoll, parseCoffeeParam } from './onDeckUrl';
+import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile, parseCoffees, parseRoll, parseCoffeeParam, parseCrit } from './onDeckUrl';
 
 const p = (q: string) => new URLSearchParams(q);
 
@@ -126,10 +126,18 @@ describe('shared result params', () => {
     expect(parseCoffeeParam(p('c=42'))).toBe(42);
     for (const bad of ['0', '-1', '1.5', 'x', '', '99999999999999999999']) expect(parseCoffeeParam(p(`c=${bad}`))).toBeUndefined();
   });
-  it('rides along only with view=pick; c only with roll', () => {
-    expect(onDeckParams({ view: 'pick', game: 'd20', roll: 20, c: 5 }).toString()).toBe('view=pick&game=d20&roll=20&c=5');
+  it('crit is success or fail, any case', () => {
+    expect(parseCrit(p('crit=success'))).toBe('success');
+    expect(parseCrit(p('crit=FAIL'))).toBe('fail');
+    for (const bad of ['', 'normal', '1']) expect(parseCrit(p(`crit=${bad}`))).toBeUndefined();
+    expect(parseCrit(p(''))).toBeUndefined();
+  });
+  it('rides along only with view=pick; c stands alone; crit only with c', () => {
+    expect(onDeckParams({ view: 'pick', game: 'd20', roll: 20, c: 5, crit: 'success' }).toString()).toBe('view=pick&game=d20&roll=20&c=5&crit=success');
+    expect(onDeckParams({ view: 'pick', game: 'wheel', c: 5 }).toString()).toBe('view=pick&game=wheel&c=5');
     expect(onDeckParams({ view: 'pick', game: 'wheel', coffees: 'custom', roll: 3 }).toString()).toBe('view=pick&game=wheel&coffees=custom&roll=3');
-    expect(onDeckParams({ view: 'pick', c: 5 }).toString()).toBe('view=pick');
+    expect(onDeckParams({ view: 'pick', crit: 'fail' }).toString()).toBe('view=pick');
+    expect(onDeckParams({ view: 'next', c: 5, crit: 'fail' }).toString()).toBe('view=next');
     expect(onDeckParams({ view: 'next', roll: 4, c: 5 }).toString()).toBe('view=next');
     expect(onDeckParams({ roll: 4 }).toString()).toBe('');
   });

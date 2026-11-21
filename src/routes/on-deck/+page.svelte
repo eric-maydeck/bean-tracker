@@ -7,6 +7,7 @@
   import { coffeeToast, commitChanges, restoreStates } from '#lib/coffeeToast.ts';
   import type { CoffeeRow } from '#lib/types.ts';
   import type { Game } from '#lib/pick/types.ts';
+  import type { SharedLink } from '#lib/pick/shared.ts';
   import { afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
@@ -20,7 +21,7 @@
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { onDeckPreview, pickPreview } from '#lib/linkPreview.ts';
   import PickForMe from './pick/PickForMe.svelte';
-  import { onDeckParams, parseCoffees, parseDefaultRules, parseGame, parseOnDeckView, parseProfile, parseRoll, parseCoffeeParam, parseRulesCode, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
+  import { onDeckParams, parseCoffees, parseDefaultRules, parseGame, parseOnDeckView, parseProfile, parseRoll, parseCoffeeParam, parseCrit, parseRulesCode, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
 
   let { data } = $props();
 
@@ -48,9 +49,9 @@
   const COFFEES_VALUES = ['custom', 'site'] as const;
   let coffeesChoice = $state<'custom' | 'site' | undefined>(parseCoffees(currentParams(page.url)));
   // A shared result to replay (view only, see PickForMe): `roll=<n>` and a crit's `c=<coffee id>`; dropped when the visitor leaves it.
-  let explicitRoll = $state<number | undefined>(parseRoll(currentParams(page.url)));
-  let explicitC = $state<number | undefined>(parseCoffeeParam(currentParams(page.url)));
-  const leaveRoll = () => { explicitRoll = undefined; explicitC = undefined; };
+  const parseLink = (p: URLSearchParams): SharedLink | undefined => { const l = { roll: parseRoll(p), c: parseCoffeeParam(p), crit: parseCrit(p) }; return l.roll || l.c ? l : undefined; };
+  let explicitLink = $state<SharedLink | undefined>(parseLink(currentParams(page.url)));
+  const leaveRoll = () => { explicitLink = undefined; };
   let enterList = $state(false); // the switch was just turned on: PickForMe opens the Enter coffees pop-up when no list is saved
   const custom = $derived(coffeesChoice === 'custom');
   function setCustom(on: boolean) {
@@ -64,8 +65,8 @@
   let view = $derived<OnDeckView>(explicitView ?? 'open');
   const sharePath = $derived(view === 'pick' && (shareRules || custom) ? `/on-deck?${onDeckParams({ show: explicit, view: 'pick', game: explicitGame, ...(custom ? {} : shareRules) })}` : undefined);
   // The link that replays a result: the page's share link plus the result (a custom list shares `coffees=custom`, its own list deciding the coffee).
-  const resultPath = (r: { game: Game; n: number; c?: number }) =>
-    shareRules || custom ? `/on-deck?${onDeckParams({ show: explicit, view: 'pick', game: r.game, ...(custom ? { coffees: 'custom' } : shareRules), roll: r.n, c: r.c })}` : undefined;
+  const resultPath = (game: Game, link: SharedLink) =>
+    shareRules || custom ? `/on-deck?${onDeckParams({ show: explicit, view: 'pick', game, ...(custom ? { coffees: 'custom' } : shareRules), ...link })}` : undefined;
   let loaded = $state(false);
   let filter = $derived(explicit ?? 'all');
   let current = $derived(data[filter]);
@@ -90,8 +91,7 @@
     explicitProfile = parseProfile(currentParams(page.url));
     explicitDefaults = parseDefaultRules(currentParams(page.url));
     explicitCode = parseRulesCode(currentParams(page.url));
-    explicitRoll = parseRoll(currentParams(page.url));
-    explicitC = parseCoffeeParam(currentParams(page.url));
+    if (type !== 'enter') explicitLink = parseLink(currentParams(page.url)); // not on the first load: the view may already have dropped an unusable link
     loaded = true;
   });
 
@@ -101,7 +101,7 @@
 
   $effect(() => {
     if (!loaded) return;
-    writeUrlParams(onDeckParams({ show: explicit, view: explicitView, game: explicitGame, profile: explicitProfile, rulesCode: explicitCode, defaultRules: explicitDefaults, coffees: custom ? 'custom' : undefined, roll: explicitRoll, c: explicitC }));
+    writeUrlParams(onDeckParams({ show: explicit, view: explicitView, game: explicitGame, profile: explicitProfile, rulesCode: explicitCode, defaultRules: explicitDefaults, coffees: custom ? 'custom' : undefined, ...explicitLink }));
     try {
       if (explicit) localStorage.setItem(STORAGE_KEY, serializeChoice(explicit, Date.now()));
       if (coffeesChoice) localStorage.setItem(COFFEES_KEY, serializeChoice(coffeesChoice, Date.now()));
@@ -261,7 +261,7 @@
   <section class="detail-section">
     <h2>Pick for me</h2>
     {#key custom}
-    <PickForMe pick={data.pick} admin={page.data.isAdmin} {custom} oncustom={setCustom} enter={enterList} shared={!custom && (explicitProfile || explicitCode || explicitDefaults) ? data.pick.shared : null} onunshare={() => { explicitProfile = undefined; explicitCode = undefined; explicitDefaults = false; }} bind:shareRules roll={explicitRoll} rollC={explicitC} onleaveroll={leaveRoll} pathFor={resultPath} game={explicitGame} ongame={(g) => (explicitGame = g)} />
+    <PickForMe pick={data.pick} admin={page.data.isAdmin} {custom} oncustom={setCustom} enter={enterList} shared={!custom && (explicitProfile || explicitCode || explicitDefaults) ? data.pick.shared : null} onunshare={() => { explicitProfile = undefined; explicitCode = undefined; explicitDefaults = false; }} bind:shareRules link={explicitLink} onleaveroll={leaveRoll} pathFor={resultPath} game={explicitGame} ongame={(g) => (explicitGame = g)} />
     {/key}
   </section>
 {/if}
