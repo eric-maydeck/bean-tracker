@@ -15,15 +15,19 @@ const SIZE = ['S', 'M', 'L'];
 const rank = (s: string) => (ORDER.includes(s) ? ORDER.indexOf(s) : ORDER.length); // Backlog after the active ones
 const num = (id: string) => (id.startsWith('p') ? `p#${id.slice(1)}` : `#${id}`);
 const sizeRank = (s?: string) => (s && SIZE.includes(s) ? SIZE.indexOf(s) : SIZE.length);
-const bySort = (a: Item, b: Item) =>
-  rank(a.status) - rank(b.status) || (b.want ?? 0) - (a.want ?? 0) || sizeRank(a.size) - sizeRank(b.size);
+// `all` = the project's Queue view (Want desc, Size asc, Status ignored; ties keep project order since sort is stable).
+// ponytail: mirrors the view's sort by hand; if the view's sort changes, change byView too.
+const byView = (a: Item, b: Item) => (b.want ?? 0) - (a.want ?? 0) || sizeRank(a.size) - sizeRank(b.size);
+const bySort = (a: Item, b: Item) => rank(a.status) - rank(b.status) || byView(a, b);
 
 const line = (i: Item, indent = '') =>
   [indent + (i.type === 'epic' ? 'epic ' : '') + num(i.id), i.size, i.want != null && `W${i.want}`, i.title, `[${i.status}]`]
     .filter(Boolean).join('  ');
 
 export function formatItems(items: Item[], mode: 'next' | 'all'): string {
-  const shown = items.filter((i) => (mode === 'next' ? ORDER.includes(i.status) : i.status !== 'Done')).sort(bySort);
+  const shown = mode === 'next'
+    ? items.filter((i) => ORDER.includes(i.status)).sort(bySort)
+    : items.filter((i) => i.status !== 'Done').sort(byView);
   const ids = new Set(shown.map((i) => i.id));
   const kids = (id: string) => shown.filter((i) => i.parent === id);
   const out: string[] = [];
