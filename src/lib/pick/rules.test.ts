@@ -8,6 +8,11 @@ describe('pick rules', () => {
     expect(DEFAULT_RULES.categories).toEqual(['open', 'backlog']);
     expect(DEFAULT_RULES.categoryOrder).toEqual(['open', 'backlog', 'frozen', 'decaf']);
   });
+  it('groupBags: on by default and for rules saved before it; off is kept', () => {
+    expect(DEFAULT_RULES.groupBags).toBe(true);
+    expect(parseRules({ fill: 'wrap' }).groupBags).toBe(true);
+    expect(parseRules({ groupBags: false }).groupBags).toBe(false);
+  });
   it('falls back per field', () => {
     const r = parseRules({ fill: 'bogus', repeats: true });
     expect(r.repeats).toBe(true);

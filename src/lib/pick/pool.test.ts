@@ -170,4 +170,35 @@ describe('bags of one coffee', () => {
     expect(ids(pool)).toContain(30);
     expect(ids(sittingOut)).toEqual([]);
   });
+  const info = (gramsLeft: number | null, amountG: number | null) => ({ info: { gramsLeft, amountG } as PickCoffee['info'] });
+  const both = R({ categories: ['open', 'backlog'] });
+  it('an open bag stands in over a more urgent backlog bag; with only Backlog checked the backlog bag plays', () => {
+    const cs = [bag(1, { category: 'backlog', urgency: 9 }), bag(2, { urgency: 1 }), mk(3)];
+    expect(ids(buildPool(cs, both, new Set()).pool).sort()).toEqual([2, 3]);
+    expect(ids(buildPool(cs, R({ categories: ['backlog'] }), new Set()).pool)).toEqual([1]);
+  });
+  it('within a category: more urgent, then already started, then fewer grams in the bag', () => {
+    expect(ids(buildPool([bag(1, { urgency: 5, ...info(100, 250) }), bag(2, { urgency: 6, ...info(250, 250) })], both, new Set()).pool)).toEqual([2]);
+    expect(ids(buildPool([bag(1, { urgency: 5, ...info(250, 250) }), bag(2, { urgency: 5, ...info(200, 250) })], both, new Set()).pool)).toEqual([2]);
+    expect(ids(buildPool([bag(1, { category: 'backlog', urgency: 5, ...info(null, 340) }), bag(2, { category: 'backlog', urgency: 5, ...info(null, 250) })], both, new Set()).pool)).toEqual([2]);
+  });
+  it('the stand-in ignores the sort: urgency low first still plays the more urgent bag', () => {
+    expect(ids(buildPool([bag(1, { urgency: 5 }), bag(2, { urgency: 9 })], R({ sort: 'urgency-asc' }), new Set()).pool)).toEqual([2]);
+  });
+  describe('grouping off', () => {
+    const sep = (o: Partial<PickRules> = {}) => R({ groupBags: false, ...o });
+    it('each bag is its own entry', () => {
+      expect(ids(buildPool([bag(1, { urgency: 5 }), bag(2, { urgency: 9 }), mk(3)], sep(), new Set()).pool)).toEqual([2, 1, 3]);
+    });
+    it('out for today, exclusions and crits apply to that bag only', () => {
+      const cs = [bag(1, { urgency: 5 }), bag(2, { urgency: 9 }), mk(3)];
+      expect(ids(buildPool(cs, sep(), new Set([2])).pool)).toEqual([1, 3]);
+      expect(ids(buildPool(cs, sep({ over20: 'byHand', excluded: [1] }), new Set()).pool)).toEqual([2, 3]);
+      const r = sep({ critSuccessMode: 'specific', critSuccess: [1], critFailOn: false });
+      const res = resolveCrits(cs, r, new Set());
+      expect(ids(res.success)).toEqual([1]);
+      expect(ids(res.pool)).toEqual([2, 3]);
+      expect(ids(critPool(cs, [2, 1], new Set(), { groupBags: false }))).toEqual([2, 1]);
+    });
+  });
 });
