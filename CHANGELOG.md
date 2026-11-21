@@ -1,3 +1,29 @@
+# [2.5.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.4.2...v2.5.0) (2026-11-21)
+
+
+### Bug Fixes
+
+* pick-for-me custom result uses the regular card frame with a name tile ([6aef4d4](https://github.com/eric-maydeck/bean-tracker/commit/6aef4d4523129fb48e89201cb60a1c59b7c5ede2))
+* pick-for-me custom toggle keeps readable text on hover ([5e09e94](https://github.com/eric-maydeck/bean-tracker/commit/5e09e94c1875b26dce486503971e154fe7629068))
+* toasts render above an open modal dialog and stay clickable ([8635492](https://github.com/eric-maydeck/bean-tracker/commit/86354921e966072cd7a287a4be9f75c903b3612d))
+* undoing a recipe rename on its own page goes back to the old slug ([bec4f2e](https://github.com/eric-maydeck/bean-tracker/commit/bec4f2ea784c8b05b377aee4f81e7089f5895a17))
+
+
+### Features
+
+* backlog.ts all follows the project queue view order (want, then size) ([1f89439](https://github.com/eric-maydeck/bean-tracker/commit/1f89439a6cff5f72aaa54bfe4d644a2c5161daeb))
+* bq bean link, dismiss and create from bean toast, with undo where it fits ([65db492](https://github.com/eric-maydeck/bean-tracker/commit/65db4923e481b0dbb7dc1e29f1659ae3eea7ccb4))
+* gear save toasts with undo ([82f7b0d](https://github.com/eric-maydeck/bean-tracker/commit/82f7b0dc90566e6441137cc586408297e9edfec5))
+* pick-for-me custom coffee lists with a pop-up editor, simple result card and own rules ([de9392a](https://github.com/eric-maydeck/bean-tracker/commit/de9392afa9d4c5dee092661b00d6db3d2baf2f7c))
+* pick-for-me custom list logic, coffees=custom url param and custom storage ([609f4a0](https://github.com/eric-maydeck/bean-tracker/commit/609f4a06cf9ce62b4cf4a7e4c2acde8cd095d28b))
+* pick-for-me custom mode defaults crits off for lists under 5 coffees ([6c80966](https://github.com/eric-maydeck/bean-tracker/commit/6c809664311e69b12e3f2cb01bb704bb81556ec4))
+* pick-for-me custom result card shows its d20 numbers and today's out count ([197b7a8](https://github.com/eric-maydeck/bean-tracker/commit/197b7a8050d3462592554ed811b927f83e64c0d0))
+* pick-for-me rules option to group or separate bags of one coffee, open bag stands in first ([41802fc](https://github.com/eric-maydeck/bean-tracker/commit/41802fc8438144fb1c46593b38a0fdf255513a16))
+* recipe save, delete, hide and note word toasts with undo ([6e0d3c9](https://github.com/eric-maydeck/bean-tracker/commit/6e0d3c9f137d507c1aab48dc2183fc1dfb4c9561))
+* subscription add and save toasts, undo for add and pause toggles ([605c3fc](https://github.com/eric-maydeck/bean-tracker/commit/605c3fcf627df4db21e1f1c6d457fd887076afb7))
+* subscription save toast says paused, resumed or which fields changed ([239ca3d](https://github.com/eric-maydeck/bean-tracker/commit/239ca3d41ea302bb4d9095586b7c99e291f9d321))
+* unlinking a bq bean toasts with undo ([f87cc24](https://github.com/eric-maydeck/bean-tracker/commit/f87cc242c5b12a3e9062dcaeeac8d2800d41dd5f))
+
 ## [2.4.2](https://github.com/eric-maydeck/bean-tracker/compare/v2.4.1...v2.4.2) (2026-11-21)
 
 
