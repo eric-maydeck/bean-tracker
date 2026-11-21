@@ -7,6 +7,7 @@
   import Icon from '#lib/components/Icon.svelte';
   import BeanTriage from './BeanTriage.svelte';
   import { showToast } from '#lib/toast.svelte.ts';
+  import { postAction } from '#lib/postAction.ts';
   import { page } from '$app/state';
   import { DATE_FORMAT_LABEL, type DateFormat } from '#lib/localDate.ts';
   import { parseAccount } from '#lib/accountUrl.ts';
@@ -20,14 +21,7 @@
       await update({ navigate: false });
       if (result.type !== 'success') return;
       showToast(say(v), {
-        undo: async () => {
-          const body = new FormData();
-          body.set('value', v);
-          const res = await fetch(`?/${reverse}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
-          const out = (await res.json().catch(() => null)) as { type?: string } | null;
-          if (out?.type !== 'success') throw new Error('Could not undo that.');
-          await refreshTracked();
-        }
+        undo: () => postAction(`?/${reverse}`, { value: v })
       });
     };
   };
