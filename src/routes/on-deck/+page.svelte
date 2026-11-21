@@ -80,7 +80,8 @@
       // ignore — localStorage may be unavailable (private browsing, etc.)
       explicit = fromUrl;
     }
-    const sharedLink = parseProfile(currentParams(page.url)) || parseRulesCode(currentParams(page.url)) || parseDefaultRules(currentParams(page.url));
+    // a shared result's coffee (`c`) is a site coffee: the visitor's remembered custom list never takes over that link
+    const sharedLink = parseProfile(currentParams(page.url)) || parseRulesCode(currentParams(page.url)) || parseDefaultRules(currentParams(page.url)) || parseCoffeeParam(currentParams(page.url)) !== undefined;
     try {
       coffeesChoice = sharedLink ? undefined : (parseCoffees(currentParams(page.url)) ?? loadChoice(localStorage.getItem(COFFEES_KEY), COFFEES_VALUES, Date.now()));
     } catch {
