@@ -206,7 +206,7 @@
   const resultCoffee = $derived(result ? (byId.get(result.coffeeId) ?? (viewing ? viewCoffee : null) ?? undefined) : undefined);
   const inList = $derived(!!result && byId.has(result.coffeeId)); // a shared name off the visitor's list has no place in it, no numbers of its own and no out count
   // custom mode: the card's sub line (where the result sits in the visitor's list)
-  const listPlace = $derived(custom ? (inList ? `Your list · #${coffees.findIndex((c) => c.id === result?.coffeeId) + 1} of ${coffees.length}` : 'Shared coffee') : undefined);
+  const listPlace = $derived(custom ? (inList ? `Your list · #${coffees.findIndex((c) => c.id === result?.coffeeId) + 1} of ${coffees.length}` : 'Coffee shared by another user') : undefined);
   // The link that replays the result: the coffee (a site one by id, a custom one by name), as a crit when it was one, and a d20's face.
   const sharePath = $derived(result && resultCoffee ? pathFor(game, linkFor(game, result, custom, resultCoffee.name)) : undefined);
   const leaveRoll = () => { viewing = null; viewCoffee = null; if (link) onleaveroll(); };
@@ -279,7 +279,7 @@
   }
   function land(r: PickResult) {
     busy = false;
-    if (replaying) { replaying = null; viewing = r; } else today.result = r;
+    if (replaying) { replaying = null; replayN = undefined; viewing = r; } else today.result = r;
     shown = false;
     landing = true;
     clearTimeout(showTimer);
@@ -339,8 +339,8 @@
       if (!hit) return onleaveroll();
       if (custom && name && !byId.has(hit.result.coffeeId)) viewCoffee = customCoffees([name])[0];
       replaying = hit.result;
-      if (game === 'd20' && !empty) replayN = roll;
-      else if (game === 'd20' || hit.slice === null) land(hit.result); // nothing to throw (no list), or not on this wheel: no spin, straight to the result
+      if (game === 'd20') replayN = roll; // the die throws even with nothing on this board (a custom link opened without the list)
+      else if (hit.slice === null) land(hit.result); // not on this wheel: no spin, straight to the result
       else { busy = true; wheel!.spinTo(slices[hit.slice]); }
     });
   });
@@ -472,7 +472,7 @@
           <PickWheel bind:this={wheel} {slices} {names} angle={today.wheelAngle} disabled={empty} onspin={spin} onresult={wheelResult} />
         </div>
       {:else}
-        <PickD20 pose={today.d20Pose} replay={replayN} disabled={empty} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
+        <PickD20 pose={today.d20Pose} replay={replayN} disabled={empty && !replayN} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
       {/if}
       {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
       {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
@@ -575,7 +575,6 @@
   .pick-modal.horizontal :global(.pick-card.wide:not(.noimg)) { height: auto; }
   .pick-modal.horizontal :global(.pick-card.wide .card-thumb) { aspect-ratio: auto; height: 100%; min-height: calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px); } /* never under square */
   .rolled { position: relative; margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
-  @media (max-width: 640px) { .rolled { font-size: 0.85rem; letter-spacing: 0.05em; } .banner-share :global(.share-button) { padding-inline: 0.4rem; } } /* the label keeps clear of Share in the narrow pop-up */
   .rolled b { display: block; font-size: 3.5rem; line-height: 1; letter-spacing: 0; color: var(--color-accent); }
   /* a crit: a dark panel (the same dark in both themes, like the D20 tray, so the colours keep their contrast) with its glow; a normal roll stays plain */
   .crit-word { display: block; margin-top: var(--space-1); font-size: 0.85rem; }
@@ -588,6 +587,7 @@
   .rolled.success::after { bottom: 12%; right: 18%; font-size: 0.8rem; animation-delay: 0.8s; }
   .rolled.fail { color: #f3b4b4; background: radial-gradient(ellipse 70% 80% at 50% 62%, rgba(208, 28, 28, 0.5), transparent 70%), #150303; box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.85), 0 0 18px rgba(122, 10, 10, 0.6); animation: shake 0.5s 1; }
   .rolled.fail b { color: #ff5a4a; text-shadow: 0 0 14px rgba(208, 28, 28, 0.9); animation: ember 3s ease-in-out infinite; }
+  @media (max-width: 640px) { .rolled, .rolled.success, .rolled.fail { padding-right: 5.25rem; } .banner-share :global(.share-button) { padding-inline: 0.4rem; } } /* the narrow pop-up: the full-size label sits left of Share rather than shrinking */
   @keyframes shimmer { to { background-position: -160% 0; } }
   @keyframes twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.15); } }
   @keyframes ember { 50% { text-shadow: 0 0 26px rgba(208, 28, 28, 1); opacity: 0.82; } }

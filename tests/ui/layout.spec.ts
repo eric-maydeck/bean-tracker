@@ -6786,7 +6786,7 @@ export const STATES: State[] = [
         await expect(modal).toBeVisible({ timeout: 15_000 });
         await expect(modal.locator('.pick-card .name')).toHaveText('Blue Bottle');
         await expect(modal.locator('.rolled.success .banner-share').getByRole('button', { name: 'Share', exact: true })).toBeVisible();
-        await expect(modal.getByText('Shared coffee')).toBeVisible();
+        await expect(modal.getByText('Coffee shared by another user')).toBeVisible();
       }
     }
   },
