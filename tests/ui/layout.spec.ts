@@ -6319,6 +6319,14 @@ export const STATES: State[] = [
         await dismissPickOverlay(page);
       }
       await checkLayout(page); // D20, the board and the inline card on screen: no sideways scroll
+      // #138: a board coffee opens its page; Back returns to the same board and URL
+      const before = { url: page.url(), rows: await page.locator('table.board tbody tr').allTextContents() };
+      await page.locator('table.board td.name a').first().click();
+      await expect(page).toHaveURL(/\/coffees\/[^/?]+$/);
+      await page.goBack();
+      await expect(page).toHaveURL(before.url);
+      await expect(page.locator('table.board tbody tr')).toHaveCount(20); // (the rolled result is not checked: /api/pick is stubbed here, so today's state is never saved)
+      expect(await page.locator('table.board tbody tr').allTextContents(), 'the same board after Back').toEqual(before.rows);
       await page.getByRole('button', { name: 'Wheel', exact: true }).click();
       await expect(page).toHaveURL(/game=wheel/); // the wheel has its own URL (#136)
     }
@@ -6687,6 +6695,7 @@ export const STATES: State[] = [
       const show = page.getByRole('button', { name: 'Show', exact: true });
       await expect(show).toBeEnabled({ timeout: 20000 });
       await expect(page.locator('table.board').first().locator('th')).toHaveText(['#', 'Coffee']);
+      await expect(page.locator('table.board a'), 'custom coffees have no page to link (#138)').toHaveCount(0);
       await page.getByLabel('Number someone rolled').fill('2');
       await show.click();
       await expect(page.locator('tr.rolled td.n')).toHaveText('2');

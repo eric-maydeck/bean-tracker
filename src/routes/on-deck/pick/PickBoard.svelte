@@ -19,7 +19,7 @@
         {#each half as s (s.n)}
           <tr class={s.kind} class:rolled={rolled === s.n} aria-label={`${s.n}: ${label(s)}`}>
             <td class="n">{s.n}</td>
-            <td class="name"><div class="cell">{#if s.kind === 'success'}<span class="badge badge-warm">Crit success</span>{:else if s.kind === 'fail'}<span class="badge badge-urgent">Crit fail</span>{/if}<span class="txt" use:truncTip>{label(s)}</span></div></td>
+            <td class="name"><div class="cell">{#if s.kind === 'success'}<span class="badge badge-warm">Crit success</span>{:else if s.kind === 'fail'}<span class="badge badge-urgent">Crit fail</span>{/if}<span class="txt" use:truncTip>{#if custom || s.kind === 'crossed'}{label(s)}{:else}{#each coffeeOf(s) as c, i (c.id)}{#if i}, {/if}<a href={`/coffees/${c.slug}`}>{c.name}</a>{/each}{/if}</span></div></td>
             {#if !custom}<td class="roaster"><span class="txt" use:truncTip>{join(coffeeOf(s), (c) => c.roaster)}</span></td>{/if}
           </tr>
         {/each}
@@ -55,5 +55,7 @@
   tr.success { background: #3b2d0c !important; color: #ffe08a; }
   tr.fail { background: #1a0000 !important; color: #f3b4b4; }
   tr.crossed { color: var(--color-text-muted); text-decoration: line-through; opacity: 0.7; }
+  /* each coffee links to its page (#138; a custom coffee has none); on a crit or rolled row's own colours it takes the row's text colour */
+  tr.success a, tr.fail a, tr.rolled a { color: inherit; }
   tr.rolled { background: #f6eee2 !important; color: #2b211b; box-shadow: inset 0 0 0 2px #e6a862, 0 0 10px rgba(230, 168, 98, 0.6); }
 </style>
