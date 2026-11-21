@@ -9,7 +9,8 @@ import {
   importBeanConquerorData,
   getUnmatchedBeanConquerorBeans,
   countUnmatchedBeanConquerorBeans,
-  dismissBeanConquerorBean
+  dismissBeanConquerorBean,
+  undismissBeanConquerorBean
 } from '#lib/server/beanconqueror.ts';
 import { getDistinctFieldValues, getFillHistory } from '#lib/server/coffees.ts';
 import { getRoasterImages } from '#lib/server/roasterImages.ts';
@@ -17,7 +18,7 @@ import { getRoastLevels } from '#lib/server/roastLevels.ts';
 import { getSubscriptionOptions } from '#lib/server/subscriptions.ts';
 import { handleCoffeeCreateAndLink } from '#lib/server/coffeeFormActions.ts';
 import { queueFillMissing } from '#lib/server/imageFills.ts';
-import { linkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '#lib/server/beanConquerorLinks.ts';
+import { linkBeanConquerorBean, unlinkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '#lib/server/beanConquerorLinks.ts';
 import { editBrewList, getBrewDoses, getBrewRatios } from '#lib/server/brewNow/prefs.ts';
 import { linkMarks } from '#lib/server/brewNow/outcome.ts';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '#lib/server/beanConquerorJson.ts';
@@ -111,6 +112,21 @@ export const actions: Actions = {
       return fail(400, { error: 'Missing bean id' });
     }
     dismissBeanConquerorBean(getDb(), id);
+    return { success: true as const };
+  },
+  // Undo of a dismissal.
+  undismissBeanConqueror: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const id = (await request.formData()).get('id');
+    if (typeof id !== 'string' || !id) return fail(400, { error: 'Missing bean id' });
+    undismissBeanConquerorBean(getDb(), id);
+    return { success: true as const };
+  },
+  // Undo of a Link (the coffee page's unlink is slug-keyed).
+  unlinkBeanConqueror: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const coffeeId = Number((await request.formData()).get('coffeeId'));
+    if (!Number.isInteger(coffeeId) || !unlinkBeanConquerorBean(getDb(), coffeeId)) return fail(400, { error: 'Nothing to unlink' });
     return { success: true as const };
   },
   updateHouseholdSize: async ({ request, locals }) => {

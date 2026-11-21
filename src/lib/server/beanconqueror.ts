@@ -570,3 +570,8 @@ export function getUnmatchedBeanConquerorBeans(db: DatabaseSync, limit: number):
 export function dismissBeanConquerorBean(db: DatabaseSync, id: string): void {
   db.prepare(`UPDATE beanconqueror_beans SET dismissed_at = ? WHERE id = ?`).run(new Date().toISOString(), id);
 }
+
+// Undo of a dismissal: back into Not yet tracked.
+export function undismissBeanConquerorBean(db: DatabaseSync, id: string): void {
+  db.prepare(`UPDATE beanconqueror_beans SET dismissed_at = NULL WHERE id = ?`).run(id);
+}

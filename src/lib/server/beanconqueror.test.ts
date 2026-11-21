@@ -4,6 +4,7 @@ import {
   getUnmatchedBeanConquerorBeans,
   countUnmatchedBeanConquerorBeans,
   dismissBeanConquerorBean,
+  undismissBeanConquerorBean,
   fillBlankCoffeeFields
 } from './beanconqueror';
 import { createCoffee, getBacklogCoffees } from './coffees';
@@ -638,5 +639,13 @@ describe('importBeanConquerorData changes', () => {
     importBeanConquerorData(db, { ...E, beans: [bean('b1')], brews: [] });
     const c = importBeanConquerorData(db, { ...E, beans: [bean('b1'), bean('b2')], brews: [] });
     expect(c.untracked).toEqual({ total: 2, added: 1 });
+  });
+  it('undismiss clears dismissed_at so the bean is untracked again', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, { ...E, beans: [bean('b1')], brews: [] });
+    dismissBeanConquerorBean(db, 'b1');
+    expect(countUnmatchedBeanConquerorBeans(db)).toBe(0);
+    undismissBeanConquerorBean(db, 'b1');
+    expect(countUnmatchedBeanConquerorBeans(db)).toBe(1);
   });
 });
