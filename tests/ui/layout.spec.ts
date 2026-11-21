@@ -6692,6 +6692,9 @@ export const STATES: State[] = [
       await expect(page.locator('tr.rolled td.n')).toHaveText('2');
       const card = page.locator('.pick-card');
       await expect(card.locator('.card-thumb.tile')).toBeVisible();
+      // the detail a custom coffee has: its D20 numbers and today's out count
+      await expect(card.getByText(/D20 numbers/)).toBeVisible();
+      await expect(card.getByText(/Out today/)).toBeVisible();
       await dismissPickOverlay(page);
       // the inline card: the same tray-height frame as a site coffee with a photo (tile square, detail beside it where there is room)
       const inline = page.locator('.result .pick-card');

@@ -197,6 +197,15 @@
   // custom mode: the card's sub line (where the result sits in the visitor's list)
   const listPlace = $derived(custom ? `Your list · #${coffees.findIndex((c) => c.id === today.result?.coffeeId) + 1} of ${coffees.length}` : undefined);
   const resultCoffee = $derived(result ? byId.get(result.coffeeId) : undefined);
+  // custom mode: the card's detail, from today's game (a custom coffee has no coffee page data)
+  const customStats = $derived.by(() => {
+    if (!custom || !result) return [];
+    const nums = board.flatMap((s) => (s.kind === 'coffee' && s.coffeeId === result.coffeeId ? [s.n] : []));
+    return [
+      ...(game === 'd20' ? [{ label: 'D20 numbers', text: nums.length ? nums.join(', ') : 'None' }] : []),
+      { label: 'Out today', text: `${today.out.length} of ${coffees.length}` }
+    ];
+  });
   const outRow = $derived(today.out.flatMap((id) => byId.get(id) ?? []));
   // The out-for-today badge's tip: who it is, a detail line as on the /coffees card, and why it is out.
   const outTip = (c: PickCoffee) => ({
@@ -435,7 +444,7 @@
         {#if result && resultCoffee}<h3 class="last">{game === 'd20' ? 'Your last roll' : 'Your last spin'}</h3>{/if}
         <div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
-          <PickCard custom={listPlace} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+          <PickCard custom={listPlace} {customStats} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
             onbrew={brew} ondiscard={doDiscard} onopen={openPage} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
@@ -468,7 +477,7 @@
         {#if game === 'd20' && result.n}
           <p class="rolled {result.via}" aria-live="polite">You rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
         {/if}
-        <PickCard custom={listPlace} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
+        <PickCard custom={listPlace} {customStats} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
           onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} />
       </div>
     </div>

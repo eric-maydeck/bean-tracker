@@ -12,8 +12,9 @@
   // `wide` (the inline card, and the result pop-up where the layout is wide): the coffee page's detail as stats (origin, roast level, producer,
   // region, ...) in place of the plain lines, one fixed gap between rows. `onclose` is set only where the card can be dismissed
   // (the result pop-up).
-  let { custom, coffee, result, out, brewed, busy, wide = false, onbrew, ondiscard, onopen, onclose }: {
+  let { custom, customStats = [], coffee, result, out, brewed, busy, wide = false, onbrew, ondiscard, onopen, onclose }: {
     custom?: string; // a custom coffee (only a name): this sub line in place of the roaster, the name on a tile in the thumbnail's place, no Brew or Open
+    customStats?: { label: string; text: string }[]; // a custom coffee's detail (today's game), in place of the coffee page's
     coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; wide?: boolean;
     onbrew: () => void; ondiscard: () => void; onopen: () => void; onclose?: () => void;
   } = $props();
@@ -25,6 +26,7 @@
   // The coffee page's labels (COFFEE_ORIGIN_LABELS) and stat styles.
   type Stat = { label: string; text?: string; cost?: number; kind?: 'origin' | 'roast' };
   const stats = $derived.by((): Stat[] => {
+    if (custom) return customStats;
     const rest = info?.drinkAfter && info.drinkBefore ? `${formatDate(info.drinkAfter)} – ${formatDate(info.drinkBefore)}` : '';
     const all: (Stat | false | '' | null | undefined)[] = [
       coffee.origin && { label: 'Origin', kind: 'origin' },
@@ -102,6 +104,7 @@
   {:else}
     {@render head()}
     {#if coffee.processing}<p class="text-muted">{coffee.processing}</p>{/if}
+    {#if custom}{#each customStats as s (s.label)}<p class="text-muted">{s.label}: {s.text}</p>{/each}{/if}
     {#if info}
       <p class="text-muted">
         {#if info.costPerGram != null}<Usd n={info.costPerGram} suffix="/g" />{:else}Cost unknown{/if}
