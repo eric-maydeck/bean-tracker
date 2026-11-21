@@ -286,6 +286,22 @@ test('trophy card: unreadable text in a number field blocks Save and saves nothi
   expect(posts).toHaveLength(0);
 });
 
+// The save toast must sit above the open modal dialog and take clicks (the modal makes the rest of the page inert).
+test('trophy card: the save toast shows over the open dialog and its Undo works', { tag: '@stats' }, async ({ page }) => {
+  await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
+  const dlg = page.locator('dialog.trophy-dialog');
+  await dlg.getByRole('button', { name: 'Edit' }).click();
+  const burr = dlg.getByLabel('Burr size (mm)');
+  const was = await burr.inputValue();
+  await burr.fill(was === '71' ? '72' : '71');
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  const toast = page.getByRole('status').filter({ hasText: 'Grinder "ZP6 Special" saved.' });
+  await expect(toast).toBeVisible();
+  await expect(dlg).toBeVisible();
+  await toast.getByRole('button', { name: 'Undo' }).click({ timeout: 3000 });
+  await expect(page.getByRole('status').filter({ hasText: 'Undone.' })).toBeVisible();
+});
+
 // Favorite grind's other-bag link: a twin of El Dorado (same roaster + name) with a
 // 9.8 on the ZP6, added here and removed after (the seed has no same-name pair). The tip is sticky (ui-rules 54).
 test.describe('favorite grind: other bag', () => {
