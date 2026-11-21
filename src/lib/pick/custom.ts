@@ -1,3 +1,4 @@
+import { DEFAULT_RULES } from './rules';
 import type { PickCoffee, PickRules } from './types';
 
 export const MAX_COFFEES = 100;
@@ -29,3 +30,6 @@ export const customCoffees = (names: string[]): PickCoffee[] =>
 
 /** Custom coffees have no categories or decaf: every one counts, and "by category" is just the list order. */
 export const customRules = (r: PickRules): PickRules => ({ ...r, categories: ['open', 'backlog', 'frozen'], includeDecaf: true, includeFrozenDecaf: true, sort: r.sort === 'category' ? 'urgency-desc' : r.sort });
+
+/** Custom mode's defaults: spot crits only with 5 or more coffees (on a shorter list they would take most of it out of regular play). */
+export const customDefaults = (n: number): PickRules => ({ ...DEFAULT_RULES, critSuccessOn: n >= 5, critFailOn: n >= 5 });

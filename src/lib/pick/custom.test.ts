@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resolveCrits } from './pool';
-import { customCoffees, customId, customRules, tidyList } from './custom';
+import { customCoffees, customDefaults, customId, customRules, tidyList } from './custom';
 import { DEFAULT_RULES } from './rules';
 
 describe('tidyList', () => {
@@ -45,5 +45,13 @@ describe('the custom pool', () => {
   it('reverse list order for urgency-asc', () => {
     const r = resolveCrits(coffees, customRules({ ...DEFAULT_RULES, sort: 'urgency-asc', critFailOn: false, critSuccessOn: false }), new Set());
     expect(r.pool.map((c) => c.name)).toEqual(['fourth', 'third', 'second', 'first']);
+  });
+});
+
+describe('customDefaults', () => {
+  it('spot crits on with 5 or more coffees, off below', () => {
+    expect(customDefaults(5)).toEqual(DEFAULT_RULES);
+    expect(customDefaults(4)).toEqual({ ...DEFAULT_RULES, critSuccessOn: false, critFailOn: false });
+    expect(customDefaults(0).critFailOn).toBe(false);
   });
 });

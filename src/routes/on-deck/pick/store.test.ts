@@ -59,7 +59,7 @@ describe('pick store', () => {
     saveCustomRules({ ...DEFAULT_RULES, sort: 'name' });
     saveCustomToday({ ...freshToday('2026-11-19'), out: [-5] });
     expect(loadList()).toEqual(['A', 'B']);
-    expect(loadCustomRules().sort).toBe('name');
+    expect(loadCustomRules()?.sort).toBe('name');
     expect(loadCustomToday('2026-11-19').out).toEqual([-5]);
     expect(loadCustomToday('2026-11-20').out).toEqual([]);
     expect([...mem.keys()].sort()).toEqual(['pick.custom.list', 'pick.custom.rules', 'pick.custom.today']);
@@ -69,7 +69,7 @@ describe('pick store', () => {
   it('corrupt or blocked custom values fall back to defaults', () => {
     vi.stubGlobal('localStorage', { getItem: () => '{nope', setItem: () => {} });
     expect(loadList()).toEqual([]);
-    expect(loadCustomRules()).toEqual(DEFAULT_RULES);
+    expect(loadCustomRules()).toBeNull(); // unreadable = never set: the size-based defaults apply
     expect(loadCustomToday('2026-11-19')).toEqual(freshToday('2026-11-19'));
     vi.stubGlobal('localStorage', { getItem: () => '{"a":1}', setItem: () => { throw new Error('x'); } });
     expect(loadList()).toEqual([]);

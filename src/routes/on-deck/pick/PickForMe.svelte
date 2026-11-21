@@ -8,7 +8,7 @@
   import { boardMatches, fillBoard } from '#lib/pick/board.ts';
   import { DEFAULT_RULES, rulesDiffer } from '#lib/pick/rules.ts';
   import { cleanName, restoreSelected, type Profiles } from '#lib/pick/profiles.ts';
-  import { customCoffees, customRules } from '#lib/pick/custom.ts';
+  import { customCoffees, customDefaults, customRules } from '#lib/pick/custom.ts';
   import { discard, freshToday, markBrewed, resetDay } from '#lib/pick/today.ts';
   import { sliceAt, wheelSlices } from '#lib/pick/wheel.ts';
   import type { Game, PickCoffee, PickResult, PickRules, PickToday, Slot, WheelSlice } from '#lib/pick/types.ts';
@@ -97,9 +97,9 @@
   onMount(() => {
     if (custom) {
       // nothing here reads or writes the site's keys or /api/pick
-      rules = loadCustomRules();
-      today = loadCustomToday(pick.today);
       list = loadList();
+      rules = loadCustomRules() ?? customDefaults(list.length);
+      today = loadCustomToday(pick.today);
       if (enter && list.length === 0) listOpen = true;
       ready = true;
     } else if (!admin) {
@@ -319,6 +319,7 @@
   function saveNames(names: string[], cut: boolean) {
     list = names;
     saveList(names);
+    if (!loadCustomRules()) rules = customDefaults(names.length); // rules never set: the defaults follow the list's size
     showToast(`Saved ${names.length} ${names.length === 1 ? 'coffee' : 'coffees'}.${cut ? ' (first 100 kept)' : ''}`);
   }
 
@@ -388,7 +389,7 @@
     selBefore = selected;
     selected = '';
     leaving = true;
-    edit(DEFAULT_RULES);
+    edit(custom ? customDefaults(coffees.length) : DEFAULT_RULES);
   }
   const saveProfile = () => selected ? storeProfiles({ ...profiles, [selected]: $state.snapshot(rules) }, `Saved "${selected}".`) : Promise.resolve(false);
   function saveProfileAs(raw: string): Promise<boolean> {

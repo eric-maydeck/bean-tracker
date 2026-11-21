@@ -84,7 +84,8 @@ export async function saveSelected(admin: boolean, name: string): Promise<void> 
 }
 
 // Custom coffees (#137): everything lives in this browser for everyone (admin too); the site keys and /api/pick are never touched.
-export const loadCustomRules = (): PickRules => parseRules(read('pick.custom.rules'));
+/** null: never set, so custom mode follows `customDefaults` for the list's size. */
+export const loadCustomRules = (): PickRules | null => { const r = read('pick.custom.rules'); return r === null ? null : parseRules(r); };
 export const saveCustomRules = (r: PickRules): void => write('pick.custom.rules', r);
 export function loadCustomToday(date: string): PickToday {
   try {
