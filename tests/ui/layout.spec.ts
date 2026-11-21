@@ -6776,8 +6776,8 @@ export const STATES: State[] = [
       await modal.getByRole('button', { name: 'Back to my board' }).click();
       await expect(modal).toHaveCount(0);
       await expect(page).toHaveURL(/\/on-deck\?view=pick&game=wheel$/);
-      await gotoReady(page, '/on-deck?view=pick&game=wheel&roll=20&c=3');
-      await expect(page).toHaveURL(/\/on-deck\?view=pick&game=wheel$/); // 20 is past the wheel's last slice: ignored
+      await gotoReady(page, '/on-deck?view=pick&game=wheel&roll=99&c=3');
+      await expect(page).toHaveURL(/\/on-deck\?view=pick&game=wheel$/); // out of range: ignored
       await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
     }
   },

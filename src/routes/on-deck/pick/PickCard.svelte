@@ -24,8 +24,6 @@
 
   const locked = $derived(busy || out);
   const info = $derived(coffee.info);
-  // 4 buttons: 2 columns (4 where the card is wide); 5 or more: the usual 3 and a second row
-  const buttonCount = $derived((onback ? 0 : custom ? 1 : 2) + (custom ? 0 : 1) + (sharePath ? 1 : 0) + (onback ? 1 : 0) + (onclose ? 1 : 0));
 
   // Most useful first; only what has a value; the first 10 (5 rows of 2) fit the card with the head, the tasting notes line and one fixed gap between all of them.
   // The coffee page's labels (COFFEE_ORIGIN_LABELS) and stat styles.
@@ -128,13 +126,17 @@
     {@render badges()}
   {/if}
   </div>
-  <div class="buttons" class:four={buttonCount === 4 || (!!onclose && buttonCount < 4)}>
-    {#if !custom && !onback}<button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>{/if}
-    {#if !onback}<button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>{/if}
+  <!-- A shared result: Back to my board (two columns wide) where Brew and Discard sit. Share: a row of its own under the buttons, always there
+       (disabled with no link, e.g. a wheel result put out for today) so the card keeps its height. -->
+  <div class="buttons" class:four={!!onclose}>
+    {#if onback}<button type="button" class="button button-secondary back" disabled={busy} onclick={onback}>Back to my board</button>
+    {:else}
+      {#if !custom}<button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>{/if}
+      <button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>
+    {/if}
     {#if !custom}<button type="button" class="button button-secondary" disabled={busy} onclick={onopen}>Open coffee</button>{/if}
-    {#if sharePath}<ShareButton path={sharePath} />{/if}
-    {#if onback}<button type="button" class="button button-secondary" disabled={busy} onclick={onback}>Back to my board</button>{/if}
     {#if onclose}<button type="button" class="button button-secondary" data-close disabled={busy} onclick={onclose}>Close</button>{/if}
+    <ShareButton path={sharePath} disabled={!sharePath} />
   </div>
   </div>
 </article>
@@ -164,6 +166,8 @@
   /* same size, close together, one aligned row at the card's foot */
   .buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); margin-top: auto; }
   .buttons.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .buttons .back { grid-column: span 2; }
+  .buttons :global(.share-button) { grid-column: 1 / -1; }
   .buttons :global(.button) { margin: 0; padding: 0.35rem 0.25rem; min-height: 36px; font-size: 0.85rem; justify-content: center; white-space: nowrap; }
   @media (max-width: 640px) { .buttons :global(.button) { min-height: 44px; } }
   /* The inline card on a desktop: as tall as the D20 tray (--pick-h), the thumbnail a square of that height (the same padding all round)
