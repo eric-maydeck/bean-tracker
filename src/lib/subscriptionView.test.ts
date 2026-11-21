@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effectivePaused, deleteButtonLabel, totalGramsText, pauseButtonLabel, pendingLabel, pendingParts, parseSubscriptionUrl, siteOrigin, subscriptionTotals, togglePauseStage, stagedPause, urlWarning, fillValues, variantValues, variantChipLabel } from './subscriptionView';
+import { effectivePaused, deleteButtonLabel, totalGramsText, pauseButtonLabel, pendingLabel, pendingParts, parseSubscriptionUrl, siteOrigin, subscriptionTotals, togglePauseStage, stagedPause, saveToast, urlWarning, fillValues, variantValues, variantChipLabel } from './subscriptionView';
 import type { PendingChange } from './pendingChanges';
 
 describe('parseSubscriptionUrl', () => {
@@ -76,6 +76,32 @@ describe('togglePauseStage / stagedPause', () => {
   it('stagedPause is null with nothing staged', () => {
     expect(stagedPause(undefined)).toBeNull();
     expect(stagedPause({ fields: { roaster_service: 'X' } })).toBeNull();
+  });
+});
+
+describe('saveToast', () => {
+  const name = (id: number) => `S${id}`;
+  it('names one subscription and offers Undo for a pause toggle', () => {
+    expect(saveToast([{ id: 1, fields: { paused: '1' } }], name)).toEqual({ text: 'Subscription "S1" paused.', undo: [{ id: 1, fields: { paused: '0' } }] });
+  });
+  it('counts a batch of toggles and reverses each', () => {
+    const t = saveToast([{ id: 1, fields: { paused: '1' } }, { id: 2, fields: { paused: '0' } }], name);
+    expect(t.text).toBe('2 subscriptions updated.');
+    expect(saveToast([{ id: 1, fields: { paused: '0' } }], name).text).toBe('Subscription "S1" resumed.');
+    expect(saveToast([{ id: 1, fields: { paused: '1' } }, { id: 2, fields: { paused: '1' } }, { id: 3, fields: { paused: '1' } }], name).text).toBe('3 subscriptions paused.');
+    expect(t.undo).toEqual([{ id: 1, fields: { paused: '0' } }, { id: 2, fields: { paused: '1' } }]);
+  });
+  it('names the edited fields against the saved row', () => {
+    const was = () => ({ price: 24, bag_count: 2, roaster_service: 'R' });
+    const t = saveToast([{ id: 1, fields: { price: '25.00', bag_count: '2', roaster_service: 'R', renewal_day: '5' } }], name, was);
+    expect(t.text).toBe('Subscription "S1" updated: price, renewal day.');
+    expect(saveToast([{ id: 1, fields: { price: '24.00' } }], name, was).text).toBe('Subscription "S1" saved.');
+  });
+  it('gives no Undo for edits, mixed batches or deletes', () => {
+    expect(saveToast([{ id: 1, fields: { price: '5' } }], name).undo).toBeNull();
+    expect(saveToast([{ id: 1, fields: { paused: '1', price: '5' } }], name).undo).toBeNull();
+    expect(saveToast([{ id: 1, fields: { paused: '1' } }, { id: 2, statusAction: 'delete' }], name).undo).toBeNull();
+    expect(saveToast([{ id: 2, statusAction: 'delete' }], name).text).toBe('Subscription "S2" deleted.');
   });
 });
 

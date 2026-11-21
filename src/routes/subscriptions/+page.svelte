@@ -4,6 +4,7 @@
   import TextTip from '#lib/components/TextTip.svelte';
   import { usd, wholeUsd } from '#lib/money.ts';
   import { enhance } from '$app/forms';
+  import { showToast } from '#lib/toast.svelte.ts';
   import { browser } from '$app/env';
   import { page } from '$app/state';
   import { beforeNavigate, afterNavigate } from '$app/navigation';
@@ -14,7 +15,7 @@
   import ShareButton from '#lib/components/ShareButton.svelte';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '#lib/pendingChanges.ts';
   import { SvelteMap } from 'svelte/reactivity';
-  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pendingParts, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsText, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '#lib/subscriptionView.ts';
+  import { siteOrigin, subscriptionTotals, togglePauseStage, saveToast, pendingLabel, pendingParts, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsText, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '#lib/subscriptionView.ts';
   import { afterFailedFill } from '#lib/coffeeFormFill.ts';
   import type { SubscriptionRow } from '#lib/types.ts';
   let { data, form } = $props();
@@ -274,6 +275,19 @@
     editMode = false;
     expandedId = null;
     saving = false;
+    const nameOf = (id: number) => changes.find((c) => c.id === id)?.fields?.roaster_service?.trim() || data.subscriptions.find((s: SubscriptionRow) => s.id === id)?.roaster_service || '';
+    const { text, undo } = saveToast(changes, nameOf, (id) => ({ ...data.subscriptions.find((s: SubscriptionRow) => s.id === id) }));
+    await refreshTracked();
+    showToast(text, { undo: undo ? () => postBatch(undo) : undefined });
+  }
+
+  // Posts a batch through validate then commit (the Undo of a pause/resume save and of an add).
+  async function postBatch(changes: object[]) {
+    for (const step of ['validate', 'commit']) {
+      const res = await fetch(`/api/subscriptions/${step}-batch`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ changes }) });
+      const out = (await res.json().catch(() => null)) as { success?: boolean; errors?: unknown[] } | null;
+      if (step === 'validate' ? !out?.errors || out.errors.length : !out?.success) throw new Error('Could not undo that.');
+    }
     await refreshTracked();
   }
 
@@ -746,15 +760,19 @@
     method="POST"
     action="?/create"
     bind:this={addFormEl}
-    use:enhance={() =>
-      async ({ result, update }) => {
+    use:enhance={({ formData }) => {
+      const name = String(formData.get('roaster_service') ?? '').trim();
+      return async ({ result, update }) => {
         await update({ navigate: false });
         if (result.type === 'success') {
+          const id = Number(result.data?.id); // a validation error comes back as success without an id
+          if (id > 0) showToast(`Subscription "${name}" added.`, { undo: () => postBatch([{ id, statusAction: 'delete' }]) });
           addUrl = '';
           addRoaster = '';
           fills.delete('add');
         }
-      }}
+      };
+    }}
   >
     <div class="form-grid">
       <div class="form-field url-field">

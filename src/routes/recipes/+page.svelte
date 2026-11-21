@@ -1,7 +1,9 @@
 <script lang="ts">
   import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
-  import { stay } from '#lib/stay.ts';
+  import { showToast } from '#lib/toast.svelte.ts';
+  import { postAction } from '#lib/postAction.ts';
+  import type { SubmitFunction } from '$app/forms';
   import { page } from '$app/state';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { recipePreview, recipesPreview } from '#lib/linkPreview.ts';
@@ -49,6 +51,14 @@
   let naming = $state<string | null>(null);
   let deleting = $state<number | null>(null);
   let editing = $state<string | null>(null); // 'r<id>' or 's<structure key>'
+  // Hide / Show again: a toast naming the structure, with Undo the opposite action on the same key.
+  const toggling = (action: 'dismiss' | 'undismiss', say: (what: string) => string, what: string): SubmitFunction => ({ formData }) => {
+    const key = String(formData.get('key'));
+    return async ({ result, update }) => {
+      await update({ navigate: false });
+      if (result.type === 'success') showToast(say(what), { undo: () => postAction(`?/${action === 'dismiss' ? 'undismiss' : 'dismiss'}`, { key }) });
+    };
+  };
   const formError = $derived(form && 'error' in form && form.error ? String(form.error) : undefined);
 
   // Words in your notes: edited rows are local until Save (never in the URL).
@@ -155,7 +165,7 @@
             <div class="text-muted">
               {n(h.count, 'brew', 'brews')}{#if h.matchedBy.length} · Now matched by {h.matchedBy.length === 1 ? h.matchedBy[0].name : h.matchedBy.map((m: { name: string; count: number }) => `${m.name} (${m.count})`).join(', ')}{/if}
             </div>
-            <form method="POST" action="?/undismiss" use:enhance={stay} data-button-row class="row-actions">
+            <form method="POST" action="?/undismiss" use:enhance={toggling('undismiss', (w) => `Unhid "${w}".`, h.description)} data-button-row class="row-actions">
               <input type="hidden" name="key" value={h.key} />
               <button class="button button-secondary" type="submit">Show again</button>
             </form>
@@ -201,7 +211,7 @@
               <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} drippers={data.drippers} locked={data.locked} error={formError} focusId={data.focusId} ondone={closeEditor} />
             {/if}
             {#if deleting === r.recipe.id}
-              <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ result, update }) => { deleting = null; const to = recipeFollow(result, data.focusId); if (to) await goto(to, { refreshAll: true }); else await update({ navigate: false }); }} class="panel">
+              <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ result, update }) => { deleting = null; if (result.type === 'success') showToast(`Recipe "${r.recipe.name}" deleted.`); const to = recipeFollow(result, data.focusId); if (to) await goto(to, { refreshAll: true }); else await update({ navigate: false }); }} class="panel">
                 <p>Delete {r.recipe.name}? Its brews stay; they just lose the label.</p>
                 <input type="hidden" name="id" value={r.recipe.id} />
                 <div class="row-actions" data-button-row>
@@ -250,7 +260,7 @@
               <button class="button" type="button" onclick={() => (naming = g.key)}>Name &amp; save</button>
               <a class="button button-secondary" href={brewsHref({ key: g.key })} data-sveltekit-reset="false">See brews</a>
               <button class="button button-secondary" type="button" onclick={() => (editing = 's' + g.key)}>Edit</button>
-              <form method="POST" action="?/dismiss" use:enhance={stay} class="inline">
+              <form method="POST" action="?/dismiss" use:enhance={toggling('dismiss', (w) => `Hid "${w}".`, g.description)} class="inline">
                 <input type="hidden" name="key" value={g.key} />
                 <button class="button button-ghost" type="submit">Not a recipe</button>
               </form>
@@ -263,8 +273,12 @@
                 method="POST"
                 action="?/saveRecipe"
                 class="panel"
-                use:enhance={() => async ({ result, update }) => {
-                  if (result.type === 'success') naming = null;
+                use:enhance={({ formData }) => async ({ result, update }) => {
+                  if (result.type === 'success') {
+                    naming = null;
+                    const id = (result.data as { saved: number }).saved;
+                    showToast(`Recipe "${formData.get('name')}" saved.`, { undo: () => postAction('?/deleteRecipe', { id }) });
+                  }
                   const to = recipeFollow(result, data.focusId);
                   if (to) { await goto(to, { refreshAll: true }); return; }
                   await update({ navigate: false });
@@ -300,7 +314,15 @@
   <section class="chart-panel">
     <h2>Words in your notes</h2>
     <p class="text-muted">A brew whose note contains one of these as a word gets that agitation, unless its recipe sets one.</p>
-    <form method="POST" action="?/saveNoteWords" use:enhance={() => async ({ result, update }) => { await update({ reset: false, navigate: false }); if (result.type === 'success') resetWords(); }} class="panel">
+    <form method="POST" action="?/saveNoteWords" use:enhance={() => {
+      const before = { word: data.noteWords.map((w: { word: string }) => w.word), agitation: data.noteWords.map((w: { agitation: string }) => w.agitation) };
+      return async ({ result, update }) => {
+        await update({ reset: false, navigate: false });
+        if (result.type !== 'success') return;
+        resetWords();
+        showToast('Note words saved.', { undo: () => postAction('?/saveNoteWords', before) });
+      };
+    }} class="panel">
       {#if words.length}
         {#each words as w, i (i)}
           <div class="word-row">

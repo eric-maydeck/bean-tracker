@@ -33,11 +33,11 @@ export const actions: Actions = {
     }
     const url = parseSubscriptionUrl(formData.get('subscription_url') as string | null);
     if ('error' in url) return { error: url.error };
-    createSubscription(getDb(), {
+    const id = createSubscription(getDb(), {
       roaster_service: roasterService,
       ...readSubscriptionFields(formData),
       subscription_url: url.url
     });
-    return { success: true };
+    return { success: true, id };
   }
 };

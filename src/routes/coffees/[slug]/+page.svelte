@@ -11,7 +11,8 @@
   import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '#lib/coffeeToast.ts';
   import { showToast } from '#lib/toast.svelte.ts';
   import { enhance } from '$app/forms';
-  import { stay } from '#lib/stay.ts';
+  import { postAction } from '#lib/postAction.ts';
+  import type { SubmitFunction } from '$app/forms';
   import { goto, beforeNavigate, afterNavigate } from '$app/navigation';
   import { browser } from '$app/env';
   import { urgencyColorStyle } from '#lib/urgencyColor.ts';
@@ -73,6 +74,16 @@
       showToast(e instanceof Error ? e.message : 'Could not undo that.');
     }
   } : undefined);
+
+  // Unlink toasts with Undo: relinks the bean (the link action lives on /account).
+  const unlinking: SubmitFunction = () => {
+    const bean = data.beanConqueror, coffeeId = data.coffee.id;
+    return async ({ result, update }) => {
+      await update({ navigate: false });
+      if (result.type !== 'success' || !bean) return;
+      showToast(`Unlinked BQ bean "${bean.name}".`, { undo: () => postAction('/account?/linkBeanConqueror', { beanId: bean.id, coffeeId }) });
+    };
+  };
 
   // Add and Clone both stay here and show the Open/Close popup.
   function cloneCreated() {
@@ -427,7 +438,7 @@
                 {'Bean Conqueror: '}<CoffeeName name={data.beanConqueror.name} />{` · ${data.beanConqueror.brewCount} ${data.beanConqueror.brewCount === 1 ? 'brew' : 'brews'}`}
               </span>
               {#if data.isAdmin}
-                <form method="POST" action="?/unlinkBeanConqueror" use:enhance={stay}>
+                <form method="POST" action="?/unlinkBeanConqueror" use:enhance={unlinking}>
                   <button class="button button-ghost" type="submit">Unlink</button>
                 </form>
               {/if}

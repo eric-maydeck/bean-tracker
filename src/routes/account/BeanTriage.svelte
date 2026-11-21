@@ -3,7 +3,10 @@
   import { asDateFormat } from '#lib/localDate.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import { enhance } from '$app/forms';
-  import { stay } from '#lib/stay.ts';
+  import { postAction } from '#lib/postAction.ts';
+  import { showToast } from '#lib/toast.svelte.ts';
+  import { commitChanges } from '#lib/coffeeToast.ts';
+  import AddedToast from '#lib/components/AddedToast.svelte';
   import { goto } from '$app/navigation';
   import { refreshTracked } from '#lib/urlState.ts';
   import { UNTRACKED_CAP, accountQuery } from '#lib/accountUrl.ts';
@@ -52,7 +55,23 @@
     };
   }
 
+  // The create action returns the new coffee's id and slug: the same "Coffee added! Open it?" prompt as the coffee pages.
+  let addedSlug = $state<string | null>(null);
+  let addedId = $state<number | null>(null);
+  const undoAdded = $derived(addedId ? async () => {
+    try {
+      await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
+      await refreshTracked();
+      showToast('Undone.');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not undo that.');
+    }
+  } : undefined);
+
   async function closeCreate() {
+    const f = page.form;
+    addedSlug = f && 'slug' in f ? String(f.slug) : null;
+    addedId = f && 'id' in f && typeof f.id === 'number' && f.id > 0 ? f.id : null;
     createBean = null;
     await refreshTracked();
   }
@@ -85,14 +104,19 @@
             class="link-picker"
             method="POST"
             action="?/linkBeanConqueror"
-            use:enhance={() => async ({ result, update }) => {
-              if (result.type === 'failure') {
-                linkError = String(result.data?.error ?? 'Could not link that bean');
-                return;
-              }
-              linkError = null;
-              await update({ navigate: false });
-              if (result.type === 'success') linkingId = null;
+            use:enhance={() => {
+              const coffee = linkable.find((c) => c.id === linkCoffeeId);
+              return async ({ result, update }) => {
+                if (result.type === 'failure') {
+                  linkError = String(result.data?.error ?? 'Could not link that bean');
+                  return;
+                }
+                linkError = null;
+                await update({ navigate: false });
+                if (result.type !== 'success') return;
+                linkingId = null;
+                if (coffee) showToast(`Linked "${bean.name}" to "${coffee.coffee_name}".`, { undo: () => postAction('?/unlinkBeanConqueror', { coffeeId: coffee.id }) });
+              };
             }}
           >
             <input type="hidden" name="beanId" value={bean.id} />
@@ -107,7 +131,10 @@
           <div class="action-buttons candidate-actions">
             <button class="button button-secondary" type="button" onclick={() => (createBean = bean)}>Create</button>
             <button class="button button-secondary" type="button" onclick={() => { linkingId = bean.id; linkCoffeeId = null; linkError = null; }}>Link</button>
-            <form method="POST" action="?/dismissBeanConqueror" use:enhance={stay}>
+            <form method="POST" action="?/dismissBeanConqueror" use:enhance={() => async ({ result, update }) => {
+              await update({ navigate: false });
+              if (result.type === 'success') showToast(`Dismissed "${bean.name}".`, { undo: () => postAction('?/undismissBeanConqueror', { id: bean.id }) });
+            }}>
               <input type="hidden" name="id" value={bean.id} />
               <button class="button button-danger" type="submit">Dismiss</button>
             </form>
@@ -120,6 +147,8 @@
     <p><button class="button button-secondary triage-more" type="button" onclick={toggle}>{showAll ? 'Show fewer' : `Show ${unmatched.beans.length - UNTRACKED_CAP} more`}</button></p>
   {/if}
 {/if}
+
+<AddedToast bind:slug={addedSlug} undo={undoAdded} />
 
 {#if createBean}
   <div class="modal-backdrop">
