@@ -1,5 +1,6 @@
 <script lang="ts">
   import { refreshTracked } from '#lib/urlState.ts';
+  import { showToast } from '#lib/toast.svelte.ts';
   import { CONVERT_KEYS, fieldsFor, isWebUrl } from '#lib/gear.ts';
   import ImageSuggest from '#lib/components/ImageSuggest.svelte';
   import Icon from '#lib/components/Icon.svelte';
@@ -94,11 +95,20 @@
     const badField = fields.find((f) => (document.getElementById(`gear-${f.key}`) as HTMLInputElement | null)?.validity?.badInput);
     if (badField) { error = `${badField.label} must be a number`; return; }
     saving = true; error = '';
-    const res = await fetch('/api/gear', {
+    const post = (v: unknown, image_url: string) => fetch('/api/gear', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: trophy.kind, name: trophy.name, values, image_url: imageUrl })
-    }).catch(() => null);
-    if (res?.ok) { await refreshTracked(); onclose(); return; }
+      body: JSON.stringify({ kind: trophy.kind, name: trophy.name, values: v, image_url })
+    });
+    const res = await post(values, imageUrl).catch(() => null);
+    if (res?.ok) {
+      const [kind, name, was, wasImage] = [trophy.kind, trophy.name, { ...trophy.values }, trophy.imageUrl ?? ''];
+      await refreshTracked(); onclose();
+      // Undo posts the details and photo URL this form opened with.
+      showToast(`${kind[0].toUpperCase() + kind.slice(1)} "${name}" saved.`, {
+        undo: async () => { if (!(await post(was, wasImage)).ok) throw new Error('Could not undo that.'); await refreshTracked(); }
+      });
+      return;
+    }
     error = (await res?.json().catch(() => null))?.error ?? "Couldn't save";
     saving = false;
   }
