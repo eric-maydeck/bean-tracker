@@ -230,6 +230,8 @@
   const canSave = $derived(!!selected && !!profiles[selected] && rulesDiffer(profiles[selected], rules));
   const TAU = Math.PI * 2;
   const critFor = (n: number) => {
+    const shared = replaying ?? viewing; // a shared roll's lens follows the link's crit, not this board's face
+    if (shared?.n === n) return shared.via === 'normal' ? null : shared.via;
     const k = board[n - 1]?.kind;
     return k === 'success' || k === 'fail' ? k : null;
   };
@@ -476,7 +478,7 @@
     <div class="side">
       {#if inlineCard}
         <!-- Share (top right, as in the pop-up): the link that replays this result; disabled with none (a wheel result put out for today) -->
-        {#if result && resultCoffee}<div class="last"><h3>{game === 'd20' ? 'Your last roll' : 'Your last spin'}{#if game === 'd20' && result.n}{' · '}<b class="n">{result.n}</b>{/if}{#if result.via !== 'normal'} <span class="crit-tag {result.via}">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</h3><ShareButton path={sharePath} disabled={!sharePath} /></div>{/if}
+        {#if result && resultCoffee}<div class="last"><h3>{game === 'd20' ? 'Your last roll' : 'Your last spin'}{#if game === 'd20' && result.n}{' · '}<b class="n">{result.n}</b>{/if}{#if result.via !== 'normal'}{' '}<span class="crit-tag {result.via}">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</h3><ShareButton path={sharePath} disabled={!sharePath} /></div>{/if}
         <div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
           <PickCard custom={listPlace} {customStats} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
@@ -543,8 +545,9 @@
   .game { min-width: 0; max-width: 620px; display: flex; flex-direction: column; }
   .out-row { max-width: 620px; }
   .side { position: relative; display: flex; flex-direction: column; min-width: 0; }
-  .last { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-2); margin: 0 0 var(--space-1); } /* stacked: in the flow above the card; the heading sits at the row's foot, close to the card */
+  .last { display: flex; align-items: last baseline; justify-content: space-between; gap: var(--space-2); margin: 0 0 var(--space-1); } /* stacked: in the flow above the card; the heading sits at the row's foot, close to the card */
   .last h3 { margin: 0; font-size: 1rem; line-height: 1.25; }
+  .last :global(.share-button) { margin-block: -0.25rem; } /* its padding never sets the row's height: the heading stays close to the card */
   .last .n { font-size: 1.25rem; color: var(--color-accent); }
   .crit-tag { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
   .crit-tag.success { color: var(--color-warm); }
