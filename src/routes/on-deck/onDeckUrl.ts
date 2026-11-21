@@ -15,6 +15,19 @@ export const parseGame = (p: URLSearchParams): Game | undefined => pickOne(p, 'g
 /** `coffees=custom`: play with the visitor's own list (kept in their browser, so never in a share link). Bare = the site's coffees. */
 export const parseCoffees = (p: URLSearchParams): 'custom' | undefined => pickOne(p, 'coffees', ['custom']);
 
+/** `roll=<n>`: the result a share link replays, 1-20 (a d20 face, or the wheel's slice number; whether it fits the board is checked where the board is known). */
+export function parseRoll(p: URLSearchParams): number | undefined {
+  const v = p.get('roll')?.trim();
+  const n = v && /^\d+$/.test(v) ? Number(v) : 0;
+  return n >= 1 && n <= 20 ? n : undefined;
+}
+/** `c=<coffee id>`: the coffee a shared crit result was (positive integer). Only meaningful with `roll`. */
+export function parseCoffeeParam(p: URLSearchParams): number | undefined {
+  const v = p.get('c')?.trim();
+  const n = v && /^\d+$/.test(v) ? Number(v) : 0;
+  return Number.isSafeInteger(n) && n > 0 ? n : undefined;
+}
+
 /** `profile`: a saved rules profile's name, trimmed; empty or over 60 characters is ignored. Matching against the owner's names is the server's. */
 export const MAX_PROFILE_PARAM = 60;
 export function parseProfile(p: URLSearchParams): string | undefined {
@@ -57,7 +70,7 @@ export function decodeRulesLink(code: string): { name: string; rules: PickRules 
   }
 }
 
-export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: Game; profile?: string; rulesCode?: string; defaultRules?: boolean; coffees?: 'custom' }): URLSearchParams {
+export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: Game; profile?: string; rulesCode?: string; defaultRules?: boolean; coffees?: 'custom'; roll?: number; c?: number }): URLSearchParams {
   const p = new URLSearchParams();
   if (s.show) p.set('show', s.show);
   if (s.view) p.set('view', s.view);
@@ -66,5 +79,6 @@ export function onDeckParams(s: { show?: string; view?: 'next' | 'pick'; game?: 
   if (s.view === 'pick' && s.profile) p.set('profile', s.profile);
   else if (s.view === 'pick' && s.rulesCode) p.set('rules', s.rulesCode);
   else if (s.view === 'pick' && s.defaultRules) p.set('rules', 'default'); // a profile wins, then a code
+  if (s.view === 'pick' && s.roll) { p.set('roll', String(s.roll)); if (s.c) p.set('c', String(s.c)); } // the shared result (a crit's coffee)
   return p;
 }

@@ -6761,6 +6761,27 @@ export const STATES: State[] = [
     }
   },
   {
+    // A shared result (`roll=`) replays on the wheel and is view-only: the pop-up and card have Share and Back to my board but no Brew or Discard,
+    // Back drops the param, and a bad `roll` is dropped with the wheel played normally.
+    name: 'pick-shared-roll', viewports: 'two',
+    path: () => '/on-deck?view=pick&game=wheel&roll=1',
+    act: async (page) => {
+      const modal = page.getByRole('dialog', { name: 'Pick result' });
+      await expect(modal).toBeVisible({ timeout: 15_000 });
+      await expect(modal.getByRole('button', { name: 'Brew', exact: true })).toHaveCount(0);
+      await expect(modal.getByRole('button', { name: 'Discard', exact: true })).toHaveCount(0);
+      await expect(modal.getByRole('button', { name: 'Share', exact: true })).toBeVisible();
+      await expect(page).toHaveURL(/roll=1$/);
+      await checkLayout(page);
+      await modal.getByRole('button', { name: 'Back to my board' }).click();
+      await expect(modal).toHaveCount(0);
+      await expect(page).toHaveURL(/\/on-deck\?view=pick&game=wheel$/);
+      await gotoReady(page, '/on-deck?view=pick&game=wheel&roll=20&c=3');
+      await expect(page).toHaveURL(/\/on-deck\?view=pick&game=wheel$/); // 20 is past the wheel's last slice: ignored
+      await expect(page.getByRole('button', { name: 'Spin', exact: true })).toBeEnabled();
+    }
+  },
+  {
     // A click outside the desktop side bar closes it like Close (focus back on the opener), not while a dialog is open; "Change the rules" Cancel keeps the profile.
     name: 'pick-rules-outside-click', viewports: 'two',
     path: () => '/on-deck?view=pick&game=d20',

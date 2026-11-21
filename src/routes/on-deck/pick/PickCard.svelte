@@ -6,13 +6,16 @@
   import { originWithFlag } from '#lib/countryFlags.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import { formatBag } from '#lib/grams.ts';
+  import ShareButton from '#lib/components/ShareButton.svelte';
   import type { PickCoffee, PickResult } from '#lib/pick/types.ts';
 
   // The /coffees cards view's card (same fields, order and classes) with Brew, Discard and Open coffee under it.
   // `wide` (the inline card, and the result pop-up where the layout is wide): the coffee page's detail as stats (origin, roast level, producer,
   // region, ...) in place of the plain lines, one fixed gap between rows. `onclose` is set only where the card can be dismissed
   // (the result pop-up).
-  let { custom, customStats = [], coffee, result, out, brewed, busy, wide = false, onbrew, ondiscard, onopen, onclose }: {
+  // `sharePath`: the link that replays this result (a Share button). `onback`: a shared result being viewed, which only views: no Brew or Discard, a Back to my board button instead.
+  let { custom, customStats = [], coffee, result, out, brewed, busy, wide = false, sharePath, onbrew, ondiscard, onopen, onclose, onback }: {
+    sharePath?: string; onback?: () => void;
     custom?: string; // a custom coffee (only a name): this sub line in place of the roaster, the name on a tile in the thumbnail's place, no Brew or Open
     customStats?: { label: string; text: string }[]; // a custom coffee's detail (today's game), in place of the coffee page's
     coffee: PickCoffee; result: PickResult; out: boolean; brewed: boolean; busy: boolean; wide?: boolean;
@@ -21,6 +24,8 @@
 
   const locked = $derived(busy || out);
   const info = $derived(coffee.info);
+  // 4 buttons: 2 columns (4 where the card is wide); 5 or more: the usual 3 and a second row
+  const buttonCount = $derived((onback ? 0 : custom ? 1 : 2) + (custom ? 0 : 1) + (sharePath ? 1 : 0) + (onback ? 1 : 0) + (onclose ? 1 : 0));
 
   // Most useful first; only what has a value; the first 10 (5 rows of 2) fit the card with the head, the tasting notes line and one fixed gap between all of them.
   // The coffee page's labels (COFFEE_ORIGIN_LABELS) and stat styles.
@@ -123,10 +128,12 @@
     {@render badges()}
   {/if}
   </div>
-  <div class="buttons" class:four={!!onclose}>
-    {#if !custom}<button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>{/if}
-    <button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>
+  <div class="buttons" class:four={buttonCount === 4 || (!!onclose && buttonCount < 4)}>
+    {#if !custom && !onback}<button type="button" class="button" disabled={locked} onclick={onbrew}>Brew</button>{/if}
+    {#if !onback}<button type="button" class="button button-secondary" disabled={locked} onclick={ondiscard}>Discard</button>{/if}
     {#if !custom}<button type="button" class="button button-secondary" disabled={busy} onclick={onopen}>Open coffee</button>{/if}
+    {#if sharePath}<ShareButton path={sharePath} />{/if}
+    {#if onback}<button type="button" class="button button-secondary" disabled={busy} onclick={onback}>Back to my board</button>{/if}
     {#if onclose}<button type="button" class="button button-secondary" data-close disabled={busy} onclick={onclose}>Close</button>{/if}
   </div>
   </div>

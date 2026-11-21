@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_RULES } from '#lib/pick/rules.ts';
-import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile, parseCoffees } from './onDeckUrl';
+import { decodeRulesLink, encodeRulesLink, MAX_RULES_CODE, onDeckParams, parseDefaultRules, parseRulesCode, parseGame, parseOnDeckView, parseProfile, parseCoffees, parseRoll, parseCoffeeParam } from './onDeckUrl';
 
 const p = (q: string) => new URLSearchParams(q);
 
@@ -112,5 +112,25 @@ describe('coffees param', () => {
     expect(onDeckParams({ view: 'next', coffees: 'custom' }).toString()).toBe('view=next');
     expect(onDeckParams({ coffees: 'custom' }).toString()).toBe('');
     expect(onDeckParams({ view: 'pick', defaultRules: true }).toString()).toBe('view=pick&rules=default');
+  });
+});
+
+describe('shared result params', () => {
+  it('roll is an integer 1-20', () => {
+    expect(parseRoll(p('roll=7'))).toBe(7);
+    expect(parseRoll(p('roll=20'))).toBe(20);
+    for (const bad of ['0', '21', '-3', '2.5', 'abc', '', '1e1']) expect(parseRoll(p(`roll=${bad}`))).toBeUndefined();
+    expect(parseRoll(p(''))).toBeUndefined();
+  });
+  it('c is a positive integer', () => {
+    expect(parseCoffeeParam(p('c=42'))).toBe(42);
+    for (const bad of ['0', '-1', '1.5', 'x', '', '99999999999999999999']) expect(parseCoffeeParam(p(`c=${bad}`))).toBeUndefined();
+  });
+  it('rides along only with view=pick; c only with roll', () => {
+    expect(onDeckParams({ view: 'pick', game: 'd20', roll: 20, c: 5 }).toString()).toBe('view=pick&game=d20&roll=20&c=5');
+    expect(onDeckParams({ view: 'pick', game: 'wheel', coffees: 'custom', roll: 3 }).toString()).toBe('view=pick&game=wheel&coffees=custom&roll=3');
+    expect(onDeckParams({ view: 'pick', c: 5 }).toString()).toBe('view=pick');
+    expect(onDeckParams({ view: 'next', roll: 4, c: 5 }).toString()).toBe('view=next');
+    expect(onDeckParams({ roll: 4 }).toString()).toBe('');
   });
 });

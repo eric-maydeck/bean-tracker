@@ -11,6 +11,7 @@
   import { customCoffees, customDefaults, customRules } from '#lib/pick/custom.ts';
   import { discard, freshToday, markBrewed, resetDay } from '#lib/pick/today.ts';
   import { sliceAt, wheelSlices } from '#lib/pick/wheel.ts';
+  import { rollNumber, sharedPick } from '#lib/pick/shared.ts';
   import type { Game, PickCoffee, PickResult, PickRules, PickToday, Slot, WheelSlice } from '#lib/pick/types.ts';
   import { encodeRulesLink } from '../onDeckUrl';
   import CustomList from './CustomList.svelte';
@@ -26,7 +27,10 @@
   // `shareRules`: what the page's Share button adds for the rules in play.
   // `custom`: the visitor's own list of names (kept in this browser, for everyone) instead of the site's coffees; the page remounts this view to switch, so it never changes here.
   // `enter`: the switch was just turned on (open the Enter coffees pop-up when there is no list yet).
-  let { pick, admin, custom, oncustom, enter, game: urlGame, ongame, shared, onunshare, shareRules = $bindable() }: {
+  // `roll`/`rollC`: a share link's result (the d20 face or wheel slice, and a crit's coffee), replayed once as a view-only result;
+  // `onleaveroll` drops them from the URL; `pathFor` builds the link that replays a result (the page knows the rest of the view's params).
+  let { pick, admin, custom, oncustom, enter, game: urlGame, ongame, shared, onunshare, shareRules = $bindable(), roll, rollC, onleaveroll, pathFor }: {
+    roll?: number; rollC?: number; onleaveroll: () => void; pathFor: (r: { game: Game; n: number; c?: number }) => string | undefined;
     pick: { coffees: PickCoffee[]; today: string; rulesLast: unknown; profiles: unknown; savedRules: unknown; todayState: unknown; selectedProfile: unknown };
     admin: boolean; custom: boolean; oncustom: (on: boolean) => void; enter: boolean; game: Game | undefined; ongame: (g: Game) => void; shared: Shared; onunshare: () => void; shareRules?: { profile?: string; rulesCode?: string; defaultRules?: boolean };
   } = $props();
@@ -193,9 +197,18 @@
     if (ready && board !== untrack(() => today.board)) today.board = board;
   });
 
-  const result = $derived(today.result);
+  // A shared result is view-only and kept apart from `today` (nothing of it is saved); it shows until Back to my board or the visitor plays.
+  let viewing = $state<PickResult | null>(null);
+  let replaying: PickResult | null = null; // the shared result while its die or wheel is still moving
+  const result = $derived(viewing ?? today.result);
   // custom mode: the card's sub line (where the result sits in the visitor's list)
-  const listPlace = $derived(custom ? `Your list · #${coffees.findIndex((c) => c.id === today.result?.coffeeId) + 1} of ${coffees.length}` : undefined);
+  const listPlace = $derived(custom ? `Your list · #${coffees.findIndex((c) => c.id === result?.coffeeId) + 1} of ${coffees.length}` : undefined);
+  // The link that replays the result on show (none when it cannot be placed, e.g. its coffee went out and the wheel moved on); a crit adds its coffee, except in a custom list (list-local ids).
+  const sharePath = $derived.by(() => {
+    const n = result ? rollNumber(game, result, slices) : 0;
+    return result && n ? pathFor({ game, n, c: result.via !== 'normal' && !custom ? result.coffeeId : undefined }) : undefined;
+  });
+  const leaveRoll = () => { viewing = null; if (roll) onleaveroll(); };
   const resultCoffee = $derived(result ? byId.get(result.coffeeId) : undefined);
   // custom mode: the card's detail, from today's game (a custom coffee has no coffee page data)
   const customStats = $derived.by(() => {
@@ -264,7 +277,7 @@
   }
   function land(r: PickResult) {
     busy = false;
-    today.result = r;
+    if (replaying) { replaying = null; viewing = r; } else today.result = r;
     shown = false;
     landing = true;
     clearTimeout(showTimer);
@@ -279,6 +292,7 @@
 
   function spin() {
     if (busy || empty || !wheel) return;
+    leaveRoll();
     rollAgain = false;
     busy = true;
     shown = false;
@@ -287,6 +301,7 @@
     wheel.spinTo(sliceAt(slices, Math.random() * TAU));
   }
   function wheelResult(s: WheelSlice, angle: number) {
+    if (replaying) return land(replaying); // view-only: the wheel's angle is not saved
     today.wheelAngle = angle;
     if (s.kind === 'coffee') return land({ coffeeId: s.coffeeId!, via: 'normal' });
     const c = any(s.kind === 'success' ? successC : failC);
@@ -294,6 +309,7 @@
     else busy = false;
   }
   function d20Result(n: number, pose: PickToday['d20Pose']) {
+    if (replaying) return land(replaying); // view-only: the die's pose is not saved
     today.d20Pose = pose;
     const s = board[n - 1];
     const c = s?.kind === 'coffee' ? byId.get(s.coffeeId) : s?.kind === 'success' ? any(successC) : s?.kind === 'fail' ? any(failC) : undefined;
@@ -301,6 +317,7 @@
     land({ coffeeId: c.id, via: s.kind === 'coffee' ? 'normal' : (s.kind as 'success' | 'fail'), n });
   }
   function startD20() {
+    if (!replaying) leaveRoll(); // the visitor's own roll (or typed number); the replay's throw keeps the shared result
     rollAgain = false;
     busy = true;
     shown = false;
@@ -308,8 +325,23 @@
     clearTimeout(showTimer);
   }
 
+  // A share link's result: once the board and the die or wheel are ready, throw it (the D20 as if typed into "Someone rolled for me"). One that does not fit this board is dropped.
+  let replayed = false;
+  let replayN = $state<number>();
+  $effect(() => {
+    if (!ready || !roll || replayed || (game === 'wheel' && !wheel)) return;
+    replayed = true;
+    untrack(() => {
+      const r = sharedPick(game, roll, board, slices, successC, failC, rollC);
+      if (!r) return onleaveroll();
+      replaying = r;
+      if (game === 'wheel') { busy = true; wheel!.spinTo(slices[roll - 1]); } else replayN = roll;
+    });
+  });
+
   function setGame(g: Game) {
     if (g === game) return;
+    leaveRoll();
     busy = false;
     rollAgain = false;
     today.game = g;
@@ -434,7 +466,7 @@
           <PickWheel bind:this={wheel} {slices} {names} angle={today.wheelAngle} disabled={empty} onspin={spin} onresult={wheelResult} />
         </div>
       {:else}
-        <PickD20 pose={today.d20Pose} disabled={empty} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
+        <PickD20 pose={today.d20Pose} replay={replayN} disabled={empty} onresult={d20Result} {critFor} onstart={startD20} onfail={() => (busy = false)} />
       {/if}
       {#if empty}<p class="text-muted">No coffees in play. Change the rules or reset today.</p>{/if}
       {#if rollAgain}<p class="roll-again" role="status">That number is crossed out today. Roll again.</p>{/if}
@@ -442,11 +474,11 @@
 
     <div class="side">
       {#if inlineCard}
-        {#if result && resultCoffee}<h3 class="last">{game === 'd20' ? 'Your last roll' : 'Your last spin'}</h3>{/if}
+        {#if result && resultCoffee}<h3 class="last">{viewing ? (game === 'd20' ? 'Shared roll' : 'Shared spin') : game === 'd20' ? 'Your last roll' : 'Your last spin'}</h3>{/if}
         <div class="result card" class:empty={!(result && resultCoffee)}>
         {#if result && resultCoffee}
-          <PickCard custom={listPlace} {customStats} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
-            onbrew={brew} ondiscard={doDiscard} onopen={openPage} />
+          <PickCard custom={listPlace} {customStats} wide coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy} {sharePath}
+            onbrew={brew} ondiscard={doDiscard} onopen={openPage} onback={viewing ? leaveRoll : undefined} />
         {:else}
           <p class="text-muted">{game === 'd20' ? 'Roll the die to pick a coffee.' : 'Spin the wheel to pick a coffee.'}</p>
         {/if}
@@ -478,8 +510,8 @@
         {#if game === 'd20' && result.n}
           <p class="rolled {result.via}" aria-live="polite">You rolled<b>{result.n}</b>{#if result.via !== 'normal'}<span class="crit-word">{result.via === 'success' ? 'Crit success' : 'Crit fail'}</span>{/if}</p>
         {/if}
-        <PickCard custom={listPlace} {customStats} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy}
-          onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} />
+        <PickCard custom={listPlace} {customStats} wide={!narrow} coffee={resultCoffee} {result} out={out.has(resultCoffee.id)} brewed={today.brewed.includes(resultCoffee.id)} {busy} {sharePath}
+          onbrew={brew} ondiscard={doDiscard} onopen={openPage} onclose={dismissOverlay} onback={viewing ? () => { shown = false; leaveRoll(); } : undefined} />
       </div>
     </div>
   {/if}
