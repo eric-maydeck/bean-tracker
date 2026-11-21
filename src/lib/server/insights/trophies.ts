@@ -4,7 +4,7 @@ import { backdrop } from '#lib/imageBackdrop.ts';
 import { wallToInstant } from '#lib/localDate.ts';
 import type { GearDetail } from '#lib/server/gearDetails.ts';
 import { pooled, type Sample } from '#lib/sample.ts';
-import { slugify } from '#lib/server/slug.ts';
+import { gearSlugs } from '#lib/slugify.ts';
 import { MIXED_FILTER, parseMethod, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { daysBetween, inPeriod, type Period } from './time';
@@ -90,6 +90,7 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
       g.all.push(b);
       if (inPeriod(b.localDate, period)) g.xs.push(b);
     }
+  const slugs = new Map(GEAR_KINDS.map((k) => [k, gearSlugs([...groups.values()].filter((g) => g.kind === k).map((g) => g.name))] as const));
   const withKind = (kind: GearKind) => (kind === 'dripper' ? 'filter' : 'dripper') as 'filter' | 'dripper';
   const out = [...groups.values()].filter((g) => g.xs.length).map(({ kind, name, all, xs }): Trophy => {
     const ratedXs = xs.filter((b) => ratingOf(b) !== null);
@@ -114,7 +115,7 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
     const ratedBags = new Set(sizedXs.map((b) => b.coffeeId).filter((c) => c != null)).size;
     const det = stored.get(`${kind}\0${name}`), src = det ? det.imageCopy ?? det.imageUrl : null;
     return {
-      key: `${kind}-${slugify(name)}`, kind, name, brews: xs.length,
+      key: `${kind}-${slugs.get(kind)!.get(name)}`, kind, name, brews: xs.length,
       grams: xs.reduce((s, b) => s + (b.dose ?? 0), 0),
       rating: mean(rs), best: rs.length ? Math.max(...rs) : null,
       sample: pooled(ratedBags, sizedXs.length, rs.length),
