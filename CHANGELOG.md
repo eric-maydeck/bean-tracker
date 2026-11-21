@@ -1,3 +1,10 @@
+## [2.4.2](https://github.com/eric-maydeck/bean-tracker/compare/v2.4.1...v2.4.2) (2026-11-21)
+
+
+### Bug Fixes
+
+* give every gear card and grinder a unique slug ([11855c9](https://github.com/eric-maydeck/bean-tracker/commit/11855c9160de20811cf0cd45d9c9d10e13086dd1))
+
 ## [2.4.1](https://github.com/eric-maydeck/bean-tracker/compare/v2.4.0...v2.4.1) (2026-11-20)
 
 
