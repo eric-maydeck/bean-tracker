@@ -956,6 +956,46 @@ table.data-table.coffees-list td {
   padding-block: 0.2rem;
 }
 
+/* Below the table's natural width (~1200px) it scrolls sideways: the Actions column stays pinned to the right edge,
+   and an open row form stays pinned to the visible width (100cqi of the scroll box), so editing never needs a
+   sideways scroll (#34). */
+.coffees-list-scroll {
+  container-type: inline-size;
+}
+table.data-table.coffees-list .actions-cell {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--color-bg);
+}
+table.data-table.coffees-list tbody tr:hover > .actions-cell {
+  background: linear-gradient(color-mix(in srgb, var(--color-accent) 8%, transparent) 0 0), var(--color-bg);
+}
+@media (max-width: 1240px) {
+  table.data-table.coffees-list .actions-cell {
+    box-shadow: inset 1px 0 var(--color-border);
+  }
+  /* Pinned, the column fits its icons (no reserved Edit-mode slot): Edit widens it leftward without moving the other
+     columns (user, 2026-11-22). */
+  table.data-table.coffees-list th.actions-cell {
+    width: 0;
+    min-width: 0;
+  }
+  table.data-table.coffees-list .actions-cell .action-buttons {
+    flex-wrap: nowrap;
+  }
+}
+table.data-table.coffees-list td.row-form-cell {
+  padding-inline: 0;
+}
+.coffees-list-scroll .row-form-pin {
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  width: 100cqi;
+  padding-inline: 0.4rem;
+}
+
 .data-table .name-line {
   display: flex;
   align-items: center;
@@ -3316,7 +3356,7 @@ button .sample-chip {
    widest set (a backlog row's five: cancel, delete, open, freeze, archive) in every mode, and toggling Edit never
    shifts the other columns. */
 .data-table th.col-actions {
-  min-width: calc(5 * 2.25rem + 4 * 0.375rem + 1.2rem);
+  min-width: calc(5 * 2.25rem + 4 * 0.375rem + 0.8rem); /* + the cell's own padding */
 }
 .data-table .action-stack {
   flex-direction: row;
@@ -3327,7 +3367,7 @@ button .sample-chip {
 }
 @media (max-width: 640px) {
   .data-table th.col-actions {
-    min-width: calc(5 * 2.75rem + 4 * 0.375rem + 1.2rem);
+    min-width: calc(5 * 2.75rem + 4 * 0.375rem + 0.8rem); /* + the cell's own padding */
   }
 }
 /* The non-edit icon set is one row of four at every width (list rows were 80px tall as a 2×2), on the same grid as
