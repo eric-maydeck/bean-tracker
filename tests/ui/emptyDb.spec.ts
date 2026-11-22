@@ -11,7 +11,8 @@ const PAGES = [
 
 async function visitAll(page: Page) {
   const errors: string[] = [];
-  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  // Vite dev's cold dependency optimizing aborts module loads once (CI); a dev-server artifact, not an app crash.
+  page.on('pageerror', (e) => { if (!/error loading dynamically imported module/.test(e.message)) errors.push(`pageerror: ${e.message}`); });
   page.on('console', (m) => { if (m.type() === 'error' && !/downloadable font/.test(m.text())) errors.push(`console: ${m.text()}`); });
   for (const path of PAGES) {
     const res = await page.goto(path, { waitUntil: 'load' }); // a signed-out redirect is accepted: the final response counts
