@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recap } from './server/recaps/recap';
-import { DESCRIPTION_MAX, recapPreview, RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, plural, subscriptionsPreview, waterPreview, previewCard, encodeCard } from './linkPreview';
+import { DESCRIPTION_MAX, recapPreview, RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, plural, subscriptionsPreview, waterPreview, previewCard, encodeCard, gearPreview, gearsPreview } from './linkPreview';
 
 const kenya = { roaster: 'The Picky Chemist', coffee_name: 'Kenya AA Inoi Kianderi', origin: 'Kenya', processing: 'Washed', amount_g: 250, roast_date: '2026-10-03' };
 
@@ -226,5 +226,27 @@ describe('previewCard', () => {
     const c = encodeCard({ big: 'Café · 🇰🇪', label: 'Señor/+' });
     expect(c).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(JSON.parse(Buffer.from(c, 'base64url').toString('utf8'))).toEqual(['Café · 🇰🇪', 'Señor/+']);
+  });
+});
+
+describe('gear previews', () => {
+  const hex = 'a'.repeat(64);
+  const grinder = { kind: 'grinder' as const, name: 'K-Ultra', rating: 8.46, brews: 12, grams: 240, values: { burrSize: 48 }, adjustableSpeed: false, image: { src: `/img/gear/${hex}.webp`, fill: '#aabbcc' } };
+  it('gearsPreview counts by kind', () => {
+    const p = gearsPreview([{ kind: 'dripper' }, { kind: 'dripper' }, { kind: 'grinder' }]);
+    expect(p.description).toBe('2 drippers\n1 grinder');
+    expect(p.card?.label).toBe('3 pieces of gear');
+  });
+  it('gearPreview uses the local photo and one spec', () => {
+    const p = gearPreview(grinder);
+    expect(p.card?.coffee?.photo?.src).toBe(`/img/gear/${hex}.webp`);
+    expect(p.card?.label).toBe('Grinder · 8.5 avg · 12 brews · Burr size: 48mm');
+    expect(p.description).toContain('Burr size: 48mm');
+    expect(() => encodeCard(previewCard(p))).not.toThrow();
+  });
+  it('no photo without a local copy, unrated drops the avg', () => {
+    expect(gearPreview({ ...grinder, image: null, rating: null }).card?.coffee).toEqual({});
+    expect(gearPreview({ ...grinder, image: { src: 'https://x.example/a.png', fill: '#aabbcc' } }).card?.coffee).toEqual({});
+    expect(gearPreview({ ...grinder, rating: null }).card?.label).toMatch(/^Grinder · 12 brews/);
   });
 });

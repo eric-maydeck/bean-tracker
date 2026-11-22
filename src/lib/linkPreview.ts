@@ -3,7 +3,9 @@ import { TIP_LABEL, type Drops, type Mode, type Tip } from './lotus';
 import type { StatusTab } from './coffeeViewState';
 import { formatBag, formatGrams } from './grams';
 import { originWithFlag } from './countryFlags';
-import { glue, unitGap } from './unitGap';
+import { glue, unitGap, withUnit } from './unitGap';
+import { GEAR_KINDS, KIND_LABEL, fieldsFor, type GearKind, type GearField, type GearValues } from './gear';
+import { usd } from './money';
 import { KINDS, type ChartTimeline } from './pourShapes';
 import type { Recap } from './server/recaps/recap';
 
@@ -25,7 +27,7 @@ export type Thumb =
 // `coffee`: a coffee's card layout (name from the top, roaster at the bottom), with its saved photo on the right when there is one
 // (a local /img/ copy only, never a remote URL) on its backdrop fill.
 export interface Card { big: string; label: string; timeline?: ChartTimeline; thumb?: Thumb; coffee?: { photo?: { src: string; fill: string } } }
-export const PHOTO_RE = /^\/img\/(coffees|roasters)\/[0-9a-f]{64}\.webp$/;
+export const PHOTO_RE = /^\/img\/(coffees|roasters|gear)\/[0-9a-f]{64}\.webp$/;
 export interface Preview { title: string; description: string; image?: { src: string; alt: string } | null; card?: Card }
 
 // "Stats: Roasters" -> big "Roasters", label "Stats"; a title without "Page: " is big alone.
@@ -164,4 +166,26 @@ export function recapPreview(r: Recap, slideId: string | undefined): Preview {
     description: fitList([s ? s.context : `${r.poster.sub} ${r.poster.footer}`], ' ', false),
     image: { src: `/recaps/${r.year}/card/${id}.png${qs}`, alt: title }
   };
+}
+
+// The Gear page: counts by kind (kinds with none left out).
+export function gearsPreview(list: { kind: GearKind }[]): Preview {
+  const lines = GEAR_KINDS.map((k) => [k, list.filter((g) => g.kind === k).length] as const).filter(([, n]) => n).map(([k, n]) => plural(n, k.toLowerCase()));
+  return { title: 'Gear', description: lines.join('\n'), card: { big: 'Gear', label: plural(list.length, 'piece') + ' of gear' } };
+}
+
+const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? withUnit(v, f.unit) : String(v));
+const CARD_LABEL_MAX = 60; // cardFontSize keeps the label at 40px up to here (server/recaps/card.ts)
+
+// One piece of gear: name, kind, rating, brews, grams and its filled specs; its photo (a local /img/ copy) on the card.
+export function gearPreview(t: { kind: GearKind; name: string; rating: number | null; brews: number; grams: number; values: GearValues; image: { src: string; fill: string } | null; adjustableSpeed: boolean }): Preview {
+  const specs = fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed })
+    .filter((f) => f.type !== 'url' && t.values[f.key] !== undefined)
+    .map((f) => `${f.label}: ${specText(f, t.values[f.key])}`);
+  const avg = t.rating != null && `${f1(Math.round(t.rating * 10) / 10)} avg`;
+  const description = fitList([KIND_LABEL[t.kind], avg || null, plural(t.brews, 'brew'), `${formatGrams(t.grams)} brewed`, ...specs].filter(Boolean) as string[], '\n', false);
+  let label = join([KIND_LABEL[t.kind], avg, plural(t.brews, 'brew')]);
+  const spec = specs.find((s) => [...join([label, s])].length <= CARD_LABEL_MAX);
+  if (spec) label = join([label, spec]);
+  return { title: t.name, description, image: null, card: { big: t.name, label, coffee: t.image && PHOTO_RE.test(t.image.src) ? { photo: t.image } : {} } };
 }
