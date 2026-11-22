@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   lowFirst,
   parseInsightsUrl, insightsParams, boardAvg, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  BREW_FILTERS_ON, activeBrewFilters, wholeNote, brewSelectsOn,
+  BREW_FILTERS_ON, activeBrewFilters, wholeNote,
   parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
 } from './insightsUrl';
 import type { Filter } from '#lib/coffeeFilters.ts';
@@ -907,8 +907,7 @@ describe('gear and chart params', () => {
     expect(resetInsights(parse('tab=records&chart=records-taste&range=1m'))).toEqual({ tab: 'records' });
   });
   it('gear offers only the filters it applies, and a stray dripper pick filters nothing', () => {
-    expect(brewSelectsOn('gear')).toEqual(BREW_FILTERS_ON.gear);
-    expect(brewSelectsOn('water')).toEqual(BREW_FILTERS_ON.water);
+    expect(BREW_FILTERS_ON.gear).toEqual(['water', 'brewDose', 'brewTemp']);
     expect(activeBrewFilters(withDefaults({ tab: 'gear', dripper: 'V60' }))).toEqual({});
   });
 });

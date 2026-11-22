@@ -576,7 +576,6 @@ export const BREW_FILTERS_ON: Record<Tab, readonly BrewFilterKey[]> = {
   milestones: [], onhand: [], spend: [], sweetspots: [], brewing: ['dripper', 'filter', 'water'], pours: ['dripper', 'filter', 'water'],
   water: ['dripper', 'filter', 'brewDose', 'brewTemp'], gear: ['water', 'brewDose', 'brewTemp'], recaps: []
 };
-export const brewSelectsOn = (tab: Tab): readonly BrewFilterKey[] => BREW_FILTERS_ON[tab];
 export const activeBrewFilters = (s: InsightsView): BrewFilters =>
   Object.fromEntries(BREW_FILTERS_ON[s.tab].filter((k) => s[k]).map((k) => [k, s[k]]));
 // The note under a figure that counts whole bags: brew filters can't narrow it. `items` names the figures.

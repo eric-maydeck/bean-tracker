@@ -249,7 +249,7 @@
 <div class="mode-tip" popover="manual" bind:this={fullTip}></div>
 
 <style>
-  /* Card grid and card base: .hl-grid / .hl-card, :global in +page.svelte (Milestones shares them). */
+  /* Card grid and card base: .hl-grid / .hl-card, :global in app.css (Milestones shares them). */
   /* A tip button's phone padding (its 44px tap target) is canceled by negative margins, so it
      needs no room in the card: 100% would squeeze its text out of a narrow card. */
   button.hl-line {

@@ -31,6 +31,6 @@ export function gearRedirect(url: URL): string | null {
 }
 
 // A trophy's link back to its board on the Stats Gear tab: the dripper and filter boards, the grinder's usage chart by grinder.
-export function statsLink(t: { kind: GearKind; key: string; name: string }): string {
+export function statsLink(t: { kind: GearKind }): string {
   return t.kind === 'grinder' ? '/stats?tab=gear&gearBy=grinder#gear-eras' : `/stats?tab=gear#gear-${t.kind}s`;
 }

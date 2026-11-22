@@ -20,7 +20,7 @@
   import { plural } from '#lib/linkPreview.ts';
   import { formatDays, hour12 } from '#lib/hours.ts';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '#lib/insightsUrl.ts';
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
@@ -95,11 +95,11 @@
     dripper: data.brewOptions.drippers, filter: data.brewOptions.filters, water: data.brewOptions.waters,
     brewDose: data.brewOptions.doses, brewTemp: data.brewOptions.temps
   });
-  const brewSelects = $derived(brewSelectsOn(s.tab).filter((k) => BREW_OPTIONS[k].length));
+  const brewSelects = $derived(BREW_FILTERS_ON[s.tab].filter((k) => BREW_OPTIONS[k].length));
   const brewChips = $derived(BREW_FILTER_KEYS.filter((k) => s[k]));
   // Gear's Grinder pick (a slug, not a BrewFilterKey: Brewing's own grinder select shares the param) lives in this dialog too.
   const gearGrinder = $derived(s.tab === 'gear' && s.grinder ? (data.lab?.grinders.find((g) => g.slug === s.grinder)?.name ?? s.grinder) : undefined);
-  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => brewSelectsOn(s.tab).includes(k)).length + (gearGrinder ? 1 : 0));
+  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => BREW_FILTERS_ON[s.tab].includes(k)).length + (gearGrinder ? 1 : 0));
   const brewOff = Object.fromEntries(BREW_FILTER_KEYS.map((k) => [k, undefined]));
 
   // The Filters dialog edits a draft (fdraft, '' = Any/Default) seeded from the URL on open. Only Apply / Reset reach the URL;
@@ -717,7 +717,7 @@
         >
       {/each}
       {#each brewChips as k (k)}
-        {@const off = !brewSelectsOn(s.tab).includes(k)}
+        {@const off = !BREW_FILTERS_ON[s.tab].includes(k)}
         {@const value = brewFilterText(k, s[k]!)}
         <span class="filter-chip" class:muted={off}
           ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => !off && openFilters()}>{value}</button

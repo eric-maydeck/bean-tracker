@@ -22,7 +22,7 @@
   } = $props();
 
   // The kind toggle (absent = All) narrows both the grid and the shelf.
-  let shown = $derived(shownTrophies(s.gear ? list.filter((t) => t.kind === s.gear) : list, {}));
+  let shown = $derived(shownTrophies(s.gear ? list.filter((t) => t.kind === s.gear) : list));
   let shelf = $derived(s.retired === 'open');
   let current = $derived(list.find((t) => t.key === s.card));
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
