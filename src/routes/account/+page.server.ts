@@ -22,6 +22,7 @@ import { linkBeanConquerorBean, unlinkBeanConquerorBean, getLinkableCoffees, Bea
 import { editBrewList, getBrewDoses, getBrewRatios } from '#lib/server/brewNow/prefs.ts';
 import { linkMarks } from '#lib/server/brewNow/outcome.ts';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '#lib/server/beanConquerorJson.ts';
+import { importWarnings } from '#lib/server/importWarnings.ts';
 import { queueReadings } from '#lib/server/pourReadings.ts';
 import { discoverGroups, listRecipes } from '#lib/server/recipes.ts';
 import { uploadStatus, UPLOAD_USERNAME } from '#lib/server/visualizerUpload.ts';
@@ -42,6 +43,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
     settings: { brewingZone: getBrewingZone(db), displayZone: getDisplayZone(db), dateFormat: getDateFormat(db), defaultCaffeine: getDefaultCaffeine(db) },
     zones: timeZones(getBrewingZone(db), getDisplayZone(db)), // a stored zone Node doesn't list still shows
     unmatchedBeans: { beans: getUnmatchedBeanConquerorBeans(db, UNMATCHED_BEAN_LIMIT), total: countUnmatchedBeanConquerorBeans(db) },
+    warnings: importWarnings(db),
     linkableCoffees: getLinkableCoffees(db),
     roastLevels: getRoastLevels(db),
     roasters: getDistinctFieldValues(db, 'roaster'),

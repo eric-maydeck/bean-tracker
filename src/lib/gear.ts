@@ -45,6 +45,7 @@ export const OWN_DATA_SIMILAR = "Yes, use similar gear's brews";
 export const OWN_DATA_ONLY = "No, only this gear's brews";
 const ownData = { ...text('ownData', 'Learn from similar gear?', [OWN_DATA_SIMILAR, OWN_DATA_ONLY], undefined,
   "Brew now suggests grind settings, a brew temperature, and a recipe using data from your past brews. Yes: also uses brews from similar gear (e.g. other ~60° cones) when there isn't much data. No: uses only brews made with this exact gear. Choose this for gear that brews differently."), type: 'select' as const };
+export const SETTING_FORMATS = ['Number (e.g. 5.5)', 'Dotted (e.g. 1.4.2)'] as const;
 export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
   dripper: [
     text('shape', 'Shape', ['Conical', 'Flat bottom', 'Wave', 'Hybrid'], undefined,
@@ -79,7 +80,10 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     num('dialMin', 'Dial min', '', 0, 1000, []),
     num('rpmMin', 'Speed at dial min', 'RPM', 1, 20000, []),
     num('dialMax', 'Dial max', '', 0, 1000, []),
-    num('rpmMax', 'Speed at dial max', 'RPM', 1, 20000, [])
+    num('rpmMax', 'Speed at dial max', 'RPM', 1, 20000, []),
+    // Last, so the dial/RPM pairs above keep their form rows.
+    { ...text('settingFormat', 'Setting format', SETTING_FORMATS, [],
+      "The shape of this grinder's grind settings. Blank: worked out from this grinder's brews. The import data warnings on Account use it to flag settings in the other shape."), type: 'select' }
   ],
   filter: [
     text('material', 'Material', ['Paper', 'Cloth', 'Metal'], ['material', 'materials'],

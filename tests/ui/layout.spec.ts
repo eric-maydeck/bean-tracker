@@ -3481,6 +3481,18 @@ export const STATES: State[] = [
     }
   },
   {
+    // Data warnings: collapsed above the triage list in the Bean Conqueror panel; opening lists the suspect brews (the seed's grinder brews have no setting).
+    name: 'account-data-warnings', viewports: 'two', path: () => '/account',
+    act: async (page) => {
+      const summary = page.locator('.warnings summary');
+      await expect(summary).toHaveText(/^Data warnings \(\d+\)$/);
+      await expect(page.locator('.warn-row').first()).toBeHidden();
+      await summary.click();
+      await expect(page.locator('.warn-row').first()).toContainText('No grind setting');
+      await checkLayout(page);
+    }
+  },
+  {
     // A failed Link shows its message in the open picker, not (only) at the top of the panel.
     name: 'account-not-tracked-link-error', viewports: 'two',
     path: () => '/account?untracked=all',
