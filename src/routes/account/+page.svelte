@@ -213,7 +213,7 @@
           <li class="warn-row">
             <strong><CoffeeName name={w.coffee ?? 'Unknown coffee'} /></strong>
             <div class="text-muted">{w.at.replace('T', ' ')} · {w.method ?? 'Unknown method'}{w.grinder ? ` · ${w.grinder}` : ''}</div>
-            <div><code>{w.value}</code> {w.reason}</div>
+            <div><strong>{w.reason}:</strong> <code>{w.value}</code> - <span class="warn-detail">{w.detail}</span></div>
           </li>
         {/each}
       </ul>
@@ -358,6 +358,7 @@
   .warn-list { list-style: none; padding: 0; margin: 0; }
   .warn-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
   .warn-row:last-child { border-bottom: 0; }
+  .warn-detail { color: var(--color-urgent); }
   .set-field { margin-bottom: var(--space-3); }
   .set-field select { min-width: 0; max-width: 100%; }
   #brew-now { scroll-margin-top: var(--space-4); }

@@ -26,7 +26,7 @@ describe('importWarnings', () => {
     brew('gz', 'fine'); brew('gz', '1.4.2');
     const w = importWarnings(db);
     expect(w.map((x) => [x.reason, x.value])).toEqual([
-      ["Not this grinder's usual format (expects number)", '1.4.2'], ['Malformed grind setting', 'fine'], ['No grind setting', 'blank']
+      ['Wrong grind format', '1.4.2'], ['Malformed grind setting', 'fine'], ['No grind setting', 'blank']
     ]);
     expect(w[0]).toMatchObject({ at: '2026-09-01T08:00', coffee: 'Kenya', method: 'V60', grinder: 'ZP6' });
   });
@@ -56,7 +56,7 @@ describe('importWarnings', () => {
     brew('gz', '5'); brew('gz', '6'); brew('gz', '1.4.2');
     saveGearDetails(db, { kind: 'grinder', name: 'ZP6', values: { settingFormat: 'Dotted (e.g. 1.4.2)' }, imageUrl: null });
     expect(importWarnings(db).map((w) => w.value).sort()).toEqual(['5', '6']);
-    expect(reasons()[0]).toContain('expects dotted');
+    expect(importWarnings(db)[0].detail).toBe("ZP6's Setting format is dotted (e.g. 1.4.2); logged on the wrong grinder?");
   });
 
   it('a Custom setting format accepts any text', () => {
