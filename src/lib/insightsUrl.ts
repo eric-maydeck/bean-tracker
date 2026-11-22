@@ -1,5 +1,6 @@
 import { pickOne } from '#lib/pageUrlState.ts';
 import { GEAR_KINDS, type GearKind } from '#lib/gear.ts';
+import { parseCard } from '#lib/gearUrl.ts';
 import { upsertFilter, type Filter } from '#lib/coffeeFilters.ts';
 import { fromParams, toParams } from '#lib/coffeeViewState.ts';
 
@@ -494,13 +495,6 @@ function parsePairs(v: string | null): string[] | undefined {
 function parseChart(v: string | null): string | undefined {
   const x = (v ?? '').trim();
   return /^[A-Za-z0-9-]{1,100}$/.test(x) ? x : undefined;
-}
-
-// The open trophy card on Gear: one "kind-slug" key, lowercased; anything else is dropped.
-const CARD = /^(dripper|grinder|filter)-[a-z0-9]+(-[a-z0-9]+)*$/;
-function parseCard(v: string | null): string | undefined {
-  const x = (v ?? '').trim().toLowerCase();
-  return CARD.test(x) ? x : undefined;
 }
 
 // The coffee page's Vs like coffees panel (gate P4) honors the insights Ratings and Brews params. It always compares
