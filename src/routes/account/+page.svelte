@@ -204,6 +204,22 @@
     brews and flows join up either way.
   </p>
 
+  {#if data.warnings.length}
+    <details class="warnings">
+      <summary>Data warnings ({data.warnings.length})</summary>
+      <p class="text-muted">Brews worth fixing in BQ before re-importing. Nothing here blocks or changes an import.</p>
+      <ul class="warn-list">
+        {#each data.warnings as w, i (i)}
+          <li class="warn-row">
+            <strong><CoffeeName name={w.coffee ?? 'Unknown coffee'} /></strong>
+            <div class="text-muted">{w.at.replace('T', ' ')} · {w.method ?? 'Unknown method'}{w.grinder ? ` · ${w.grinder}` : ''}</div>
+            <div class="warn-what">{w.reason}: {w.value}</div>
+          </li>
+        {/each}
+      </ul>
+    </details>
+  {/if}
+
   <BeanTriage
     unmatched={data.unmatchedBeans}
     showAll={parseAccount(page.url.searchParams).untracked === 'all'}
@@ -337,6 +353,12 @@
   @media (min-width: 1100px) {
     .acct { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--space-4); align-items: start; }
   }
+  .warnings { margin: var(--space-3) 0; }
+  .warnings summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+  .warn-list { list-style: none; padding: 0; margin: 0; }
+  .warn-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
+  .warn-row:last-child { border-bottom: 0; }
+  .warn-what { color: var(--color-urgent); font-weight: 600; }
   .set-field { margin-bottom: var(--space-3); }
   .set-field select { min-width: 0; max-width: 100%; }
   #brew-now { scroll-margin-top: var(--space-4); }

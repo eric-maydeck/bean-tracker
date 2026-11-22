@@ -600,6 +600,10 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* An odd last fact takes the whole row, so no row has an empty cell. */
+  .trophy-dialog .stat-grid.specs .stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
   .trophy-dialog .stat {
     flex: 1 1 8.5rem;
     min-width: 0;

@@ -3481,6 +3481,18 @@ export const STATES: State[] = [
     }
   },
   {
+    // Data warnings: collapsed above the triage list in the Bean Conqueror panel; opening lists the suspect brews (the seed's grinder brews have no setting).
+    name: 'account-data-warnings', viewports: 'two', path: () => '/account',
+    act: async (page) => {
+      const summary = page.locator('.warnings summary');
+      await expect(summary).toHaveText(/^Data warnings \(\d+\)$/);
+      await expect(page.locator('.warn-row').first()).toBeHidden();
+      await summary.click();
+      await expect(page.locator('.warn-row').first()).toContainText('No grind setting');
+      await checkLayout(page);
+    }
+  },
+  {
     // A failed Link shows its message in the open picker, not (only) at the top of the panel.
     name: 'account-not-tracked-link-error', viewports: 'two',
     path: () => '/account?untracked=all',
@@ -10605,7 +10617,7 @@ export const STATES: State[] = [
       await expect(dlg.locator('.trophy-img img')).toHaveCount(0);
       // A few fields: ZP6 shows every field of the edit form (since #84), the two filled ones with values and the rest a dash.
       await page.goto('/stats?tab=gear&card=grinder-zp6-special');
-      await expect(dlg.locator('.specs .stat')).toHaveCount(12);
+      await expect(dlg.locator('.specs .stat')).toHaveCount(13);
       await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('64mm');
       await expect(dlg.locator('.specs .stat', { hasText: 'Brand' }).locator('.stat-value')).toHaveText('Timemore');
       await expect(dlg.locator('.specs .stat', { hasText: 'Burr coating' }).locator('.stat-value')).toHaveText('—');
@@ -10781,7 +10793,7 @@ export const STATES: State[] = [
         // Stacked: the last field to Save/Cancel keeps ~16px (ui-rules 22), grinder and filter.
         const gap = async (last: string) => { const l = await bx(input(last)); return (await bx(dlg.getByRole('button', { name: 'Save' }))).y - (l.y + l.height); };
         await dlg.getByRole('button', { name: 'Edit' }).click();
-        expect(await gap('Step size (µm)')).toBeGreaterThanOrEqual(14);
+        expect(await gap('Setting format')).toBeGreaterThanOrEqual(14);
         await page.goto('/stats?tab=gear&card=filter-cafec-abaca');
         await dlg.getByRole('button', { name: 'Edit' }).click();
         expect(await gap('Flow')).toBeGreaterThanOrEqual(14);
@@ -10801,8 +10813,8 @@ export const STATES: State[] = [
       };
       // Grinder (fixed speed): 12 fields, a full last row (Step size, RPM): Save is below RPM.
       await dlg.getByRole('button', { name: 'Edit' }).click();
-      await expect(dlg.getByRole('button', { name: /^About / })).toHaveText(['', '', '', '', '']);
-      for (const n of ['Type', 'Burr type', 'Burr coating', 'Adjustment', 'Step size']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
+      await expect(dlg.getByRole('button', { name: /^About / })).toHaveText(['', '', '', '', '', '']);
+      for (const n of ['Type', 'Burr type', 'Burr coating', 'Adjustment', 'Step size', 'Setting format']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
       // Adjustment is a select; Step size works only on Stepped.
       await expect(input('Adjustment')).toHaveJSProperty('tagName', 'SELECT');
       await expect(input('Adjustment').locator('option').first()).toHaveText('Select one');
