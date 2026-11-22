@@ -8353,7 +8353,7 @@ export const STATES: State[] = [
       await card.getByRole('button', { name: 'Shrink chart' }).click();
       await expect(page).toHaveURL(/views=roast-time(&|$)/);
       await expect.poll(widths).toEqual(before);
-      await expect.poll(sharp).toBe(true); // the canvas redraws after its card shrinks; checkLayout ran mid-resize once (scrollWidth 1608)
+      await expect.poll(sharp).toBe(true); // the canvas redraws after its card shrinks (a resize mid-animation once never applied, #40)
     } },
   { name: 'insights-board-dashed-gaps', viewports: 'two', path: () => '/stats?tab=leaderboards&range=1m&rank=brews&views=roast-time,water-time,dripper-time,filter-time,grinder-time,process-time',
     act: async (page) => {
