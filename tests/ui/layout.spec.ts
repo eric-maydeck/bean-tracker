@@ -2941,7 +2941,9 @@ export const STATES: State[] = [
       const before = await actionsW();
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
-      expect(Math.abs((await actionsW()) - before)).toBeLessThanOrEqual(1);
+      // Pinned (the table scrolls sideways, #34) the column fits its icons, so Edit widens it; on desktop it holds still.
+      const pinned = await page.locator('.table-scroll').evaluate((s) => s.scrollWidth > s.clientWidth);
+      if (!pinned) expect(Math.abs((await actionsW()) - before)).toBeLessThanOrEqual(1);
       await buttonsInCell(); // Edit mode too (three-icon rows plus the first row's four)
       await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
       await checkLayout(page);
@@ -2966,12 +2968,45 @@ export const STATES: State[] = [
       const iconsAfter = await icons();
       const tops = await page.locator('table.data-table tbody tr').first().locator('td:last-child').locator('button, a.button').evaluateAll((els) => [...new Set(els.map((e) => Math.round(e.getBoundingClientRect().top)))]);
       expect(tops, 'Edit mode icons on one row').toHaveLength(1);
-      const xs = [...iconsBefore].sort((p, q) => p - q);
-      [...iconsAfter].sort((p, q) => p - q).slice(0, xs.length).forEach((y, i) => expect(Math.abs(y - xs[i]), `edit icon ${i}`).toBeLessThanOrEqual(1));
       expect(after).toHaveLength(before.length);
-      after.forEach(([x, w], i) => { expect(Math.abs(x - before[i][0])).toBeLessThanOrEqual(1); expect(Math.abs(w - before[i][1])).toBeLessThanOrEqual(1); });
+      // Where the table scrolls sideways (#34) the Actions column is pinned right and fits its icons, so Edit widens it
+      // leftward: only the other columns must hold still. On desktop it reserves Edit mode's slot, so icons keep their x.
+      const pinned = await page.evaluate(() => { const s = document.querySelector('.table-scroll')!; return s.scrollWidth > s.clientWidth; });
+      if (!pinned) {
+        const xs = [...iconsBefore].sort((p, q) => p - q);
+        [...iconsAfter].sort((p, q) => p - q).slice(0, xs.length).forEach((y, i) => expect(Math.abs(y - xs[i]), `edit icon ${i}`).toBeLessThanOrEqual(1));
+      }
+      (pinned ? after.slice(0, -1) : after).forEach(([x, w], i) => { expect(Math.abs(x - before[i][0])).toBeLessThanOrEqual(1); expect(Math.abs(w - before[i][1])).toBeLessThanOrEqual(1); });
     }
   })),
+  {
+    // #34: where the List table scrolls sideways, the Actions column stays pinned to the right edge (fitting its icons),
+    // and an open row form spans exactly the visible width whatever the sideways scroll.
+    name: 'coffees-list-pinned-actions-and-form', viewports: 'all' as const,
+    path: () => '/coffees?status=backlog&view=list',
+    act: async (page: Page) => {
+      const scroll = page.locator('.table-scroll');
+      if (!(await scroll.evaluate((s) => s.scrollWidth > s.clientWidth))) return; // desktop: the table fits, nothing pins
+      const box = (await scroll.boundingBox())!;
+      const cell = page.locator('table.coffees-list tbody tr').first().locator('td.actions-cell');
+      const right = async () => { const b = (await cell.boundingBox())!; return b.x + b.width; };
+      expect(Math.abs((await right()) - (box.x + box.width)), 'actions pinned right').toBeLessThanOrEqual(1);
+      await scroll.evaluate((s) => (s.scrollLeft = 200));
+      expect(Math.abs((await right()) - (box.x + box.width)), 'actions pinned right after a sideways scroll').toBeLessThanOrEqual(1);
+      const gaps = await cell.evaluate((td) => { const r = td.getBoundingClientRect(); const bs = [...td.querySelectorAll('.button')].map((e) => e.getBoundingClientRect()); return [bs[0].left - r.left, r.right - bs.at(-1)!.right]; });
+      expect(Math.abs(gaps[0] - gaps[1]), 'no reserved slot after the icons').toBeLessThanOrEqual(2);
+      await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
+      await cell.getByRole('button', { name: 'Edit', exact: true }).click();
+      const pin = page.locator('.row-form-pin');
+      await expect(pin).toBeVisible();
+      for (const left of [0, 300]) {
+        await scroll.evaluate((s, l) => (s.scrollLeft = l), left);
+        const b = (await pin.boundingBox())!;
+        expect(Math.abs(b.x - box.x), `form left at scroll ${left}`).toBeLessThanOrEqual(1);
+        expect(Math.abs(b.width - box.width), `form width at scroll ${left}`).toBeLessThanOrEqual(1);
+      }
+    }
+  },
   {
     // Phone bug: in List view, top Edit, then tapping a row's freeze icon did nothing. Touch taps stage Freeze (pressed, Pending badge);
     // a second tap un-stages; Unfreeze and Archive stage the same way. Nothing is saved.
