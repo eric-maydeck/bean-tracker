@@ -58,4 +58,11 @@ describe('importWarnings', () => {
     expect(importWarnings(db).map((w) => w.value).sort()).toEqual(['5', '6']);
     expect(reasons()[0]).toContain('expects dotted');
   });
+
+  it('a Custom setting format accepts any text', () => {
+    clear();
+    brew('gz', 'fine-ish'); brew('gz', '1.4.2'); brew('gz', '');
+    saveGearDetails(db, { kind: 'grinder', name: 'ZP6', values: { settingFormat: 'Custom (any text)' }, imageUrl: null });
+    expect(reasons()).toEqual(['No grind setting']);
+  });
 });

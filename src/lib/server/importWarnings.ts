@@ -31,9 +31,9 @@ export function importWarnings(db: DatabaseSync): ImportWarning[] {
     const shape = r.mill && r.setting ? shapeOf(r.setting.trim()) : null;
     if (shape) (counts.get(r.mill!) ?? counts.set(r.mill!, { number: 0, dotted: 0 }).get(r.mill!)!)[shape]++;
   }
-  const formatOf = (r: Row): Shape | null => {
+  const formatOf = (r: Row): Shape | 'custom' | null => {
     const set = field.get(r.grinder ?? '');
-    if (set) return set === SETTING_FORMATS[1] ? 'dotted' : 'number';
+    if (set) return set === SETTING_FORMATS[2] ? 'custom' : set === SETTING_FORMATS[1] ? 'dotted' : 'number';
     const c = counts.get(r.mill!);
     return c ? (c.dotted > c.number ? 'dotted' : 'number') : null;
   };
@@ -45,6 +45,7 @@ export function importWarnings(db: DatabaseSync): ImportWarning[] {
     if (r.mill) {
       const s = r.setting?.trim() ?? '', shape = shapeOf(s), want = formatOf(r);
       if (!s) warn('blank', 'No grind setting');
+      else if (want === 'custom') { /* any text goes */ }
       else if (!shape) warn(s, 'Malformed grind setting');
       else if (want && shape !== want) warn(s, `Not this grinder's usual format (expects ${want})`);
     }
