@@ -2941,7 +2941,9 @@ export const STATES: State[] = [
       const before = await actionsW();
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
-      expect(Math.abs((await actionsW()) - before)).toBeLessThanOrEqual(1);
+      // Pinned (the table scrolls sideways, #34) the column fits its icons, so Edit widens it; on desktop it holds still.
+      const pinned = await page.locator('.table-scroll').evaluate((s) => s.scrollWidth > s.clientWidth);
+      if (!pinned) expect(Math.abs((await actionsW()) - before)).toBeLessThanOrEqual(1);
       await buttonsInCell(); // Edit mode too (three-icon rows plus the first row's four)
       await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
       await checkLayout(page);
