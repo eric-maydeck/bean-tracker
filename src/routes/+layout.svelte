@@ -38,11 +38,12 @@
     { href: '/on-deck', label: 'On Deck' },
     { href: '/subscriptions', label: 'Subscriptions' },
     { href: '/stats', label: 'Stats' },
+    { href: '/gear', label: 'Gear' },
     { href: '/recipes', label: 'Recipes' },
     { href: '/water', label: 'Water' }
   ];
-  // The bottom bar is full at phone width; Recipes and Water live in More there.
-  const tabLinks = links.filter((l) => l.href !== '/recipes' && l.href !== '/water');
+  // The bottom bar is full at phone width; Gear, Recipes and Water live in More there.
+  const tabLinks = links.filter((l) => !['/gear', '/recipes', '/water'].includes(l.href));
 
   let theme = $state<'light' | 'dark'>('light');
 
@@ -198,6 +199,9 @@
 
 {#if showMore}
   <div class="bottom-tabs-more-panel">
+    <a class="nav-link-button" href="/gear" aria-current={page.url.pathname === '/gear' ? 'page' : undefined}
+      ><Icon name="gear" /> Gear</a
+    >
     <a class="nav-link-button" href="/recipes" aria-current={current('/recipes') ? 'page' : undefined}
       ><Icon name="list-checks" /> Recipes</a
     >

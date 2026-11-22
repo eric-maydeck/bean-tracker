@@ -9,21 +9,20 @@
   import { backdrop } from '#lib/imageBackdrop.ts';
   import { hostOf } from '#lib/imageSuggest.ts';
   import { usd } from '#lib/money.ts';
-  import type { InsightsUrlState, InsightsView } from '#lib/insightsUrl.ts';
+  import { statsLink, type GearUrlState } from '#lib/gearUrl.ts';
   import type { Trophy } from '#lib/server/insights/trophies.ts';
   import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import GearForm from './GearForm.svelte';
-  import LabHead from './LabHead.svelte';
-  import { rowVars } from './rows';
+  import { rowVars } from '../stats/rows';
 
-  let { list, s, choose, placeTip }: {
-    list: Trophy[]; s: InsightsView;
-    choose: (c: InsightsUrlState) => void; placeTip: (e: ToggleEvent) => void;
+  let { list, s, choose }: {
+    list: Trophy[]; s: GearUrlState;
+    choose: (c: Partial<GearUrlState>) => void;
   } = $props();
 
-  // The kind toggle (absent = All) narrows both the grid and the shelf; the picks still choose cards within a kind.
-  let shown = $derived(shownTrophies(s.gear ? list.filter((t) => t.kind === s.gear) : list, { dripper: s.dripper, filter: s.filter, grinder: s.grinder }));
+  // The kind toggle (absent = All) narrows both the grid and the shelf.
+  let shown = $derived(shownTrophies(s.gear ? list.filter((t) => t.kind === s.gear) : list, {}));
   let shelf = $derived(s.retired === 'open');
   let current = $derived(list.find((t) => t.key === s.card));
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
@@ -144,11 +143,6 @@
 
 {#if list.length}
   <section class="chart-panel" data-section="gear-trophies">
-    <LabHead id="gear-trophies" title="Gear showcase" {placeTip}
-      help={['Every piece of gear you brewed with in the Period.', 'Period sets brews, grams, bags, days and favorite.',
-        'Ratings and Brews set only the average and best rating.', 'First used, last used and Retired look at all your brews.',
-        'Ignores Compare, People and the other filters; Dripper, Filter and Grinder each pick a card of their own kind.',
-        'Retired: archived in Bean Conqueror, or no brew in 90 days.']} />
     <div class="tab-group kind-chips" role="group" aria-label="Kind" data-button-row>
       {#each [undefined, ...GEAR_KINDS] as k (k ?? 'all')}
         <button aria-pressed={s.gear === k} onclick={() => choose({ gear: k })}>{k ? `${KIND_LABEL[k]}s` : 'All'}</button>
@@ -209,6 +203,7 @@
           </article>
           {/if}
             {@render usage(t)}
+          {#if !editing}<a class="stats-link" href={statsLink(t)}>This gear on Stats →</a>{/if}
         </div>
         {#if leaving}
           <!-- Inside the dialog, so in the top layer; Escape = Keep editing (window keydown above). -->
@@ -577,6 +572,11 @@
   .media-meta b {
     font-weight: 600;
     color: var(--color-text);
+  }
+  .stats-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px; /* a touch target */
   }
   /* Usage runs the dialog's full width under the photo and details. */
   .usage {
