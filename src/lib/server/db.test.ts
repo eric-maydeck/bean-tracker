@@ -74,6 +74,34 @@ describe('createDb', () => {
   });
 });
 
+describe('fresh database', () => {
+  it('gets the schema and reference data only: no owner rows, only the boot settings in app_meta', () => {
+    const db = createDb(':memory:');
+    const tables = (db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`).all() as { name: string }[]).map((r) => r.name);
+    const filled = tables.filter((t) => (db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n > 0).sort();
+    expect(filled).toEqual(['app_meta', 'roast_levels']);
+    const keys = (db.prepare(`SELECT key FROM app_meta ORDER BY key`).all() as { key: string }[]).map((r) => r.key);
+    expect(keys).toEqual(['brewing_time_zone', 'fresh_db', 'last_deployed']);
+  });
+
+  it('a second boot still skips the owner fixes; a legacy db (no fresh_db) runs them', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fresh-'));
+    try {
+      const file = join(dir, 't.db');
+      createDb(file).close();
+      const again = createDb(file);
+      expect((again.prepare(`SELECT COUNT(*) AS n FROM app_meta`).get() as { n: number }).n).toBe(3);
+      again.exec(`DELETE FROM app_meta WHERE key = 'fresh_db'`);
+      again.close();
+      const legacy = createDb(file);
+      expect(legacy.prepare(`SELECT 1 FROM app_meta WHERE key = 'shoebox_logo_fill_2026_10_08'`).get()).toBeTruthy();
+      legacy.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('legacy data migration', () => {
   it('remaps old status values to the new three-state model', () => {
     const db = createDb(':memory:');
@@ -320,14 +348,14 @@ describe('image fill recompute', () => {
       const first = createDb(file);
       first.prepare(`INSERT INTO image_fills (url, fill) VALUES ('https://a/x.png', '#000000')`).run();
       // Simulate a DB from before the marker existed.
-      first.prepare(`DELETE FROM app_meta WHERE key = 'image_fills_recompute_2026_10_06'`).run();
+      first.prepare(`DELETE FROM app_meta WHERE key IN ('image_fills_recompute_2026_10_06', 'fresh_db')`).run();
       first.close();
       const second = createDb(file);
-      expect(second.prepare(`SELECT COUNT(*) AS n FROM image_fills`).get()).toEqual({ n: 0 });
+      expect(second.prepare(`SELECT COUNT(*) AS n FROM image_fills WHERE url LIKE 'https://a/%'`).get()).toEqual({ n: 0 });
       second.prepare(`INSERT INTO image_fills (url, fill) VALUES ('https://a/y.png', '#ffffff')`).run();
       second.close();
       const third = createDb(file);
-      expect(third.prepare(`SELECT COUNT(*) AS n FROM image_fills`).get()).toEqual({ n: 1 });
+      expect(third.prepare(`SELECT COUNT(*) AS n FROM image_fills WHERE url LIKE 'https://a/%'`).get()).toEqual({ n: 1 });
       third.close();
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -401,7 +429,7 @@ describe('ownData gear migration', () => {
     const path = join(dir, 't.db');
     const db = createDb(path); // no rows yet: marker set, nothing thrown
     seed(db);
-    db.exec(`DELETE FROM app_meta WHERE key = 'brew_now_own_data_2026_10c'`);
+    db.exec(`DELETE FROM app_meta WHERE key IN ('brew_now_own_data_2026_10c', 'fresh_db')`);
     db.close();
     const db2 = createDb(path);
     expect(fields(db2, 'dripper', 'Graycano')).toEqual({ shape: 'Conical', ownData: OWN_DATA_ONLY });

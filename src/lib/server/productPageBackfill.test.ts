@@ -56,6 +56,7 @@ describe('boot', () => {
         amount_g: null, cost: null, roast_date: '2026-09-01', frozen_start_date: null, frozen_end_date: null,
         rest_days_low: null, rest_days_high: null, image_url: null
       });
+      db.prepare(`DELETE FROM app_meta WHERE key = 'fresh_db'`).run(); // a legacy db: fixes run
       db.close();
 
       db = createDb(path);
