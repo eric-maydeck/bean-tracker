@@ -16,6 +16,8 @@ if (profile.background) execFileSync('taskpolicy', ['-b', '-p', String(process.p
 const ADMIN_PASSWORD_HASH = execFileSync('node', ['scripts/hash-password.ts', 'test']).toString().trim();
 // UI_PORT: per-worktree port from scripts/ports.ts, so parallel worktrees can run UI tests.
 const PORT = Number(process.env.UI_PORT) || 5198;
+// Empty-DB server: +1000 keeps it clear of other worktrees' UI (5200-5299) and preview (5300-5399) ports.
+const EMPTY_PORT = PORT + 1000;
 
 export default defineConfig({
   testDir: 'tests/ui',
@@ -45,8 +47,8 @@ export default defineConfig({
     env: { CONFIG_PATH: 'tests/ui/fixtures/config.yaml', DB_PATH: '.ui-test/ui.db', ADMIN_PASSWORD_HASH, SESSION_SECRET: 'ui-test-only-session-secret' }
   }, {
     // A brand-new empty database (never seeded), for tests/ui/emptyDb.spec.ts. Dev server only.
-    command: `node -e "for (const s of ['', '-wal', '-shm']) require('fs').rmSync('.ui-test/empty.db' + s, { force: true })" && npx vite dev --port ${PORT + 1} --strictPort`,
-    url: `http://localhost:${PORT + 1}/login`,
+    command: `node -e "for (const s of ['', '-wal', '-shm']) require('fs').rmSync('.ui-test/empty.db' + s, { force: true })" && npx vite dev --port ${EMPTY_PORT} --strictPort`,
+    url: `http://localhost:${EMPTY_PORT}/login`,
     reuseExistingServer: false,
     timeout: 120_000,
     env: { CONFIG_PATH: 'tests/ui/fixtures/config.yaml', DB_PATH: '.ui-test/empty.db', ADMIN_PASSWORD_HASH, SESSION_SECRET: 'ui-test-only-session-secret' }
@@ -64,10 +66,10 @@ export default defineConfig({
       use: { ...use, storageState: '.ui-test/admin.json' }
     })),
     // Brand-new empty database: every page, signed out and in, at two viewports. Own server and DB, so no dependencies.
-    ...VIEWPORTS.filter((v) => TWO_VIEWPORTS.includes(v.name)).map(({ name, ...use }) => ({
+    ...VIEWPORTS.filter((v) => PART <= 1 && TWO_VIEWPORTS.includes(v.name)).map(({ name, ...use }) => ({
       name: `empty-${name}`,
       testMatch: /emptyDb\.spec\.ts/,
-      use: { ...use, baseURL: `http://localhost:${PORT + 1}` }
+      use: { ...use, baseURL: `http://localhost:${EMPTY_PORT}` }
     })),
     // Adds coffees to the shared DB, so it waits for every layout check. (UI_PART > 1 runs layout states only.)
     ...(PART > 1 ? [] : [{
