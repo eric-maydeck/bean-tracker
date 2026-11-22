@@ -31,7 +31,7 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`, browserName: 'firefox', headless: true,
     screenshot: { mode: 'only-on-failure', fullPage: true }
   },
-  webServer: {
+  webServer: [{
     // Fresh seed every run; never reuse a server (it could be on a real DB).
     // UI_BUILD=prod: a production build (adapter-node assumes https without ORIGIN, failing CSRF).
     command: `npx vite-node --config scripts/vite-node.config.mjs scripts/ui-seed.ts .ui-test/ui.db && ${
@@ -43,7 +43,14 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: { CONFIG_PATH: 'tests/ui/fixtures/config.yaml', DB_PATH: '.ui-test/ui.db', ADMIN_PASSWORD_HASH, SESSION_SECRET: 'ui-test-only-session-secret' }
-  },
+  }, {
+    // A brand-new empty database (never seeded), for tests/ui/emptyDb.spec.ts. Dev server only.
+    command: `node -e "for (const s of ['', '-wal', '-shm']) require('fs').rmSync('.ui-test/empty.db' + s, { force: true })" && npx vite dev --port ${PORT + 1} --strictPort`,
+    url: `http://localhost:${PORT + 1}/login`,
+    reuseExistingServer: false,
+    timeout: 120_000,
+    env: { CONFIG_PATH: 'tests/ui/fixtures/config.yaml', DB_PATH: '.ui-test/empty.db', ADMIN_PASSWORD_HASH, SESSION_SECRET: 'ui-test-only-session-secret' }
+  }],
   projects: [
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
     ...VIEWPORTS.map(({ name, ...use }) => ({
@@ -55,6 +62,12 @@ export default defineConfig({
       // Width-independent behavior states run at two viewports only (not generated elsewhere).
       ...(TWO_VIEWPORTS.includes(name) ? {} : { grepInvert: /@two\b/ }),
       use: { ...use, storageState: '.ui-test/admin.json' }
+    })),
+    // Brand-new empty database: every page, signed out and in, at two viewports. Own server and DB, so no dependencies.
+    ...VIEWPORTS.filter((v) => TWO_VIEWPORTS.includes(v.name)).map(({ name, ...use }) => ({
+      name: `empty-${name}`,
+      testMatch: /emptyDb\.spec\.ts/,
+      use: { ...use, baseURL: `http://localhost:${PORT + 1}` }
     })),
     // Adds coffees to the shared DB, so it waits for every layout check. (UI_PART > 1 runs layout states only.)
     ...(PART > 1 ? [] : [{
