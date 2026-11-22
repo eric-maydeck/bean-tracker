@@ -5,7 +5,7 @@ import { bcLocalTime } from './insights/time';
 
 // The Account page's "Data warnings": BQ brews worth fixing in BQ before re-importing. Computed from the stored
 // brews on each load; never blocks or changes an import.
-export type ImportWarning = { id: number; at: string; coffee: string | null; method: string | null; grinder: string | null; value: string; reason: string; detail: string };
+export type ImportWarning = { id: number; at: string; coffee: string | null; method: string | null; grinder: string | null; value: string; reason: string };
 
 type Shape = 'number' | 'dotted';
 const NUMBER = /^\d+(\.\d+)?$/, DOTTED = /^\d+\.\d+\.\d+$/;
@@ -40,20 +40,17 @@ export function importWarnings(db: DatabaseSync): ImportWarning[] {
 
   const out: ImportWarning[] = [];
   for (const r of rows) {
-    const warn = (value: string, reason: string, detail: string) =>
-      out.push({ id: r.id, at: bcLocalTime(r.at), coffee: r.coffee, method: r.method, grinder: r.grinder, value, reason, detail });
+    const warn = (value: string, reason: string) =>
+      out.push({ id: r.id, at: bcLocalTime(r.at), coffee: r.coffee, method: r.method, grinder: r.grinder, value, reason });
     if (r.mill) {
       const s = r.setting?.trim() ?? '', shape = shapeOf(s), want = formatOf(r);
-      if (!s) warn('blank', 'No grind setting', 'nothing logged for this brew');
+      if (!s) warn('blank', 'No grind setting');
       else if (want === 'custom') { /* any text goes */ }
-      else if (!shape) warn(s, 'Malformed grind setting', 'not a number (5.5) or a dotted setting (1.4.2)');
-      else if (want && shape !== want) {
-        const fmt = want === 'dotted' ? 'dotted (e.g. 1.4.2)' : 'numbers (e.g. 5.5)';
-        warn(s, 'Wrong grind format', `${field.get(r.grinder ?? '') ? `${r.grinder}'s Setting format is` : `most ${r.grinder} brews are`} ${fmt}; logged on the wrong grinder?`);
-      }
+      else if (!shape) warn(s, 'Malformed grind setting');
+      else if (want && shape !== want) warn(s, 'Wrong grind format');
     }
-    if (!r.dose) warn(r.dose == null ? 'blank' : '0g', 'No dose', 'no coffee weight logged');
-    if (!r.water && !r.beverage) warn(r.water == null && r.beverage == null ? 'blank' : '0g', 'No water', 'no water or beverage amount logged');
+    if (!r.dose) warn(r.dose == null ? 'blank' : '0g', 'No dose');
+    if (!r.water && !r.beverage) warn(r.water == null && r.beverage == null ? 'blank' : '0g', 'No water');
   }
   return out;
 }

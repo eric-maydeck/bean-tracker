@@ -56,7 +56,6 @@ describe('importWarnings', () => {
     brew('gz', '5'); brew('gz', '6'); brew('gz', '1.4.2');
     saveGearDetails(db, { kind: 'grinder', name: 'ZP6', values: { settingFormat: 'Dotted (e.g. 1.4.2)' }, imageUrl: null });
     expect(importWarnings(db).map((w) => w.value).sort()).toEqual(['5', '6']);
-    expect(importWarnings(db)[0].detail).toBe("ZP6's Setting format is dotted (e.g. 1.4.2); logged on the wrong grinder?");
   });
 
   it('a Custom setting format accepts any text', () => {
