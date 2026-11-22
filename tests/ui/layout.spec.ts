@@ -8366,6 +8366,9 @@ export const STATES: State[] = [
   // range=6m, not all: all now spans the seed's prior year, so the chart goes monthly and the new drippers' gaps vanish.
   { name: 'insights-board-time-size', path: () => '/stats?tab=leaderboards&range=6m&avg=raw',
     act: async (page) => {
+      // Show all's smooth scroll (bottomInView) can still be moving the page when Show top is clicked, so under load the
+      // click lands off the button and is lost (#173). Reduced motion makes that scroll instant.
+      await page.emulateMedia({ reducedMotion: 'reduce' });
       // List and Over time are the same card size; Show all (Over time) only adds lines: no card changes height.
       const row = '.board-band:has(.board[data-board=dripper]) > .board';
       const heights = () => page.locator(row).evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
@@ -8417,6 +8420,7 @@ export const STATES: State[] = [
   { name: 'insights-board-open-independent', viewports: 'two', path: () => '/stats?tab=leaderboards&range=all&avg=raw',
     act: async (page) => {
       // Each board's Show all is its own: opening one never closes another, in any order, and it survives a reload.
+      await page.emulateMedia({ reducedMotion: 'reduce' }); // back-to-back clicks: no smooth scroll to land mid-way (#173)
       const btn = (b: string, name: RegExp) => page.locator(`.board[data-board=${b}]`).getByRole('button', { name });
       await btn('dripper', /^Show all/).click();
       await expect(page).toHaveURL(/open=dripper(&|$)/);
