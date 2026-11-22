@@ -755,18 +755,13 @@ describe('brew filters', () => {
     expect(run('?dripper=V60').brewOptions.drippers).toEqual(['Origami', 'V60']);
   });
 
-  it('trophies only on the gear tab: Period-scoped, the Coffees and other filters ignored', () => {
-    seed([[addDays(today, -400), 15], [today, 15]]);
-    const db = getDb();
-    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m1', 'V60', '${today}');
-      UPDATE beanconqueror_brews SET preparation_id = 'm1'`);
-    expect(run('?tab=overview').trophies).toBeNull();
-    const t = run('?tab=gear&range=all&dripper=V60&ratings=current&dial=dialed&caffeine=decaf').trophies;
-    expect(t.find((x: { key: string }) => x.key === 'dripper-v60').brews).toBe(2);
-    // A short Period drops the brew 400 days back; first used stays lifetime.
-    const w = run('?tab=gear&range=1w').trophies.find((x: { key: string }) => x.key === 'dripper-v60');
-    expect(w.brews).toBe(1);
-    expect(w.firstUsed).toBe(addDays(today, -400));
+  it('old gear showcase addresses redirect (308) to /gear with only its params; other tabs and a bare gear tab stay', () => {
+    const to = (q: string) => { try { run(q); } catch (e) { return e as { status: number; location: string }; } };
+    expect(to('?tab=gear&card=x')).toBeUndefined(); // a junk card key is dropped: nothing left to carry
+    expect(to('?tab=gear&card=dripper-v60&range=1w')).toMatchObject({ status: 308, location: '/gear?card=dripper-v60' });
+    expect(to('?tab=gear&gear=grinder&retired=open&range=all')).toMatchObject({ status: 308, location: '/gear?gear=grinder&retired=open' });
+    expect(to('?tab=gear')).toBeUndefined();
+    expect(to('?tab=overview&gear=dripper')).toBeUndefined();
   });
   it('pours: only on tab=pours; Calibrated names the recipe it hides, ratings=all does not', () => {
     seed([[today, 15]]);

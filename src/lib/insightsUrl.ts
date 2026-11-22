@@ -1,6 +1,4 @@
 import { pickOne } from '#lib/pageUrlState.ts';
-import { GEAR_KINDS, type GearKind } from '#lib/gear.ts';
-import { parseCard } from '#lib/gearUrl.ts';
 import { upsertFilter, type Filter } from '#lib/coffeeFilters.ts';
 import { fromParams, toParams } from '#lib/coffeeViewState.ts';
 
@@ -282,10 +280,7 @@ export interface InsightsUrlState {
   time?: 'exact';
   bloom?: 'exact';
   grind?: 'exact';
-  card?: string; // Gear's open trophy card (key "kind-slug")
   chart?: string; // a heading's id: the page scrolls to it on load (link previews name it)
-  retired?: 'open'; // Gear's retired shelf is open
-  gear?: GearKind; // Gear showcase's kind toggle: absent = All
   spendView?: 'ppg'; // Spend: price per gram chart (absent = Spend)
   spendSeries?: SpendSeries; // Spend: which series the chart draws (absent = One-off vs sub)
   rcSort?: RcCol; // Spend: Report card sort column (absent = Bags)
@@ -307,12 +302,12 @@ export interface InsightsUrlState {
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
 type Optional = 'avg' | 'trend' | 'gearBy' | 'gearView' | 'waterView' | 'speedBy' | 'open' | 'low' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'chart' | 'retired' | 'gear' | 'spendView' | 'spendSeries' | 'rcSort' | 'rcDir' | 'rcTop' | 'waitBy' | 'recipeBy' | 'pourThin' | 'recipeVs';
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'chart' | 'spendView' | 'spendSeries' | 'rcSort' | 'rcDir' | 'rcTop' | 'waitBy' | 'recipeBy' | 'pourThin' | 'recipeVs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   avg?: Avg; trend?: Trend; gearBy?: 'grinder'; gearView?: 'lines'; waterView?: 'lines'; speedBy?: 'process' | 'origin'; open?: Board[]; low?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
-  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; chart?: string; retired?: 'open'; gear?: GearKind; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top; waitBy?: WaitBy; recipeBy?: 'process' | 'roaster'; pourThin?: 'open'; recipeVs?: (typeof RECIPE_VS)[number];
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; chart?: string; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top; waitBy?: WaitBy; recipeBy?: 'process' | 'roaster'; pourThin?: 'open'; recipeVs?: (typeof RECIPE_VS)[number];
 } & Partial<Record<ExactParam, 'exact'>> & BrewFilters;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
@@ -467,10 +462,7 @@ export function parseInsightsUrl(
     grindBy: pickOne(p, 'grindBy', SLICES),
     ...(Object.fromEntries(EXACT_PARAMS.map((k) => [k, p.get(k)?.toLowerCase() === 'exact' ? 'exact' : undefined])) as Partial<Record<ExactParam, 'exact'>>),
     pairs: parsePairs(p.get('pairs')),
-    card: parseCard(p.get('card')),
     chart: parseChart(p.get('chart')),
-    retired: pickOne(p, 'retired', ['open']),
-    gear: pickOne(p, 'gear', GEAR_KINDS),
     spendView: pickOne(p, 'spendView', ['ppg']),
     spendSeries: pickOne(p, 'spendSeries', SPEND_SERIES),
     rcSort: pickOne(p, 'rcSort', RC_COLS),
@@ -538,10 +530,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
   for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BREW_FILTER_KEYS, ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
   if (s.pairs?.length) p.set('pairs', s.pairs.join(','));
-  if (s.card) p.set('card', s.card);
   if (s.chart) p.set('chart', s.chart);
-  if (s.retired) p.set('retired', s.retired);
-  if (s.gear) p.set('gear', s.gear);
   if (s.spendView) p.set('spendView', s.spendView);
   if (s.spendSeries) p.set('spendSeries', s.spendSeries);
   if (s.rcSort) p.set('rcSort', s.rcSort);
@@ -688,7 +677,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     bag: s.bag, roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster, grinder: s.grinder,
     dripper: s.dripper, filter: s.filter, water: s.water, brewDose: s.brewDose, brewTemp: s.brewTemp,
     tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
-    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, card: s.card, chart: s.chart, retired: s.retired, gear: s.gear,
+    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, chart: s.chart,
     spendView: s.spendView, spendSeries: s.spendSeries, rcSort: s.rcSort, rcDir: s.rcDir, rcTop: s.rcTop, waitBy: s.waitBy, recipeBy: s.recipeBy, pourThin: s.pourThin, recipeVs: s.recipeVs
   };
 }

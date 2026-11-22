@@ -888,30 +888,13 @@ describe('brew filters', () => {
   it('resetInsights drops brew filters', () => expect(resetInsights({ tab: 'gear', water: 'x' })).toEqual({ tab: 'gear' }));
 });
 
-describe('gear trophy params', () => {
-  it('card: one key, lowercased, junk dropped, absent = closed', () => {
-    expect(parse('card=Grinder-ZP6').card).toBe('grinder-zp6');
-    expect(parse('card=dripper-v60,grinder-zp6').card).toBeUndefined();
-    expect(parse('card=bogus').card).toBeUndefined();
-    expect(parse('card=').card).toBeUndefined();
-    expect(parse('tab=gear').card).toBeUndefined();
-  });
-  it('gear kind toggle: case-insensitive, junk dropped, round-trips, reset clears', () => {
-    expect(parse('gear=Grinder').gear).toBe('grinder');
-    expect(parse('gear=water').gear).toBeUndefined();
-    expect(parse('tab=gear').gear).toBeUndefined();
-    expect(insightsParams({ tab: 'gear', gear: 'filter' }).toString()).toBe('tab=gear&gear=filter');
-    expect(withDefaults(parse('tab=gear&gear=dripper'))).toMatchObject({ gear: 'dripper' });
-    expect(resetInsights({ tab: 'gear', gear: 'filter' })).toEqual({ tab: 'gear' });
-  });
-  it('retired takes only open', () => {
-    expect(parse('retired=OPEN').retired).toBe('open');
-    expect(parse('retired=yes').retired).toBeUndefined();
-  });
-  it('round-trips and is bare when collapsed', () => {
-    expect(insightsParams({ tab: 'gear', card: 'dripper-v60', retired: 'open' }).toString()).toBe('tab=gear&card=dripper-v60&retired=open');
+describe('gear and chart params', () => {
+  it('the showcase params moved to /gear: card, gear and retired no longer parse here', () => {
+    const s = parse('tab=gear&card=dripper-v60&gear=grinder&retired=open');
+    expect(s).not.toHaveProperty('card');
+    expect(s).not.toHaveProperty('gear');
+    expect(s).not.toHaveProperty('retired');
     expect(insightsParams({ tab: 'gear' }).toString()).toBe('tab=gear');
-    expect(withDefaults(parse('tab=gear&card=dripper-v60&retired=open'))).toMatchObject({ card: 'dripper-v60', retired: 'open' });
   });
   it('chart: one id, case kept, junk dropped, kept in the URL, dropped by reset', () => {
     expect(parse('chart=Leaderboard-Origins').chart).toBe('Leaderboard-Origins'); // case kept: tile ids are camelCase (record-oldestBrewed)
@@ -923,7 +906,6 @@ describe('gear trophy params', () => {
     expect(withDefaults(parse('chart=gear-eras')).chart).toBe('gear-eras');
     expect(resetInsights(parse('tab=records&chart=records-taste&range=1m'))).toEqual({ tab: 'records' });
   });
-  it('reset drops card and retired', () => expect(resetInsights({ tab: 'gear', card: 'dripper-v60', retired: 'open' })).toEqual({ tab: 'gear' }));
   it('gear offers dripper and filter selects without filtering the lab', () => {
     expect(brewSelectsOn('gear')).toEqual(['dripper', 'filter', 'water', 'brewDose', 'brewTemp']);
     expect(brewSelectsOn('water')).toEqual(BREW_FILTERS_ON.water);
