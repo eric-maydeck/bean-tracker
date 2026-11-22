@@ -7,6 +7,9 @@ import { getDb, setHouseholdSize, setDefaultCaffeine } from '#lib/server/db.ts';
 import { createCoffee } from '#lib/server/coffees.ts';
 import { localToday, periodBounds, previousPeriod, addDays, daysBetween, trackedDays, comparePeriod, type Period } from '#lib/server/insights/time.ts';
 import { setBrewingZone } from '#lib/localDate.ts';
+import { loadFacts } from '#lib/server/insights/facts.ts';
+import { trophyCase, gearArchive } from '#lib/server/insights/trophies.ts';
+import { saveGearDetails } from '#lib/server/gearDetails.ts';
 import { load } from './+page.server';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -790,5 +793,22 @@ describe('brew filters', () => {
     db.exec(`UPDATE beanconqueror_brews SET rating = NULL WHERE bc_created_at >= '2026-06-01'`);
     const none = run('?tab=pours&range=all&dial=all').pours;
     expect(none).toMatchObject({ recipes: [], technique: [], hiddenByRatings: ['Rcp'] });
+  });
+
+  it('gear tab: the Your gear panel is the /gear showcase active, photographed gear, whatever the period', () => {
+    const db = getDb();
+    expect(run('?tab=gear').gearPanel).toBeNull(); // no gear yet
+    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m1', 'V60', '${today}'), ('m2', 'Kalita', '${today}')`);
+    const ins = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, ground_coffee_g, rating, preparation_id, imported_at) VALUES (?, 15, 8, ?, ?)`);
+    ins.run(`${today}T15:00:00.000Z`, 'm1', today);
+    ins.run('2020-01-01T15:00:00.000Z', 'm2', today); // long unused: retired
+    saveGearDetails(db, { kind: 'dripper', name: 'V60', values: {}, imageUrl: 'https://x/y.jpg' });
+    const live = trophyCase(loadFacts(db).brews, gearArchive(db), today).filter((t) => !t.retired);
+    const d = run('?tab=gear').gearPanel;
+    expect(d.total).toBe(live.length);
+    expect(d.shown.map((t: { key: string }) => t.key)).toEqual(['dripper-v60']);
+    expect(d.shown.every((t: { image: unknown }) => t.image)).toBe(true);
+    expect(run('?tab=gear&range=2025').gearPanel).toEqual(d);
+    expect(run('?tab=overview').gearPanel).toBeNull();
   });
 });

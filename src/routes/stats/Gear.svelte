@@ -1,8 +1,9 @@
 <script lang="ts" module>
   import type { GearTab } from '#lib/server/insights/lab.ts';
   import type { JumpLink } from './JumpNav.svelte';
-  export function jumpLinks(t: GearTab): JumpLink[] {
+  export function jumpLinks(t: GearTab, panel: object | null): JumpLink[] {
     return [
+      panel && ['gear-trophies', 'Your gear'],
       t.drippers.length && ['gear-drippers', 'Dripper ratings'],
       t.filters.length && ['gear-filters', 'Filter ratings'],
       t.matrix && ['gear-matrix', 'Filters per dripper'],
@@ -19,6 +20,8 @@
   import type { InsightsUrlState, InsightsView } from '#lib/insightsUrl.ts';
   import { SAMPLE_HELP } from '#lib/sample.ts';
   import { SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
+  import GearPanel from './GearPanel.svelte';
+  import type { ComponentProps } from 'svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
@@ -28,8 +31,8 @@
   import UsageChart, { ERA_VIEW_OPTIONS } from './UsageChart.svelte';
   import { fitPairs } from './fitPairs';
 
-  let { t, s, placeTip, choose }: {
-    t: GearTab; s: InsightsView;
+  let { t, s, panel, placeTip, choose }: {
+    t: GearTab; s: InsightsView; panel: ComponentProps<typeof GearPanel>['panel'] | null;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -66,6 +69,7 @@
   </section>
 {/snippet}
 
+{#if panel}<GearPanel {panel} />{/if}
 {#if empty}
   <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews with gear recorded in this period.')}</p></section>
 {:else}

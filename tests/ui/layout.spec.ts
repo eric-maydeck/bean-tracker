@@ -9851,7 +9851,8 @@ export const STATES: State[] = [
       await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await expect(dlg).toBeVisible();
-      for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
+      for (const l of ['Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
+      for (const l of ['Dripper', 'Filter']) await expect(dlg.getByLabel(l, { exact: true })).toHaveCount(0); // gear boards can't be narrowed by gear
     } },
   { name: 'insights-brew-pick-any', viewports: 'two', path: () => '/stats',
     act: async (page) => {
@@ -10974,12 +10975,32 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/\/gear\?retired=open$/);
       await expectGridRowsFull(page, '.trophy-grid');
     } },
+  { name: 'stats-gear-panel', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      const panel = page.locator('[data-section="gear-trophies"]');
+      await expect(panel).toBeVisible();
+      await expect(panel.getByRole('heading', { level: 2, name: 'Your gear' })).toBeVisible();
+      await expect(panel.getByRole('link')).toHaveAttribute('href', '/gear');
+      await expect(panel.getByText('Open the Gear page →')).toBeVisible();
+      // One line of tiles that never spills past the panel; the "+N more" counts the rest.
+      const tiles = panel.locator('.tile');
+      expect(await tiles.count()).toBeGreaterThan(0);
+      const tops = new Set(await tiles.evaluateAll((ts) => ts.map((t) => Math.round(t.getBoundingClientRect().top))));
+      expect(tops.size, 'tiles on one line').toBe(1);
+      const col = (await page.locator('main').first().boundingBox())!, box = (await panel.boundingBox())!;
+      expect(box.width).toBeLessThanOrEqual(col.width + 1);
+      const last = (await tiles.last().boundingBox())!;
+      expect(last.x + last.width).toBeLessThanOrEqual(box.x + box.width);
+      await expect(page.locator('nav.board-jump').getByRole('link', { name: 'Your gear' })).toBeVisible();
+      await panel.getByRole('link').click();
+      await expect(page).toHaveURL(/\/gear$/);
+    } },
   { name: 'gear-dialog', viewports: 'two', path: () => '/gear?card=grinder-zp6-special',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg).toBeVisible();
       const link = dlg.getByRole('link', { name: 'This gear on Stats →' });
-      await expect(link).toHaveAttribute('href', '/stats?tab=gear&grinder=zp6-special');
+      await expect(link).toHaveAttribute('href', '/stats?tab=gear&gearBy=grinder#gear-eras');
       await dlg.getByRole('button', { name: 'Close' }).click();
       await expect(page).toHaveURL(/\/gear$/);
     } },
@@ -10993,7 +11014,10 @@ export const STATES: State[] = [
       await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
     } },
   { name: 'gear-stray-param', viewports: 'two', path: () => '/stats?tab=overview&gear=dripper',
-    act: async (page) => { await expect(page).toHaveURL(/\/stats\?tab=overview&gear=dripper$/); } },
+    act: async (page) => {
+      await expect(page).toHaveURL(/\/stats\?tab=overview&gear=dripper$/);
+      await expect(page.getByRole('heading', { level: 2, name: 'Totals' })).toBeVisible();
+    } },
   { name: 'gear-unknown-card', viewports: 'two', path: () => '/gear?card=nope',
     act: async (page) => {
       await expect(page.getByRole('heading', { level: 1, name: 'Gear' })).toBeVisible();

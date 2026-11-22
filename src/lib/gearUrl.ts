@@ -30,8 +30,7 @@ export function gearRedirect(url: URL): string | null {
   return q ? `/gear?${q}` : null;
 }
 
-// A trophy's link back to its Stats Gear card: dripper and filter pick by name, grinder by slug (key minus "grinder-").
+// A trophy's link back to its board on the Stats Gear tab: the dripper and filter boards, the grinder's usage chart by grinder.
 export function statsLink(t: { kind: GearKind; key: string; name: string }): string {
-  const v = t.kind === 'grinder' ? t.key.replace(/^grinder-/, '') : t.name;
-  return `/stats?${new URLSearchParams({ tab: 'gear', [t.kind]: v })}`;
+  return t.kind === 'grinder' ? '/stats?tab=gear&gearBy=grinder#gear-eras' : `/stats?tab=gear#gear-${t.kind}s`;
 }

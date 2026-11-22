@@ -906,8 +906,8 @@ describe('gear and chart params', () => {
     expect(withDefaults(parse('chart=gear-eras')).chart).toBe('gear-eras');
     expect(resetInsights(parse('tab=records&chart=records-taste&range=1m'))).toEqual({ tab: 'records' });
   });
-  it('gear offers dripper and filter selects without filtering the lab', () => {
-    expect(brewSelectsOn('gear')).toEqual(['dripper', 'filter', 'water', 'brewDose', 'brewTemp']);
+  it('gear offers only the filters it applies, and a stray dripper pick filters nothing', () => {
+    expect(brewSelectsOn('gear')).toEqual(BREW_FILTERS_ON.gear);
     expect(brewSelectsOn('water')).toEqual(BREW_FILTERS_ON.water);
     expect(activeBrewFilters(withDefaults({ tab: 'gear', dripper: 'V60' }))).toEqual({});
   });

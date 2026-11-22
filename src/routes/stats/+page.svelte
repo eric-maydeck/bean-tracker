@@ -579,7 +579,7 @@
     if (s.tab === 'brewing' && data.brewing && data.lab) return brewingLinks(data.brewing);
     if (s.tab === 'pours') return poursLinks(data.pours);
     if (s.tab === 'water' && data.water) return waterLinks(data.water);
-    if (s.tab === 'gear' && data.gear) return gearLinks(data.gear);
+    if (s.tab === 'gear' && data.gear) return gearLinks(data.gear, data.gearPanel);
     if (s.tab === 'onhand' && data.onHand) return onHandLinks(data.onHand);
     if (s.tab === 'spend' && data.spend) return spendLinks(data.spend);
     if (s.tab === 'recaps') return [];
@@ -1006,7 +1006,7 @@
 {:else if s.tab === 'water' && data.water}
   <Water t={data.water} {s} {placeTip} {choose} />
 {:else if s.tab === 'gear' && data.gear}
-  <Gear t={data.gear} {s} {placeTip} {choose} />
+  <Gear t={data.gear} panel={data.gearPanel} {s} {placeTip} {choose} />
 {:else if s.tab === 'onhand' && data.onHand}
   {#snippet runwayChart()}
     <RunwayChart t={data.onHand!} today={data.today} paces={runwayPaces({ range: s.range, periodLabel, runwayDays: data.onHand!.runway.days, allDays: data.onHand!.runwayAll.days })} />

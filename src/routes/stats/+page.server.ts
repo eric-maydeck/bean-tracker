@@ -1,6 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { gearRedirect } from '#lib/gearUrl.ts';
+import { getGearDetails } from '#lib/server/gearDetails.ts';
+import { trophyCase, gearArchive, gearPanel } from '#lib/server/insights/trophies.ts';
 import { hasRecaps, recapTiles } from '#lib/server/recaps/recap.ts';
 import { getDb, getDateFormat, getHouseholdSize, getDefaultCaffeine, lastImportedAt } from '#lib/server/db.ts';
 import { loadFacts } from '#lib/server/insights/facts.ts';
@@ -233,6 +235,8 @@ export const load: PageServerLoad = ({ url, locals }) => {
     pours: poursData,
     water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,
     gear: s.tab === 'gear' ? gearTab(scored, bags, { ...labCtx, speedBy: s.speedBy }) : null,
+    // The Your gear panel: the same all-time call as /gear, so it agrees with that page whatever the Period.
+    gearPanel: s.tab === 'gear' ? gearPanel(trophyCase(everyBrew, gearArchive(db), today, { ratings: 'current', scored: onceDialed(everyBrew, dialIn) }, getGearDetails(db))) : null,
     recapsTab,
     recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin, period) : null,
     // The last-brews and finished-bags lists show every coffee and its rating, whatever the Caffeine filter says.

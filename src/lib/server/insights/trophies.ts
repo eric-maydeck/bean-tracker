@@ -130,3 +130,10 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
   const order = (k: GearKind) => GEAR_KINDS.indexOf(k);
   return out.sort((a, b) => order(a.kind) - order(b.kind) || b.brews - a.brews || a.name.localeCompare(b.name));
 }
+
+// The Stats Gear tab's "Your gear" panel: the active gear's photos in showcase order, and how many pieces of active gear there are.
+export function gearPanel(trophies: readonly Trophy[]): { shown: { key: string; name: string; image: { src: string; fill: string } }[]; total: number } | null {
+  const live = trophies.filter((t) => !t.retired);
+  const shown = live.flatMap((t) => (t.image ? [{ key: t.key, name: t.name, image: t.image }] : []));
+  return live.length ? { shown, total: live.length } : null;
+}
