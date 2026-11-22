@@ -8,9 +8,9 @@ updates:
       npm-minor-patch:
         update-types: [minor, patch]
     ignore:
-      # Majors need a migration; security updates still arrive. Revisit in the upgrade backlog item.
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
+      # svelte-check and SvelteKit don't accept TypeScript 7 yet; drop this in #168.
+      - dependency-name: "typescript"
+        versions: [">=7"]
       # 1.65's Firefox build 1572 crashes pages ("Page crashed", microsoft/playwright#43967); fixed upstream, unreleased.
       # Drop this once a release past 1.65.1 ships a newer Firefox build.
       - dependency-name: "@playwright/test"
@@ -23,7 +23,3 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    ignore:
-      # Majors need a migration; security updates still arrive. Revisit in the upgrade backlog item.
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]

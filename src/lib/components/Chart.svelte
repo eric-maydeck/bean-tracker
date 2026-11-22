@@ -458,6 +458,10 @@
         maintainAspectRatio: false,
         animation: {
           duration: 400,
+          // Chart.js 4.6.1 parks a resize that lands mid-animation (_resizeBeforeDraw) for the next frame's draw, but an
+          // animation whose last frame already ran ends without one: the canvas kept its old width (Expand then Shrink
+          // left the chart overflowing its card, #40). Draw once more to apply it. ponytail: private field; drop on a fixed Chart.js.
+          onComplete: ({ chart: c }) => (c as unknown as { _resizeBeforeDraw?: object })._resizeBeforeDraw && c.draw(),
         },
         // A tip opens only on a mark (ui-rules 50): a bar or a slice, never the plot's empty space. A line chart's tip opens
         // for the nearest x anywhere in the plot (every line chart, as Runway at your pace) and shows every series there (index mode).

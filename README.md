@@ -10,7 +10,7 @@ showcase of the collection.
 - [SvelteKit](https://kit.svelte.dev/) 2 + Svelte 5, TypeScript, `adapter-node`
 - Node's built-in [`node:sqlite`](https://nodejs.org/api/sqlite.html) — no ORM, no native module to cross-compile
 - [Vitest](https://vitest.dev/) for unit and script tests
-- Requires **Node.js ≥ 22.5**
+- Requires **Node.js ≥ 26**
 
 ## Getting started
 

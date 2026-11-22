@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
-FROM --platform=$BUILDPLATFORM node:22-slim AS build
+FROM --platform=$BUILDPLATFORM node:26-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22-slim AS runtime
+FROM node:26-slim AS runtime
 LABEL org.opencontainers.image.source=https://github.com/eric-maydeck/bean-tracker
 WORKDIR /app
 ENV NODE_ENV=production
