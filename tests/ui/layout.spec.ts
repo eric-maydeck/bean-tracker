@@ -8,6 +8,7 @@ import { stringify } from 'devalue';
 import { join } from 'node:path';
 import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody, outerHeight } from './collapsibleBar';
 import { PART, PARTS } from './viewports';
+import { expectHeadingLinks } from './headingLinks';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
@@ -2287,6 +2288,20 @@ export const STATES: State[] = [
     }
   },
   {
+    // The section headings link to themselves; changing the volume rewrites the query and keeps the hash and the scroll.
+    name: 'water-heading-links', viewports: 'two',
+    path: () => '/water#hardness',
+    act: async (page) => {
+      await expectHeadingLinks(page, ['lotus-drops', 'minerals', 'hardness'], 'hardness');
+      await page.mouse.wheel(0, -5000);
+      await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+      await page.getByLabel('Water (mL)').fill('900');
+      await expect(page).toHaveURL(/ml=900.*#hardness$/);
+      await expect(page.locator('h2#lotus-drops')).toContainText('900mL');
+      expect(await page.evaluate(() => scrollY)).toBeLessThanOrEqual(2);
+    }
+  },
+  {
     // Best volume above 1000mL: also offers the equally accurate one a 1000mL kettle holds, each with its own button.
     name: 'water-ideal-two', viewports: 'two',
     path: () => '/water?recipe=lume-high-clarity&tip=precision',
@@ -3181,6 +3196,13 @@ export const STATES: State[] = [
       }
     }
   ]),
+  { name: 'subscriptions-heading-links', viewports: 'two', path: () => '/subscriptions#add-subscription',
+    // The heading exists only in edit mode (not in the URL), so the hash is re-applied once Edit has put it on the page.
+    act: async (page: Page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await page.evaluate(() => { location.hash = ''; location.hash = '#add-subscription'; });
+      await expectHeadingLinks(page, ['add-subscription'], 'add-subscription');
+    } },
   { name: 'subscriptions-compact', path: () => '/subscriptions?view=compact' },
   { name: 'subscriptions-list', path: () => '/subscriptions?view=list' },
   {
@@ -3941,6 +3963,19 @@ export const STATES: State[] = [
           await expect(page.getByRole('heading', { name: 'Hidden structures' })).toBeVisible();
           await expect(page.getByRole('button', { name: 'Show again' })).toHaveCount(1);
           await expect(page.locator('li.item').first()).toContainText(/\d+ brews?/); // + " · Now matched by …" when a recipe took them over
+        }
+      },
+      {
+        name: 'recipes-heading-links', viewports: 'two' as const,
+        path: () => '/recipes#words-in-your-notes',
+        act: (page: Page) => expectHeadingLinks(page, ['your-recipes', 'found-in-your-brews', 'words-in-your-notes'], 'words-in-your-notes')
+      },
+      {
+        name: 'recipes-hidden-heading-link', viewports: 'two' as const,
+        path: () => '/recipes?view=hidden#hidden-structures',
+        act: async (page: Page) => {
+          await expectHeadingLinks(page, ['hidden-structures'], 'hidden-structures');
+          expect(page.url()).toContain('view=hidden');
         }
       },
       {
@@ -6083,6 +6118,18 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/show=decaf&view=next|view=next&show=decaf/);
       await view.getByRole('button', { name: 'Currently open' }).click();
       await expect(page).not.toHaveURL(/view=/);
+    }
+  },
+  {
+    name: 'on-deck-heading-links', viewports: 'two',
+    path: () => '/on-deck?view=next#next-up',
+    act: async (page) => {
+      await expectHeadingLinks(page, ['next-up'], 'next-up');
+      expect(page.url()).toContain('view=next');
+      await gotoReady(page, '/on-deck');
+      await expect(page.locator('h2#currently-open .copy-link')).toHaveCount(1);
+      await gotoReady(page, '/on-deck?view=pick');
+      await expect(page.locator('h2#pick-for-me .copy-link')).toHaveCount(1);
     }
   },
   {
@@ -13787,6 +13834,12 @@ test.describe('signed out', () => {
     await expect(page.locator('[data-section="pours-recipes"] li').filter({ hasText: 'Seed high agitation' })).toHaveCount(1);
     await expect(page.locator('main a[href^="/recipes/"]').first()).toBeVisible(); // recipe names link for everyone
     await checkLayout(page);
+  });
+  test('recipes-heading-absent', { tag: ['@recipes', '@two'] }, async ({ page }) => {
+    await gotoReady(page, '/recipes#found-in-your-brews');
+    await expect(page.locator('#found-in-your-brews')).toHaveCount(0);
+    await expect(page.locator('#your-recipes')).toBeVisible();
+    expect(await page.evaluate(() => scrollY)).toBe(0);
   });
   test('recipes-public', async ({ page }) => {
     await gotoReady(page, '/recipes');

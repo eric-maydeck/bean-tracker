@@ -14,6 +14,7 @@
   import PourTimeline from '#lib/components/PourTimeline.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import CopyLinkButton from '#lib/components/CopyLinkButton.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import RecipeEditor from './RecipeEditor.svelte';
   import { fmtRange } from '#lib/recipes.ts';
   import { stepsText } from '#lib/recipeSteps.ts';
@@ -155,7 +156,7 @@
 
 {#if data.view.view === 'hidden'}
   <section class="chart-panel">
-    <h2>Hidden structures</h2>
+    <HeadingAnchor id="hidden-structures">Hidden structures</HeadingAnchor>
     <p><a class="button button-ghost" href="?">Back to recipes</a></p>
     {#if data.hidden?.length}
       <ul class="items">
@@ -178,7 +179,7 @@
   </section>
 {:else}
   <section class="chart-panel">
-    <h2>Your recipes</h2>
+    <HeadingAnchor id="your-recipes">Your recipes</HeadingAnchor>
     {#if data.recipes.length}
       <ul class="items">
         {#each data.recipes as r (r.recipe.id)}
@@ -231,7 +232,7 @@
 
   {#if isAdmin}
   <section class="chart-panel">
-    <h2>Found in your brews</h2>
+    <HeadingAnchor id="found-in-your-brews">Found in your brews</HeadingAnchor>
     {#if data.unlisted}
       <ul class="items">
         <li class="item open">
@@ -312,7 +313,7 @@
   {/if}
   {#if isAdmin}
   <section class="chart-panel">
-    <h2>Words in your notes</h2>
+    <HeadingAnchor id="words-in-your-notes">Words in your notes</HeadingAnchor>
     <p class="text-muted">A brew whose note contains one of these as a word gets that agitation, unless its recipe sets one.</p>
     <form method="POST" action="?/saveNoteWords" use:enhance={() => {
       const before = { word: data.noteWords.map((w: { word: string }) => w.word), agitation: data.noteWords.map((w: { agitation: string }) => w.agitation) };
