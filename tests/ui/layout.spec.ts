@@ -10935,7 +10935,7 @@ export const STATES: State[] = [
       expect(loads).toEqual([]);
     } },
   // No card on the page stretches: with every shelf open, a lone retired card is as wide as an active one; the Show chips and the gear param are gone.
-  { name: 'gear-trophy-kind', viewports: 'two', path: () => '/gear?retired=open&gear=grinder',
+  { name: 'gear-card-sizes', viewports: 'two', path: () => '/gear?retired=open&gear=grinder',
     act: async (page) => {
       await expect(page.getByRole('group', { name: 'Show:' })).toHaveCount(0);
       await expect(page).toHaveURL(/retired=open&gear=grinder$/); // a stray param is neither acted on nor rewritten
@@ -10964,7 +10964,10 @@ export const STATES: State[] = [
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
       await expect(page).toHaveURL(/\/gear\?retired=dripper$/);
       // One section per kind in order, each with a count; its jump button scrolls to it.
-      const heads = await page.locator('.kind-section > h2').allTextContents();
+      const panels = page.locator('section.chart-panel.kind-section');
+      await expect(panels).toHaveCount(3); // one panel per kind, the Jump to nav outside them all
+      await expect(page.locator('.chart-panel nav.board-jump')).toHaveCount(0);
+      const heads = await panels.locator('> h2').allTextContents();
       expect(heads.map((h) => h.replace(/\s*\d+$/, ''))).toEqual(['Drippers', 'Filters', 'Grinders']);
       await page.getByRole('navigation', { name: 'Jump to a section' }).getByRole('link', { name: 'Grinders' }).click();
       await expect(page).toHaveURL(/#gear-grinders$/);
@@ -10991,28 +10994,51 @@ export const STATES: State[] = [
       expect(box.width).toBeLessThanOrEqual(main.width + 1);
       const row = panel.locator('.cards');
       expect(await row.evaluate((e) => getComputedStyle(e).overflowX)).toBe('auto');
-      // Whole cards only, arrows in their own gutters: one shows only when there is more that way, a click pages by the cards that fit.
+      // Whole cards only; the fixture's gear overflows the row at both sizes, so the paging checks always run. A phone has the arrows
+      // below the row, always there and disabled when nothing is that way; wide they lie over the row's edges, hidden when disabled.
       const prev = panel.getByRole('button', { name: 'Previous gear' }), next = panel.getByRole('button', { name: 'Next gear' });
       const wholeCards = () => row.evaluate((r) => {
         const rb = r.getBoundingClientRect();
         return [...r.children].every((c) => { const b = c.getBoundingClientRect(); return (b.left >= rb.left - 1 && b.right <= rb.right + 1) || b.right <= rb.left + 1 || b.left >= rb.right - 1; });
       });
       const info = () => row.evaluate((r) => ({ left: r.scrollLeft, over: r.scrollWidth > r.clientWidth + 1, end: r.scrollLeft + r.clientWidth >= r.scrollWidth - 1 }));
-      await expect(prev).toBeHidden();
+      expect((await info()).over, 'the fixture gear overflows the row').toBe(true);
       expect(await wholeCards(), 'no part-visible card at the start').toBe(true);
-      if ((await info()).over) {
+      const rowB = (await row.boundingBox())!;
+      if (isPhone(page)) {
+        expect(await row.evaluate((r) => (r.children[0] as HTMLElement).offsetWidth * 2 + parseFloat(getComputedStyle(r).columnGap)), 'exactly 2 cards a page').toBeCloseTo(rowB.width, 0);
+        for (const b of [prev, next]) {
+          const bb = (await b.boundingBox())!;
+          expect(bb.y, 'the arrow is below the row').toBeGreaterThanOrEqual(rowB.y + rowB.height - 1);
+          expect(Math.min(bb.width, bb.height), '44px tap target').toBeGreaterThanOrEqual(44);
+        }
+        await expect(prev).toBeDisabled();
+        await expect(next).toBeEnabled();
+      } else {
+        await expect(prev).toBeHidden();
         await expect(next).toBeVisible();
-        const [rb, nb] = [(await row.boundingBox())!, (await next.boundingBox())!];
-        expect(nb.x >= rb.x + rb.width - 1 || nb.x + nb.width <= rb.x + 1, 'the arrow is outside the row').toBe(true);
+        const b = (await next.boundingBox())!;
+        expect(b.x >= rowB.x && b.x + b.width <= rowB.x + rowB.width, 'the arrow lies over the row').toBe(true);
+        expect(await next.evaluate((e) => { const r = e.getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === e || e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }), 'the arrow is above the card in z-order').toBe(true);
+      }
+      expect(await row.evaluate((r) => r.getBoundingClientRect().width), 'the row fills the panel content').toBeGreaterThan(box.width - 80);
+      await next.click();
+      await expect(page.locator('.cell-tip:popover-open'), 'an arrow click opens no tip').toHaveCount(0);
+      await expect(panel.locator('.gear-card[aria-expanded="true"]')).toHaveCount(0);
+      await expect.poll(async () => (await info()).left).toBeGreaterThan(0);
+      await expect(prev).toBeEnabled();
+      let clicks = 1;
+      while (!(await info()).end) {
+        expect(++clicks, 'paging reaches the end').toBeLessThanOrEqual(20);
+        await expect.poll(async () => (await wholeCards())).toBe(true);
+        if ((await info()).end) break;
         await next.click();
-        await expect.poll(async () => (await info()).left).toBeGreaterThan(0);
-        await expect(prev).toBeVisible();
-        while (!(await info()).end) { await next.click(); await page.waitForTimeout(0); await expect.poll(async () => (await wholeCards())).toBe(true); }
-        await expect(next).toBeHidden();
-        expect(await wholeCards(), 'no part-visible card at the end').toBe(true);
-        const [lastB, rowB] = [(await cards.last().boundingBox())!, (await row.boundingBox())!];
-        expect(Math.abs(lastB.x + lastB.width - (rowB.x + rowB.width)), 'the last page is full, end-aligned').toBeLessThanOrEqual(2);
-      } else await expect(next).toBeHidden();
+        await page.waitForTimeout(100);
+      }
+      await expect.poll(async () => (await wholeCards())).toBe(true);
+      await (isPhone(page) ? expect(next).toBeDisabled() : expect(next).toBeHidden());
+      const [lastB, endB] = [(await cards.last().boundingBox())!, (await row.boundingBox())!];
+      expect(Math.abs(lastB.x + lastB.width - (endB.x + endB.width)), 'the last page is full, end-aligned').toBeLessThanOrEqual(2);
       await expect(page.locator('nav.board-jump').getByRole('link', { name: 'Your gear' })).toBeVisible();
       await go.click();
       await expect(page).toHaveURL(/\/gear$/);
