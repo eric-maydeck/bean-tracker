@@ -1,17 +1,25 @@
 import { pourName, swirlName } from './pours';
-import { mmss, recipeSpeed, trigger, type RecipeDef, type RecipePour } from './recipes';
+import { mmss, recipeShares, recipeSpeed, trigger, type RecipeDef, type RecipePour } from './recipes';
 
 /** `alt`: the time if every ranged wait so far ran to its maximum (null for exact steps). */
 export interface StepLine { time: string; low: boolean; text: string; alt: string | null }
 
-function words(p: RecipePour, anySpeed: boolean): string {
+/** Water on a step line: `total` = "to 150g" (running total), `pour` = "96g" (this pour only). */
+export type StepAmounts = { total: number; mode: 'total' | 'pour' };
+
+export const hasStepAmounts = (def: RecipeDef): boolean => recipeShares(def, def.pours.length) !== null;
+
+function words(p: RecipePour, anySpeed: boolean, amount = ''): string {
   const speed = anySpeed ? null : p.rateGps ? `${p.rateGps[0]}–${p.rateGps[1]}g/s pour` : `${recipeSpeed(p)} pour`;
   const inner = [speed, p.agitation && `${p.agitation} agitation`, p.tool].filter(Boolean).join(', ');
-  return `${p.bloom ? 'bloom' : 'pour'}${inner ? ` (${inner})` : ''}${p.swirlAfter ? ', swirl' : ''}`;
+  return `${p.bloom ? 'bloom' : 'pour'}${amount && ` ${amount}`}${inner ? ` (${inner})` : ''}${p.swirlAfter ? ', swirl' : ''}`;
 }
 
 /** One line per pour; times are cumulative trigger targets (after a `low` step: "Low +m:ss"). */
-export function recipeSteps(def: RecipeDef): StepLine[] {
+export function recipeSteps(def: RecipeDef, water?: StepAmounts): StepLine[] {
+  const shares = water ? recipeShares(def, def.pours.length) : null;
+  let cum = 0;
+  let prev = 0; // rounded running total before this pour
   let anchor = 0; // seconds since the last absolute time
   let sinceLow: number | null = null; // seconds since the last `low` step, when that is the anchor
   let extra = 0; // seconds the ranged waits since the anchor add at their maximum
@@ -46,7 +54,14 @@ export function recipeSteps(def: RecipeDef): StepLine[] {
       extra = ranged = 0;
       time = mmss(anchor);
     }
-    return { time, low: t?.kind === 'low', text: words(p, def.anySpeed), alt };
+    let amount = '';
+    if (water && shares) {
+      cum += shares[i];
+      const target = Math.round(water.total * cum);
+      amount = water.mode === 'total' ? `to ${target}g` : `${target - prev}g`;
+      prev = target;
+    }
+    return { time, low: t?.kind === 'low', text: words(p, def.anySpeed, amount), alt };
   });
 }
 
