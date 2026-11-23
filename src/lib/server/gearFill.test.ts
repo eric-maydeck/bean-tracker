@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { buildGearFill, cleanBrand } from './gearFill';
+import { buildGearFill, cleanBrand, cleanModel, matchBrand } from './gearFill';
 import { parseShopifyProduct, parseHtmlProduct } from './productParse';
 
 const fx = (n: string) => readFileSync(new URL(`./fixtures/gear-pages/${n}`, import.meta.url), 'utf8');
@@ -54,7 +54,7 @@ describe('buildGearFill', () => {
   it('prose specs from the description when no labeled line has them (real Hario V60 page)', () => {
     const p = parseShopifyProduct(JSON.parse(fx('shopify-hario-v60-ceramic.json')), { name: 'Hario USA', currency: 'USD' });
     expect(buildGearFill(p, { url: URL_, kind: 'dripper', rates: null }).values).toEqual({
-      brand: 'Hario', model: 'V60 Ceramic Coffee Dripper 02 - Metallic Colors', cost: 50, website: URL_,
+      brand: 'Hario', model: 'V60 Ceramic Coffee Dripper 02', cost: 50, website: URL_,
       shape: 'Conical', coneAngle: 60, material: 'Ceramic', flow: 'Open', size: '02'
     });
   });
@@ -87,5 +87,34 @@ describe('cleanBrand', () => {
     const cases: [string, string][] = [['Hario USA', 'Hario'], ['HarioWS', 'Hario'], ['HarioUSA', 'Hario'], ['Fellow Products Inc.', 'Fellow Products'],
       ['SSP', 'SSP'], ['DF64', 'DF64'], ['Timemore', 'Timemore'], ['USA', 'USA'], ['Hario Store USA', 'Hario']];
     for (const [i, o] of cases) expect(cleanBrand(i)).toBe(o);
+  });
+});
+
+describe('cleanModel', () => {
+  it.each([
+    ['LAGOM 01 | 102mm Flat Burr Grinder for Café & Home — OPTION-O — OPTION-O', 'LAGOM 01'],
+    ['| ZP6 Special Manual Coffee Grinder', 'ZP6 Special Manual Coffee Grinder'],
+    ['Abaca Cup 1 Cone Paper Filter | V60 01 | AC1-100W', 'Abaca Cup 1 Cone Paper Filter'],
+    ['V60 Ceramic Coffee Dripper 02 - Metallic Colors', 'V60 Ceramic Coffee Dripper 02'],
+    ['ORIGAMI Ceramic Dripper - Small for 1-2 Cup Brewing', 'ORIGAMI Ceramic Dripper'],
+    ['Dripper M – Origami', 'Dripper M'],
+    ['T-90 Paper Micro-Filters', 'T-90 Paper Micro-Filters'],
+    ['| — |', '']
+  ])('%s', (title, want) => expect(cleanModel(title)).toBe(want));
+});
+
+describe('matchBrand', () => {
+  it('takes the stored spelling, case-insensitively; an unknown brand stays as the page has it', () => {
+    const known = ['Hario', 'CAFEC', 'FEMOBOOK'];
+    expect(matchBrand('HARIO', known)).toBe('Hario');
+    expect(matchBrand('Cafec', known)).toBe('CAFEC');
+    expect(matchBrand('Femobook', known)).toBe('FEMOBOOK');
+    expect(matchBrand('Timemore', known)).toBe('Timemore');
+  });
+  it('buildGearFill uses the known brand and still strips it from the model', () => {
+    const p = parseShopifyProduct(JSON.parse(fx('shopify-hario-v60-ceramic.json')), null);
+    p.brand = 'HARIO'; p.title = 'HARIO V60 Dripper 02 | VDC-02W';
+    const f = buildGearFill(p, { url: URL_, kind: 'dripper', rates: null, brands: ['Hario'] });
+    expect(f.values).toMatchObject({ brand: 'Hario', model: 'V60 Dripper 02' });
   });
 });
