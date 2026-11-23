@@ -32,7 +32,7 @@
 
   // Paging. The cards are sized (css) so a whole number (n) fit the row. An arrow is enabled only when there is more that way
   // (updated on scroll and resize). On a phone the arrows sit below the row and a page is n cards. Wide, they lie over the row's
-  // edges: the card under one is a peek, not part of the shown page (dimmed, not clickable, out of the tab order), so a page is
+  // edges: the card under one is a peek, not part of the shown page (a click on it scrolls one card, out of the tab order), so a page is
   // n - 2 cards and the covered card becomes the first uncovered one on the next turn. The browser's clamp to the end keeps the
   // last page full and end-aligned.
   let row: HTMLDivElement | undefined = $state();
@@ -53,15 +53,15 @@
     more = m;
     cover = { prev: wide && m.prev ? i : -1, next: wide && m.next ? i + n - 1 : -1 };
     // Keyboard focus that landed on a covered card moves it out from under its arrow.
-    const foc = cards.findIndex((c) => anchors[c.key] === document.activeElement);
+    const foc = cards.findIndex((c) => anchors[c.key] === document.activeElement && anchors[c.key]!.matches(':focus-visible')); // a mouse click focuses it too: that scrolls by itself
     if (foc >= 0 && foc === cover.prev) row.scrollBy({ left: -step, behavior: 'auto' });
     else if (foc >= 0 && foc === cover.next) row.scrollBy({ left: step, behavior: 'auto' });
   }
-  function page(dir: 1 | -1) {
+  function page(dir: 1 | -1, count?: number) {
     if (!row) return;
     const { step, n, wide } = geom();
     moved = false; // cards sliding under a still pointer don't open their tips until it moves (2B)
-    row.scrollBy({ left: dir * Math.max(1, wide ? n - 2 : n) * step, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    row.scrollBy({ left: dir * (count ?? Math.max(1, wide ? n - 2 : n)) * step, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
   let moved = true, at: [number, number] = [0, 0];
   const track = (e: PointerEvent) => { if (e.clientX !== at[0] || e.clientY !== at[1]) moved = true; at = [e.clientX, e.clientY]; };
@@ -87,11 +87,11 @@
         <!-- svelte-ignore a11y_no_static_element_interactions (a button by role: hover, click and Enter share one handler) -->
         <div class="gear-card" class:covered role="button" tabindex={covered ? -1 : 0} aria-expanded={open === c.key} aria-label="{c.name}: {tipText(tip(c))}"
           bind:this={anchors[c.key]} style="--kc:var(--series-{KIND_COLOR[c.kind]})"
-          onpointerenter={(e) => e.pointerType === 'mouse' && moved && hover(c.key)}
-          onpointermove={(e) => e.pointerType === 'mouse' && moved && open !== c.key && hover(c.key)}
+          onpointerenter={(e) => e.pointerType === 'mouse' && moved && !covered && hover(c.key)}
+          onpointermove={(e) => e.pointerType === 'mouse' && moved && !covered && open !== c.key && hover(c.key)}
           onpointerleave={(e) => e.pointerType === 'mouse' && !st.pinned && st.later()}
           onfocus={(e) => e.currentTarget.matches(':focus-visible') && focus(c.key)}
-          onclick={() => pin(c.key)}
+          onclick={() => (covered ? page(ix === cover.prev ? -1 : 1, 1) : pin(c.key))}
           onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), pin(c.key))}>
           <span class="photo" style:--fill={backdrop(c.image?.fill)}>
             {#if c.image}<img src={c.image.src} alt="" loading="lazy" />{:else}<Icon name="gear" />{/if}
@@ -176,11 +176,7 @@
     width: 1.75rem;
     height: 1.75rem;
   }
-  /* A card under an arrow is a peek, not part of the page: dimmed, and a click on it goes nowhere. */
-  .gear-card.covered {
-    opacity: 0.45;
-    pointer-events: none;
-  }
+  /* A card under an arrow is a peek, not part of the page: a click on its visible part scrolls it into view (no tip). */
   @media (hover: hover) {
     .page-btn:not(:disabled):hover {
       border-color: var(--color-accent);

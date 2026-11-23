@@ -11075,9 +11075,18 @@ export const STATES: State[] = [
         const peekR = (await covered.locator('.name').textContent())!;
         const cb = (await covered.boundingBox())!;
         expect(parked.x > cb.x && parked.x < cb.x + cb.width, 'the covered card is the one under the arrow').toBe(true);
-        await page.mouse.click(cb.x + cb.width - 6, cb.y + cb.height / 2); // a click on the covered card goes nowhere
+        expect(await covered.evaluate((e) => getComputedStyle(e).opacity), 'the covered card is not dimmed').toBe('1');
+        // A click on its uncovered part scrolls the row one card, so that card is fully in view; no tip opens.
+        const step = (await cards.nth(1).boundingBox())!.x - (await cards.first().boundingBox())!.x;
+        await page.mouse.click(cb.x + cb.width - 6, cb.y + cb.height / 2);
+        await expect.poll(async () => (await info()).left).toBeCloseTo(step, 0);
+        await expect(panel.locator('.gear-card', { hasText: peekR })).not.toHaveClass(/covered/);
+        const pb = (await panel.locator('.gear-card', { hasText: peekR }).first().boundingBox())!, rb2 = (await row.boundingBox())!;
+        expect(pb.x >= rb2.x - 1 && pb.x + pb.width <= rb2.x + rb2.width + 1, 'the clicked card is fully in view').toBe(true);
         await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
         await expect(panel.locator('.gear-card[aria-expanded="true"]')).toHaveCount(0);
+        await row.evaluate((r) => r.scrollTo({ left: 0, behavior: 'instant' }));
+        await expect.poll(async () => (await info()).left).toBe(0);
         await next.click();
         await expect.poll(firstUncovered).toBe(peekR);
         await expect(covered).toHaveCount(2);
