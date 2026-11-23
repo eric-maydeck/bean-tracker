@@ -3196,13 +3196,6 @@ export const STATES: State[] = [
       }
     }
   ]),
-  { name: 'subscriptions-heading-links', viewports: 'two', path: () => '/subscriptions#add-subscription',
-    // The heading exists only in edit mode (not in the URL), so the hash is re-applied once Edit has put it on the page.
-    act: async (page: Page) => {
-      await page.getByRole('button', { name: 'Edit', exact: true }).click();
-      await page.evaluate(() => { location.hash = ''; location.hash = '#add-subscription'; });
-      await expectHeadingLinks(page, ['add-subscription'], 'add-subscription');
-    } },
   { name: 'subscriptions-compact', path: () => '/subscriptions?view=compact' },
   { name: 'subscriptions-list', path: () => '/subscriptions?view=list' },
   {

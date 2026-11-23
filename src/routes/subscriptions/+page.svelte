@@ -13,7 +13,6 @@
   import { loadChoice, serializeChoice } from '#lib/rememberedChoice.ts';
   import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
   import ShareButton from '#lib/components/ShareButton.svelte';
-  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '#lib/pendingChanges.ts';
   import { SvelteMap } from 'svelte/reactivity';
   import { siteOrigin, subscriptionTotals, togglePauseStage, saveToast, pendingLabel, pendingParts, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsText, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '#lib/subscriptionView.ts';
@@ -756,7 +755,7 @@
 {/if}
 
 {#if canEdit}
-  <HeadingAnchor id="add-subscription" class="section-heading">Add subscription</HeadingAnchor>
+  <h2 class="section-heading">Add subscription</h2>
   <form
     method="POST"
     action="?/create"
