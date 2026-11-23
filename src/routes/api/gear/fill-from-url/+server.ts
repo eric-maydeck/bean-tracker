@@ -2,6 +2,8 @@ import type { RequestHandler } from './$types';
 import { requireAdmin } from '#lib/server/auth.ts';
 import { fetchProductData, getUsdRates, FillError } from '#lib/server/productFetch.ts';
 import { buildGearFill } from '#lib/server/gearFill.ts';
+import { getDb } from '#lib/server/db.ts';
+import { getGearDetails } from '#lib/server/gearDetails.ts';
 import { GEAR_KINDS, type GearKind } from '#lib/gear.ts';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -14,7 +16,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   try {
     const product = await fetchProductData(url);
     const rates = product.currency && product.currency !== 'USD' ? await getUsdRates().catch(() => null) : null;
-    return Response.json(buildGearFill(product, { url, kind, rates }));
+    const brands = [...new Set(getGearDetails(getDb()).map((g) => g.values.brand).filter((b): b is string => typeof b === 'string'))];
+    return Response.json(buildGearFill(product, { url, kind, rates, brands }));
   } catch (err) {
     if (err instanceof FillError) return Response.json({ error: err.message }, { status: 422 });
     const name = err instanceof Error ? err.name : '';
