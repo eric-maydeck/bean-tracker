@@ -17,6 +17,7 @@
   import RecipeEditor from './RecipeEditor.svelte';
   import { fmtRange } from '#lib/recipes.ts';
   import { stepsText } from '#lib/recipeSteps.ts';
+  import { formatGrams } from '#lib/grams.ts';
   import { labelTip } from '#lib/components/labelTip.ts';
   import { recipesParams, type RecipesItem } from '#lib/recipesView.ts';
   import type { Timeline } from '#lib/pours.ts';
@@ -379,22 +380,22 @@
         <ul class="picks">
           {#each bn.coffees as c (c.slug)}
             <li>
-              <a class="pick" href="/coffees/{c.slug}/brew?recipe={bn.slug}">
-                <span class="pick-thumb" style:background-color={c.image?.fill}>
-                  {#if c.image}<img src={c.image.src} alt={c.image.alt} />{/if}
+              <a class="pick" class:untried={!c.brews} href="/coffees/{c.slug}/brew?recipe={bn.slug}">
+                {#if c.image}<img class="card-thumb" src={c.image.src} alt={c.image.alt} style:background-color={c.image.fill} />{/if}
+                <span class="pick-name" title={c.name}><CoffeeName name={c.name} /></span>
+                <span class="text-muted pick-line">{c.roaster}</span>
+                <span class="pick-meta">
+                  <span class="badge" class:badge-warm={c.status === 'open'} class:badge-neutral={c.status !== 'open'}>{c.status === 'open' ? 'Open' : c.status === 'archive' ? 'Archive' : 'Backlog'}</span>
+                  {#if c.gramsLeft != null}<span class="text-muted">{formatGrams(c.gramsLeft)} left</span>{/if}
                 </span>
-                <span class="pick-body">
-                  <span class="pick-name"><CoffeeName name={c.name} /></span>
-                  <span class="text-muted">{c.roaster}</span>
-                  <span class="pick-meta">
-                    {#if c.brews}
-                      <span>{n(c.brews, 'brew', 'brews')}</span>
-                      {#if c.avg != null}<span class="badge badge-neutral">avg {c.avg.toFixed(1)}</span>{/if}
-                      {#if c.best}<span class="badge badge-fresh">Best</span>{/if}
-                    {:else}
-                      <span class="text-muted">Not tried</span>
-                    {/if}
-                  </span>
+                <span class="pick-meta">
+                  {#if c.brews}
+                    <span>{n(c.brews, 'brew', 'brews')}</span>
+                    {#if c.avg != null}<span class="badge badge-neutral">avg {c.avg.toFixed(1)}</span>{/if}
+                    {#if c.best}<span class="badge badge-fresh">Best</span>{/if}
+                  {:else}
+                    <span class="text-muted">Not tried</span>
+                  {/if}
                 </span>
               </a>
             </li>
@@ -413,18 +414,19 @@
   .picker h2, .picker p { margin: 0; }
   .picker-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
   .picker-head .button { margin: 0; flex: none; }
-  .picks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); grid-template-columns: 1fr; }
-  @media (min-width: 641px) { .picks { grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); } }
+  /* Image-led grid: 2 columns on a phone, 3 at the modal's desktop width; the thumbnail is the global .card-thumb. */
+  .picks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 641px) { .picks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .pick {
-    display: flex; gap: var(--space-3); align-items: center; min-height: 44px; height: 100%; box-sizing: border-box;
+    display: flex; flex-direction: column; gap: var(--space-1); height: 100%; box-sizing: border-box; min-width: 0;
     padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); color: inherit; text-decoration: none;
   }
   .pick:hover, .pick:focus-visible { border-color: var(--color-accent); }
-  .pick-thumb { flex: none; width: 4rem; aspect-ratio: 1; border-radius: var(--radius); background: var(--color-border); overflow: hidden; display: block; }
-  .pick-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .pick-body { display: grid; gap: var(--space-1); min-width: 0; }
-  .pick-name { font-weight: 600; overflow-wrap: anywhere; }
-  .pick-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: center; font-size: 0.875rem; }
+  .pick.untried { opacity: 0.75; }
+  .pick :global(.card-thumb) { margin-bottom: var(--space-1); }
+  .pick-name { font-weight: 600; font-size: 0.9375rem; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pick-line { font-size: 0.8125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pick-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: center; font-size: 0.8125rem; }
 
   .legend {
     display: flex;

@@ -108,14 +108,15 @@ describe('recipes page', () => {
     };
     const tried = coffee('Aaa Tried', 'open');
     coffee('Zzz Fresh', 'open');
+    db.prepare(`UPDATE coffees SET amount_g = 250 WHERE slug = 'aaa-tried'`).run();
     coffee('Backlog One', 'backlog'); coffee('Archived One', 'archive');
     match(tried, 8); match(tried, 9, 1);
     for (const admin of [false, true]) {
       const d = load(event(admin, `?brewnow=${slug}`)) as Data;
       expect(d.brewNow).toMatchObject({ slug, name: 'Picker one' });
       expect(d.brewNow.coffees.map((c: { name: string }) => c.name)).toEqual(['Aaa Tried', 'Zzz Fresh']);
-      expect(d.brewNow.coffees[0]).toMatchObject({ brews: 2, avg: 8.5, best: true });
-      expect(d.brewNow.coffees[1]).toMatchObject({ brews: 0, avg: null, best: false });
+      expect(d.brewNow.coffees[0]).toMatchObject({ brews: 2, avg: 8.5, best: true, status: 'open', gramsLeft: 250 });
+      expect(d.brewNow.coffees[1]).toMatchObject({ brews: 0, avg: null, best: false, status: 'open', gramsLeft: null }); // no bag size: unknown
     }
     expect((load(event(false, '?brewnow=gone')) as Data).brewNow).toBeNull();
     expect((load(event(false)) as Data).brewNow).toBeNull();

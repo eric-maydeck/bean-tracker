@@ -117,7 +117,7 @@ export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, 
   // ?brewnow=<recipe slug>: the open coffees to brew it with (an unknown slug is ignored). Counts only, never brew notes.
   let brewNow: {
     slug: string; name: string; description: string; timeline: ReturnType<typeof recipeTimeline>;
-    coffees: { slug: string; name: string; roaster: string; image: ReturnType<typeof coffeeImage>; brews: number; avg: number | null; best: boolean }[];
+    coffees: { slug: string; name: string; roaster: string; image: ReturnType<typeof coffeeImage>; brews: number; avg: number | null; best: boolean; status: string; gramsLeft: number | null }[];
   } | null = null;
   const pick = view.brewnow ? recipes.find((r) => r.slug === view.brewnow) : undefined;
   if (pick) {
@@ -135,7 +135,7 @@ export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, 
       const m = mine.get(key(c.roaster, c.coffee_name));
       return {
         slug: c.slug, name: c.coffee_name, roaster: c.roaster, image: coffeeImage(c, ''), brews: m?.n ?? 0,
-        avg: m?.rated.length ? m.rated.reduce((a, b) => a + b, 0) / m.rated.length : null, best: m?.best ?? false
+        avg: m?.rated.length ? m.rated.reduce((a, b) => a + b, 0) / m.rated.length : null, best: m?.best ?? false, status: c.status, gramsLeft: c.grams_left ?? null
       };
     }).sort((a, b) => b.brews - a.brews || a.name.localeCompare(b.name));
     brewNow = { slug: pick.slug, name: pick.recipe.name, description: pick.description, timeline: pick.timeline, coffees };
