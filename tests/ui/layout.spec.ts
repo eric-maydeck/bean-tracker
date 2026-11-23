@@ -11315,7 +11315,7 @@ export const STATES: State[] = [
       await expect(rows.first().locator('.early-head')).toBeVisible();
       await expect(rows.first().locator('.early-theme')).toHaveText(/^(Taste|Dial-in|Habits|Gear|Money)$/i);
       // A money finding's mini chart reads its values as usd for screen readers ("2026 Q1 $10.00"), as its headline shows them.
-      const money = page.locator('.finding-grid .hl-card', { hasText: '$/100g went from' }).locator(':is(.spark, .bars)');
+      const money = page.locator('.finding-grid .hl-card', { hasText: '$/g went from' }).locator(':is(.spark, .bars)');
       await expect(money).toHaveCount(1);
       expect(await money.getAttribute('aria-label')).toMatch(/^[^,]+ \$\d[\d,]*\.\d{2}(, [^,]+ \$\d[\d,]*\.\d{2})+$/);
       // Every row has its progress bar and "N% there", dial-in-by-group ones too (user, 2026-10-17); only a finding whose

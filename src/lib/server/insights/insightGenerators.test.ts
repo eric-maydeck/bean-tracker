@@ -566,13 +566,13 @@ describe('cost per cup', () => {
   });
 });
 
-describe('$/100g by quarter', () => {
+describe('$/g by quarter', () => {
   const bs = bags(6, (i) => ({ cost: i < 3 ? 10 : 20, amountG: 100, purchaseDate: i < 3 ? '2026-02-01' : '2026-05-01' }));
   const o = { period: { from: '2026-01-01', to: '2026-09-30' } };
   it('per quarter series', () => {
     const f = gen('pricePerMonth', [], bs, o)!;
-    expect(f).toMatchObject({ theme: 'money', kind: 'pattern', headline: '$/100g went from $10.00 to $20.00', sample: '6 bags' });
-    expect(f.series).toEqual([{ label: '2026 Q1', value: 10 }, { label: '2026 Q2', value: 20 }]);
+    expect(f).toMatchObject({ theme: 'money', kind: 'pattern', headline: '$/g went from $0.10 to $0.20', sample: '6 bags' });
+    expect(f.series).toEqual([{ label: '2026 Q1', value: expect.closeTo(0.1) }, { label: '2026 Q2', value: expect.closeTo(0.2) }]);
     expect(f.money).toBe(true); // its chart's aria-label reads the values as usd
   });
   it('null when a quarter has under 3 bags', () => expect(gen('pricePerMonth', [], bs.slice(0, 5), o)).toBeNull());

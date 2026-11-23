@@ -565,7 +565,7 @@ const bestValue: FactDef = {
     const vals = top.map((x) => x.c.mean!), second = cands[1]?.value;
     return {
       id: 'best-value', lead: 'Your best value bag was', big: win.holder.label, roaster: win.holder.sub,
-      sub: `${usd(win.per100!)}/100g · ${win.mean!.toFixed(2)} average`, context: '',
+      sub: `${usd(win.ppg! * 100)}/100g · ${win.mean!.toFixed(2)} average`, context: '',
       viz: {
         kind: 'dots',
         rows: top.map(({ c, bag }) => ({ label: `${bag!.roaster} · ${bag!.name}`, value: c.mean!, brews: stats.get(bag!.id)!.rated.length })),
