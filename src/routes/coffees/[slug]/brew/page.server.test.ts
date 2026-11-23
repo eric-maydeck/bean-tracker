@@ -198,6 +198,11 @@ describe('recipe-aware brew now', () => {
     expect(bare.recipes.map((r: { name: string; fits: boolean }) => [r.name, r.fits])).toEqual([['Alpha', true], ['Beta', true], ['Gamma', false]]);
     const other = await run(brewed.slug, `?recipe=${slugOf(bare, 1)}`);
     expect(other.recipe.name).toBe('Beta');
+    expect(other.chosenRecipe).toBe(slugOf(bare, 1)); // the URL's pick, so the page can keep it
+    expect(other.suggestedRecipe).toEqual({ slug: bare.recipe.slug, name: 'Alpha' }); // for the hint
+    expect(bare.chosenRecipe).toBeNull();
+    expect((await run(brewed.slug, `?recipe=${bare.recipe.slug}`)).chosenRecipe).toBe(bare.recipe.slug); // even when it equals the suggestion
+    expect((await run(brewed.slug, '?recipe=gone')).chosenRecipe).toBeNull();
     expect(other.suggestion).not.toEqual(bare.suggestion);
     const gone = await run(brewed.slug, '?recipe=gone');
     expect(gone.recipe.slug).toBe(bare.defaults.recipe);

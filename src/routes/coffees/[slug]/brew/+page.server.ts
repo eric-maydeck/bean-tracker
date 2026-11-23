@@ -42,7 +42,7 @@ function derive(db: ReturnType<typeof getDb>, coffee: NonNullable<ReturnType<typ
   const from = view.from === 'recipe' && sug.switchable ? ('recipe' as const) : null; // ignored when the switch is not shown
   if (from) sug = pass(true);
   const defaults = { ...gearDefaults, dose: sug.suggestedDose, ratio: sug.suggestedRatio, recipe: suggested?.slug ?? null }; // what the URL omits
-  return { rows, options, defaults, view, gear, gc, sug, recipes, recipe, from, sug0 };
+  return { rows, options, defaults, view, gear, gc, sug, recipes, recipe, from, sug0, suggested };
 }
 
 // The roaster's own site as a bare host (what the search was restricted to), or null when none is on file.
@@ -69,7 +69,7 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     }
     error(404, 'Coffee not found');
   }
-  const { rows, options, defaults, view, gear, gc, sug, sug0, recipes, recipe, from } = derive(db, coffee, url, today);
+  const { rows, options, defaults, view, gear, gc, sug, sug0, recipes, recipe, from, suggested } = derive(db, coffee, url, today);
   const amounts = view.amounts ?? null;
   const water = sug.dose && sug.ratio ? { total: Math.round(sug.dose * sug.ratio), mode: amounts === 'pour' ? ('pour' as const) : ('total' as const) } : null;
   const fitNote = recipe && !fitsDripper(recipe, gear.dripper)
@@ -81,7 +81,8 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
   const strip = <T extends { notes: string | null }>(b: T): T => (locals.isAdmin ? b : { ...b, notes: null });
   return {
     image: coffeeImage(getCoffeeBySlug(db, params.slug)!, ''),
-    coffee, gear, defaults, options, why: view.why, from, amounts,
+    coffee, gear, defaults, options, why: view.why, from, amounts, chosenRecipe: view.recipe ?? null, // the URL's own pick (null = following the suggestion)
+    suggestedRecipe: suggested && { slug: suggested.slug, name: suggested.name },
     recipes: orderRecipes(recipes, sug0.recipeRank, rows, gear.dripper).map((r) => ({ slug: r.slug, name: r.name, fits: fitsDripper(r, gear.dripper) })),
     recipe: recipe && { slug: recipe.slug, name: recipe.name, description: recipe.description, notes: recipe.notes, timeline: recipe.timeline,
       steps: brewSteps(db, recipe.id, water), hasAmounts: recipe.hasAmounts && water !== null, fitNote },

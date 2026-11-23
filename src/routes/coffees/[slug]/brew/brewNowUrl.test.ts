@@ -50,12 +50,13 @@ describe('brew-now url', () => {
     expect(parseBrewNowView(u('amounts=POUR'), opts).amounts).toBe('pour');
     expect(parseBrewNowView(u('amounts=x'), opts).amounts).toBeUndefined();
   });
-  it('writes recipe unless it is the suggested one; from and amounts when set', () => {
+  it('writes a chosen recipe even when it is the suggested one (sticky); from and amounts when set', () => {
     const d = { grinder: 'Alpha', dripper: 'Cone', filter: 'Paper', recipe: 'bbs' };
     const v = { grinder: null, dripper: null, filter: null, why: null, recipe: 'bbs', from: null, amounts: null };
-    expect(brewNowParams(v, d)).toBe('');
+    expect(brewNowParams(v, d)).toBe('recipe=bbs');
     expect(brewNowParams(v, { ...d, recipe: '4sy' })).toBe('recipe=bbs');
-    expect(brewNowParams({ ...v, from: 'recipe', amounts: 'pour' }, d)).toBe('from=recipe&amounts=pour');
+    expect(brewNowParams({ ...v, recipe: null }, d)).toBe(''); // no choice: bare URL follows the suggestion
+    expect(brewNowParams({ ...v, from: 'recipe', amounts: 'pour' }, d)).toBe('recipe=bbs&from=recipe&amounts=pour');
   });
   it('round trips the recipe fields', () => {
     const o = { ...opts, recipes: ['bbs', '4sy'] };

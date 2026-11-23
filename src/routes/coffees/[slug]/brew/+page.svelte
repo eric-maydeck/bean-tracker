@@ -34,7 +34,7 @@
   type Patch = Partial<{ grinder: string | null; dripper: string | null; filter: string | null; why: Setting | null; dose: number | null; ratio: number | null; recipe: string | null; from: 'recipe' | null; amounts: 'pour' | null }>;
   function go(patch: Patch) {
     const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why,
-      dose: data.suggestion.dose, ratio: data.suggestion.ratio, recipe: data.recipe?.slug ?? null, from: data.from, amounts: data.amounts, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
+      dose: data.suggestion.dose, ratio: data.suggestion.ratio, recipe: data.chosenRecipe, from: data.from, amounts: data.amounts, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
     goto(page.url.pathname + (q ? `?${q}` : ''), { replace: true, reset: false });
   }
   const dripperFirst = (key: string): Patch => (key === 'dripper' ? { filter: null } : {});
@@ -224,6 +224,9 @@
           {/if}
         </div>
       </div>
+      {#if p.key === 'recipe' && data.suggestedRecipe && data.recipe && data.suggestedRecipe.slug !== data.recipe.slug}
+        <p class="pk2-hint">Suggested for this setup: <button type="button" class="pk2-link" onclick={() => go({ recipe: data.suggestedRecipe.slug })}>{data.suggestedRecipe.name}</button></p>
+      {/if}
     {/each}
     {#if data.options.doses.length}
       <div class="pk2-row">
@@ -516,6 +519,9 @@
   .rsteps li { display: contents; }
   .step-time { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
   .step-time.low { width: fit-content; text-decoration: underline dotted; }
+  .pk2-hint { margin: calc(-1 * var(--space-2)) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
+  .pk2-link { min-height: 44px; padding: 0; background: none; border: 0; font: inherit; color: var(--color-accent); text-decoration: underline; text-align: left; }
+  .rsteps li > span:last-child::first-letter { text-transform: uppercase; } /* sentences; display only, the stored text stays as written */
   .pk2-none { align-self: center; }
   #similar { scroll-margin-top: 5rem; }
   #bn-open-title .line { display: block; }

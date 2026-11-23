@@ -30,7 +30,7 @@ export function brewNowParams(view: BrewNowView, defaults: BrewNowDefaults): str
   const p = new URLSearchParams();
   for (const k of ['grinder', 'dripper', 'filter'] as const) if (view[k] && view[k] !== defaults[k]) p.set(k, view[k]);
   for (const k of ['dose', 'ratio'] as const) if (view[k] != null && view[k] !== defaults[k]) p.set(k, String(view[k]));
-  if (view.recipe && view.recipe !== defaults.recipe) p.set('recipe', view.recipe);
+  if (view.recipe) p.set('recipe', view.recipe); // an explicit pick stays, even when it is the suggestion
   if (view.from) p.set('from', view.from);
   if (view.amounts) p.set('amounts', view.amounts);
   if (view.why) p.set('why', view.why);

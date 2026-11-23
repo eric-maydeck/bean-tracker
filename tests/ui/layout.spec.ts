@@ -2736,6 +2736,24 @@ export const STATES: State[] = [
       const after = await start.locator('xpath=following-sibling::section[1]').getAttribute('aria-labelledby');
       expect(after).toBe('steps'); // Steps sits directly under Start here
     } },
+  // Picking a recipe other than the suggestion shows the hint under the Recipe row; its link switches back, and an explicit pick stays in the URL.
+  { name: 'brew-now-recipe-hint', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      const row = page.locator('.pk2-row').filter({ has: page.locator('#pk-recipe') });
+      const hint = page.locator('.pk2-hint');
+      await expect(hint).toHaveCount(0); // following the suggestion
+      const before = await row.boundingBox();
+      await row.locator('button[aria-pressed="false"]').first().click();
+      await expect(hint).toBeVisible();
+      await expect(hint).toContainText('Suggested for this setup:');
+      expect((await row.boundingBox())!.y).toBe(before!.y); // the chip row does not move
+      expect((await hint.locator('button').boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await hint.locator('button').click();
+      await expect(hint).toHaveCount(0);
+      await expect(page).toHaveURL(/recipe=/); // explicit pick stays even though it is the suggestion
+      await page.locator('.pk2-row').filter({ has: page.locator('#pk-dose') }).locator('button[aria-pressed="false"]').first().click();
+      await expect(page).toHaveURL(/recipe=/);
+    } },
   { name: 'brew-now-recipe-from', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?recipe=seed-low-agitation`, // 3 of its brews ran at 1:16.7 against its 1:16.8
     act: async (page, s) => {
       const url = `/coffees/${s.slugs.brew}/brew`;
@@ -2744,7 +2762,7 @@ export const STATES: State[] = [
       const boxes = () => page.locator('.start .head, .start .tab-group, .start .rows > li').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x + scrollX, r.y + scrollY, r.width, r.height].map(Math.round); }));
       const before = await boxes();
       await sw.getByRole('button', { name: 'As written' }).click();
-      await expect(page).toHaveURL(/from=recipe/); // the suggested recipe stays out of the URL
+      await expect(page).toHaveURL(/from=recipe/); // an explicit recipe stays in the URL
       await expect(sw.getByRole('button', { name: 'As written' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('.rows').getByText('From the recipe').first()).toBeVisible();
       expect(await boxes()).toEqual(before); // flipping the switch moves nothing
@@ -3871,6 +3889,13 @@ export const STATES: State[] = [
           expect(await picks.count()).toBeGreaterThan(0);
           await expect(picks.first()).toHaveAttribute('href', /^\/coffees\/[^/]+\/brew\?recipe=seed-equal-pours$/);
           for (const pk of await picks.all()) expect((await pk.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+          // Image-led grid: 2 columns on a phone, 3 on desktop; each card has its status badge and nothing overflows (long names clamp).
+          const cols = await dlg.locator('.picks').evaluate((e) => getComputedStyle(e).gridTemplateColumns.split(' ').length);
+          expect(cols).toBe(page.viewportSize()!.width > 640 ? 3 : 2);
+          await expect(picks.first().locator('.badge').first()).toHaveText('Open');
+          expect(await picks.evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth).length)).toBe(0);
+          const pad = await picks.first().evaluate((e) => { const a = e.getBoundingClientRect(), t = e.querySelector('img.card-thumb')?.getBoundingClientRect(); return t ? [t.left - a.left, t.top - a.top, a.right - t.right].map(Math.round) : null; });
+          if (pad) expect(new Set(pad.map((x) => x - 1)).size, `thumbnail padding ${pad}`).toBe(1); // 1px border + equal padding
           await page.keyboard.press('Escape');
           await expect(dlg).toBeHidden();
           expect(new URL(page.url()).search).toBe(`?brews=r${s.recipes.recipeId}`);
