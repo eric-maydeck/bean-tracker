@@ -2,6 +2,16 @@ import { expect, type Page } from '@playwright/test';
 
 // Every id is on an h2/h3 with a self link and a copy button; the page (loaded with #land) has `land` at the top;
 // its copy button copies the current URL.
+// `id` sits at the top of the viewport, or the page ended first so it could not get there.
+export async function expectAtTop(page: Page, id: string): Promise<void> {
+  await expect.poll(() =>
+    page.evaluate((id) => {
+      const t = document.getElementById(id)!.getBoundingClientRect().top;
+      const atEnd = scrollY + innerHeight >= document.documentElement.scrollHeight - 4; // a few px of slack: scrollHeight rounds up
+      return (t >= -1 && t <= 16) || (atEnd && t >= 0 && t < innerHeight);
+    }, id), { message: `${id} at the top` }).toBe(true);
+}
+
 export async function expectHeadingLinks(page: Page, ids: string[], land: string): Promise<void> {
   for (const id of ids) {
     const h = page.locator(`:is(h2,h3)#${id}`);
@@ -9,13 +19,7 @@ export async function expectHeadingLinks(page: Page, ids: string[], land: string
     await expect(h.locator('> a'), id).toHaveAttribute('href', new RegExp(`#${id}$`));
     await expect(h.locator('.copy-link'), id).toHaveCount(1);
   }
-  const atTop = () =>
-    page.evaluate((id) => {
-      const t = document.getElementById(id)!.getBoundingClientRect().top;
-      const atEnd = scrollY + innerHeight >= document.documentElement.scrollHeight - 4; // a few px of slack: scrollHeight rounds up
-      return (t >= -1 && t <= 16) || (atEnd && t >= 0 && t < innerHeight);
-    }, land);
-  await expect.poll(atTop, { message: `${land} at the top` }).toBe(true);
+  await expectAtTop(page, land);
 
   await page.evaluate(() => {
     const w = window as unknown as { copies: string[] };

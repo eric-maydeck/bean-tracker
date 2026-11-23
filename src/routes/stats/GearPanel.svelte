@@ -124,9 +124,6 @@
 </section>
 
 <style>
-  .gear-panel :global(h2) {
-    margin: 0 0 var(--space-3);
-  }
   /* A row of whole cards, the full content width: --n of them exactly fill it (the count steps up with the width, cards about
      170px or more), so no card is part visible. It scrolls sideways by whole cards (snap), the scrollbar hidden. */
   .pager {

@@ -19,9 +19,8 @@ import type { Fmt, Holder, RecordPick, RecordsTab, Section } from '#lib/server/i
 
 // The heading link context lives in #lib/headingLink.ts; /stats keeps its old names.
 import { provideHeadingLink, useHeadingLink, type HeadingLink } from '#lib/headingLink.ts';
-export type ChartLink = HeadingLink;
 export const provideChartLink = provideHeadingLink;
-export const useChartLink = (): ChartLink => useHeadingLink()!; // /stats always provides one
+export const useChartLink = (): HeadingLink => useHeadingLink()!; // /stats always provides one
 
 // ---- Formatters shared by Leaderboards/Records and the link preview (moved verbatim from the components). ----
 

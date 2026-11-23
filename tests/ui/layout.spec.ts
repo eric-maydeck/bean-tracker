@@ -8,7 +8,7 @@ import { stringify } from 'devalue';
 import { join } from 'node:path';
 import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody, outerHeight } from './collapsibleBar';
 import { PART, PARTS } from './viewports';
-import { expectHeadingLinks } from './headingLinks';
+import { expectAtTop, expectHeadingLinks } from './headingLinks';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
@@ -2842,6 +2842,14 @@ export const STATES: State[] = [
       for (const id of await page.locator('section[aria-labelledby]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-labelledby')!))) {
         await expect(page.locator(`[id="${id}"]`), id).toHaveCount(1);
       }
+      // A region is named by the link text, not the heading's whole content (which holds the copy button).
+      for (const name of ['This coffee', "Roaster's recipe", 'Your last brews of this coffee', /^Similar coffees/]) {
+        await expect(page.getByRole('region', { name, exact: typeof name === 'string' }), String(name)).toHaveCount(1);
+      }
+      const start = page.getByRole('region', { name: /^Start here/ });
+      await expect(start).toHaveCount(1);
+      expect(await start.getAttribute('aria-labelledby')).toBe('start-here-text');
+      await expect(page.getByRole('region', { name: /Copy link/ })).toHaveCount(0);
     } },
   // A gear chip's goto keeps the hash and does not scroll to it. The page is first wheeled away from #start-here, so a jump back to it would show.
   { name: 'brew-now-hash-kept', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew#start-here`,
@@ -11128,10 +11136,7 @@ export const STATES: State[] = [
       await expectHeadingLinks(page, ['gear-drippers', 'gear-filters', 'gear-grinders'], 'gear-grinders');
       await page.getByRole('navigation', { name: 'Jump to a section' }).getByRole('link', { name: 'Filters' }).click();
       await expect(page).toHaveURL(/#gear-filters$/);
-      await expect.poll(() => page.evaluate(() => {
-        const t = document.getElementById('gear-filters')!.getBoundingClientRect().top;
-        return (t >= -1 && t <= 16) || (scrollY + innerHeight >= document.documentElement.scrollHeight - 1 && t >= 0);
-      })).toBe(true);
+      await expectAtTop(page, 'gear-filters');
     } },
   // The Your gear panel: a scrolling row of cards that never stack, the blurb beside a real link to /gear.
   { name: 'stats-gear-panel', viewports: 'two', path: () => '/stats?tab=gear',

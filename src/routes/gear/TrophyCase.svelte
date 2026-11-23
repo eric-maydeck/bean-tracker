@@ -407,9 +407,6 @@
       --q: 4;
     }
   }
-  .kind-section h2 {
-    margin: 0 0 var(--space-3);
-  }
   .kind-count {
     margin-left: var(--space-1);
     color: var(--color-text-muted);

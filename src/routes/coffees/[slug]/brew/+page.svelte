@@ -61,7 +61,7 @@
   // "See coffees": close the popover, then scroll to the Similar coffees section (the link would die with the popover).
   function seeCoffees() {
     pop = null;
-    document.getElementById('similar')?.scrollIntoView({ block: 'start' });
+    document.getElementById('similar')?.closest('section')?.scrollIntoView({ block: 'start' });
   }
 
   // Brew this on a coffee that isn't open yet asks first, then opens it and records the mark.
@@ -128,7 +128,7 @@
 
 {#snippet thisCoffee()}
   {#if data.thisCoffee.length}
-    <section class="bn-card" aria-labelledby="this-coffee">
+    <section class="bn-card" aria-labelledby="this-coffee-text">
       <HeadingAnchor id="this-coffee">This coffee</HeadingAnchor>
       <div class="split">
         <GrindTrend brews={asc} grinder={data.gear.grinder} summary={data.thisCoffeeSummary} />
@@ -145,7 +145,7 @@
 {#snippet roasterRecipe()}
   {@const rr = data.roasterRecipe}
   {#if rr || data.isAdmin}
-    <section class="bn-card rr" aria-labelledby="roasters-recipe">
+    <section class="bn-card rr" aria-labelledby="roasters-recipe-text">
       <HeadingAnchor id="roasters-recipe">Roaster's recipe</HeadingAnchor>
       {#if rr?.url}
         <a class="rr-title" href={rr.url} target="_blank" rel="noopener noreferrer">{rr.title ?? rr.url}</a>
@@ -240,7 +240,7 @@
 
   {#if data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
 
-  <section class="bn-card start" aria-labelledby="start-here">
+  <section class="bn-card start" aria-labelledby="start-here-text">
     <HeadingAnchor id="start-here">Start here <span class="badge {BADGE[data.suggestion.confidence]}">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></HeadingAnchor>
     <ul class="rows">
       {#each data.suggestion.rows as r (r.setting)}
@@ -325,7 +325,7 @@
   </section>
 
   {#if data.marks.length}
-    <section class="bn-card" aria-labelledby="last-brews">
+    <section class="bn-card" aria-labelledby="last-brews-text">
       <HeadingAnchor id="last-brews">Your last brews of this coffee</HeadingAnchor>
       {#if data.bias}<p class="bias">{data.bias}</p>{/if}
       <ul class="brews marks">
@@ -356,7 +356,7 @@
   {@render thisCoffee()}
 
   {#if data.similar.length}
-    <section class="bn-card" aria-labelledby="similar">
+    <section class="bn-card" aria-labelledby="similar-text">
       <HeadingAnchor id="similar">{!data.neverBrewedRoaster ? 'Similar coffees' : 'Similar coffees from other roasters'}</HeadingAnchor>
       <ul class="brews">
         {#each data.similar as s (s.slug)}
