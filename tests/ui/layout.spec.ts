@@ -11,7 +11,6 @@ import { PART, PARTS } from './viewports';
 import { expectHeadingLinks } from './headingLinks';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
-import { expectHeadingLinks } from './headingLinks';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 // The whole Out for today row, on screen without scrolling (the wheel shrinks to leave room; the D20's entry row is kept tight).
 // The worst-case horizontal card: a long name, all 10 stats with long values and long tasting notes, written into the rendered card (layout is CSS, so this
