@@ -8,7 +8,7 @@
   import { formatGrams } from '#lib/grams.ts';
   import { backdrop } from '#lib/imageBackdrop.ts';
   import type { GearPanelCard } from '#lib/server/insights/trophies.ts';
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
 
   // The Gear tab's way to /gear: a scrolling row of the active gear's cards, each the anchor of a sticky tip (ui-rules 54)
   // with its figures, a couple of specs and a link to that gear's dialog on /gear; the blurb and a real link to /gear below.
@@ -32,7 +32,7 @@
 
   // Paging. The cards are sized (css) so a whole number (n) fit the row. An arrow is enabled only when there is more that way
   // (updated on scroll and resize). On a phone the arrows sit below the row and a page is n cards. Wide, they lie over the row's
-  // edges: the card under one is a peek, not part of the shown page (a click on it scrolls one card, out of the tab order), so a page is
+  // edges: the card under one is a peek, not part of the shown page (a click or Enter on it scrolls one card; it stays in the tab order, and focusing it scrolls it into view), so a page is
   // n - 2 cards and the covered card becomes the first uncovered one on the next turn. The browser's clamp to the end keeps the
   // last page full and end-aligned.
   let row: HTMLDivElement | undefined = $state();
@@ -65,6 +65,13 @@
   }
   let moved = true, at: [number, number] = [0, 0];
   const track = (e: PointerEvent) => { if (e.clientX !== at[0] || e.clientY !== at[1]) moved = true; at = [e.clientX, e.clientY]; };
+  $effect(() => { void cards; tick().then(measure); }); // the cards changed: re-measure what is covered
+  // A covered card (a peek) is not opened: a click, Enter or Space there scrolls it one card into view and closes any tip.
+  const tap = (ix: number, key: string) => {
+    if (ix !== cover.prev && ix !== cover.next) return pin(key);
+    st.close();
+    page(ix === cover.prev ? -1 : 1, 1);
+  };
   onMount(() => {
     const ro = new ResizeObserver(measure);
     if (row) ro.observe(row);
@@ -79,20 +86,20 @@
   <h2>Your gear</h2>
   <div class="pager">
     <button type="button" class="page-btn prev" aria-label="Previous gear" bind:this={prevBtn} disabled={!more.prev} onclick={() => page(-1)}><Icon name="caret-left" /></button>
-  <div class="cards" role="list" bind:this={row} onscroll={measure}>
+  <div class="cards" role="list" bind:this={row} onscroll={measure} onfocusin={measure}>
     {#each cards as c, ix (c.key)}
       {@const covered = ix === cover.prev || ix === cover.next}
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions (focus moving to an element outside the card and its tip closes the tip; a null relatedTarget, as when a mac browser doesn't focus a clicked link, doesn't: the document click handles outside clicks) -->
       <div class="gear-item" role="listitem" onfocusout={(e) => open === c.key && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node) && st.close()}>
         <!-- svelte-ignore a11y_no_static_element_interactions (a button by role: hover, click and Enter share one handler) -->
-        <div class="gear-card" class:covered role="button" tabindex={covered ? -1 : 0} aria-expanded={open === c.key} aria-label="{c.name}: {tipText(tip(c))}"
+        <div class="gear-card" class:covered role="button" tabindex="0" aria-expanded={open === c.key} aria-label="{c.name}: {tipText(tip(c))}"
           bind:this={anchors[c.key]} style="--kc:var(--series-{KIND_COLOR[c.kind]})"
           onpointerenter={(e) => e.pointerType === 'mouse' && moved && !covered && hover(c.key)}
           onpointermove={(e) => e.pointerType === 'mouse' && moved && !covered && open !== c.key && hover(c.key)}
           onpointerleave={(e) => e.pointerType === 'mouse' && !st.pinned && st.later()}
-          onfocus={(e) => e.currentTarget.matches(':focus-visible') && focus(c.key)}
-          onclick={() => (covered ? page(ix === cover.prev ? -1 : 1, 1) : pin(c.key))}
-          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), pin(c.key))}>
+          onfocus={(e) => !covered && e.currentTarget.matches(':focus-visible') && focus(c.key)}
+          onclick={() => tap(ix, c.key)}
+          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), tap(ix, c.key))}>
           <span class="photo" style:--fill={backdrop(c.image?.fill)}>
             {#if c.image}<img src={c.image.src} alt="" loading="lazy" />{:else}<Icon name="gear" />{/if}
           </span>

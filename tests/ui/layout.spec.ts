@@ -11087,6 +11087,22 @@ export const STATES: State[] = [
         await expect(panel.locator('.gear-card[aria-expanded="true"]')).toHaveCount(0);
         await row.evaluate((r) => r.scrollTo({ left: 0, behavior: 'instant' }));
         await expect.poll(async () => (await info()).left).toBe(0);
+        // By keyboard: Tab from the last uncovered card reaches the covered one and scrolls it out from under its arrow; Enter on a
+        // covered card scrolls it into view like a click does, and opens no tip.
+        const lastIdx = (await cards.evaluateAll((cs) => cs.findIndex((c) => c.classList.contains('covered')))) - 1;
+        await cards.nth(lastIdx).focus();
+        await page.keyboard.press('Tab');
+        const tabbed = (await page.evaluate(() => document.activeElement?.querySelector('.name')?.textContent))!;
+        expect(tabbed, 'Tab reached the card that was covered').toBe(peekR);
+        await expect(panel.locator('.gear-card', { hasText: peekR })).not.toHaveClass(/covered/);
+        await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
+        const left0 = (await info()).left;
+        await covered.last().focus();
+        await page.keyboard.press('Enter');
+        await expect.poll(async () => (await info()).left).toBeGreaterThan(left0);
+        await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
+        await row.evaluate((r) => r.scrollTo({ left: 0, behavior: 'instant' }));
+        await expect.poll(async () => (await info()).left).toBe(0);
         await next.click();
         await expect.poll(firstUncovered).toBe(peekR);
         await expect(covered).toHaveCount(2);
