@@ -8,6 +8,9 @@ RUN npm run build
 
 FROM node:26-slim AS runtime
 LABEL org.opencontainers.image.source=https://github.com/eric-maydeck/bean-tracker
+# Debian security fixes land before the node image is rebuilt (e.g. zlib CVE-2026-85091); take them so the
+# release scan passes. ponytail: the layer is cached by its text, so a later fix needs a fresh base or a cache bust.
+RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ENV NODE_ENV=production
 # --ignore-scripts: `prepare` (husky) is a devDependency-only concern and
