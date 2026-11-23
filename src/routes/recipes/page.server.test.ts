@@ -90,6 +90,42 @@ describe('recipes page', () => {
     db.prepare(`UPDATE beanconqueror_brews SET rating = 8 WHERE bc_uuid = ?`).run(uuid(2));
   });
 
+  it('?brewnow= lists open coffees with their brews of that recipe, for everyone', async () => {
+    const admin = load(event(true)) as Data;
+    const id = saveRecipe(db, { name: 'Picker one', tags: [], def: admin.groups[0].draft });
+    const slug = (load(event(false)) as Data).recipes.find((r: { recipe: { id: number } }) => r.recipe.id === id).slug as string;
+    const coffee = (name: string, status: string) => {
+      const c = db.prepare(`INSERT INTO coffees (slug, roaster, coffee_name, status, created_at, updated_at) VALUES (?, 'Sey', ?, ?, 'x', 'x')`)
+        .run(name.toLowerCase().replace(/ /g, '-'), name, status).lastInsertRowid;
+      db.prepare(`INSERT INTO beanconqueror_beans (id, name, roaster, imported_at, coffee_id) VALUES (?, ?, 'Sey', 'x', ?)`).run(`pb${c}`, name, c);
+      return `pb${c}`;
+    };
+    let sec = 0;
+    const match = (bean: string, rating: number, best = 0) => {
+      const b = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, rating, best_brew, imported_at) VALUES (?, ?, ?, ?, 'x')`)
+        .run(`2026-03-01T08:00:${String(sec++).padStart(2, '0')}Z`, bean, rating, best).lastInsertRowid;
+      db.prepare(`INSERT INTO brew_recipe_matches (brew_id, recipe_id, how) VALUES (?, ?, 'match')`).run(b, id);
+    };
+    const tried = coffee('Aaa Tried', 'open'), fresh = coffee('Zzz Fresh', 'open');
+    coffee('Backlog One', 'backlog'); coffee('Archived One', 'archive');
+    match(tried, 8); match(tried, 9, 1);
+    for (const admin of [false, true]) {
+      const d = load(event(admin, `?brewnow=${slug}`)) as Data;
+      expect(d.brewNow).toMatchObject({ slug, name: 'Picker one' });
+      expect(d.brewNow.coffees.map((c: { name: string }) => c.name)).toEqual(['Aaa Tried', 'Zzz Fresh']);
+      expect(d.brewNow.coffees[0]).toMatchObject({ brews: 2, avg: 8.5, best: true });
+      expect(d.brewNow.coffees[1]).toMatchObject({ brews: 0, avg: null, best: false });
+    }
+    expect((load(event(false, '?brewnow=gone')) as Data).brewNow).toBeNull();
+    expect((load(event(false)) as Data).brewNow).toBeNull();
+    void fresh;
+    db.prepare(`DELETE FROM brew_recipe_matches WHERE recipe_id = ?`).run(id);
+    db.prepare(`DELETE FROM beanconqueror_brews WHERE bean_id LIKE 'pb%'`).run();
+    db.prepare(`DELETE FROM beanconqueror_beans WHERE id LIKE 'pb%'`).run();
+    db.prepare(`DELETE FROM coffees WHERE slug IN ('aaa-tried','zzz-fresh','backlog-one','archived-one')`).run();
+    deleteRecipe(db, id);
+  });
+
   it('every action rejects a signed-out request', async () => {
     for (const a of [actions.saveRecipe, actions.deleteRecipe, actions.dismiss, actions.undismiss, actions.saveNoteWords])
       await expect(a(event(false))).rejects.toMatchObject({ status: 401 });

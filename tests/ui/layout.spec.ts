@@ -3806,6 +3806,34 @@ export const STATES: State[] = [
         }
       },
       {
+        // Brew now: the button opens the open-coffee picker (state in ?brewnow=); a coffee card links to its brew page with the
+        // recipe; Escape closes it and keeps the other params. Opening focuses the dialog, never a field.
+        name: 'recipes-brew-now', viewports: 'two' as const,
+        path: (s: Seed) => `/recipes?brews=r${s.recipes.recipeId}`,
+        act: async (page: Page, s: Seed) => {
+          const card = panel(page, 'Your recipes').locator('li.item').filter({ hasText: 'Seed equal pours' });
+          await card.getByRole('link', { name: 'Brew now' }).click();
+          const dlg = page.getByRole('dialog', { name: 'Brew Seed equal pours with' });
+          await expect(dlg).toBeVisible();
+          await expect(dlg.locator('svg[role="img"]')).toBeVisible();
+          expect(new URL(page.url()).searchParams.get('brewnow')).toBe('seed-equal-pours');
+          expect(await page.evaluate(() => document.activeElement?.matches('input, textarea, select'))).toBe(false);
+          const picks = dlg.locator('a.pick');
+          expect(await picks.count()).toBeGreaterThan(0);
+          await expect(picks.first()).toHaveAttribute('href', /^\/coffees\/[^/]+\/brew\?recipe=seed-equal-pours$/);
+          for (const pk of await picks.all()) expect((await pk.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+          await page.keyboard.press('Escape');
+          await expect(dlg).toBeHidden();
+          expect(new URL(page.url()).search).toBe(`?brews=r${s.recipes.recipeId}`);
+          await page.goto('/recipes?brewnow=seed-equal-pours');
+          await expect(dlg).toBeVisible();
+          await dlg.getByRole('link', { name: 'Close' }).click();
+          await expect(dlg).toBeHidden();
+          await page.goto('/recipes?brewnow=gone');
+          await expect(page.getByRole('dialog')).toHaveCount(0);
+        }
+      },
+      {
         name: 'recipes-see-brews',
         path: (s: Seed) => `/recipes?brews=s${s.recipes.bbsKey}`,
         act: async (page: Page, s: Seed) => {
