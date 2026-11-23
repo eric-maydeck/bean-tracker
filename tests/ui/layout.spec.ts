@@ -11097,10 +11097,12 @@ export const STATES: State[] = [
         await expect(panel.locator('.gear-card', { hasText: peekR })).not.toHaveClass(/covered/);
         await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
         const left0 = (await info()).left;
-        await covered.last().focus();
-        await page.keyboard.press('Enter');
-        await expect.poll(async () => (await info()).left).toBeGreaterThan(left0);
+        // (Not focus() first: a keyboard focus on a covered card already scrolls it out, so Enter would then land on an uncovered
+        // card, which rightly pins its tip. The key goes to the covered card as it is.)
+        await covered.last().dispatchEvent('keydown', { key: 'Enter' });
+        await expect.poll(async () => (await info()).left).toBeCloseTo(left0 + step, 0); // one card, the smooth scroll settled
         await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
+        await page.evaluate(() => (document.activeElement as HTMLElement).blur()); // a focused card the reset covers again would be scrolled out
         await row.evaluate((r) => r.scrollTo({ left: 0, behavior: 'instant' }));
         await expect.poll(async () => (await info()).left).toBe(0);
         await next.click();
