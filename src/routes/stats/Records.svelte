@@ -138,14 +138,14 @@
   <!-- Lines come in groups (holder + its sub; inputs + date; All-time + Was), tight inside, a little
        apart between. -->
   <div class="hl-card" id={anchor(r.key)} {style}>
-    <span class="hl-value">{#if r.fmt === 'money' || r.fmt === 'per100'}<Usd n={r.value} tipSuffix={r.fmt === 'per100' ? '/100g' : ''} />{:else}<CoffeeName text={v} />{/if}{#if unit}<small>{`${unitGap(unit)}${unit}`}</small>{/if}</span>
+    <span class="hl-value">{#if r.fmt === 'money' || r.fmt === 'ppg'}<Usd n={r.value} tipSuffix={r.fmt === 'ppg' ? '/g' : ''} />{:else}<CoffeeName text={v} />{/if}{#if unit}<small>{`${unitGap(unit)}${unit}`}</small>{/if}</span>
     <div class="grp">
       <span class="hl-holder" use:full>{@render link(r.holder)}</span>
       {#if r.holder.sub}<span class="hl-line" use:full>{r.holder.sub}</span>{/if}
     </div>
     {#if why || !isDate(r.holder)}
       <div class="grp">
-        {#if r.fmt === 'value' && r.per100 != null}<span class="hl-line" use:full>At <Usd n={r.per100} suffix={'/100g'} /></span>
+        {#if r.fmt === 'value' && r.ppg != null}<span class="hl-line at">At <Usd n={r.ppg} suffix={'/g'} /></span>
         {:else if why}<span class="hl-line" use:full><CoffeeName text={why} /></span>{/if}
         {#if !isDate(r.holder)}<span class="hl-line">{date(r.holder.date)}</span>{/if}
       </div>
@@ -249,6 +249,10 @@
 <div class="mode-tip" popover="manual" bind:this={fullTip}></div>
 
 <style>
+  /* "At $0.08/g" is always short; on phones Usd's tap padding (12px past its end) would trip the ellipsis. */
+  .hl-line.at {
+    overflow: visible;
+  }
   /* Card grid and card base: .hl-grid / .hl-card, :global in app.css (Milestones shares them). */
   /* A tip button's phone padding (its 44px tap target) is canceled by negative margins, so it
      needs no room in the card: 100% would squeeze its text out of a narrow card. */

@@ -51,7 +51,7 @@
     link: (href: string) => string; // finding links keep the page's Period, Ratings, Caffeine and Coffees filter (withPageWide)
   } = $props();
 
-  const WHOLE_NAME: Record<string, string> = { backlogRunway: 'On hand', pricePerMonth: '$/100g', loyalty: 'Top roasters' };
+  const WHOLE_NAME: Record<string, string> = { backlogRunway: 'On hand', pricePerMonth: '$/g', loyalty: 'Top roasters' };
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
   const anchor = (key: string) => `insight-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
   const date = formatDate;
@@ -536,7 +536,7 @@
           {:else}
             <span class="hl-line wrap result">Not enough brews to measure your spend yet</span>
           {/if}
-          <span class="hl-line wrap">At <Usd n={t.whatIf.avgPricePerG! * 100} /> / 100g, your last 12 months' average</span>
+          <span class="hl-line wrap">At <Usd n={t.whatIf.avgPricePerG!} suffix="/g" />, your last 12 months' average</span>
           {#if w.bpd * w.dose > 0}<span class="hl-line"><Usd n={perMonth * 12} /> a year</span>{/if}
           <TileCaption href="#insights-spend" label="Monthly spend" />
         </div>

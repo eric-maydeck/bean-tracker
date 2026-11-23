@@ -5,23 +5,9 @@ import { schema } from './schema.ts';
 import { canonicalZone } from '../displayZone.ts';
 import { STORE_ZONE, setBrewingZone as setProcessZone, DATE_FORMATS, DEFAULT_DATE_FORMAT, type DateFormat } from '../localDate.ts';
 import { COFFEE_ORIGIN_FIELDS } from '../types.ts';
-import { applyCoffeeFixes } from './coffees.ts';
-import { PRODUCT_PAGE_BACKFILLS } from './productPageBackfill.ts';
-import { BEAN_DATA_BACKFILLS } from './beanDataBackfill.ts';
-import { BEAN_BASE_BACKFILLS } from './beanBaseBackfill.ts';
-import { COFFEE_CORRECTIONS } from './coffeeCorrections.ts';
-import { applyDataStandards } from './standards.ts';
-import { applySubscriptionUrls, SUBSCRIPTION_URLS_2026_10_08 } from './subscriptions.ts';
-import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConquerorLinks.ts';
-import { applySubscriptionLinks, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_2026_10_MARKER } from './subscriptionLinks.ts';
-import { applyImageSources } from './imageSourceFixes.ts';
-import { IMAGE_SOURCES_2026_10 } from './imageSourceData.ts';
-import { applyRecipeFixes, applyRecipeLengthFix } from './recipeFixes.ts';
-import { BEAN_CONQUEROR_PAIRS, PAIRS_2026_10B, PAIRS_2026_10B_MARKER, FIXES_2026_10B, PAIRS_2026_11, PAIRS_2026_11_MARKER } from './beanConquerorPairs.ts';
-import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear.ts';
+import { backfillBeanConquerorLinks } from './beanConquerorLinks.ts';
+import { applyLegacyFixes } from './legacyFixes.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
-import { applyRoasterImageDefaults } from './roasterImages.ts';
-import { ROASTER_IMAGE_DEFAULTS, ROASTER_IMAGE_DEFAULTS_MARKER, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER } from './roasterImageDefaults.ts';
 
 // Returns true the moment the column is actually added, false if it already
 // existed — callers use this to run a backfill exactly once, rather than on
@@ -75,7 +61,10 @@ function backfillSlugs(db: DatabaseSync): void {
 }
 
 export function applySchema(db: DatabaseSync): void {
+  // No tables yet = a database this code creates: it gets the schema and reference data, never the owner's fixes.
+  const fresh = !db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' LIMIT 1`).get();
   db.exec(schema);
+  if (fresh) db.prepare(`INSERT INTO app_meta (key, value) VALUES ('fresh_db', ?)`).run(new Date().toISOString());
   // Databases created before these columns existed need them added on top
   // of CREATE TABLE IF NOT EXISTS, which only applies to brand-new tables.
   ensureColumn(db, 'alerts', 'href', 'TEXT');
@@ -87,6 +76,7 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'subscription_id', 'INTEGER REFERENCES subscriptions(id) ON DELETE SET NULL');
   for (const f of COFFEE_ORIGIN_FIELDS) ensureColumn(db, 'coffees', f, 'TEXT');
   ensureColumn(db, 'coffees', 'bean_base_id', 'TEXT');
+  const blendJustAdded = ensureColumn(db, 'coffees', 'blend', 'INTEGER NOT NULL DEFAULT 0'); // legacyFixes marks the one real blend then
   ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
   ensureColumn(db, 'subscriptions', 'subscription_url', 'TEXT');
@@ -125,40 +115,8 @@ export function applySchema(db: DatabaseSync): void {
     db.exec('ROLLBACK');
     throw e;
   }
-  applyBeanConquerorPairs(db, BEAN_CONQUEROR_PAIRS); // own transaction, so after the COMMIT above
-  applyBeanConquerorPairs(db, PAIRS_2026_10B, FIXES_2026_10B, PAIRS_2026_10B_MARKER);
-  applyBeanConquerorPairs(db, PAIRS_2026_11, [], PAIRS_2026_11_MARKER);
-  applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS, ROASTER_IMAGE_DEFAULTS_MARKER);
-  applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER);
-  for (const b of PRODUCT_PAGE_BACKFILLS) applyCoffeeFixes(db, b); // own transaction each, after roaster defaults
-  for (const b of BEAN_DATA_BACKFILLS) applyCoffeeFixes(db, b); // reviewed origin/amount/cost fixes + unlinked deletes
-  for (const b of BEAN_BASE_BACKFILLS) applyCoffeeFixes(db, b); // reviewed Bean Base fills (tasting notes, bean_base_id, origin detail)
-  for (const b of COFFEE_CORRECTIONS) applyCoffeeFixes(db, b);
-  applyDataStandards(db, 'data_standards_2026_11'); // one-time conversion to docs/data-standards.md forms
-  applyImageSources(db, IMAGE_SOURCES_2026_10);
-  applySubscriptionUrls(db, SUBSCRIPTION_URLS_2026_10_08, 'subscription_urls_2026_10_08');
-  applySubscriptionLinks(db, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_2026_10_MARKER);
-  applyRecipeFixes(db);
-  applyRecipeLengthFix(db);
-  // computeFill's solid-border rule changed, so cached fills may be wrong; drop
-  // them once and the background run refills every displayed URL at boot.
-  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('image_fills_recompute_2026_10_06')) {
-    db.exec('BEGIN');
-    db.exec(`DELETE FROM image_fills`);
-    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('image_fills_recompute_2026_10_06', new Date().toISOString());
-    db.exec('COMMIT');
-  }
-  // The Shoebox roaster default (a transparent logo) on its labels' green
-  // rather than the computed tan (user request). A later full recompute (like
-  // the one above) would drop it; re-add it then.
-  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('shoebox_logo_fill_2026_10_08')) {
-    db.exec('BEGIN');
-    db.prepare(
-      `INSERT INTO image_fills (url, fill) VALUES (?, ?) ON CONFLICT(url) DO UPDATE SET fill = excluded.fill`
-    ).run('https://shoebox.coffee/cdn/shop/files/Main.png?v=1737911185', '#9ae197');
-    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('shoebox_logo_fill_2026_10_08', new Date().toISOString());
-    db.exec('COMMIT');
-  }
+  // Owner-only fixes: skipped on a database this code created (see legacyFixes.ts).
+  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = 'fresh_db'`).get()) applyLegacyFixes(db, blendJustAdded);
   // image_copies' kind CHECK gained 'gear' (gear showcase): SQLite can't alter a CHECK, so rebuild an older table once.
   if (!(db.prepare(`SELECT sql FROM sqlite_master WHERE name = 'image_copies'`).get() as { sql: string }).sql.includes("'gear'")) {
     db.exec(`BEGIN; ALTER TABLE image_copies RENAME TO image_copies_old;
@@ -184,25 +142,6 @@ export function applySchema(db: DatabaseSync): void {
        WHERE coffee_name LIKE '%decaf%' COLLATE NOCASE
           OR processing LIKE '%decaf%' COLLATE NOCASE`
     );
-  }
-  // Single origin / Blend: the only real blend (user, 2026-11-01). Runs only the moment the column is added.
-  if (ensureColumn(db, 'coffees', 'blend', 'INTEGER NOT NULL DEFAULT 0')) {
-    const ids = db.prepare(`SELECT id FROM coffees WHERE roaster = ? AND coffee_name = ?`)
-      .all('S&W Craft Roasting', "Teddy's Terror (blend)") as { id: number }[];
-    for (const { id } of ids) db.prepare(`UPDATE coffees SET blend = 1, origin = 'Blend' WHERE id = ?`).run(id);
-  }
-  // Brew now: the user's own dripper/filter suggest from their own brews only. Once; a later edit sticks.
-  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('brew_now_own_data_2026_10c')) {
-    // Unshipped wording changes: carry any earlier values over to the current strings.
-    const rename = db.prepare(`UPDATE gear_details SET fields = json_set(fields, '$.ownData', ?) WHERE json_extract(fields, '$.ownData') IN (?, ?)`);
-    rename.run(OWN_DATA_ONLY, 'This gear only', 'Own brews only');
-    rename.run(OWN_DATA_SIMILAR, 'Similar gear too', 'Similar gear');
-    const set = db.prepare(
-      `UPDATE gear_details SET fields = json_set(fields, '$.ownData', '${OWN_DATA_ONLY.replace(/'/g, "''")}') WHERE kind = ? AND name = ?`
-    );
-    set.run('dripper', 'Graycano');
-    set.run('filter', 'Sibarist Fast');
-    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('brew_now_own_data_2026_10c', new Date().toISOString());
   }
   migrateStatusValues(db);
   dropHandSetRates(db);

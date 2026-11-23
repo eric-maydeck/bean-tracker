@@ -10,12 +10,12 @@ import { BAG_MIN_BREWS, single } from '#lib/sample.ts';
 import { daysBetween, inPeriod, type Period } from './time';
 
 export interface Holder { label: string; sub?: string; href?: string; date: string }
-// mean / per100: a Best value pick's parts (its value is their ratio), for display. A "less your
+// mean / ppg: a Best value pick's parts (its value is their ratio), for display. A "less your
 // style" pick ranks by its adjusted delta (value) and shows its raw one (mean).
-export interface Candidate { value: number; holder: Holder; detail?: string; mean?: number; per100?: number }
-export interface RecordPick { value: number; holder: Holder; detail?: string; mean?: number; per100?: number; ties: Holder[] }
+export interface Candidate { value: number; holder: Holder; detail?: string; mean?: number; ppg?: number }
+export interface RecordPick { value: number; holder: Holder; detail?: string; mean?: number; ppg?: number; ties: Holder[] }
 export type Section = 'taste' | 'volume' | 'freshness' | 'money' | 'extremes' | 'gentle';
-export type Fmt = 'rating' | 'count' | 'grams' | 'days' | 'gpd' | 'money' | 'per100' | 'clock'
+export type Fmt = 'rating' | 'count' | 'grams' | 'days' | 'gpd' | 'money' | 'ppg' | 'clock'
   | 'seconds' | 'ratio' | 'sd' | 'grind' | 'ml' | 'value' | 'delta';
 export interface RecordDef {
   key: string; section: Section; label: string; fmt: Fmt;
@@ -204,15 +204,15 @@ const lifeSpans = (c: RecCtx, finished: boolean): Candidate[] =>
 const restPick = (c: RecCtx): Candidate[] =>
   held(c).filter((b) => b.restDays !== null && b.restDays >= 0)
     .map((b) => ({ value: b.restDays!, ...(b.rating !== null ? { detail: `Rated: ${b.rating}` } : {}), holder: brewHolder(c, b) }));
-const bagPer100 = (c: RecCtx): Candidate[] =>
+const bagPpg = (c: RecCtx): Candidate[] =>
   c.bags.flatMap((b) => b.purchaseDate && b.cost && b.cost > 0 && b.amountG && b.amountG > 0
-    ? [{ value: (b.cost / b.amountG) * 100, detail: `${usd(b.cost)} for ${g(b.amountG)}`, holder: bagHolder(c.bags, b.id, b.purchaseDate) }] : []);
+    ? [{ value: b.cost / b.amountG, detail: `${usd(b.cost)} for ${g(b.amountG)}`, holder: bagHolder(c.bags, b.id, b.purchaseDate) }] : []);
 // Cost per brew = dose × the bag's price per gram.
 const cups = (c: RecCtx): Candidate[] =>
   held(c).filter((b) => b.costPerBrew !== null).map((b) => {
     const bag = c.bags.find((x) => x.id === b.coffeeId);
-    const per100 = bag?.cost && bag.amountG ? `${usd((bag.cost / bag.amountG) * 100)}/100g` : null;
-    return { value: b.costPerBrew!, ...(per100 && b.dose ? { detail: `${g(b.dose)} at ${per100}` } : {}), holder: brewHolder(c, b) };
+    const ppg = bag?.cost && bag.amountG ? `${usd(bag.cost / bag.amountG)}/g` : null;
+    return { value: b.costPerBrew!, ...(ppg && b.dose ? { detail: `${g(b.dose)} at ${ppg}` } : {}), holder: brewHolder(c, b) };
   });
 // Value score: mean rating ÷ $ per 100 g (the Records pick and the Spend tab's Best value share it).
 export const valueScore = (mean: number, ppg: number): number => mean / (ppg * 100);
@@ -221,8 +221,8 @@ const value = (c: RecCtx): Candidate[] =>
   perBag(c, BAG_MIN_BREWS, (s, id) => {
     const bag = c.bags.find((x) => x.id === id);
     if (!bag?.cost || bag.cost <= 0 || !bag.amountG || bag.amountG <= 0) return null;
-    const p = (bag.cost / bag.amountG) * 100;
-    return { value: valueScore(s.mean!, bag.cost / bag.amountG), mean: s.mean!, per100: p, detail: `${s.mean!.toFixed(2)} at ${usd(p)}/100g` };
+    const p = bag.cost / bag.amountG;
+    return { value: valueScore(s.mean!, p), mean: s.mean!, ppg: p, detail: `${s.mean!.toFixed(2)} at ${usd(p)}/g` };
   });
 const spent = (bs: BagFact[]) => bs.reduce((s, b) => s + (b.cost ?? 0), 0);
 const roasters = (c: RecCtx, f: (bs: BagFact[]) => number, detail: (bs: BagFact[]) => string): Candidate[] =>
@@ -361,8 +361,8 @@ export const RECORDS: RecordDef[] = [
       return d === null ? [] : [{ value: d, detail: 'Unopened since bought', holder: bagHolder(c.bags, b.id, b.purchaseDate!) }];
     }), { scope: 'now' }),
 
-  money('priciestBag', 'Priciest bag per 100g', 'max', 'per100', (c) => bagPer100(c), { bought: true }),
-  money('cheapestBag', 'Cheapest bag per 100g', 'min', 'per100', (c) => bagPer100(c), { bought: true }),
+  money('priciestBag', 'Priciest bag per gram', 'max', 'ppg', (c) => bagPpg(c), { bought: true }),
+  money('cheapestBag', 'Cheapest bag per gram', 'min', 'ppg', (c) => bagPpg(c), { bought: true }),
   money('priciestCup', 'Priciest cup', 'max', 'money', (c) => cups(c)),
   money('cheapestCup', 'Cheapest cup', 'min', 'money', (c) => cups(c)),
   money('bestValue', 'Best value for money', 'max', 'value', (c) => value(c), { rating: true }),

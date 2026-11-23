@@ -965,7 +965,7 @@
     {/each}
   </div>
 {:else}
-  <div class="table-scroll">
+  <div class="table-scroll coffees-list-scroll">
     <table class="data-table compact coffees-list">
       <colgroup>
         <col style="width: 7%" />
@@ -1092,7 +1092,7 @@
             </button>
           </th>
           <!-- Signed out the column holds only Brew now, so it skips the admin width (col-actions). -->
-          <th class={data.isAdmin ? 'col-actions' : undefined}>Actions</th>
+          <th class={['actions-cell', data.isAdmin && 'col-actions']}>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -1125,9 +1125,9 @@
               {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
             </td>
             {#if !data.isAdmin}
-              <td><div class="action-buttons">{@render brewButton(coffee)}</div></td>
+              <td class="actions-cell"><div class="action-buttons">{@render brewButton(coffee)}</div></td>
             {:else}
-              <td>
+              <td class="actions-cell">
                 <div class="action-buttons">
                   {#if canEdit(coffee.id)}
                     <!-- While this row's form is open its actions sit under the form (below). -->
@@ -1146,11 +1146,14 @@
           </tr>
           {#if canEdit(coffee.id) && openForms.has(coffee.id)}
             <tr>
-              <td colspan="14">
-                {@render expandedForm(coffee)}
-                <!-- Under the form, like Compact: on a phone the row above is off-screen. -->
-                <div class="action-buttons under-form">
-                  {@render adminActions(coffee)}
+              <td colspan="14" class="row-form-cell">
+                <!-- Pinned to the visible width, so the form never scrolls sideways with the table. -->
+                <div class="row-form-pin">
+                  {@render expandedForm(coffee)}
+                  <!-- Under the form, like Compact: on a phone the row above is off-screen. -->
+                  <div class="action-buttons under-form">
+                    {@render adminActions(coffee)}
+                  </div>
                 </div>
               </td>
             </tr>

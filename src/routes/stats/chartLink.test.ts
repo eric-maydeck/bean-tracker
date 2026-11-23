@@ -101,12 +101,12 @@ describe('insightsPreview', () => {
     });
     for (const chart of ['habits-hour', 'nope', undefined]) expect(insightsPreview({ ...v, chart }).card).toBeUndefined();
   });
-  it('thumbnails show price per gram where the page shows per 100g', () => {
-    const r = { sections: [{ key: 'money', tiles: [{ key: 'priciestBag', label: 'Priciest bag per 100g', fmt: 'per100', value: 9.3, holder: { label: 'Bag', date: '' }, ties: [] }] }] } as unknown as RecordsTab;
+  it('bag price records show price per gram in the thumbnail and the description', () => {
+    const r = { sections: [{ key: 'money', tiles: [{ key: 'priciestBag', label: 'Priciest bag per gram', fmt: 'ppg', value: 0.093, holder: { label: 'Bag', date: '' }, ties: [] }] }] } as unknown as RecordsTab;
     const m = { ...v, records: r };
-    expect(insightsPreview({ ...m, chart: 'records-money' }).card!.thumb).toEqual({ kind: 'grid', tiles: [['Priciest bag per g', '$0.09/g']] });
-    expect(insightsPreview({ ...m, chart: 'record-priciestBag' }).card).toMatchObject({ big: 'Priciest bag per g', thumb: { value: '$0.09/g' } });
-    expect(insightsPreview({ ...m, chart: 'record-priciestBag' }).description).toContain('$9.30 / 100g');
+    expect(insightsPreview({ ...m, chart: 'records-money' }).card!.thumb).toEqual({ kind: 'grid', tiles: [['Priciest bag per gram', '$0.09/g']] });
+    expect(insightsPreview({ ...m, chart: 'record-priciestBag' }).card).toMatchObject({ big: 'Priciest bag per gram', thumb: { value: '$0.09/g' } });
+    expect(insightsPreview({ ...m, chart: 'record-priciestBag' }).description).toContain('$0.09/g');
   });
   it('thumbnail text is capped at 80 characters', () => {
     const boards = { ...none, origins: rows([['x'.repeat(200), 8]]) };
