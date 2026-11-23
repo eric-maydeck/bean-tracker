@@ -1,5 +1,6 @@
 <script lang="ts">
   import { COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '#lib/types.ts';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import Usd from '#lib/components/Usd.svelte';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { coffeePreview } from '#lib/linkPreview.ts';
@@ -461,7 +462,7 @@
       {/snippet}
 
       <section class="detail-section first-section" data-section="origin">
-        <h2>Origin</h2>
+        <HeadingAnchor id="origin-details">Origin</HeadingAnchor>
         <div class="stat-grid">
           <div class="stat">
             <span class="stat-label">Type</span>
@@ -488,7 +489,7 @@
       </section>
 
       <section class="detail-section" data-section="bag">
-        <h2>Bag</h2>
+        <HeadingAnchor id="bag">Bag</HeadingAnchor>
         <div class="stat-grid">
           <div class="stat">
             <span class="stat-label">Roast level</span>
@@ -522,7 +523,7 @@
       </section>
 
       <section class="detail-section timing" data-section="timing">
-        <h2>Timing</h2>
+        <HeadingAnchor id="timing">Timing</HeadingAnchor>
         <div class="stat-grid timing-grid" class:has-fave={data.favoriteGrind.length}
           class:has-extra={data.coffee.frozen_start_date || data.coffee.frozen_end_date || data.coffee.opened_date || (data.coffee.status === 'archive' && data.coffee.moved_date)}>
           <div class="stat">
@@ -579,7 +580,7 @@
       {#if data.like}
         {@const l = data.like}
         <section class="detail-section" data-section="like">
-          <h2>Vs like coffees</h2>
+          <HeadingAnchor id="vs-like-coffees">Vs like coffees</HeadingAnchor>
           <p class="text-muted">Compared with {data.coffee.decaf ? '' : 'caffeinated '}{l.label}: all time, <span class="setting-name">{lower(DIAL_LABEL[v.dial ?? 'dialed'])}</span>, <span class="setting-name">{lower(RATINGS_LABEL[v.ratings ?? 'current'])}</span>.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-reset="false">Back to defaults</a>{/if}</p>
           <div class="stat-grid">
             <div class="stat">
@@ -595,7 +596,7 @@
         {@const n = data.noLike}
         <!-- Why there's no panel (gate P4): one line, its counts in the tip, and a link to the nearest view that has one. -->
         <section class="detail-section" data-section="like">
-          <h2>Vs like coffees</h2>
+          <HeadingAnchor id="vs-like-coffees">Vs like coffees</HeadingAnchor>
           <p class="text-muted like-none">
             <TextTip label={n.why} tip={{ title: 'Why no comparison', rows: n.rows }} />
             {#if n.fix}<a href="?{insightsParams(n.fix)}" data-sveltekit-reset="false">Compare with {fixText(n.fix)}</a>{/if}

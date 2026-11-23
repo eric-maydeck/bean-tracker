@@ -11,6 +11,7 @@ import { PART, PARTS } from './viewports';
 import { expectHeadingLinks } from './headingLinks';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
+import { expectHeadingLinks } from './headingLinks';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 // The whole Out for today row, on screen without scrolling (the wheel shrinks to leave room; the D20's entry row is kept tight).
 // The worst-case horizontal card: a long name, all 10 stats with long values and long tasting notes, written into the rendered card (layout is CSS, so this
@@ -1848,6 +1849,8 @@ export const STATES: State[] = [
       await expect(panel).toContainText(/\d+(st|nd|rd|th) of \d+/);
       await expectGridRowsFull(page, '[data-section="like"] .stat-grid');
     } },
+  { name: 'coffee-heading-links', viewports: 'two', path: (s) => `/coffees/${s.slugs.lab}#timing`,
+    act: async (page) => { await expectHeadingLinks(page, ['origin-details', 'bag', 'timing', 'vs-like-coffees'], 'timing'); } },
   // The coffee page's Origin and Bag sections and the edit form's groups share one order, so a field spotted on the
   // page sits at about the same place in the form. The seed fills the origin details on brewNew only (Brew Seed Fresh Lot).
   { name: 'form groups follow the page', path: (s) => `/coffees/${s.slugs.brewNew}`,
@@ -2783,7 +2786,7 @@ export const STATES: State[] = [
   { name: 'brew-now-roaster-recipe', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
     act: async (page) => {
       const sec = page.locator('.rr');
-      await expect(sec.getByRole('link')).toHaveAttribute('href', 'https://example.com/brew-guide');
+      await expect(sec.locator('a[href="https://example.com/brew-guide"]')).toBeVisible(); // not the heading's own link
       await expect(sec).toContainText('Searched');
       await expect(sec.getByRole('button', { name: 'Search again' })).toBeVisible();
       expect(await sec.evaluate((el) => el.scrollWidth <= el.clientWidth && document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -2833,6 +2836,31 @@ export const STATES: State[] = [
       await page.locator('.rows .tiplabel', { hasText: 'Dose' }).click();
       await page.locator('.bn-tip').getByRole('link', { name: 'Open Account' }).click();
       await expect(page).toHaveURL(/\/account#brew-now$/);
+    } },
+  { name: 'brew-now-heading-links', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew#last-brews`,
+    act: async (page) => {
+      await expectHeadingLinks(page, ['this-coffee', 'start-here', 'last-brews', 'similar'], 'last-brews');
+      for (const id of await page.locator('section[aria-labelledby]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-labelledby')!))) {
+        await expect(page.locator(`[id="${id}"]`), id).toHaveCount(1);
+      }
+    } },
+  // A gear chip's goto keeps the hash and does not scroll to it: the page stays where it was.
+  { name: 'brew-now-hash-kept', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew#start-here`,
+    act: async (page, s) => {
+      const chip = () => page.getByRole('group', { name: 'Dripper' }).locator('button[aria-pressed="false"]:not([aria-haspopup])').first();
+      const pick = async () => { // dispatchEvent: no scroll-into-view, so scrollY is only what goto does
+        const y0 = await page.evaluate(() => scrollY);
+        await chip().evaluate((b: HTMLElement) => b.click());
+        await expect(page).toHaveURL(/dripper=/);
+        return [y0, await page.evaluate(() => scrollY)];
+      };
+      const [h0, h1] = await pick();
+      expect(new URL(page.url()).hash).toBe('#start-here');
+      expect(Math.abs(h1 - h0)).toBeLessThanOrEqual(2);
+      await gotoReady(page, `/coffees/${s.slugs.brew}/brew`);
+      const [n0, n1] = await pick();
+      expect(new URL(page.url()).hash).toBe('');
+      expect(Math.abs(n1 - n0)).toBeLessThanOrEqual(2);
     } },
   { name: 'brew-now-filter-keeps-dripper', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {

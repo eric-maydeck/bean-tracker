@@ -12,7 +12,7 @@ export async function expectHeadingLinks(page: Page, ids: string[], land: string
   const atTop = () =>
     page.evaluate((id) => {
       const t = document.getElementById(id)!.getBoundingClientRect().top;
-      const atEnd = scrollY + innerHeight >= document.documentElement.scrollHeight - 1;
+      const atEnd = scrollY + innerHeight >= document.documentElement.scrollHeight - 4; // a few px of slack: scrollHeight rounds up
       return (t >= -1 && t <= 16) || (atEnd && t >= 0 && t < innerHeight);
     }, land);
   await expect.poll(atTop, { message: `${land} at the top` }).toBe(true);

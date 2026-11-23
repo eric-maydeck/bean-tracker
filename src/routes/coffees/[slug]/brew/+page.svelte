@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance, deserialize } from '$app/forms';
   import { goto } from '$app/navigation';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { refreshTracked } from '#lib/urlState.ts';
   import { page } from '$app/state';
   import { originWithFlag } from '#lib/countryFlags.ts';
@@ -33,7 +34,7 @@
   function go(patch: Patch) {
     const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why,
       dose: data.suggestion.dose, ratio: data.suggestion.ratio, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
-    goto(page.url.pathname + (q ? `?${q}` : ''), { replace: true, reset: false });
+    goto(page.url.pathname + (q ? `?${q}` : '') + page.url.hash, { replace: true, reset: false }); // reset: false keeps the scroll even with a hash
   }
   const dripperFirst = (key: string): Patch => (key === 'dripper' ? { filter: null } : {});
   // Up to three chips (names that fit one line); the rest sit behind an "Other" dropdown button, whose label becomes
@@ -127,8 +128,8 @@
 
 {#snippet thisCoffee()}
   {#if data.thisCoffee.length}
-    <section class="bn-card" aria-labelledby="bn-this">
-      <h2 id="bn-this">This coffee</h2>
+    <section class="bn-card" aria-labelledby="this-coffee">
+      <HeadingAnchor id="this-coffee">This coffee</HeadingAnchor>
       <div class="split">
         <GrindTrend brews={asc} grinder={data.gear.grinder} summary={data.thisCoffeeSummary} />
         <ul class="brews">
@@ -144,8 +145,8 @@
 {#snippet roasterRecipe()}
   {@const rr = data.roasterRecipe}
   {#if rr || data.isAdmin}
-    <section class="bn-card rr" aria-labelledby="bn-rr">
-      <h2 id="bn-rr">Roaster's recipe</h2>
+    <section class="bn-card rr" aria-labelledby="roasters-recipe">
+      <HeadingAnchor id="roasters-recipe">Roaster's recipe</HeadingAnchor>
       {#if rr?.url}
         <a class="rr-title" href={rr.url} target="_blank" rel="noopener noreferrer">{rr.title ?? rr.url}</a>
         <p class="rr-meta">
@@ -239,8 +240,8 @@
 
   {#if data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
 
-  <section class="bn-card start" aria-labelledby="bn-start">
-    <h2 id="bn-start">Start here <span class="badge {BADGE[data.suggestion.confidence]}">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></h2>
+  <section class="bn-card start" aria-labelledby="start-here">
+    <HeadingAnchor id="start-here">Start here <span class="badge {BADGE[data.suggestion.confidence]}">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></HeadingAnchor>
     <ul class="rows">
       {#each data.suggestion.rows as r (r.setting)}
         {@const open = data.why === r.setting}
@@ -324,8 +325,8 @@
   </section>
 
   {#if data.marks.length}
-    <section class="bn-card" aria-labelledby="bn-marks">
-      <h2 id="bn-marks">Your last brews of this coffee</h2>
+    <section class="bn-card" aria-labelledby="last-brews">
+      <HeadingAnchor id="last-brews">Your last brews of this coffee</HeadingAnchor>
       {#if data.bias}<p class="bias">{data.bias}</p>{/if}
       <ul class="brews marks">
         {#each data.marks as m (m.id)}
@@ -355,8 +356,8 @@
   {@render thisCoffee()}
 
   {#if data.similar.length}
-    <section class="bn-card" id="similar" aria-labelledby="bn-similar">
-      <h2 id="bn-similar">{!data.neverBrewedRoaster ? 'Similar coffees' : 'Similar coffees from other roasters'}</h2>
+    <section class="bn-card" aria-labelledby="similar">
+      <HeadingAnchor id="similar">{!data.neverBrewedRoaster ? 'Similar coffees' : 'Similar coffees from other roasters'}</HeadingAnchor>
       <ul class="brews">
         {#each data.similar as s (s.slug)}
           <li>
@@ -460,7 +461,6 @@
   .basis-list { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; }
   .basis-list li { padding: var(--space-1) 0; }
   .bn-tip button.tip-link { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; }
-  #similar { scroll-margin-top: 5rem; }
   #bn-open-title .line { display: block; }
   #bn-open-title .line + .line { margin-top: 1.25rem; }
   .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-4); margin: 0; }
