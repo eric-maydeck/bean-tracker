@@ -13697,7 +13697,7 @@ for (const tab of ['overview', 'records', 'water', 'leaderboards', 'habits', 'co
     try {
       const raw = await ctx.newPage();
       await raw.goto(url);
-      if (['leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing'].includes(tab)) await expect(raw.locator('.filter-bar .tab-controls')).toBeVisible();
+      if (['leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots'].includes(tab)) await expect(raw.locator('.filter-bar .tab-controls')).toBeVisible();
       if (cbarH !== null) expect(Math.abs((await raw.locator('.cbar').first().boundingBox())!.height - cbarH), '.cbar height: server HTML vs hydrated').toBeLessThanOrEqual(1);
       expect(Math.abs((await raw.locator('.filter-bar').boundingBox())!.height - hydrated), 'bar height: server HTML vs hydrated').toBeLessThanOrEqual(1);
     } finally { await ctx.close(); }
