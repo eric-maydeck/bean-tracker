@@ -2,7 +2,7 @@
   import { withUnit } from '#lib/unitGap.ts';
   import Icon from '#lib/components/Icon.svelte';
   import SampleNote from '#lib/components/SampleNote.svelte';
-  import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField } from '#lib/gear.ts';
+  import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField, type GearKind } from '#lib/gear.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import Stamp from '#lib/components/Stamp.svelte';
   import { formatGrams } from '#lib/grams.ts';
@@ -21,9 +21,20 @@
     choose: (c: Partial<GearUrlState>) => void;
   } = $props();
 
-  // The kind toggle (absent = All) narrows both the grid and the shelf.
-  let shown = $derived(shownTrophies(s.gear ? list.filter((t) => t.kind === s.gear) : list));
-  let shelf = $derived(s.retired === 'open');
+  // One section per kind that has gear, in GEAR_KINDS order; the Show chips (absent = all) hide whole kinds, each with its own retired shelf.
+  const present = $derived(GEAR_KINDS.filter((k) => list.some((t) => t.kind === k)));
+  const on = $derived(s.gear ?? GEAR_KINDS);
+  const sections = $derived(present.filter((k) => on.includes(k)).map((kind) => ({ kind, ...shownTrophies(list.filter((t) => t.kind === kind)) })));
+  // At least one chip stays on: turning off the last one does nothing.
+  function toggleKind(k: GearKind) {
+    const next = GEAR_KINDS.filter((x) => (x === k ? !on.includes(x) : on.includes(x)));
+    if (next.length) choose({ gear: next });
+  }
+  function toggleShelf(k: GearKind) {
+    const open = s.retired ?? [];
+    const next = GEAR_KINDS.filter((x) => (x === k ? !open.includes(x) : open.includes(x)));
+    choose({ retired: next.length ? next : undefined });
+  }
   let current = $derived(list.find((t) => t.key === s.card));
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
   const kindVars = (t: Trophy) => `--kc:var(--series-${KIND_COLOR[t.kind]});--kc-ink:var(--series-${KIND_COLOR[t.kind]}-ink)`;
@@ -143,19 +154,33 @@
 
 {#if list.length}
   <section class="chart-panel" data-section="gear-trophies">
-    <div class="tab-group kind-chips" role="group" aria-label="Kind" data-button-row>
-      {#each [undefined, ...GEAR_KINDS] as k (k ?? 'all')}
-        <button aria-pressed={s.gear === k} onclick={() => choose({ gear: k })}>{k ? `${KIND_LABEL[k]}s` : 'All'}</button>
-      {/each}
+    <div class="show-row" data-button-row>
+      <span class="show-label" id="show-label">Show:</span>
+      <div class="tab-group kind-chips" role="group" aria-labelledby="show-label">
+        {#each present as k (k)}
+          <button aria-pressed={on.includes(k)} onclick={() => toggleKind(k)}>{KIND_LABEL[k]}s</button>
+        {/each}
+      </div>
     </div>
-    {#if !shown.active.length && !shown.retired.length}<p class="hl-empty">No {s.gear ? `${KIND_LABEL[s.gear].toLowerCase()}s` : 'gear'} match.</p>{/if}
-    {#if shown.active.length}{@render grid(shown.active, false)}{/if}
-    {#if shown.retired.length}
-      <button type="button" class="retired-toggle" aria-expanded={shelf} onclick={() => choose({ retired: shelf ? undefined : 'open' })}>
-        Retired ({shown.retired.length})<span class="caret"><Icon name="caret-right" /></span>
-      </button>
-      {#if shelf}{@render grid(shown.retired, true)}{/if}
-    {/if}
+    {#if sections.length}
+      <nav class="board-jump" aria-label="Jump to a section">
+        <span>Jump to</span>
+        {#each sections as { kind } (kind)}<a href="#gear-{kind}s">{KIND_LABEL[kind]}s</a>{/each}
+      </nav>
+    {:else}<p class="hl-empty">No gear of that kind.</p>{/if}
+    {#each sections as { kind, active, retired } (kind)}
+      {@const shelf = !!s.retired?.includes(kind)}
+      <section class="kind-section" id="gear-{kind}s" data-section="gear-{kind}s">
+        <h2>{KIND_LABEL[kind]}s <span class="kind-count">{active.length}</span></h2>
+        {#if active.length}{@render grid(active, false)}{/if}
+        {#if retired.length}
+          <button type="button" class="retired-toggle" aria-expanded={shelf} onclick={() => toggleShelf(kind)}>
+            Retired ({retired.length})<span class="caret"><Icon name="caret-right" /></span>
+          </button>
+          {#if shelf}{@render grid(retired, true)}{/if}
+        {/if}
+      </section>
+    {/each}
 
     <!-- Focus lands on the dialog, never a control. A click on the dialog itself (not its sheet) is a backdrop click. -->
     <!-- svelte-ignore a11y_autofocus, a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
@@ -381,9 +406,25 @@
     align-items: center;
   }
 
-  /* The kind toggle, the Findings theme chips' look (.tab-group): four equal buttons; a 2×2 grid on phones. */
-  .kind-chips {
+  /* The Show chips, the Findings theme chips' look (.tab-group): multi-select toggles, a 2-up grid on phones. */
+  .show-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
     margin-bottom: var(--space-3);
+  }
+  .show-label {
+    color: var(--color-text-muted);
+  }
+  .kind-section h2 {
+    margin: var(--space-4) 0 var(--space-3);
+  }
+  .kind-count {
+    margin-left: var(--space-1);
+    color: var(--color-text-muted);
+    font-weight: 400;
+    font-size: 0.85em;
   }
   .kind-chips button {
     margin: 0;
@@ -391,8 +432,10 @@
   }
   @media (max-width: 640px) {
     .kind-chips {
+      flex: 1 1 100%;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+      grid-auto-flow: column;
       gap: var(--space-2);
     }
   }

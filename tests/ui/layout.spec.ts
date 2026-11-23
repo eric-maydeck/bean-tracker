@@ -10932,34 +10932,48 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/card=/);
       await expect(dlg).toBeHidden();
       await page.locator('button.retired-toggle').click();
-      await expect(page).toHaveURL(/retired=open/);
+      await expect(page).toHaveURL(/retired=dripper/);
       expect(loads).toEqual([]);
     } },
-  // The kind toggle: URL, no refetch, the shelf count follows it, it combines with a pick.
+  // The Show chips: multi-select, URL, no refetch, sections and jump buttons follow them, the last chip stays on, legacy gear=grinder.
   { name: 'gear-trophy-kind', path: () => '/gear',
     act: async (page) => {
       const loads: string[] = [];
       page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
-      const kinds = page.getByRole('group', { name: 'Kind' });
-      await expect(kinds.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
-      await kinds.getByRole('button', { name: 'Drippers' }).click();
-      await expect(page).toHaveURL(/gear=dripper/);
-      await expect(page.locator('.trophy-card:not([data-key^="dripper-"])')).toHaveCount(0);
-      await expect(page.locator('button.retired-toggle')).toContainText('Retired (1)'); // Switch
+      const kinds = page.getByRole('group', { name: 'Show:' });
+      const jump = page.getByRole('navigation', { name: 'Jump to a section' });
+      for (const n of ['Drippers', 'Filters', 'Grinders']) {
+        await expect(kinds.getByRole('button', { name: n })).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.getByRole('heading', { level: 2, name: new RegExp(`^${n}`) })).toBeVisible();
+        await expect(jump.getByRole('link', { name: n })).toBeVisible();
+      }
+      await kinds.getByRole('button', { name: 'Filters' }).click();
+      await expect(page).toHaveURL(/gear=dripper%2Cgrinder|gear=dripper,grinder/);
+      await expect(page.locator('.trophy-card[data-key^="filter-"]')).toHaveCount(0);
+      await expect(jump.getByRole('link', { name: 'Filters' })).toHaveCount(0);
       await kinds.getByRole('button', { name: 'Grinders' }).click();
-      await expect(page).toHaveURL(/gear=grinder/);
-      await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
-      await expect(page.locator('button.retired-toggle')).toHaveCount(0);
+      await expect(page).toHaveURL(/gear=dripper$/);
+      await expect(page.locator('button.retired-toggle')).toContainText('Retired (1)'); // Switch
+      await kinds.getByRole('button', { name: 'Drippers' }).click(); // the last one stays on
+      await expect(kinds.getByRole('button', { name: 'Drippers' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page).toHaveURL(/gear=dripper$/);
       await expectGridRowsFull(page, '.trophy-grid');
-      await kinds.getByRole('button', { name: 'All' }).click();
+      await kinds.getByRole('button', { name: 'Filters' }).click();
+      await kinds.getByRole('button', { name: 'Grinders' }).click();
       await expect(page).not.toHaveURL(/gear=/);
       expect(loads).toEqual([]);
     } },
+  // Each kind keeps its own retired shelf; the old retired=open opens them all, the old gear=grinder shows only grinders.
   { name: 'gear-trophy-retired', path: () => '/gear?retired=open',
     act: async (page) => {
-      await expect(page.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.locator('button.retired-toggle').first()).toHaveAttribute('aria-expanded', 'true');
       await expect(page.locator('.trophy-grid.retired .trophy-card[data-key="dripper-switch"]')).toBeVisible();
       await expectGridRowsFull(page, '.trophy-grid');
+      await gotoReady(page, '/gear?gear=grinder');
+      await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
+      await expect(page.getByRole('heading', { level: 2, name: /^Drippers/ })).toHaveCount(0);
+      await expect(page.getByRole('group', { name: 'Show:' }).getByRole('button', { name: 'Grinders' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('group', { name: 'Show:' }).getByRole('button', { name: 'Drippers' })).toHaveAttribute('aria-pressed', 'false');
     } },
   // The /gear page (#22): the grid with its kind toggle and shelf, a dialog with its Stats link, the old addresses and the previews.
   { name: 'gear-page', viewports: 'two', path: () => '/gear',
@@ -10973,8 +10987,14 @@ export const STATES: State[] = [
       await expect(toggle).toHaveAttribute('aria-expanded', 'false');
       await toggle.click();
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-      await expect(page).toHaveURL(/\/gear\?retired=open$/);
+      await expect(page).toHaveURL(/\/gear\?retired=dripper$/);
       await expectGridRowsFull(page, '.trophy-grid');
+      // One section per kind in order, each with a count; its jump button scrolls to it.
+      const heads = await page.locator('.kind-section > h2').allTextContents();
+      expect(heads.map((h) => h.replace(/\s*\d+$/, ''))).toEqual(['Drippers', 'Filters', 'Grinders']);
+      await page.getByRole('navigation', { name: 'Jump to a section' }).getByRole('link', { name: 'Grinders' }).click();
+      await expect(page).toHaveURL(/#gear-grinders$/);
+      await expect(page.locator('#gear-grinders')).toBeInViewport();
     } },
   { name: 'stats-gear-panel', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
