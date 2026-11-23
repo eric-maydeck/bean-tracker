@@ -10,6 +10,7 @@
   import { goto } from '$app/navigation';
   import { refreshTracked } from '#lib/urlState.ts';
   import { UNTRACKED_CAP, accountQuery } from '#lib/accountUrl.ts';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import CoffeeForm from '#lib/components/CoffeeForm.svelte';
   import LinkPicker from '#lib/components/LinkPicker.svelte';
@@ -76,12 +77,12 @@
     await refreshTracked();
   }
   const shown = $derived(showAll ? unmatched.beans : unmatched.beans.slice(0, UNTRACKED_CAP));
-  const toggle = () => goto(accountQuery({ untracked: showAll ? undefined : 'all' }) || '/account', { replace: true, reset: false });
+  const toggle = () => goto((accountQuery({ untracked: showAll ? undefined : 'all' }) || '/account') + page.url.hash, { replace: true, reset: false });
   const facts = (b: UnmatchedBean) => [b.roaster ?? 'Unknown roaster', b.origin, b.processing, b.roastDate ?? 'No roast date'].filter(Boolean).join(' · ');
 </script>
 
 {#if unmatched.total > 0}
-  <h3 id="not-tracked">Not yet tracked ({unmatched.total})</h3>
+  <HeadingAnchor id="not-tracked" level={3}>Not yet tracked ({unmatched.total})</HeadingAnchor>
   <p class="text-muted">Beans in Bean Conqueror with no coffee here yet. Create one, or link it to a coffee you already have.</p>
   {#if shown.length < unmatched.total}<p class="text-muted">Showing {shown.length} of {unmatched.total}.</p>{/if}
   <ul class="triage">

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import SampleNote from '#lib/components/SampleNote.svelte';
   import { GEAR_KINDS, KIND_LABEL, fieldsFor, specText, shownTrophies, type GearKind } from '#lib/gear.ts';
@@ -149,8 +150,8 @@
     </nav>
     {#each sections as { kind, active, retired } (kind)}
       {@const shelf = !!s.retired?.includes(kind)}
-      <section class="chart-panel kind-section" id="gear-{kind}s" data-section="gear-{kind}s">
-        <h2>{KIND_LABEL[kind]}s <span class="kind-count">{active.length}</span></h2>
+      <section class="chart-panel kind-section" data-section="gear-{kind}s">
+        <HeadingAnchor id="gear-{kind}s">{KIND_LABEL[kind]}s <span class="kind-count">{active.length}</span></HeadingAnchor>
         {#if active.length}{@render grid(active, false)}{/if}
         {#if retired.length}
           <button type="button" class="retired-toggle" aria-expanded={shelf} onclick={() => toggleShelf(kind)}>

@@ -3671,7 +3671,7 @@ export const STATES: State[] = [
     name: 'account-time', viewports: 'two',
     path: () => '/account',
     act: async (page) => {
-      const panel = page.locator('#time');
+      const panel = page.locator('[data-section="time"]');
       await expect(panel.getByRole('heading', { name: 'Time' })).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT');
       const brewing = panel.getByLabel('Brewing timezone'), display = panel.getByLabel('Display timezone'), format = panel.getByLabel('Date format');
@@ -3718,7 +3718,7 @@ export const STATES: State[] = [
           ? { type: 'failure', status: 400, data: stringify({ error: 'Household size must be a whole number from 1 to 20' }) }
           : { type: 'success', status: 200, data: stringify({ success: true }) } });
       });
-      const panel = page.locator('#household');
+      const panel = page.locator('[data-section="household"]');
       const input = panel.getByLabel('Household size');
       await expect(input).toHaveValue('2');
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
@@ -3739,6 +3739,41 @@ export const STATES: State[] = [
         await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
         await checkLayout(page);
       }
+    }
+  },
+  {
+    // Every fixed header on Account links to itself; a load on #stats-settings lands it at the top.
+    name: 'account-heading-links', viewports: 'two', path: () => '/account#stats-settings',
+    act: async (page) => {
+      await expectHeadingLinks(page, ['bean-conqueror', 'brew-data', 'flow-data', 'not-tracked', 'household', 'recipes', 'brew-now', 'doses', 'ratios', 'time', 'stats-settings'], 'stats-settings');
+    }
+  },
+  {
+    // The untracked show-all toggle on a #hash URL keeps the hash and scrolls exactly as it does without one.
+    name: 'account-untracked-hash-kept', viewports: 'two', path: () => '/account#household',
+    act: async (page) => {
+      const more = page.getByRole('button', { name: /^Show \d+ more$/ });
+      const scrollTo = async (y: number) => {
+        await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height / 2);
+        await expect.poll(async () => {
+          const dy = Math.round(y - (await page.evaluate(() => scrollY)));
+          if (dy) await page.mouse.wheel(0, dy);
+          return dy;
+        }, { message: 'scrolled back to the start' }).toBe(0);
+      };
+      await gotoReady(page, '/account');
+      await more.scrollIntoViewIfNeeded();
+      const start = await page.evaluate(() => scrollY);
+      await more.click();
+      await expect(page).toHaveURL(/untracked=all/);
+      await expect(page.locator('.triage-row')).toHaveCount(5);
+      const plain = await page.evaluate(() => scrollY);
+      await gotoReady(page, '/account#household');
+      await scrollTo(start);
+      await more.click();
+      await expect(page).toHaveURL(/\?untracked=all#household$/);
+      await expect(page.locator('.triage-row')).toHaveCount(5);
+      expect(Math.abs((await page.evaluate(() => scrollY)) - plain)).toBeLessThanOrEqual(2);
     }
   },
   {
@@ -11087,6 +11122,17 @@ export const STATES: State[] = [
       await page.getByRole('navigation', { name: 'Jump to a section' }).getByRole('link', { name: 'Grinders' }).click();
       await expect(page).toHaveURL(/#gear-grinders$/);
       await expect(page.locator('#gear-grinders')).toBeInViewport();
+    } },
+  // Each kind header on Gear links to itself; the Jump to nav still lands its heading.
+  { name: 'gear-heading-links', viewports: 'two', path: () => '/gear#gear-grinders',
+    act: async (page) => {
+      await expectHeadingLinks(page, ['gear-drippers', 'gear-filters', 'gear-grinders'], 'gear-grinders');
+      await page.getByRole('navigation', { name: 'Jump to a section' }).getByRole('link', { name: 'Filters' }).click();
+      await expect(page).toHaveURL(/#gear-filters$/);
+      await expect.poll(() => page.evaluate(() => {
+        const t = document.getElementById('gear-filters')!.getBoundingClientRect().top;
+        return (t >= -1 && t <= 16) || (scrollY + innerHeight >= document.documentElement.scrollHeight - 1 && t >= 0);
+      })).toBe(true);
     } },
   // The Your gear panel: a scrolling row of cards that never stack, the blurb beside a real link to /gear.
   { name: 'stats-gear-panel', viewports: 'two', path: () => '/stats?tab=gear',
