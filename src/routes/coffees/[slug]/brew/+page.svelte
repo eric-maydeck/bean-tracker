@@ -224,8 +224,9 @@
           {/if}
         </div>
       </div>
-      {#if p.key === 'recipe' && data.suggestedRecipe && data.recipe && data.suggestedRecipe.slug !== data.recipe.slug}
-        <p class="pk2-hint">Suggested for this setup: <button type="button" class="pk2-link" onclick={() => go({ recipe: data.suggestedRecipe.slug })}>{data.suggestedRecipe.name}</button></p>
+      {@const sug = data.suggestedRecipe}
+      {#if p.key === 'recipe' && sug && data.recipe && sug.slug !== data.recipe.slug}
+        <p class="pk2-hint">Suggested for this setup: <button type="button" class="pk2-link" onclick={() => go({ recipe: sug.slug })}>{sug.name}</button></p>
       {/if}
     {/each}
     {#if data.options.doses.length}
