@@ -48,7 +48,7 @@ const ranks = (xs: readonly number[]): number[] => {
   }
   return r;
 };
-// Spearman's rank correlation: Pearson on ranks, so one extreme point (a $117/100 g bag) can't swing it.
+// Spearman's rank correlation: Pearson on ranks, so one extreme point (a $1.17/g bag) can't swing it.
 export const spearman = (xs: readonly number[], ys: readonly number[]): number | null => pearson(ranks(xs), ranks(ys));
 // About 2 SE of a correlation r from n points (Fisher's z, mapped back near r): the myths' margin of error.
 export const rBand = (n: number, r = 0): number => (2 * (1 - r * r)) / Math.sqrt(n - 3);
