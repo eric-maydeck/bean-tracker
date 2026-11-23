@@ -359,7 +359,7 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   }
 
   const filled = rowsOut.filter((r) => r.value !== null);
-  const confidence = rowsOut.filter((r) => r.source !== 'recipe' && (r.value !== null || r.setting === 'grind')) // a missing grind drags it to guess
+  const confidence = rowsOut.filter((r) => r.source !== 'recipe' && !(recipe && r.setting === 'recipe') && (r.value !== null || r.setting === 'grind')) // a missing grind drags it to guess
     .reduce<Confidence>((c, r) => (rank(r.confidence) < rank(c) ? r.confidence : c), 'high');
   const lead = used.length ? [...used].sort((a, b) => a.tier - b.tier || b.set.length - a.set.length)[0] : null; // the lowest tier, then the most brews
   const basis = lead ? `Based on ${basisText(lead)}.` : 'No brews to base this on yet.';
