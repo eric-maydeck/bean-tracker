@@ -278,7 +278,7 @@ export function breakdown(rows: readonly BrewFact[], band: BandFn, slice: (b: Br
 export interface LabOptions {
   bags: { slug: string; label: string; onHand: boolean; roast: string | null; process: string }[];
   roasts: string[]; processes: string[]; origins: string[]; roasters: string[];
-  grinders: { slug: string; name: string }[]; // most rated brews first: [0] is the default
+  grinders: { slug: string; name: string }[]; // every grinder with a brew, most rated brews first: [0] is the default
   drippers: string[]; filters: string[]; waters: string[];
   doses: string[]; // band slugs present, band order
   temps: string[]; // numeric order
@@ -287,7 +287,9 @@ export interface LabOptions {
 // Roast levels need ≥ MIN_BAGS brewed bags (spec "Bands"); every slugged bag parses (an archived bag's
 // link still works), the Bag select shows the on-hand ones.
 export function labOptions(brews: readonly BrewFact[], bags: readonly BagFact[]): LabOptions {
-  const grinders = [...groupBy(brews.filter((b) => b.rating! > 0), (b) => b.grinder)].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name]) => name);
+  // Every grinder with any brew (a grinder with only unrated brews still filters), the most rated brews first.
+  const rated = (g: BrewFact[]) => g.filter((b) => b.rating! > 0).length;
+  const grinders = [...groupBy(brews, (b) => b.grinder)].filter(([name]) => name).sort((a, b) => rated(b[1]) - rated(a[1]) || a[0]!.localeCompare(b[0]!)).map(([name]) => name!);
   const grinderSlugs = gearSlugs(grinders);
   const brewed = bags.filter((b) => b.firstBrew);
   const values = (f: (b: BagFact) => string | null, min = 1) =>

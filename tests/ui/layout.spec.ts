@@ -4414,18 +4414,19 @@ export const STATES: State[] = [
     ];
   })(),
   {
-    // On /recipes the Recipes nav item is current, between Stats and Water (desktop nav, phone More panel).
+    // On /recipes the Recipes nav item is current, after Stats, Gear and Water (desktop nav, phone More panel).
     name: 'recipes-nav', viewports: 'two',
     path: () => '/recipes',
     act: async (page) => {
       if (isPhone(page)) {
         await page.getByRole('button', { name: 'More' }).click();
         await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
+        expect((await page.locator('.bottom-tabs-more-panel > a').allTextContents()).slice(0, 3).map((n) => n.trim())).toEqual(['Gear', 'Water', 'Recipes']);
       } else {
         const links = page.locator('.nav-links > a');
         await expect(links.filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
         const names = await links.allTextContents();
-        expect(names.map((n) => n.trim()).slice(names.indexOf('Stats'), names.indexOf('Stats') + 3)).toEqual(['Stats', 'Recipes', 'Water']);
+        expect(names.map((n) => n.trim()).slice(names.indexOf('Stats'), names.indexOf('Stats') + 4)).toEqual(['Stats', 'Gear', 'Water', 'Recipes']);
       }
     }
   },
@@ -7990,7 +7991,7 @@ export const STATES: State[] = [
     act: async (page) => {
       await page.locator('#overview-cost-per-brew .stat-value .text-tip').click();
       const tip = page.locator('.float-tip');
-      await expect(tip.locator('dt')).toHaveText(['To 4 decimals']);
+      await expect(tip.locator('.tip-title')).toHaveText('Exact price');
       await expectTipInView(page, tip);
     }
   },
@@ -8001,8 +8002,8 @@ export const STATES: State[] = [
     act: async (page) => {
       await page.locator('[data-board="coffees"] .val .text-tip').first().click();
       const tip = page.locator('.float-tip');
-      await expect(tip.locator('dt')).toHaveText(['To 4 decimals']);
-      await expect(tip.locator('dd')).toHaveText(/^\$\d+\.\d{3,4}\/g$/);
+      await expect(tip.locator('.tip-title')).toHaveText('Exact price');
+      await expect(tip.locator('.tip-lines li')).toHaveText(/^\$\d+\.\d{3,4}\/g$/);
       await expectTipInView(page, tip);
     }
   },
@@ -9891,25 +9892,6 @@ export const STATES: State[] = [
       await expect(dlg).toBeVisible();
       for (const l of ['Dripper', 'Filter', 'Grinder', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
     } },
-  // Regression: a Dripper pick set back to "Any" in the dialog drops the param and shows every dripper again.
-  { name: 'insights-trophy-pick-any', viewports: 'two', path: () => '/stats?tab=gear',
-    act: async (page) => {
-      const drippers = page.locator('.trophy-card[data-key^="dripper-"]');
-      const all = await drippers.count();
-      expect(all).toBeGreaterThan(1);
-      await page.locator('.filters-button').click();
-      const dlg = page.getByRole('dialog', { name: 'Filters' });
-      await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
-      await dlg.getByRole('button', { name: 'Apply' }).click();
-      await expect(page).toHaveURL(/dripper=V60/);
-      await expect(drippers).toHaveCount(1);
-      await page.locator('.filters-button').click();
-      await dlg.getByLabel('Dripper', { exact: true }).selectOption('');
-      await dlg.getByRole('button', { name: 'Apply' }).click();
-      await expect(page).not.toHaveURL(/dripper=/);
-      await expect(drippers).toHaveCount(all);
-      await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(0);
-    } },
   { name: 'insights-brew-pick-any', viewports: 'two', path: () => '/stats',
     act: async (page) => {
       await page.locator('.filters-button').click();
@@ -9925,27 +9907,6 @@ export const STATES: State[] = [
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(0);
       await page.waitForTimeout(500);
       await expect(page).not.toHaveURL(/dripper=/);
-    } },
-  { name: 'insights-trophy-pick-any-after-toggle', viewports: 'two', path: () => '/stats?tab=gear',
-    act: async (page) => {
-      const drippers = page.locator('.trophy-card[data-key^="dripper-"]');
-      const all = await drippers.count();
-      const pick = async (v: string) => {
-        await page.locator('.filters-button').click();
-        const d = page.getByRole('dialog', { name: 'Filters' });
-        await d.getByLabel('Dripper', { exact: true }).selectOption(v);
-        await d.getByRole('button', { name: 'Apply' }).click();
-      };
-      await page.locator('.trophy-card[data-key="dripper-origami"] .trophy-toggle').click(); // a shallow open and Esc first
-      await page.keyboard.press('Escape');
-      await pick('V60');
-      await expect(page).toHaveURL(/dripper=V60/);
-      await expect(drippers).toHaveCount(1);
-      await page.locator('.trophy-card[data-key="dripper-v60"] .trophy-toggle').click(); // and another between the picks
-      await page.keyboard.press('Escape');
-      await pick('');
-      await expect(page).not.toHaveURL(/dripper=/);
-      await expect(drippers).toHaveCount(all);
     } },
   { name: 'insights-brew-chips-muted', path: () => '/stats?tab=habits&dripper=V60&water=Lab%20Water%20A',
     act: async (page) => {
@@ -10507,7 +10468,7 @@ export const STATES: State[] = [
       }
     } },
   // Adjustable grinder (A4Z in the seed) with the dial conversion on: the dial/RPM grid is laid out and every field fits.
-  { name: 'insights-trophy-edit-convert', path: () => '/stats?tab=gear&card=grinder-a4z-femobook',
+  { name: 'gear-trophy-edit-convert', path: () => '/gear?card=grinder-a4z-femobook',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await dlg.getByRole('button', { name: 'Edit' }).click();
@@ -10523,13 +10484,12 @@ export const STATES: State[] = [
         expect(b.x + b.width, n).toBeLessThanOrEqual(dlgB.x + dlgB.width + 1);
       }
     } },
-  { name: 'insights-trophy', path: () => '/stats?tab=gear',
+  { name: 'gear-trophy', path: () => '/gear',
     act: async (page) => {
       const sec = page.locator('[data-section="gear-trophies"]');
-      await expect(sec.getByRole('heading', { name: 'Gear showcase' })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1, name: 'Gear' })).toBeVisible();
       await expect(sec.locator('.trophy-grid:not(.retired) .trophy-card[data-key="dripper-switch"]')).toHaveCount(0);
       await expect(sec.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'false');
-      await expectGridRowsFull(page, '.trophy-grid');
       // The low-confidence chip sits centered between brews and grams without touching either, and never grows the row.
       const chipCards = page.locator('.trophy-card:has(.sample-note)');
       expect(await chipCards.count()).toBeGreaterThan(0);
@@ -10559,7 +10519,7 @@ export const STATES: State[] = [
       expect(name).toBeGreaterThan(avg);
       expect(avg).toBeGreaterThan(small);
     } },
-  { name: 'insights-trophy-open', path: () => '/stats?tab=gear&card=grinder-zp6-special',
+  { name: 'gear-trophy-open', path: () => '/gear?card=grinder-zp6-special',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg).toBeVisible();
@@ -10586,7 +10546,7 @@ export const STATES: State[] = [
       });
       for (const gap of rows) expect(gap).toBeLessThan(2);
     } },
-  { name: 'insights-trophy-specs', path: () => '/stats?tab=gear&card=dripper-v60',
+  { name: 'gear-trophy-specs', path: () => '/gear?card=dripper-v60',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg.getByRole('heading', { name: 'V60' })).toBeVisible();
@@ -10643,7 +10603,7 @@ export const STATES: State[] = [
       for (const gap of gaps) expect(gap).toBeLessThan(2);
       // The card behind it shows the photo too; a card with no stored row has no spec section, no dates and the icon.
       await expectContained(page.locator('.trophy-card[data-key="dripper-v60"] img'), 'rgb(127, 183, 164)');
-      await page.goto('/stats?tab=gear&card=grinder-comandante-c40-mk4');
+      await page.goto('/gear?card=grinder-comandante-c40-mk4');
       await expect(dlg.getByRole('heading', { name: 'Comandante C40 MK4' })).toBeVisible();
       await expect(dlg.locator('.specs')).toHaveCount(0);
       await expect(dlg.locator('.no-specs')).toHaveText('No details yet. Use Edit to add specs, cost and a photo.');
@@ -10654,13 +10614,13 @@ export const STATES: State[] = [
       await expect(dlg.locator('.media-meta b')).toHaveText(/^\d{4}-\d\d-\d\d \d{1,2}:\d\d:\d\d [AP]M$/);
       await expect(dlg.locator('.trophy-img img')).toHaveCount(0);
       // A few fields: ZP6 shows every field of the edit form (since #84), the two filled ones with values and the rest a dash.
-      await page.goto('/stats?tab=gear&card=grinder-zp6-special');
+      await page.goto('/gear?card=grinder-zp6-special');
       await expect(dlg.locator('.specs .stat')).toHaveCount(13);
       await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('64mm');
       await expect(dlg.locator('.specs .stat', { hasText: 'Brand' }).locator('.stat-value')).toHaveText('Timemore');
       await expect(dlg.locator('.specs .stat', { hasText: 'Burr coating' }).locator('.stat-value')).toHaveText('—');
     } },
-  { name: 'insights-trophy-edit', path: () => '/stats?tab=gear&card=dripper-v60',
+  { name: 'gear-trophy-edit', path: () => '/gear?card=dripper-v60',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg.getByRole('heading', { name: 'V60' })).toBeVisible();
@@ -10732,7 +10692,7 @@ export const STATES: State[] = [
       void media; void box;
       // History to another card closes the form (it never carries A's values to B).
       await page.evaluate(() => { // a client-side navigation (SvelteKit takes anchor clicks), as back/forward between two card entries does
-        const a = document.createElement('a'); a.href = '?tab=gear&card=dripper-origami'; document.body.append(a); a.click(); a.remove();
+        const a = document.createElement('a'); a.href = '?card=dripper-origami'; document.body.append(a); a.click(); a.remove();
       });
       await expect(dlg.getByRole('heading', { name: 'Origami' })).toBeVisible();
       await expect(form).toHaveCount(0);
@@ -10745,7 +10705,7 @@ export const STATES: State[] = [
       await expect(dlg).toBeVisible();
       await expect(dlg.locator('.specs .stat', { hasText: 'Cone angle' }).locator('.stat-value')).toHaveText('60°');
       // A card with no stored row still gets Edit, with empty fields.
-      await page.goto('/stats?tab=gear&card=grinder-comandante-c40-mk4');
+      await page.goto('/gear?card=grinder-comandante-c40-mk4');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await expect(form.getByLabel('Burr size (mm)')).toHaveValue('');
       // The server's error shows inline.
@@ -10755,7 +10715,7 @@ export const STATES: State[] = [
       await expect(form).toBeVisible();
       // Regression: a typed number (a number input binds a number, not a string) is a listed change, and nothing phantom
       // appears for a stored number left alone (burr size 64).
-      await page.goto('/stats?tab=gear&card=dripper-v60');
+      await page.goto('/gear?card=dripper-v60');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await form.getByLabel('Cost ($)').click();
       await page.keyboard.press('ControlOrMeta+a');
@@ -10767,12 +10727,12 @@ export const STATES: State[] = [
       await form.getByLabel('Cost ($)').fill('24.00'); // the stored 24 again: not a change
       await dlg.getByRole('button', { name: 'Close' }).click();
       await expect(dlg).toBeHidden();
-      await page.goto('/stats?tab=gear&card=grinder-zp6-special');
+      await page.goto('/gear?card=grinder-zp6-special');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await expect(form.getByLabel('Burr size (mm)')).toHaveValue('64');
       await dlg.getByRole('button', { name: 'Close' }).click(); // no change: no panel
       await expect(dlg).toBeHidden();
-      await page.goto('/stats?tab=gear&card=grinder-zp6-special');
+      await page.goto('/gear?card=grinder-zp6-special');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await form.getByLabel('Burr size (mm)').fill(''); // emptied reads as empty
       await dlg.getByRole('button', { name: 'Close' }).click();
@@ -10780,7 +10740,7 @@ export const STATES: State[] = [
       await dlg.getByRole('alertdialog').getByRole('button', { name: 'Keep editing' }).click();
       // ✕ in edit mode is Cancel then close. No changes: it closes at once (no panel) and the URL drops the card.
       const panel = dlg.getByRole('alertdialog');
-      await page.goto('/stats?tab=gear&card=dripper-v60');
+      await page.goto('/gear?card=dripper-v60');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await expect(dlg.getByRole('button', { name: 'Close' })).toBeEnabled();
       await dlg.getByRole('button', { name: 'Close' }).click();
@@ -10788,7 +10748,7 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/card=/);
       // A change: a panel in the dialog names it, in view with 44px buttons on a phone; Keep editing (focused; Esc too) keeps the typed
       // values; Discard closes without saving.
-      await page.goto('/stats?tab=gear&card=dripper-v60');
+      await page.goto('/gear?card=dripper-v60');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await form.getByLabel('Brand').fill('Hario X');
       await dlg.getByLabel('Image URL').fill('https://example.com/x.png');
@@ -10817,12 +10777,12 @@ export const STATES: State[] = [
       await drop.click();
       await expect(dlg).toBeHidden();
       await expect(page).not.toHaveURL(/card=/);
-      await page.goto('/stats?tab=gear&card=dripper-v60');
+      await page.goto('/gear?card=dripper-v60');
       await expect(dlg.locator('.specs .stat', { hasText: 'Brand' }).locator('.stat-value')).toHaveText('Hario'); // nothing saved
     } },
   // The other kinds' edit grids (wide dialogs): Save/Cancel take the cell after the last field (a full last row pushes them to the next
   // row's second cell); Image URL lines up with the last field row, Preview/Discard with the row before it.
-  { name: 'insights-trophy-edit-kinds', path: () => '/stats?tab=gear&card=grinder-comandante-c40-mk4',
+  { name: 'gear-trophy-edit-kinds', path: () => '/gear?card=grinder-comandante-c40-mk4',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       const bx = async (l: Locator) => (await l.boundingBox())!;
@@ -10832,7 +10792,7 @@ export const STATES: State[] = [
         const gap = async (last: string) => { const l = await bx(input(last)); return (await bx(dlg.getByRole('button', { name: 'Save' }))).y - (l.y + l.height); };
         await dlg.getByRole('button', { name: 'Edit' }).click();
         expect(await gap('Setting format')).toBeGreaterThanOrEqual(14);
-        await page.goto('/stats?tab=gear&card=filter-cafec-abaca');
+        await page.goto('/gear?card=filter-cafec-abaca');
         await dlg.getByRole('button', { name: 'Edit' }).click();
         expect(await gap('Flow')).toBeGreaterThanOrEqual(14);
         return;
@@ -10876,13 +10836,13 @@ export const STATES: State[] = [
       await input('Adjustment').selectOption('');
       await check('Step size (µm)', 'Motor speed (RPM)', true);
       // Filter: 8 fields, a full last row (Size, Flow): Save is below Flow.
-      await page.goto('/stats?tab=gear&card=filter-cafec-abaca');
+      await page.goto('/gear?card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();
       for (const n of ['Shape', 'Material', 'Size', 'Flow', 'Learn from similar gear?']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(5);
       await check('Size', 'Flow', true); // Save/Cancel right-aligned on a row of their own, level with Preview
     } },
-  { name: 'insights-trophy-fill', path: () => '/stats?tab=gear&card=dripper-v60',
+  { name: 'gear-trophy-fill', path: () => '/gear?card=dripper-v60',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       const posts: string[] = [];
@@ -10943,7 +10903,7 @@ export const STATES: State[] = [
       await expect(dlg.getByRole('alert')).toHaveText('No product found on that page');
       await expect(dlg.getByLabel('Brand', { exact: true })).toHaveValue('Filled Brand');
     } },
-  { name: 'insights-trophy-suggest', path: () => '/stats?tab=gear&card=dripper-v60',
+  { name: 'gear-trophy-suggest', path: () => '/gear?card=dripper-v60',
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       const asked: unknown[] = [];
@@ -10983,7 +10943,7 @@ export const STATES: State[] = [
       await expect(dlg.locator('.gear-form .trophy-img img')).toHaveAttribute('src', img);
       await expect(dlg).toBeVisible();
     } },
-  { name: 'insights-trophy-toggle', viewports: 'two', path: () => '/stats?tab=gear',
+  { name: 'gear-trophy-toggle', viewports: 'two', path: () => '/gear',
     act: async (page) => {
       const loads: string[] = [];
       page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
@@ -11008,74 +10968,272 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/card=/);
       await expect(dlg).toBeHidden();
       await page.locator('button.retired-toggle').click();
-      await expect(page).toHaveURL(/retired=open/);
+      await expect(page).toHaveURL(/retired=dripper/);
       expect(loads).toEqual([]);
     } },
-  // The kind toggle: URL, no refetch, the shelf count follows it, it combines with a pick.
-  { name: 'insights-trophy-kind', path: () => '/stats?tab=gear',
+  // No card on the page stretches: with every shelf open, a lone retired card is as wide as an active one; the Show chips and the gear param are gone.
+  { name: 'gear-card-sizes', viewports: 'two', path: () => '/gear?retired=open&gear=grinder',
     act: async (page) => {
-      const loads: string[] = [];
-      page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
-      const kinds = page.getByRole('group', { name: 'Kind' });
-      await expect(kinds.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
-      await kinds.getByRole('button', { name: 'Drippers' }).click();
-      await expect(page).toHaveURL(/gear=dripper/);
-      await expect(page.locator('.trophy-card:not([data-key^="dripper-"])')).toHaveCount(0);
-      await expect(page.locator('button.retired-toggle')).toContainText('Retired (1)'); // Switch
-      await kinds.getByRole('button', { name: 'Grinders' }).click();
-      await expect(page).toHaveURL(/gear=grinder/);
-      await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
-      await expect(page.locator('button.retired-toggle')).toHaveCount(0);
-      await expectGridRowsFull(page, '.trophy-grid');
-      await kinds.getByRole('button', { name: 'All' }).click();
-      await expect(page).not.toHaveURL(/gear=/);
-      expect(loads).toEqual([]);
+      await expect(page.getByRole('group', { name: 'Show:' })).toHaveCount(0);
+      await expect(page).toHaveURL(/retired=open&gear=grinder$/); // a stray param is neither acted on nor rewritten
+      for (const n of ['Drippers', 'Filters', 'Grinders']) await expect(page.getByRole('heading', { level: 2, name: new RegExp(`^${n}`) })).toBeVisible();
+      const widths = await page.locator('.trophy-card').evaluateAll((cs) => cs.map((c) => Math.round(c.getBoundingClientRect().width)));
+      expect(widths.length).toBeGreaterThan(3);
+      expect(await page.locator('.trophy-grid.retired .trophy-card').count()).toBeGreaterThan(0);
+      expect(Math.max(...widths) - Math.min(...widths), `card widths ${widths}`).toBeLessThanOrEqual(1);
     } },
-  { name: 'insights-trophy-kind-pick', viewports: 'two', path: () => '/stats?tab=gear&gear=grinder&dripper=V60',
+  // Each kind keeps its own retired shelf; the old retired=open opens them all.
+  { name: 'gear-trophy-retired', path: () => '/gear?retired=open',
     act: async (page) => {
-      await expect(page.locator('.trophy-card')).toHaveCount(3); // the dripper pick only rules out drippers, the toggle shows grinders only (ZP6, A4Z, Comandante)
-      await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
-    } },
-  // Cards follow the Period: gear with no brew in it has no card; All time shows every one.
-  { name: 'insights-trophy-period', viewports: 'two', path: () => '/stats?tab=gear&range=all',
-    act: async (page) => {
-      const all = await page.locator('.trophy-card').count();
-      await gotoReady(page, '/stats?tab=gear&range=1w');
-      const week = await page.locator('.trophy-card').count();
-      expect(week).toBeLessThan(all);
-      expect(week).toBeGreaterThan(0);
-    } },
-  { name: 'insights-trophy-retired', path: () => '/stats?tab=gear&retired=open',
-    act: async (page) => {
-      await expect(page.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.locator('button.retired-toggle').first()).toHaveAttribute('aria-expanded', 'true');
       await expect(page.locator('.trophy-grid.retired .trophy-card[data-key="dripper-switch"]')).toBeVisible();
-      await expectGridRowsFull(page, '.trophy-grid');
     } },
-  // A pick rules out only its own kind: the other drippers go, grinders and filters stay; the shelf keeps the rest.
-  { name: 'insights-trophy-picked', path: () => '/stats?tab=gear&dripper=V60&retired=open',
+  // The /gear page (#22): the grid with its shelves, a dialog with its Stats link, the old addresses and the previews.
+  { name: 'gear-page', viewports: 'two', path: () => '/gear',
     act: async (page) => {
-      await expect(page.locator('.trophy-card[data-key^="dripper-"]')).toHaveCount(1);
-      await expect(page.locator('.trophy-card[data-key="dripper-v60"]')).toHaveCount(1);
-      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(3);
-      await expect(page.locator('.trophy-card[data-key^="filter-"]')).toHaveCount(3);
-      await expect(page.locator('button.retired-toggle')).toHaveCount(0);
-      await expectGridRowsFull(page, '.trophy-grid');
+      await expect(page.getByRole('heading', { level: 1, name: 'Gear' })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Charts and ratings for your gear on Stats →' })).toHaveAttribute('href', '/stats?tab=gear');
+      await expect(page.locator('.trophy-grid:not(.retired) .trophy-card').first()).toBeVisible();
+      await expect(page.getByRole('combobox')).toHaveCount(0); // the pick dropdowns are gone
+      const toggle = page.locator('button.retired-toggle');
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      await expect(page).toHaveURL(/\/gear\?retired=dripper$/);
+      // One section per kind in order, each with a count; its jump button scrolls to it.
+      const panels = page.locator('section.chart-panel.kind-section');
+      await expect(panels).toHaveCount(3); // one panel per kind, the Jump to nav outside them all
+      await expect(page.locator('.chart-panel nav.board-jump')).toHaveCount(0);
+      const heads = await panels.locator('> h2').allTextContents();
+      expect(heads.map((h) => h.replace(/\s*\d+$/, ''))).toEqual(['Drippers', 'Filters', 'Grinders']);
+      await page.getByRole('navigation', { name: 'Jump to a section' }).getByRole('link', { name: 'Grinders' }).click();
+      await expect(page).toHaveURL(/#gear-grinders$/);
+      await expect(page.locator('#gear-grinders')).toBeInViewport();
     } },
-  // Grinder is in the Filters dialog on Gear (no tab-bar select): a chip, the badge, Clear all.
-  { name: 'insights-trophy-grinder-pick', viewports: 'two', path: () => '/stats?tab=gear',
+  // The Your gear panel: a scrolling row of cards that never stack, the blurb beside a real link to /gear.
+  { name: 'stats-gear-panel', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
-      await expect(page.locator('.tab-controls')).toHaveCount(0);
-      await page.locator('.filters-button').click();
-      const dlg = page.getByRole('dialog', { name: 'Filters' });
-      await dlg.getByLabel('Grinder', { exact: true }).selectOption('a4z-femobook');
-      await dlg.getByRole('button', { name: 'Apply' }).click();
-      await expect(page).toHaveURL(/grinder=a4z-femobook/);
-      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(1);
-      await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/A4Z/]);
-      await expect(page.locator('.filters-button')).toContainText('1');
-      await page.getByRole('button', { name: 'Clear all' }).click();
-      await expect(page).not.toHaveURL(/grinder=/);
-      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(3);
+      const panel = page.locator('[data-section="gear-trophies"]');
+      await expect(panel).toBeVisible();
+      await expect(panel.getByRole('heading', { level: 2, name: 'Your gear' })).toBeVisible();
+      const go = panel.getByRole('link', { name: 'Open the Gear page →' });
+      await expect(go).toHaveAttribute('href', '/gear');
+      await expect(panel.getByRole('link')).toHaveCount(1); // the cards are tip anchors, not links
+      const blurb = panel.getByText('Browse your drippers, grinders and filters, and see or edit their details, on the Gear page.');
+      const [bb, gb] = [(await blurb.boundingBox())!, (await go.boundingBox())!];
+      expect(Math.abs(bb.y + bb.height / 2 - (gb.y + gb.height / 2)) < 40 || gb.y >= bb.y + bb.height - 1, 'the button is beside or under the blurb').toBe(true);
+      const cards = panel.locator('.gear-card');
+      expect(await cards.count()).toBeGreaterThan(2); // photographed or not
+      await expect(panel.locator('.gear-card .photo img').first()).toBeVisible();
+      const tops = new Set(await cards.evaluateAll((cs) => cs.map((c) => Math.round(c.getBoundingClientRect().top))));
+      expect(tops.size, 'cards on one row').toBe(1);
+      const main = (await page.locator('main').first().boundingBox())!, box = (await panel.boundingBox())!;
+      expect(box.width).toBeLessThanOrEqual(main.width + 1);
+      const row = panel.locator('.cards');
+      expect(await row.evaluate((e) => getComputedStyle(e).overflowX)).toBe('auto');
+      // Whole cards only; the fixture's gear overflows the row at both sizes, so the paging checks always run. A phone has the arrows
+      // below the row, always there and disabled when nothing is that way; wide they lie over the row's edges, hidden when disabled.
+      const prev = panel.getByRole('button', { name: 'Previous gear' }), next = panel.getByRole('button', { name: 'Next gear' });
+      const wholeCards = () => row.evaluate((r) => {
+        const rb = r.getBoundingClientRect();
+        return [...r.children].every((c) => { const b = c.getBoundingClientRect(); return (b.left >= rb.left - 1 && b.right <= rb.right + 1) || b.right <= rb.left + 1 || b.left >= rb.right - 1; });
+      });
+      const info = () => row.evaluate((r) => ({ left: r.scrollLeft, over: r.scrollWidth > r.clientWidth + 1, end: r.scrollLeft + r.clientWidth >= r.scrollWidth - 1 }));
+      expect((await info()).over, 'the fixture gear overflows the row').toBe(true);
+      expect(await wholeCards(), 'no part-visible card at the start').toBe(true);
+      const rowB = (await row.boundingBox())!;
+      if (isPhone(page)) {
+        expect(await row.evaluate((r) => (r.children[0] as HTMLElement).offsetWidth * 2 + parseFloat(getComputedStyle(r).columnGap)), 'exactly 2 cards a page').toBeCloseTo(rowB.width, 0);
+        for (const b of [prev, next]) {
+          const bb = (await b.boundingBox())!;
+          expect(bb.y, 'the arrow is below the row').toBeGreaterThanOrEqual(rowB.y + rowB.height - 1);
+          expect(bb.height, 'a big arrow: well over 44px tall').toBeGreaterThanOrEqual(52);
+          expect(bb.width, 'a big arrow: wide').toBeGreaterThanOrEqual(72);
+        }
+        await expect(prev).toBeDisabled();
+        await expect(next).toBeEnabled();
+      } else {
+        await expect(prev).toBeHidden();
+        await expect(next).toBeVisible();
+        const b = (await next.boundingBox())!;
+        expect(b.x >= rowB.x && b.x + b.width <= rowB.x + rowB.width, 'the arrow lies over the row').toBe(true);
+        expect(await next.evaluate((e) => { const r = e.getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === e || e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }), 'the arrow is above the card in z-order').toBe(true);
+      }
+      expect(await row.evaluate((r) => r.getBoundingClientRect().width), 'the row fills the panel content').toBeGreaterThan(box.width - 80);
+      let parked = { x: 0, y: 0 };
+      if (!isPhone(page)) {
+        const nb = (await next.boundingBox())!;
+        expect(Math.min(nb.width, nb.height), 'a big overlay arrow').toBeGreaterThanOrEqual(60);
+        parked = { x: nb.x + nb.width / 2, y: nb.y + nb.height / 2 };
+        // The card under an arrow is a peek, not part of the page: next makes it the first uncovered card, prev the last uncovered.
+        const firstUncovered = () => row.evaluate((r) => { const rb = r.getBoundingClientRect(); return ([...r.querySelectorAll('.gear-card')] as HTMLElement[]).find((c) => !c.classList.contains('covered') && c.getBoundingClientRect().right > rb.left + 1)!.querySelector('.name')!.textContent; });
+        const lastUncovered = () => row.evaluate((r) => { const rb = r.getBoundingClientRect(); return ([...r.querySelectorAll('.gear-card')] as HTMLElement[]).findLast((c) => !c.classList.contains('covered') && c.getBoundingClientRect().left < rb.right - 1)!.querySelector('.name')!.textContent; });
+        const covered = panel.locator('.gear-card.covered');
+        await expect(covered).toHaveCount(1); // at the start only the right arrow covers a card
+        const peekR = (await covered.locator('.name').textContent())!;
+        const cb = (await covered.boundingBox())!;
+        expect(parked.x > cb.x && parked.x < cb.x + cb.width, 'the covered card is the one under the arrow').toBe(true);
+        expect(await covered.evaluate((e) => getComputedStyle(e).opacity), 'the covered card is not dimmed').toBe('1');
+        // A click on its uncovered part scrolls the row one card, so that card is fully in view; no tip opens.
+        const step = (await cards.nth(1).boundingBox())!.x - (await cards.first().boundingBox())!.x;
+        await page.mouse.click(cb.x + cb.width - 6, cb.y + cb.height / 2);
+        await expect.poll(async () => (await info()).left).toBeCloseTo(step, 0);
+        await expect(panel.locator('.gear-card', { hasText: peekR })).not.toHaveClass(/covered/);
+        const pb = (await panel.locator('.gear-card', { hasText: peekR }).first().boundingBox())!, rb2 = (await row.boundingBox())!;
+        expect(pb.x >= rb2.x - 1 && pb.x + pb.width <= rb2.x + rb2.width + 1, 'the clicked card is fully in view').toBe(true);
+        await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
+        await expect(panel.locator('.gear-card[aria-expanded="true"]')).toHaveCount(0);
+        await row.evaluate((r) => r.scrollTo({ left: 0, behavior: 'instant' }));
+        await expect.poll(async () => (await info()).left).toBe(0);
+        // By keyboard: Tab from the last uncovered card reaches the covered one and scrolls it out from under its arrow; Enter on a
+        // covered card scrolls it into view like a click does, and opens no tip.
+        const lastIdx = (await cards.evaluateAll((cs) => cs.findIndex((c) => c.classList.contains('covered')))) - 1;
+        await cards.nth(lastIdx).focus();
+        await page.keyboard.press('Tab');
+        const tabbed = (await page.evaluate(() => document.activeElement?.querySelector('.name')?.textContent))!;
+        expect(tabbed, 'Tab reached the card that was covered').toBe(peekR);
+        await expect(panel.locator('.gear-card', { hasText: peekR })).not.toHaveClass(/covered/);
+        await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
+        const left0 = (await info()).left;
+        // (Not focus() first: a keyboard focus on a covered card already scrolls it out, so Enter would then land on an uncovered
+        // card, which rightly pins its tip. The key goes to the covered card as it is.)
+        await covered.last().dispatchEvent('keydown', { key: 'Enter' });
+        await expect.poll(async () => (await info()).left).toBeCloseTo(left0 + step, 0); // one card, the smooth scroll settled
+        await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
+        await page.evaluate(() => (document.activeElement as HTMLElement).blur()); // a focused card the reset covers again would be scrolled out
+        await row.evaluate((r) => r.scrollTo({ left: 0, behavior: 'instant' }));
+        await expect.poll(async () => (await info()).left).toBe(0);
+        await next.click();
+        await expect.poll(firstUncovered).toBe(peekR);
+        await expect(covered).toHaveCount(2);
+        const peekL = (await covered.first().locator('.name').textContent())!;
+        await prev.click();
+        await expect.poll(lastUncovered).toBe(peekL);
+        await expect.poll(async () => (await info()).left).toBe(0);
+      }
+      await next.click();
+      await expect(page.locator('.cell-tip:popover-open'), 'an arrow click opens no tip').toHaveCount(0);
+      await expect(panel.locator('.gear-card[aria-expanded="true"]')).toHaveCount(0);
+      await expect.poll(async () => (await info()).left).toBeGreaterThan(0);
+      await expect(prev).toBeEnabled();
+      let clicks = 1;
+      while (!(await info()).end) {
+        expect(++clicks, 'paging reaches the end').toBeLessThanOrEqual(20);
+        await expect.poll(async () => (await wholeCards())).toBe(true);
+        if ((await info()).end) break;
+        await next.click();
+        await page.waitForTimeout(100);
+      }
+      await expect.poll(async () => (await wholeCards())).toBe(true);
+      await (isPhone(page) ? expect(next).toBeDisabled() : expect(next).toBeHidden());
+      if (!isPhone(page)) {
+        // 2B: the last page turn slid a card under the parked pointer; its tip stays shut until the pointer really moves.
+        await page.waitForTimeout(300);
+        await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
+        await page.mouse.move(parked.x - 40, parked.y + 3);
+        await expect(page.locator('.cell-tip:popover-open')).toBeVisible();
+        await page.mouse.move(2, 2);
+      }
+      const [lastB, endB] = [(await cards.last().boundingBox())!, (await row.boundingBox())!];
+      expect(Math.abs(lastB.x + lastB.width - (endB.x + endB.width)), 'the last page is full, end-aligned').toBeLessThanOrEqual(2);
+      await expect(page.locator('nav.board-jump').getByRole('link', { name: 'Your gear' })).toBeVisible();
+      await go.click();
+      await expect(page).toHaveURL(/\/gear$/);
+    } },
+  // The card's sticky tip (ui-rules 54): hover opens it (the pointer can move onto it), a click pins it, its link opens that gear's dialog.
+  { name: 'stats-gear-panel-tip', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      const card = page.locator('[data-section="gear-trophies"] .gear-card', { hasText: 'V60' }).first();
+      const tip = page.locator('.cell-tip:popover-open');
+      await card.scrollIntoViewIfNeeded();
+      if (isPhone(page)) {
+        await expectTapTip(page, card, tip, page.getByRole('heading', { level: 2, name: 'Your gear' }));
+        await tapOn(card);
+      } else {
+        await card.hover();
+        await expect(tip).toBeVisible();
+        await tip.getByRole('link').hover(); // the pointer crosses onto the tip: it stays (the click below needs it open)
+      }
+      const labels = await tip.locator('.tip-rows dt').allTextContents();
+      expect(labels[0], 'the brand is the first row').toBe('Brand');
+      expect(labels, 'no model row (the name carries it)').not.toContain('Model');
+      for (const dd of await tip.locator('.tip-rows dt, .tip-rows dd').all()) { // no row cut off or pushed out of the tip
+        const [tb, db] = [(await tip.boundingBox())!, (await dd.boundingBox())!];
+        expect(db.x >= tb.x - 1 && db.x + db.width <= tb.x + tb.width + 1, 'row inside the tip').toBe(true);
+      }
+      await expect(tip).toContainText('Average');
+      await expect(tip).toContainText('Brews');
+      await expect(tip).toContainText('Brewed');
+      const link = tip.getByRole('link');
+      await expect(link).toHaveAttribute('href', '/gear?card=dripper-v60');
+      await link.click();
+      await expect(page).toHaveURL(/\/gear\?card=dripper-v60$/);
+      await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
+    } },
+  // By keyboard: Enter pins, Tab reaches the tip's link and keeps it open, focus leaving closes it; focusing another card opens that one.
+  { name: 'stats-gear-panel-tip-keys', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      const cards = page.locator('[data-section="gear-trophies"] .gear-card');
+      const tip = page.locator('.cell-tip:popover-open');
+      await cards.first().focus();
+      await page.keyboard.press('Enter');
+      await expect(tip).toBeVisible();
+      await page.keyboard.press('Tab');
+      await expect(tip.getByRole('link')).toBeFocused();
+      await expect(tip).toBeVisible();
+      await page.keyboard.press('Tab'); // out of the card and its tip: the next card (a keyboard focus) opens its own
+      await expect(cards.nth(1)).toBeFocused();
+      await expect(tip).toContainText((await cards.nth(1).locator('.name').textContent())!);
+      await expect(tip).toHaveCount(1);
+      await page.keyboard.press('Shift+Tab'); // focusing another card opens that card's tip
+      await expect(cards.first()).toBeFocused();
+      await expect(tip).toContainText((await cards.first().locator('.name').textContent())!);
+      // A focusout with no related target (a mac browser doesn't focus a clicked link) leaves the tip open.
+      await page.keyboard.press('Enter');
+      await cards.first().evaluate((e) => (e as HTMLElement).blur());
+      await expect(tip).toBeVisible();
+      await page.getByRole('heading', { level: 1 }).click(); // a click outside
+      await expect(tip).toHaveCount(0);
+    } },
+  { name: 'gear-dialog', viewports: 'two', path: () => '/gear?card=grinder-zp6-special',
+    act: async (page) => {
+      const dlg = page.locator('dialog.trophy-dialog');
+      await expect(dlg).toBeVisible();
+      const link = dlg.getByRole('link', { name: 'See stats for this gear' });
+      await expect(link).toHaveAttribute('href', '/stats?grinder=zp6-special');
+      await dlg.getByRole('button', { name: 'Close' }).click();
+      await expect(page).toHaveURL(/\/gear$/);
+    } },
+  { name: 'gear-redirect', viewports: 'two', path: () => '/stats?tab=gear&gear=grinder&period=2025',
+    act: async (page) => {
+      await expect(page).toHaveURL(/\/gear$/); // the old kind filter is dropped
+      await expect(page.getByRole('heading', { level: 1, name: 'Gear' })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 2, name: /^Drippers/ })).toBeVisible();
+      await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special&range=1w');
+      await expect(page).toHaveURL(/\/gear\?card=grinder-zp6-special$/);
+      await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
+    } },
+  { name: 'gear-stray-param', viewports: 'two', path: () => '/stats?tab=overview&gear=dripper',
+    act: async (page) => {
+      await expect(page).toHaveURL(/\/stats\?tab=overview&gear=dripper$/);
+      await expect(page.getByRole('heading', { level: 2, name: 'Totals' })).toBeVisible();
+    } },
+  { name: 'gear-unknown-card', viewports: 'two', path: () => '/gear?card=nope',
+    act: async (page) => {
+      await expect(page.getByRole('heading', { level: 1, name: 'Gear' })).toBeVisible();
+      await expect(page.locator('.trophy-card').first()).toBeVisible();
+      await expect(page.locator('dialog.trophy-dialog[open]')).toHaveCount(0);
+    } },
+  { name: 'link-preview-gear', viewports: 'two', path: () => '/gear',
+    act: async (page) => {
+      const origin = new URL(page.url()).origin;
+      const bare = await previewTags(page, '/gear');
+      expect(bare['og:title']).toBe('Gear');
+      expect(bare['og:url']).toBe(`${origin}/gear`);
+      expect(bare.description).toBe(bare['og:description']);
+      const one = await previewTags(page, '/gear?card=grinder-zp6-special');
+      expect(one['og:title']).toBe('ZP6 Special');
+      expect(one['og:url']).toBe(`${origin}/gear?card=grinder-zp6-special`);
     } },
   { name: 'insights-gear', path: () => '/stats?tab=gear',
     act: async (page) => {
@@ -11314,7 +11472,7 @@ export const STATES: State[] = [
       await expect(rows.first().locator('.early-head')).toBeVisible();
       await expect(rows.first().locator('.early-theme')).toHaveText(/^(Taste|Dial-in|Habits|Gear|Money)$/i);
       // A money finding's mini chart reads its values as usd for screen readers ("2026 Q1 $10.00"), as its headline shows them.
-      const money = page.locator('.finding-grid .hl-card', { hasText: '$/100g went from' }).locator(':is(.spark, .bars)');
+      const money = page.locator('.finding-grid .hl-card', { hasText: '$/g went from' }).locator(':is(.spark, .bars)');
       await expect(money).toHaveCount(1);
       expect(await money.getAttribute('aria-label')).toMatch(/^[^,]+ \$\d[\d,]*\.\d{2}(, [^,]+ \$\d[\d,]*\.\d{2})+$/);
       // Every row has its progress bar and "N% there", dial-in-by-group ones too (user, 2026-10-17); only a finding whose
@@ -13674,13 +13832,13 @@ test.describe('signed out', () => {
     await cbarAct(page);
     await checkLayout(page);
   });
-  test('insights-gear-trophies-public', { tag: '@stats' }, async ({ page }) => {
-    await gotoReady(page, '/stats?tab=gear&card=dripper-v60');
+  test('gear-trophies-public', { tag: '@gear' }, async ({ page }) => {
+    await gotoReady(page, '/gear?card=dripper-v60');
     await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^(Fill|Suggest)/ })).toHaveCount(0);
     await checkLayout(page);
-    await gotoReady(page, '/stats?tab=gear&card=grinder-comandante-c40-mk4');
+    await gotoReady(page, '/gear?card=grinder-comandante-c40-mk4');
     await expect(page.locator('dialog.trophy-dialog .no-specs')).toHaveText('No details yet.');
   });
 });

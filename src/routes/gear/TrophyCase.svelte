@@ -1,30 +1,31 @@
 <script lang="ts">
-  import { withUnit } from '#lib/unitGap.ts';
   import Icon from '#lib/components/Icon.svelte';
   import SampleNote from '#lib/components/SampleNote.svelte';
-  import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField } from '#lib/gear.ts';
+  import { GEAR_KINDS, KIND_LABEL, fieldsFor, specText, shownTrophies, type GearKind } from '#lib/gear.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import Stamp from '#lib/components/Stamp.svelte';
   import { formatGrams } from '#lib/grams.ts';
   import { backdrop } from '#lib/imageBackdrop.ts';
   import { hostOf } from '#lib/imageSuggest.ts';
-  import { usd } from '#lib/money.ts';
-  import type { InsightsUrlState, InsightsView } from '#lib/insightsUrl.ts';
+  import type { GearUrlState } from '#lib/gearUrl.ts';
   import type { Trophy } from '#lib/server/insights/trophies.ts';
   import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import GearForm from './GearForm.svelte';
-  import LabHead from './LabHead.svelte';
-  import { rowVars } from './rows';
 
-  let { list, s, choose, placeTip }: {
-    list: Trophy[]; s: InsightsView;
-    choose: (c: InsightsUrlState) => void; placeTip: (e: ToggleEvent) => void;
+  let { list, links, s, choose }: {
+    list: Trophy[]; s: GearUrlState;
+    links: Record<string, string>; // each gear's Stats link, only where Stats would filter on it
+    choose: (c: Partial<GearUrlState>) => void;
   } = $props();
 
-  // The kind toggle (absent = All) narrows both the grid and the shelf; the picks still choose cards within a kind.
-  let shown = $derived(shownTrophies(s.gear ? list.filter((t) => t.kind === s.gear) : list, { dripper: s.dripper, filter: s.filter, grinder: s.grinder }));
-  let shelf = $derived(s.retired === 'open');
+  // One section per kind that has gear, in GEAR_KINDS order, each with its own retired shelf.
+  const sections = $derived(GEAR_KINDS.filter((k) => list.some((t) => t.kind === k)).map((kind) => ({ kind, ...shownTrophies(list.filter((t) => t.kind === kind)) })));
+  function toggleShelf(k: GearKind) {
+    const open = s.retired ?? [];
+    const next = GEAR_KINDS.filter((x) => (x === k ? !open.includes(x) : open.includes(x)));
+    choose({ retired: next.length ? next : undefined });
+  }
   let current = $derived(list.find((t) => t.key === s.card));
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
   const kindVars = (t: Trophy) => `--kc:var(--series-${KIND_COLOR[t.kind]});--kc-ink:var(--series-${KIND_COLOR[t.kind]}-ink)`;
@@ -56,7 +57,6 @@
   // Every field the edit form has, in its order and two to a row; blanks show a dash. Gear with nothing filled in shows a note instead.
   const specs = (t: Trophy) => fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed });
   const hasSpecs = (t: Trophy) => specs(t).some((f) => t.values[f.key] !== undefined);
-  const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? withUnit(v, f.unit) : String(v));
   const withLabel = (t: Trophy) => (t.kind === 'dripper' ? 'Favorite filter' : 'Favorite dripper');
 </script>
 
@@ -126,11 +126,10 @@
 {/snippet}
 
 {#snippet grid(items: Trophy[], retired: boolean)}
-  {@const vars = rowVars(items.length)}
-  <div class="trophy-grid hl-grid" class:retired>
+  <div class="trophy-grid" class:retired>
     {#each items as t, i (t.key)}
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-      <div class="hl-card trophy-card" data-key={t.key} style="{vars[i]};{kindVars(t)}" onclick={(e) => cardClick(e, t.key)}>
+      <div class="hl-card trophy-card" data-key={t.key} style={kindVars(t)} onclick={(e) => cardClick(e, t.key)}>
         {@render img(t)}
         <div class="trophy-main">
           <span class="trophy-kind">{KIND_LABEL[t.kind]}</span>
@@ -143,25 +142,24 @@
 {/snippet}
 
 {#if list.length}
-  <section class="chart-panel" data-section="gear-trophies">
-    <LabHead id="gear-trophies" title="Gear showcase" {placeTip}
-      help={['Every piece of gear you brewed with in the Period.', 'Period sets brews, grams, bags, days and favorite.',
-        'Ratings and Brews set only the average and best rating.', 'First used, last used and Retired look at all your brews.',
-        'Ignores Compare, People and the other filters; Dripper, Filter and Grinder each pick a card of their own kind.',
-        'Retired: archived in Bean Conqueror, or no brew in 90 days.']} />
-    <div class="tab-group kind-chips" role="group" aria-label="Kind" data-button-row>
-      {#each [undefined, ...GEAR_KINDS] as k (k ?? 'all')}
-        <button aria-pressed={s.gear === k} onclick={() => choose({ gear: k })}>{k ? `${KIND_LABEL[k]}s` : 'All'}</button>
-      {/each}
-    </div>
-    {#if !shown.active.length && !shown.retired.length}<p class="hl-empty">No {s.gear ? `${KIND_LABEL[s.gear].toLowerCase()}s` : 'gear'} match.</p>{/if}
-    {#if shown.active.length}{@render grid(shown.active, false)}{/if}
-    {#if shown.retired.length}
-      <button type="button" class="retired-toggle" aria-expanded={shelf} onclick={() => choose({ retired: shelf ? undefined : 'open' })}>
-        Retired ({shown.retired.length})<span class="caret"><Icon name="caret-right" /></span>
-      </button>
-      {#if shelf}{@render grid(shown.retired, true)}{/if}
-    {/if}
+  <div data-section="gear-trophies">
+    <nav class="board-jump" aria-label="Jump to a section">
+      <span>Jump to</span>
+      {#each sections as { kind } (kind)}<a href="#gear-{kind}s">{KIND_LABEL[kind]}s</a>{/each}
+    </nav>
+    {#each sections as { kind, active, retired } (kind)}
+      {@const shelf = !!s.retired?.includes(kind)}
+      <section class="chart-panel kind-section" id="gear-{kind}s" data-section="gear-{kind}s">
+        <h2>{KIND_LABEL[kind]}s <span class="kind-count">{active.length}</span></h2>
+        {#if active.length}{@render grid(active, false)}{/if}
+        {#if retired.length}
+          <button type="button" class="retired-toggle" aria-expanded={shelf} onclick={() => toggleShelf(kind)}>
+            Retired ({retired.length})<span class="caret"><Icon name="caret-right" /></span>
+          </button>
+          {#if shelf}{@render grid(retired, true)}{/if}
+        {/if}
+      </section>
+    {/each}
 
     <!-- Focus lands on the dialog, never a control. A click on the dialog itself (not its sheet) is a backdrop click. -->
     <!-- svelte-ignore a11y_autofocus, a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
@@ -209,6 +207,7 @@
           </article>
           {/if}
             {@render usage(t)}
+          {#if !editing && links[t.key]}<a class="stats-link" href={links[t.key]}>See stats for this gear</a>{/if}
         </div>
         {#if leaving}
           <!-- Inside the dialog, so in the top layer; Escape = Keep editing (window keydown above). -->
@@ -225,7 +224,7 @@
         {/if}
       {/if}
     </dialog>
-  </section>
+  </div>
 {/if}
 
 <style>
@@ -386,20 +385,35 @@
     align-items: center;
   }
 
-  /* The kind toggle, the Findings theme chips' look (.tab-group): four equal buttons; a 2×2 grid on phones. */
-  .kind-chips {
-    margin-bottom: var(--space-3);
+  /* Fixed columns by width, never spread over the row: every card on the page is the same size, in the active grid and on a
+     retired shelf (a lone retired card is not stretched across the page). A short last row stays short. */
+  .kind-section {
+    container-type: inline-size;
   }
-  .kind-chips button {
-    margin: 0;
-    white-space: nowrap;
+  .trophy-grid {
+    --q: 2; /* the .hl-value size reads it */
+    display: grid;
+    grid-template-columns: repeat(var(--q), minmax(0, 1fr));
+    gap: var(--space-3);
   }
-  @media (max-width: 640px) {
-    .kind-chips {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--space-2);
+  @container (min-width: 520px) {
+    .trophy-grid {
+      --q: 3;
     }
+  }
+  @container (min-width: 900px) {
+    .trophy-grid {
+      --q: 4;
+    }
+  }
+  .kind-section h2 {
+    margin: 0 0 var(--space-3);
+  }
+  .kind-count {
+    margin-left: var(--space-1);
+    color: var(--color-text-muted);
+    font-weight: 400;
+    font-size: 0.85em;
   }
 
   /* ---- Retired shelf ---- */
@@ -577,6 +591,11 @@
   .media-meta b {
     font-weight: 600;
     color: var(--color-text);
+  }
+  .stats-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px; /* a touch target */
   }
   /* Usage runs the dialog's full width under the photo and details. */
   .usage {

@@ -186,12 +186,12 @@ describe('freshness and money', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 0, amountG: 250, purchaseDate: '2026-03-01' }),
       bag({ id: 2, name: 'Bag 2', cost: 30, amountG: null, purchaseDate: '2026-03-01' }),
       bag({ id: 3, name: 'Bag 3', cost: 20, amountG: 250, purchaseDate: '2026-03-01' })];
-    expect(run('priciestBag', [], bags)).toMatchObject({ holder: { label: 'Bag 3' }, value: 8, detail: '$20.00 for 250g' });
+    expect(run('priciestBag', [], bags)).toMatchObject({ holder: { label: 'Bag 3' }, value: 0.08, detail: '$20.00 for 250g' });
   });
-  it('best value = mean / $ per 100g, detail names both', () => {
+  it('best value = mean / $ per 100g, detail names both in $/g', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 20, amountG: 200 }), bag({ id: 2, name: 'Bag 2', cost: 10, amountG: 100 })];
     const brews = [...rated(1, [8, 8, 8, 8]), ...rated(2, [9, 9, 9, 9])];
-    expect(run('bestValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 2' }, value: 0.9, mean: 9, per100: 10, detail: '9.00 at $10.00/100g' });
+    expect(run('bestValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 2' }, value: 0.9, mean: 9, ppg: 0.1, detail: '9.00 at $0.10/g' });
     expect(run('toughValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 1' }, value: 0.8 });
   });
   it('biggest buying month is all-time, by bags', () => {
@@ -208,7 +208,7 @@ describe('freshness and money', () => {
   it('cups: priciest and cheapest, detail = dose at the bag price', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 25, amountG: 250 })];
     const b = [brew({ costPerBrew: 1.5, dose: 15 }), brew({ costPerBrew: 0.4 })];
-    expect(run('priciestCup', b, bags)).toMatchObject({ value: 1.5, detail: '15g at $10.00/100g' });
+    expect(run('priciestCup', b, bags)).toMatchObject({ value: 1.5, detail: '15g at $0.10/g' });
     expect(run('cheapestCup', b, bags)?.value).toBe(0.4);
   });
 });

@@ -21,9 +21,9 @@ export const serializeInsightsState = (params: string, now: number): string =>
   JSON.stringify({ version: VERSION, params, lastUsed: now });
 
 // An open card dialog or a chart= link target is never remembered: a bare /stats visit must not reopen or scroll to it.
+// gear= and retired= belonged to the gear showcase, now /gear: an old remembered one would redirect a plain Stats visit.
 export const withoutDeepLinks = (qs: string): string => {
   const p = new URLSearchParams(qs);
-  p.delete('card');
-  p.delete('chart');
+  for (const k of ['card', 'chart', 'gear', 'retired']) p.delete(k);
   return p.toString();
 };

@@ -375,6 +375,8 @@ describe('labOptions', () => {
   });
   it('grinders: most rated brews first, slugged', () =>
     expect(o.grinders).toEqual([{ slug: 'a4z-femobook', name: 'A4Z (Femobook)' }, { slug: 'zp6-1zpresso', name: 'ZP6 (1ZPresso)' }]));
+  it('grinders: one with only unrated brews still filters, after the rated ones', () =>
+    expect(labOptions([...many(3, 1, 91, 8, { grinder: 'ZP6' }), ...many(2, 2, 91, 8, { grinder: 'Mill', rating: null })], bags).grinders.map((g) => g.name)).toEqual(['ZP6', 'Mill']));
   it('bags: every slugged bag, on-hand flagged', () =>
     expect(o.bags[0]).toEqual({ slug: 's1', label: 'R1 C', onHand: false, roast: 'Light', process: 'Natural' }));
 });

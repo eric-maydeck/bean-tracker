@@ -32,5 +32,7 @@ describe('withoutDeepLinks', () => {
     expect(withoutDeepLinks('card=grinder-niche')).toBe('');
     expect(withoutDeepLinks('tab=gear&card=grinder-niche&chart=gear-eras&range=1w')).toBe('tab=gear&range=1w');
     expect(withoutDeepLinks('chart=x')).toBe('');
+    // The gear showcase moved to /gear: an old remembered gear= or retired= must not redirect a plain Stats visit.
+    expect(withoutDeepLinks('tab=gear&gear=grinder&retired=open&period=2025')).toBe('tab=gear&period=2025');
   });
 });
