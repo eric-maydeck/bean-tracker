@@ -29,4 +29,12 @@ describe('parseRecipesView', () => {
     expect(recipesParams(parse('')).toString()).toBe('');
     expect(recipesParams(parse('order=top')).toString()).toBe(''); // order only means something with brews=
   });
+  it('reads brewnow as a lowercase slug and ignores junk', () => {
+    expect(parse('brewnow=BBS')).toEqual({ brewnow: 'bbs' });
+    for (const q of ['brewnow=', 'brewnow=a/b']) expect(parse(q), q).toEqual({});
+  });
+  it('writes brewnow next to brews and view', () => {
+    expect(recipesParams({ brewnow: 'bbs' }).toString()).toBe('brewnow=bbs');
+    expect(recipesParams(parse('brews=r3&view=hidden&brewnow=bbs')).toString()).toBe('brews=r3&view=hidden&brewnow=bbs');
+  });
 });

@@ -6,6 +6,7 @@ export interface RecipesView {
   brews?: RecipesItem;
   order?: 'top';
   view?: 'hidden';
+  brewnow?: string; // a saved recipe slug; the server checks it exists
 }
 
 // Wider than 12 pours / 2-digit ratio: detector keys are not capped (controller ruling 2).
@@ -20,6 +21,8 @@ export function parseRecipesView(p: URLSearchParams): RecipesView {
   if (order) out.order = order;
   const view = pickOne(p, 'view', ['hidden'] as const);
   if (view) out.view = view;
+  const bn = p.get('brewnow')?.toLowerCase() ?? '';
+  if (/^[a-z0-9-]{1,80}$/.test(bn)) out.brewnow = bn;
   return out;
 }
 
@@ -32,5 +35,6 @@ export function recipesParams(v: RecipesView): URLSearchParams {
   if (v.brews) p.set('brews', itemParam(v.brews));
   if (v.order && v.brews) p.set('order', v.order);
   if (v.view) p.set('view', v.view);
+  if (v.brewnow) p.set('brewnow', v.brewnow);
   return p;
 }
