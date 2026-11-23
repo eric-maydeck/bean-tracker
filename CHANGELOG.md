@@ -1,3 +1,10 @@
+## [2.6.1](https://github.com/eric-maydeck/bean-tracker/compare/v2.6.0...v2.6.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* image takes debian security updates so the release scan passes ([784c0b3](https://github.com/eric-maydeck/bean-tracker/commit/784c0b34596bcf1b790d40dcec3b6ee444e94327))
+
 # [2.6.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.5.0...v2.6.0) (2026-11-23)
 
 
