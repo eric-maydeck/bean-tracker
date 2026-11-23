@@ -50,15 +50,15 @@ export type Caffeine = (typeof CAFFEINES)[number];
 export const TOPS = [20, 50] as const;
 export type Top = (typeof TOPS)[number];
 
-// Insights brew filters: one value each, in the URL as these param names.
-export const BREW_FILTER_KEYS = ['dripper', 'filter', 'water', 'brewDose', 'brewTemp'] as const;
+// Insights brew filters: one value each, in the URL as these param names (grinder's value is a slug; the server swaps in the name).
+export const BREW_FILTER_KEYS = ['dripper', 'filter', 'grinder', 'water', 'brewDose', 'brewTemp'] as const;
 export type BrewFilterKey = (typeof BREW_FILTER_KEYS)[number];
 export type BrewFilters = Partial<Record<BrewFilterKey, string>>;
 export const DOSE_BANDS: readonly { slug: string; label: string }[] = [
   { slug: 'lt12', label: '< 12g' }, { slug: '12', label: '12g' }, { slug: '15', label: '15g' },
   { slug: '18', label: '18g' }, { slug: '20', label: '20g' }, { slug: 'gt20', label: '> 20g' }
 ];
-export const BREW_FILTER_LABEL: Record<BrewFilterKey, string> = { dripper: 'Dripper', filter: 'Filter', water: 'Water', brewDose: 'Dose', brewTemp: 'Temp' };
+export const BREW_FILTER_LABEL: Record<BrewFilterKey, string> = { dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder', water: 'Water', brewDose: 'Dose', brewTemp: 'Temp' };
 export const brewFilterText = (k: BrewFilterKey, v: string): string =>
   k === 'brewDose' ? (DOSE_BANDS.find((d) => d.slug === v)?.label ?? v) : k === 'brewTemp' ? `${v}°C` : v;
 
@@ -262,7 +262,7 @@ export interface InsightsUrlState {
   process?: string;
   origin?: string;
   roaster?: string;
-  grinder?: string; // a grinder slug (absent = the most-used one)
+  grinder?: string; // a grinder slug: a brew filter; on Sweet spots / Brewing also the Grind for (absent = the most-used one)
   dripper?: string; // brew filters (BREW_FILTER_KEYS), one value each
   filter?: string;
   water?: string;
@@ -528,7 +528,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.recentc) p.set('recentc', String(s.recentc));
   if (s.theme) p.set('theme', s.theme);
   for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
-  for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BREW_FILTER_KEYS, ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
+  for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', ...BREW_FILTER_KEYS, ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
   if (s.pairs?.length) p.set('pairs', s.pairs.join(','));
   if (s.chart) p.set('chart', s.chart);
   if (s.spendView) p.set('spendView', s.spendView);
@@ -570,11 +570,12 @@ export const emptyLine = (text: string, note: string): string =>
   note ? text.replace(/ in this period(.*?)\.?$/, ` matching ${note} in this period$1.`) : text;
 
 // Which brew filters each tab offers (spec table); the rest don't apply there (a muted chip; they still ride the URL and links).
+const GEAR3 = ['dripper', 'filter', 'grinder'] as const;
 export const BREW_FILTERS_ON: Record<Tab, readonly BrewFilterKey[]> = {
   overview: BREW_FILTER_KEYS, leaderboards: BREW_FILTER_KEYS, insights: BREW_FILTER_KEYS,
-  habits: ['dripper', 'brewDose'], consumption: ['dripper', 'brewDose'], records: ['dripper', 'water', 'brewDose'],
-  milestones: [], onhand: [], spend: [], sweetspots: [], brewing: ['dripper', 'filter', 'water'], pours: ['dripper', 'filter', 'water'],
-  water: ['dripper', 'filter', 'brewDose', 'brewTemp'], gear: ['water', 'brewDose', 'brewTemp'], recaps: []
+  habits: [...GEAR3, 'brewDose'], consumption: [...GEAR3, 'brewDose'], records: [...GEAR3, 'water', 'brewDose'],
+  milestones: GEAR3, onhand: [], spend: [], sweetspots: GEAR3, brewing: [...GEAR3, 'water'], pours: [...GEAR3, 'water'],
+  water: [...GEAR3, 'brewDose', 'brewTemp'], gear: BREW_FILTER_KEYS, recaps: []
 };
 export const activeBrewFilters = (s: InsightsView): BrewFilters =>
   Object.fromEntries(BREW_FILTERS_ON[s.tab].filter((k) => s[k]).map((k) => [k, s[k]]));

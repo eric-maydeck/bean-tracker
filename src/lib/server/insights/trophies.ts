@@ -146,15 +146,11 @@ export function gearPanel(trophies: readonly Trophy[]): GearPanelCard[] | null {
   return cards.length ? cards : null;
 }
 
-// The Stats link of each piece of gear Stats would accept: its URL parser keeps only values in the lab's picker lists (rated
-// brews only, for grinders; the slug is the lab's own), and silently shows the unfiltered page for any other. Keyed by trophy key.
+// The Stats link of every card, keyed by trophy key. A card exists only for gear with brews, and Stats' pickers list every brewed
+// dripper, filter and grinder; a grinder's slug is the lab's own (the card's key slug if the lab lacks it).
 export function statsLinks(trophies: readonly Trophy[], lab: LabOptions): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const t of trophies) {
-    if (t.kind === 'grinder') {
-      const g = lab.grinders.find((x) => x.name === t.name);
-      if (g) out[t.key] = statsLink({ kind: 'grinder', key: `grinder-${g.slug}`, name: t.name });
-    } else if ((t.kind === 'dripper' ? lab.drippers : lab.filters).includes(t.name)) out[t.key] = statsLink(t);
-  }
-  return out;
+  return Object.fromEntries(trophies.map((t) => {
+    const slug = t.kind === 'grinder' && lab.grinders.find((x) => x.name === t.name)?.slug;
+    return [t.key, statsLink(slug ? { kind: 'grinder', key: `grinder-${slug}`, name: t.name } : t)];
+  }));
 }

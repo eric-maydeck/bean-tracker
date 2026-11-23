@@ -36,10 +36,7 @@ export function gearRedirect(url: URL): string | null {
   return q ? `/gear?${q}` : '/gear';
 }
 
-// A trophy's link to its stats: dripper and filter filter the Overview by name; a grinder opens Sweet Spots on its slug (the key minus "grinder-").
-// Every kind getting a real Stats filter is #177.
+// A gear card's link to its stats: the Overview filtered to it (dripper and filter by name, grinder by slug: the key minus "grinder-").
 export function statsLink(t: { kind: GearKind; key: string; name: string }): string {
-  return t.kind === 'grinder'
-    ? `/stats?${new URLSearchParams({ tab: 'sweetspots', grinder: t.key.replace(/^grinder-/, '') })}`
-    : `/stats?${new URLSearchParams({ [t.kind]: t.name })}`;
+  return `/stats?${new URLSearchParams({ [t.kind]: t.kind === 'grinder' ? t.key.replace(/^grinder-/, '') : t.name })}`;
 }

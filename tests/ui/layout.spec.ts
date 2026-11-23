@@ -9073,6 +9073,11 @@ export const STATES: State[] = [
         await expect.poll(off).toBeLessThan(max);
       };
       await below(head, 80);
+      // Phones: the bar has scrolled away under the pinned row; open it the way a reader does (a programmatic scroll up
+      // to the chips raced the bar's hash re-landing, which scrolled back before the click).
+      const showControls = page.getByRole('button', { name: 'Show controls' });
+      const vp = page.viewportSize()!;
+      if (vp.width <= 640 || vp.height <= 450) await showControls.click();
       await page.getByRole('group', { name: 'Kinds' }).getByRole('button', { name: 'Counts' }).click();
       await expect(page).toHaveURL(new RegExp(`kinds=counts.*#${id}$`));
       // A month outside the period: no error, the page stays at the top.
@@ -9683,7 +9688,7 @@ export const STATES: State[] = [
     } },
   { name: 'insights-brewing-zp6', viewports: 'two', path: () => '/stats?tab=brewing&grinder=zp6-special',
     act: async (page) => {
-      await expect(page.getByLabel('Grinder')).toHaveValue('zp6-special');
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(1); // the Grinder filter is also the Grind for
       await expect(page.locator('[data-section="brewing-grind"] .bar-row.small').first()).toBeVisible();
       // ZP6 half-number bands are labeled by their first setting, the tip gives the range (no-match bands: vitest).
       const grind = page.locator('[data-section="brewing-grind"]');
@@ -9705,8 +9710,7 @@ export const STATES: State[] = [
   { name: 'insights-brewing-all-ratings', path: () => '/stats?tab=brewing&ratings=all' },
   { name: 'insights-sweetspots-grinder', path: () => '/stats?tab=sweetspots&grinder=zp6-special',
     act: async (page) => {
-      await expect(page.getByLabel('Grind for:')).toHaveValue('zp6-special');
-      const name = await page.getByLabel('Grind for:').locator('option:checked').innerText();
+      const name = await page.locator('.coffee-chips .filter-chip-label').innerText();
       await expect(page.locator('#spot-grind .hl-caption')).toContainText(`Grind ${name}`); // only this card follows the grinder
       await expect(page.locator('#spot-temp .hl-caption')).not.toContainText(name);
       await expectGridRowsFull(page, '.spot-grid');
@@ -9874,7 +9878,7 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: /^Filters/ }).click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await expect(dlg).toBeVisible();
-      for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
+      for (const l of ['Dripper', 'Filter', 'Grinder', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT');
       await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
       await dlg.getByLabel('Dose', { exact: true }).selectOption({ label: '15g' });
@@ -9891,8 +9895,7 @@ export const STATES: State[] = [
       await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await expect(dlg).toBeVisible();
-      for (const l of ['Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
-      for (const l of ['Dripper', 'Filter']) await expect(dlg.getByLabel(l, { exact: true })).toHaveCount(0); // gear boards can't be narrowed by gear
+      for (const l of ['Dripper', 'Filter', 'Grinder', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
     } },
   { name: 'insights-brew-pick-any', viewports: 'two', path: () => '/stats',
     act: async (page) => {
@@ -11202,7 +11205,7 @@ export const STATES: State[] = [
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg).toBeVisible();
       const link = dlg.getByRole('link', { name: 'See stats for this gear' });
-      await expect(link).toHaveAttribute('href', '/stats?tab=sweetspots&grinder=zp6-special');
+      await expect(link).toHaveAttribute('href', '/stats?grinder=zp6-special');
       await dlg.getByRole('button', { name: 'Close' }).click();
       await expect(page).toHaveURL(/\/gear$/);
     } },
@@ -13857,7 +13860,7 @@ for (const tab of ['overview', 'records', 'water', 'leaderboards', 'habits', 'co
     try {
       const raw = await ctx.newPage();
       await raw.goto(url);
-      if (['leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing'].includes(tab)) await expect(raw.locator('.filter-bar .tab-controls')).toBeVisible();
+      if (['leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots'].includes(tab)) await expect(raw.locator('.filter-bar .tab-controls')).toBeVisible();
       if (cbarH !== null) expect(Math.abs((await raw.locator('.cbar').first().boundingBox())!.height - cbarH), '.cbar height: server HTML vs hydrated').toBeLessThanOrEqual(1);
       expect(Math.abs((await raw.locator('.filter-bar').boundingBox())!.height - hydrated), 'bar height: server HTML vs hydrated').toBeLessThanOrEqual(1);
     } finally { await ctx.close(); }

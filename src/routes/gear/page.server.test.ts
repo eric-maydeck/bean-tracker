@@ -30,7 +30,7 @@ describe('/gear load', () => {
     expect(v60.brews).toBe(all.brews);
   });
 
-  it('offers a Stats link only where Stats would filter on it', () => {
+  it('gives every card a Stats link, unrated grinders too', () => {
     const db = getDb();
     const today = localToday();
     db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m9', 'Unrated Dripper', '${today}')`);
@@ -40,10 +40,8 @@ describe('/gear load', () => {
     ins.run(`${today}T16:00:01.000Z`, 8, 'm1', 'g1', today);
     const d = run();
     const key = (n: string) => d.trophies.find((x: { name: string }) => x.name === n).key;
-    // Drippers list every brew's, rated or not: the link works.
     expect(d.statsLinks[key('Unrated Dripper')]).toBe('/stats?dripper=Unrated+Dripper');
-    expect(d.statsLinks[key('Rated Mill')]).toBe('/stats?tab=sweetspots&grinder=rated-mill');
-    // Stats' grinder list is rated brews only: no link rather than one that shows the unfiltered page.
-    expect(d.statsLinks[key('Unrated Mill')]).toBeUndefined();
+    expect(d.statsLinks[key('Rated Mill')]).toBe('/stats?grinder=rated-mill');
+    expect(d.statsLinks[key('Unrated Mill')]).toBe('/stats?grinder=unrated-mill');
   });
 });
