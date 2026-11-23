@@ -1,4 +1,5 @@
-import { unitGap } from './unitGap.ts';
+import { unitGap, withUnit } from './unitGap.ts';
+import { usd } from './money.ts';
 // An http(s) address of sane length.
 export function isWebUrl(s: string): boolean {
   try { return /^https?:$/.test(new URL(s).protocol) && s.length <= 2000; } catch { return false; }
@@ -94,6 +95,10 @@ export const fieldsFor = (kind: GearKind, opts: { adjustableSpeed?: boolean } = 
   [...COMMON_FIELDS, ...KIND_FIELDS[kind]].filter((f) => f.key === 'rpm' ? !opts.adjustableSpeed : !CONVERT_KEYS.includes(f.key) || !!opts.adjustableSpeed);
 
 export type GearValues = Record<string, string | number>;
+export const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? withUnit(v, f.unit) : String(v));
+// The first n filled-in specs as [label, text], in the form's order (links skipped): a tip's short list.
+export const topSpecs = (t: { kind: GearKind; values: GearValues; adjustableSpeed: boolean }, n: number): [string, string][] =>
+  fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed }).filter((f) => f.type !== 'url' && t.values[f.key] !== undefined).slice(0, n).map((f) => [f.label, specText(f, t.values[f.key])]);
 const MAX_TEXT = 120;
 
 // Validates a details form/import payload: known keys only, trimmed, blanks dropped. First problem wins.

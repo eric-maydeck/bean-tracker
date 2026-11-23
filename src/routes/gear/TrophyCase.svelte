@@ -1,14 +1,12 @@
 <script lang="ts">
-  import { withUnit } from '#lib/unitGap.ts';
   import Icon from '#lib/components/Icon.svelte';
   import SampleNote from '#lib/components/SampleNote.svelte';
-  import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField, type GearKind } from '#lib/gear.ts';
+  import { GEAR_KINDS, KIND_LABEL, fieldsFor, specText, shownTrophies, type GearField, type GearKind } from '#lib/gear.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import Stamp from '#lib/components/Stamp.svelte';
   import { formatGrams } from '#lib/grams.ts';
   import { backdrop } from '#lib/imageBackdrop.ts';
   import { hostOf } from '#lib/imageSuggest.ts';
-  import { usd } from '#lib/money.ts';
   import { statsLink, type GearUrlState } from '#lib/gearUrl.ts';
   import type { Trophy } from '#lib/server/insights/trophies.ts';
   import type { Snippet } from 'svelte';
@@ -66,7 +64,6 @@
   // Every field the edit form has, in its order and two to a row; blanks show a dash. Gear with nothing filled in shows a note instead.
   const specs = (t: Trophy) => fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed });
   const hasSpecs = (t: Trophy) => specs(t).some((f) => t.values[f.key] !== undefined);
-  const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? withUnit(v, f.unit) : String(v));
   const withLabel = (t: Trophy) => (t.kind === 'dripper' ? 'Favorite filter' : 'Favorite dripper');
 </script>
 

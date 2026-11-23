@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { GEAR_KINDS, type GearKind, type GearValues } from '#lib/gear.ts';
+import { GEAR_KINDS, topSpecs, type GearKind, type GearValues } from '#lib/gear.ts';
 import { backdrop } from '#lib/imageBackdrop.ts';
 import { wallToInstant } from '#lib/localDate.ts';
 import type { GearDetail } from '#lib/server/gearDetails.ts';
@@ -131,9 +131,15 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
   return out.sort((a, b) => order(a.kind) - order(b.kind) || b.brews - a.brews || a.name.localeCompare(b.name));
 }
 
-// The Stats Gear tab's "Your gear" panel: the active gear's photos in showcase order, and how many pieces of active gear there are.
-export function gearPanel(trophies: readonly Trophy[]): { shown: { key: string; name: string; image: { src: string; fill: string } }[]; total: number } | null {
-  const live = trophies.filter((t) => !t.retired);
-  const shown = live.flatMap((t) => (t.image ? [{ key: t.key, name: t.name, image: t.image }] : []));
-  return live.length ? { shown, total: live.length } : null;
+// The Stats Gear tab's "Your gear" panel: every non-retired piece of gear, in showcase order, with what its card and tip show
+// (photo or null, figures, up to 2 filled-in specs). Null when there is none.
+export interface GearPanelCard {
+  key: string; name: string; kind: GearKind; image: { src: string; fill: string } | null;
+  rating: number | null; brews: number; grams: number; specs: [string, string][];
+}
+export function gearPanel(trophies: readonly Trophy[]): GearPanelCard[] | null {
+  const cards = trophies.filter((t) => !t.retired).map((t) => ({
+    key: t.key, name: t.name, kind: t.kind, image: t.image, rating: t.rating, brews: t.brews, grams: t.grams, specs: topSpecs(t, 2)
+  }));
+  return cards.length ? cards : null;
 }

@@ -3,9 +3,8 @@ import { TIP_LABEL, type Drops, type Mode, type Tip } from './lotus';
 import type { StatusTab } from './coffeeViewState';
 import { formatBag, formatGrams } from './grams';
 import { originWithFlag } from './countryFlags';
-import { glue, unitGap, withUnit } from './unitGap';
-import { GEAR_KINDS, KIND_LABEL, fieldsFor, type GearKind, type GearField, type GearValues } from './gear';
-import { usd } from './money';
+import { glue, unitGap } from './unitGap';
+import { GEAR_KINDS, KIND_LABEL, fieldsFor, specText, type GearKind, type GearValues } from './gear';
 import { KINDS, type ChartTimeline } from './pourShapes';
 import type { Recap } from './server/recaps/recap';
 
@@ -174,7 +173,6 @@ export function gearsPreview(list: { kind: GearKind }[]): Preview {
   return { title: 'Gear', description: lines.join('\n'), card: { big: 'Gear', label: plural(list.length, 'piece') + ' of gear' } };
 }
 
-const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? withUnit(v, f.unit) : String(v));
 const CARD_LABEL_MAX = 60; // cardFontSize keeps the label at 40px up to here (server/recaps/card.ts)
 
 // One piece of gear: name, kind, rating, brews, grams and its filled specs; its photo (a local /img/ copy) on the card.

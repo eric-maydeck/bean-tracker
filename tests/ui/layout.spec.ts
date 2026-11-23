@@ -10996,25 +10996,55 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/#gear-grinders$/);
       await expect(page.locator('#gear-grinders')).toBeInViewport();
     } },
+  // The Your gear panel: a scrolling row of cards that never stack, the blurb beside a real link to /gear.
   { name: 'stats-gear-panel', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
       const panel = page.locator('[data-section="gear-trophies"]');
       await expect(panel).toBeVisible();
       await expect(panel.getByRole('heading', { level: 2, name: 'Your gear' })).toBeVisible();
-      await expect(panel.getByRole('link')).toHaveAttribute('href', '/gear');
-      await expect(panel.getByText('Open the Gear page →')).toBeVisible();
-      // One line of tiles that never spills past the panel; the "+N more" counts the rest.
-      const tiles = panel.locator('.tile');
-      expect(await tiles.count()).toBeGreaterThan(0);
-      const tops = new Set(await tiles.evaluateAll((ts) => ts.map((t) => Math.round(t.getBoundingClientRect().top))));
-      expect(tops.size, 'tiles on one line').toBe(1);
-      const col = (await page.locator('main').first().boundingBox())!, box = (await panel.boundingBox())!;
-      expect(box.width).toBeLessThanOrEqual(col.width + 1);
-      const last = (await tiles.last().boundingBox())!;
-      expect(last.x + last.width).toBeLessThanOrEqual(box.x + box.width);
+      const go = panel.getByRole('link', { name: 'Open the Gear page →' });
+      await expect(go).toHaveAttribute('href', '/gear');
+      await expect(panel.getByRole('link')).toHaveCount(1); // the cards are tip anchors, not links
+      const blurb = panel.getByText('Browse your drippers, grinders and filters, and see or edit their details, on the Gear page.');
+      const [bb, gb] = [(await blurb.boundingBox())!, (await go.boundingBox())!];
+      expect(Math.abs(bb.y + bb.height / 2 - (gb.y + gb.height / 2)) < 40 || gb.y >= bb.y + bb.height - 1, 'the button is beside or under the blurb').toBe(true);
+      const cards = panel.locator('.gear-card');
+      expect(await cards.count()).toBeGreaterThan(2); // photographed or not
+      await expect(panel.locator('.gear-card .photo img').first()).toBeVisible();
+      const tops = new Set(await cards.evaluateAll((cs) => cs.map((c) => Math.round(c.getBoundingClientRect().top))));
+      expect(tops.size, 'cards on one row').toBe(1);
+      const main = (await page.locator('main').first().boundingBox())!, box = (await panel.boundingBox())!;
+      expect(box.width).toBeLessThanOrEqual(main.width + 1);
+      const row = panel.locator('.cards');
+      expect(await row.evaluate((e) => getComputedStyle(e).overflowX)).toBe('auto');
       await expect(page.locator('nav.board-jump').getByRole('link', { name: 'Your gear' })).toBeVisible();
-      await panel.getByRole('link').click();
+      await go.click();
       await expect(page).toHaveURL(/\/gear$/);
+    } },
+  // The card's sticky tip (ui-rules 54): hover opens it (the pointer can move onto it), a click pins it, its link opens that gear's dialog.
+  { name: 'stats-gear-panel-tip', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      const card = page.locator('[data-section="gear-trophies"] .gear-card', { hasText: 'V60' }).first();
+      const tip = page.locator('.cell-tip:popover-open');
+      await card.scrollIntoViewIfNeeded();
+      if (isPhone(page)) {
+        await expectTapTip(page, card, tip, page.getByRole('heading', { level: 2, name: 'Your gear' }));
+        await tapOn(card);
+      } else {
+        await card.hover();
+        await expect(tip).toBeVisible();
+        await page.waitForTimeout(400);
+        await tip.getByRole('link').hover(); // the pointer crosses onto the tip: it stays
+        await expect(tip).toBeVisible();
+      }
+      await expect(tip).toContainText('Average');
+      await expect(tip).toContainText('Brews');
+      await expect(tip).toContainText('Brewed');
+      const link = tip.getByRole('link');
+      await expect(link).toHaveAttribute('href', '/gear?card=dripper-v60');
+      await link.click();
+      await expect(page).toHaveURL(/\/gear\?card=dripper-v60$/);
+      await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
     } },
   { name: 'gear-dialog', viewports: 'two', path: () => '/gear?card=grinder-zp6-special',
     act: async (page) => {

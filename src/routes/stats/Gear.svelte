@@ -21,7 +21,7 @@
   import { SAMPLE_HELP } from '#lib/sample.ts';
   import { SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
   import GearPanel from './GearPanel.svelte';
-  import type { ComponentProps } from 'svelte';
+  import type { GearPanelCard } from '#lib/server/insights/trophies.ts';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
@@ -32,7 +32,7 @@
   import { fitPairs } from './fitPairs';
 
   let { t, s, panel, placeTip, choose }: {
-    t: GearTab; s: InsightsView; panel: ComponentProps<typeof GearPanel>['panel'] | null;
+    t: GearTab; s: InsightsView; panel: GearPanelCard[] | null;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -69,7 +69,7 @@
   </section>
 {/snippet}
 
-{#if panel}<GearPanel {panel} />{/if}
+{#if panel}<GearPanel cards={panel} />{/if}
 {#if empty}
   <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews with gear recorded in this period.')}</p></section>
 {:else}

@@ -795,19 +795,23 @@ describe('brew filters', () => {
     expect(none).toMatchObject({ recipes: [], technique: [], hiddenByRatings: ['Rcp'] });
   });
 
-  it('gear tab: the Your gear panel is the /gear showcase active, photographed gear, whatever the period', () => {
+  it('gear tab: the Your gear panel is every active piece of gear, with its figures and specs, whatever the period', () => {
     const db = getDb();
     expect(run('?tab=gear').gearPanel).toBeNull(); // no gear yet
-    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m1', 'V60', '${today}'), ('m2', 'Kalita', '${today}')`);
+    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m1', 'V60', '${today}'), ('m2', 'Kalita', '${today}'), ('m3', 'Switch', '${today}')`);
     const ins = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, ground_coffee_g, rating, preparation_id, imported_at) VALUES (?, 15, 8, ?, ?)`);
     ins.run(`${today}T15:00:00.000Z`, 'm1', today);
+    ins.run(`${today}T15:00:01.000Z`, 'm3', today);
     ins.run('2020-01-01T15:00:00.000Z', 'm2', today); // long unused: retired
-    saveGearDetails(db, { kind: 'dripper', name: 'V60', values: {}, imageUrl: 'https://x/y.jpg' });
+    saveGearDetails(db, { kind: 'dripper', name: 'V60', values: { shape: 'Conical', material: 'Glass', size: '02' }, imageUrl: 'https://x/y.jpg' });
     const live = trophyCase(loadFacts(db).brews, gearArchive(db), today).filter((t) => !t.retired);
     const d = run('?tab=gear').gearPanel;
-    expect(d.total).toBe(live.length);
-    expect(d.shown.map((t: { key: string }) => t.key)).toEqual(['dripper-v60']);
-    expect(d.shown.every((t: { image: unknown }) => t.image)).toBe(true);
+    expect(d.map((c: { key: string }) => c.key)).toEqual(live.map((t) => t.key));
+    expect(d.map((c: { key: string }) => c.key)).toEqual(['dripper-switch', 'dripper-v60']); // no retired Kalita
+    const v60 = d.find((c: { key: string }) => c.key === 'dripper-v60');
+    expect(v60).toMatchObject({ name: 'V60', kind: 'dripper', rating: 8, brews: 1, grams: 15, specs: [['Shape', 'Conical'], ['Material', 'Glass']] });
+    expect(v60.image).toMatchObject({ src: 'https://x/y.jpg' });
+    expect(d.find((c: { key: string }) => c.key === 'dripper-switch')).toMatchObject({ image: null, specs: [] }); // no photo: still a card
     expect(run('?tab=gear&range=2025').gearPanel).toEqual(d);
     expect(run('?tab=overview').gearPanel).toBeNull();
   });
