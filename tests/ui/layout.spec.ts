@@ -11050,8 +11050,8 @@ export const STATES: State[] = [
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg).toBeVisible();
-      const link = dlg.getByRole('link', { name: 'This gear on Stats →' });
-      await expect(link).toHaveAttribute('href', '/stats?tab=gear&gearBy=grinder#gear-eras');
+      const link = dlg.getByRole('link', { name: 'See stats for this gear' });
+      await expect(link).toHaveAttribute('href', '/stats?tab=sweetspots&grinder=zp6-special');
       await dlg.getByRole('button', { name: 'Close' }).click();
       await expect(page).toHaveURL(/\/gear$/);
     } },

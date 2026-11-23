@@ -37,7 +37,10 @@ export function gearRedirect(url: URL): string | null {
   return q ? `/gear?${q}` : null;
 }
 
-// A trophy's link back to its board on the Stats Gear tab: the dripper and filter boards, the grinder's usage chart by grinder.
-export function statsLink(t: { kind: GearKind }): string {
-  return t.kind === 'grinder' ? '/stats?tab=gear&gearBy=grinder#gear-eras' : `/stats?tab=gear#gear-${t.kind}s`;
+// A trophy's link to its stats: dripper and filter filter the Overview by name; a grinder opens Sweet Spots on its slug (the key minus "grinder-").
+// Every kind getting a real Stats filter is #177.
+export function statsLink(t: { kind: GearKind; key: string; name: string }): string {
+  return t.kind === 'grinder'
+    ? `/stats?${new URLSearchParams({ tab: 'sweetspots', grinder: t.key.replace(/^grinder-/, '') })}`
+    : `/stats?${new URLSearchParams({ [t.kind]: t.name })}`;
 }

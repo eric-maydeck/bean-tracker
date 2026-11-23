@@ -25,8 +25,8 @@ describe('gear url state', () => {
     for (const u of ['/stats?tab=gear', '/stats?tab=overview&gear=dripper', '/stats?card=x']) expect(gearRedirect(new URL('http://x' + u))).toBeNull();
   });
   it('builds stats links', () => {
-    expect(statsLink({ kind: 'grinder' })).toBe('/stats?tab=gear&gearBy=grinder#gear-eras');
-    expect(statsLink({ kind: 'dripper' })).toBe('/stats?tab=gear#gear-drippers');
-    expect(statsLink({ kind: 'filter' })).toBe('/stats?tab=gear#gear-filters');
+    expect(statsLink({ kind: 'grinder', key: 'grinder-zp6-special', name: 'ZP6 Special' })).toBe('/stats?tab=sweetspots&grinder=zp6-special');
+    expect(statsLink({ kind: 'dripper', key: 'dripper-v60', name: 'V60 02' })).toBe('/stats?dripper=V60+02');
+    expect(statsLink({ kind: 'filter', key: 'filter-x', name: 'Abc & D' })).toBe('/stats?filter=Abc+%26+D');
   });
 });

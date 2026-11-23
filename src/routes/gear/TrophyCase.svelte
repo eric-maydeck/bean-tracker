@@ -225,7 +225,7 @@
           </article>
           {/if}
             {@render usage(t)}
-          {#if !editing}<a class="stats-link" href={statsLink(t)}>This gear on Stats →</a>{/if}
+          {#if !editing}<a class="stats-link" href={statsLink(t)}>See stats for this gear</a>{/if}
         </div>
         {#if leaving}
           <!-- Inside the dialog, so in the top layer; Escape = Keep editing (window keydown above). -->
