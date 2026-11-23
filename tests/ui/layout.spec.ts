@@ -11063,6 +11063,10 @@ export const STATES: State[] = [
       await page.keyboard.press('Shift+Tab'); // focusing another card opens that card's tip
       await expect(cards.first()).toBeFocused();
       await expect(tip).toContainText((await cards.first().locator('.name').textContent())!);
+      // A focusout with no related target (a mac browser doesn't focus a clicked link) leaves the tip open.
+      await page.keyboard.press('Enter');
+      await cards.first().evaluate((e) => (e as HTMLElement).blur());
+      await expect(tip).toBeVisible();
       await page.getByRole('heading', { level: 1 }).click(); // a click outside
       await expect(tip).toHaveCount(0);
     } },

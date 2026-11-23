@@ -37,8 +37,8 @@
   <h2>Your gear</h2>
   <div class="cards" role="list">
     {#each cards as c (c.key)}
-      <!-- svelte-ignore a11y_no_noninteractive_element_interactions (focus leaving the card and its tip closes the tip) -->
-      <div class="gear-item" role="listitem" onfocusout={(e) => open === c.key && !e.currentTarget.contains(e.relatedTarget as Node) && st.close()}>
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions (focus moving to an element outside the card and its tip closes the tip; a null relatedTarget, as when a mac browser doesn't focus a clicked link, doesn't: the document click handles outside clicks) -->
+      <div class="gear-item" role="listitem" onfocusout={(e) => open === c.key && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node) && st.close()}>
         <!-- svelte-ignore a11y_no_static_element_interactions (a button by role: hover, click and Enter share one handler) -->
         <div class="gear-card" role="button" tabindex="0" aria-expanded={open === c.key} aria-label="{c.name}: {tipText(tip(c))}"
           bind:this={anchors[c.key]} style="--kc:var(--series-{KIND_COLOR[c.kind]})"

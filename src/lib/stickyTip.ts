@@ -5,7 +5,8 @@
 export class StickyTip {
   pinned = false; // a click, tap or Enter pinned it: it stays until a click outside, Escape or the tip's link
   private timer: ReturnType<typeof setTimeout> | undefined;
-  constructor(private shut: () => void) {}
+  private shut: () => void;
+  constructor(shut: () => void) { this.shut = shut; }
   keep = () => clearTimeout(this.timer);
   close = () => { this.keep(); this.pinned = false; this.shut(); };
   later = () => { this.keep(); this.timer = setTimeout(this.close, 100); };
