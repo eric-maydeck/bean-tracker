@@ -7990,7 +7990,7 @@ export const STATES: State[] = [
     act: async (page) => {
       await page.locator('#overview-cost-per-brew .stat-value .text-tip').click();
       const tip = page.locator('.float-tip');
-      await expect(tip.locator('dt')).toHaveText(['To 4 decimals']);
+      await expect(tip.locator('.tip-title')).toHaveText('Exact price');
       await expectTipInView(page, tip);
     }
   },
@@ -8001,8 +8001,8 @@ export const STATES: State[] = [
     act: async (page) => {
       await page.locator('[data-board="coffees"] .val .text-tip').first().click();
       const tip = page.locator('.float-tip');
-      await expect(tip.locator('dt')).toHaveText(['To 4 decimals']);
-      await expect(tip.locator('dd')).toHaveText(/^\$\d+\.\d{3,4}\/g$/);
+      await expect(tip.locator('.tip-title')).toHaveText('Exact price');
+      await expect(tip.locator('.tip-lines li')).toHaveText(/^\$\d+\.\d{3,4}\/g$/);
       await expectTipInView(page, tip);
     }
   },

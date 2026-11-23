@@ -535,14 +535,14 @@ const spend: FactDef = {
     const by = new Map<string, number>();
     for (const b of inYear) by.set(b.roaster, (by.get(b.roaster) ?? 0) + (b.cost ?? 0));
     const top = [...by].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3);
-    // Cents on every amount of this slide (user, 2026-11-03), even past $1,000: the pair, the bars and the $/100g all match.
+    // Cents on every amount of this slide (user, 2026-11-03), even past $1,000: the pair, the bars and the $/g all match.
     const d = (n: number) => usd(n, false);
     const big = d(t.spent);
     const pp = d(t.spent / y.size);
     return {
       id: 'spend',
       lead: 'You spent', big,
-      context: `on ${nBags(t.bags)}, ${d(t.avgPpg! * 100)}/100g on average.`,
+      context: `on ${nBags(t.bags)}, ${d(t.avgPpg!)}/g on average.`,
       viz: { kind: 'hlist', rows: top.map(([label, value]) => ({ label, value, texts: [d(value)] })) },
       link: { tab: 'Habits', section: 'Habits · Spend', href: seeMoreHref(y.year, 'spend') },
       each: each(y, pp), card: { big, label: 'spent' }, score: 0.3
@@ -565,7 +565,7 @@ const bestValue: FactDef = {
     const vals = top.map((x) => x.c.mean!), second = cands[1]?.value;
     return {
       id: 'best-value', lead: 'Your best value bag was', big: win.holder.label, roaster: win.holder.sub,
-      sub: `${usd(win.ppg! * 100)}/100g · ${win.mean!.toFixed(2)} average`, context: '',
+      sub: `${usd(win.ppg!)}/g · ${win.mean!.toFixed(2)} average`, context: '',
       viz: {
         kind: 'dots',
         rows: top.map(({ c, bag }) => ({ label: `${bag!.roaster} · ${bag!.name}`, value: c.mean!, brews: stats.get(bag!.id)!.rated.length })),
