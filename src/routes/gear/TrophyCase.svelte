@@ -142,14 +142,14 @@
 {/snippet}
 
 {#if list.length}
-  <section class="chart-panel" data-section="gear-trophies">
+  <div data-section="gear-trophies">
     <nav class="board-jump" aria-label="Jump to a section">
       <span>Jump to</span>
       {#each sections as { kind } (kind)}<a href="#gear-{kind}s">{KIND_LABEL[kind]}s</a>{/each}
     </nav>
     {#each sections as { kind, active, retired } (kind)}
       {@const shelf = !!s.retired?.includes(kind)}
-      <section class="kind-section" id="gear-{kind}s" data-section="gear-{kind}s">
+      <section class="chart-panel kind-section" id="gear-{kind}s" data-section="gear-{kind}s">
         <h2>{KIND_LABEL[kind]}s <span class="kind-count">{active.length}</span></h2>
         {#if active.length}{@render grid(active, false)}{/if}
         {#if retired.length}
@@ -224,7 +224,7 @@
         {/if}
       {/if}
     </dialog>
-  </section>
+  </div>
 {/if}
 
 <style>
@@ -407,7 +407,7 @@
     }
   }
   .kind-section h2 {
-    margin: var(--space-4) 0 var(--space-3);
+    margin: 0 0 var(--space-3);
   }
   .kind-count {
     margin-left: var(--space-1);
