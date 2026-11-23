@@ -222,11 +222,38 @@ describe('recipe-aware brew now', () => {
     expect(dflt.recipe.steps.every((s: { text: string }) => /to \d+g/.test(s.text))).toBe(true);
     expect(pr.recipe.steps.every((s: { text: string }) => /pour|bloom/.test(s.text) && !/to \d+g/.test(s.text) && /\d+g/.test(s.text))).toBe(true);
   });
-  it('signed out: no notes on any evidence row, same recipe data', async () => {
+  it('signed out: no notes anywhere, same recipe data', async () => {
     const anon = await run(brewed.slug), admin = await run(brewed.slug, '', true);
-    expect(JSON.stringify(anon.suggestion)).not.toContain('try finer');
-    expect(anon.recipe).toEqual(admin.recipe);
+    expect(admin.thisCoffee.some((b: { notes: string | null }) => b.notes !== null)).toBe(true); // the fixture does carry a note
+    expect(anon.thisCoffee.every((b: { notes: string | null }) => b.notes === null)).toBe(true);
     expect(anon.suggestion.rows.flatMap((r: { evidence: { notes: string | null }[] }) => r.evidence).every((b: { notes: string | null }) => b.notes === null)).toBe(true);
+    expect(anon.suggestion.lastNote).toBeNull();
+    expect(anon.recipe).toEqual(admin.recipe);
+  });
+  it('a recipe name over 22 characters sits behind Other, never next to "No saved recipes yet"', async () => {
+    saveRecipe(db, { name: 'A recipe with a very long name', tags: [], def: def() });
+    const d = await run(brewed.slug);
+    expect(d.recipes.length).toBeGreaterThan(0);
+    expect(d.recipes.some((r: { name: string }) => r.name.length > 22)).toBe(true);
+    db.prepare(`DELETE FROM recipes WHERE name = 'A recipe with a very long name'`).run();
+  });
+  it('brewThis with from=recipe stores the recipe temp where the switch is available', async () => {
+    const r = saveRecipe(db, { name: 'Written', tags: [], def: def({ tempC: 97, drippers: ['V60'] }) });
+    db.prepare(`DELETE FROM brew_recipe_matches`).run();
+    db.prepare(`INSERT INTO brew_recipe_matches (brew_id, recipe_id, how) SELECT id, ?, 'logged' FROM beanconqueror_brews WHERE bean_id = ?`).run(r, `bean${brewed.id}`);
+    const slug = (await run(brewed.slug)).recipes.find((x: { name: string }) => x.name === 'Written').slug;
+    expect((await run(brewed.slug, `?recipe=${slug}`)).suggestion.switchable).toBe(true);
+    const mark = async (from: string) => {
+      db.exec(`DELETE FROM brew_now_marks`);
+      await actions.brewThis({ params: { slug: brewed.slug }, locals: { isAdmin: true },
+        request: new Request('http://x', { method: 'POST', body: new URLSearchParams({ recipe: slug, ...(from && { from }) }) }) } as never);
+      return JSON.parse((db.prepare(`SELECT suggestion FROM brew_now_marks`).get() as { suggestion: string }).suggestion).temp as string;
+    };
+    expect(await mark('recipe')).toContain('97');
+    expect(await mark('')).not.toContain('97');
+    db.exec(`DELETE FROM brew_now_marks`);
+    db.prepare(`DELETE FROM brew_recipe_matches`).run();
+    db.prepare(`DELETE FROM recipes WHERE id = ?`).run(r);
   });
   it('brewThis stores the posted recipe name in the mark', async () => {
     const bare = await run(brewed.slug);

@@ -3824,7 +3824,7 @@ export const STATES: State[] = [
           await expect(page.locator('.cell-tip:popover-open')).toContainText('Water low');
           await expect(page.locator('.cell-tip:popover-open')).toContainText('Start this pour when the water is low');
           await page.mouse.click(1, 1);
-          await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 24 with notes only')).toBeVisible();
+          await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 27 with notes only')).toBeVisible(); // 24 + the 3 Brew now brews tagged seedlow
         }
       },
       {

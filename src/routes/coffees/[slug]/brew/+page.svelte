@@ -44,14 +44,14 @@
     { key: 'grinder', label: 'Grinder', main: data.options.grinders, other: [] as string[], cur: data.gear.grinder },
     { key: 'dripper', label: 'Dripper', main: data.options.drippers, other: data.options.otherDrippers, cur: data.gear.dripper },
     { key: 'filter', label: 'Filter', main: data.options.filters, other: data.options.otherFilters, cur: data.gear.filter },
-    { key: 'recipe', label: 'Recipe', main: data.recipes.filter((r: { fits: boolean }) => r.fits).map((r: { name: string }) => r.name), other: [] as string[], cur: data.recipe?.name ?? null }
+    { key: 'recipe', label: 'Recipe', main: data.recipes.filter((r: { fits: boolean }) => r.fits).map((r: { slug: string }) => r.slug), other: [] as string[], cur: data.recipe?.slug ?? null }
   ] as const);
-  const slugOf = (name: string) => data.recipes.find((r: { name: string }) => r.name === name)?.slug ?? null;
-  const pick = (key: string, o: string) => (key === 'recipe' ? { recipe: slugOf(o) } : { [key]: o, ...dripperFirst(key) });
+  const nameOf = (key: string, o: string) => (key === 'recipe' ? data.recipes.find((r: { slug: string }) => r.slug === o)?.name ?? data.recipe?.name ?? o : o); // recipe options are slugs
+  const pick = (key: string, o: string) => (key === 'recipe' ? { recipe: o } : { [key]: o, ...dripperFirst(key) });
   const CHIP_MAX = 3, CHIP_LEN = 22;
-  const split = (p: { main: readonly string[]; other: readonly string[]; cur: string | null }) => {
+  const split = (p: { key: string; main: readonly string[]; other: readonly string[]; cur: string | null }) => {
     const all = [...new Set([...(p.cur && !p.main.includes(p.cur) && !p.other.includes(p.cur) ? [p.cur] : []), ...p.main, ...p.other])];
-    const fit = all.filter((o) => o.length <= CHIP_LEN);
+    const fit = all.filter((o) => nameOf(p.key, o).length <= CHIP_LEN);
     const chips = all.length <= CHIP_MAX + 1 && fit.length === all.length ? all : fit.slice(0, CHIP_MAX);
     return { chips, rest: all.filter((o) => !chips.includes(o)) };
   };
@@ -202,21 +202,21 @@
       <div class="pk2-row">
         <span class="pk2-label" id="pk-{p.key}">{p.label}</span>
         <div class="pk2-chips" role="group" aria-labelledby="pk-{p.key}">
-          {#if p.key === 'recipe' && !sp.chips.length}
+          {#if p.key === 'recipe' && !sp.chips.length && !sp.rest.length}
             <span class="none pk2-none">{data.recipes.length ? 'No saved recipe for this dripper yet' : 'No saved recipes yet'}</span>
             {#if data.isAdmin}<a href="/recipes">Add a recipe</a>{/if}
           {/if}
           {#each sp.chips as o (o)}
-            <button type="button" class="pk2-chip" aria-pressed={o === p.cur} onclick={() => { menu = null; go(pick(p.key, o)); }}>{o}</button>
+            <button type="button" class="pk2-chip" aria-pressed={o === p.cur} onclick={() => { menu = null; go(pick(p.key, o)); }}>{nameOf(p.key, o)}</button>
           {/each}
           {#if sp.rest.length}
             <span class="pk2-menu-wrap">
               <button type="button" class="pk2-chip pk2-drop" aria-pressed={restPick} aria-haspopup="menu" aria-expanded={menu?.key === p.key}
-                onclick={(e) => openMenu(p.key, e.currentTarget)}>{restPick ? p.cur : 'Other'} <Icon name="caret-down" /></button>
+                onclick={(e) => openMenu(p.key, e.currentTarget)}>{restPick ? nameOf(p.key, p.cur!) : 'Other'} <Icon name="caret-down" /></button>
               {#if menu?.key === p.key}
                 <ul class="pk2-menu" class:flip={menu.flip} role="menu" aria-label="Other {p.label.toLowerCase()}s">
                   {#each sp.rest as o (o)}
-                    <li role="none"><button type="button" role="menuitem" class="pk2-item" aria-current={o === p.cur} onclick={() => { menu = null; go(pick(p.key, o)); }}>{o}</button></li>
+                    <li role="none"><button type="button" role="menuitem" class="pk2-item" aria-current={o === p.cur} onclick={() => { menu = null; go(pick(p.key, o)); }}>{nameOf(p.key, o)}</button></li>
                   {/each}
                 </ul>
               {/if}
@@ -360,7 +360,7 @@
       {#if rc.notes}<p class="muted">{rc.notes}</p>{/if}
       {#if rc.fitNote}<p class="muted">{rc.fitNote}</p>{/if}
       <PourTimeline timeline={rc.timeline} label={rc.description} />
-      <ol class="rsteps" aria-label="Steps">
+      <ol class="rsteps">
         {#each rc.steps as st, i (i)}
           <li>
             {#if st.alt}<span class="step-time low" tabindex="0" use:labelTip={st.alt}>{st.time}</span>{:else if st.low}<span class="step-time low" tabindex="0" use:labelTip={lowTip}>{st.time}</span>{:else}<span class="step-time">{st.time}</span>{/if}

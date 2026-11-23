@@ -106,7 +106,8 @@ describe('recipes page', () => {
         .run(`2026-03-01T08:00:${String(sec++).padStart(2, '0')}Z`, bean, rating, best).lastInsertRowid;
       db.prepare(`INSERT INTO brew_recipe_matches (brew_id, recipe_id, how) VALUES (?, ?, 'match')`).run(b, id);
     };
-    const tried = coffee('Aaa Tried', 'open'), fresh = coffee('Zzz Fresh', 'open');
+    const tried = coffee('Aaa Tried', 'open');
+    coffee('Zzz Fresh', 'open');
     coffee('Backlog One', 'backlog'); coffee('Archived One', 'archive');
     match(tried, 8); match(tried, 9, 1);
     for (const admin of [false, true]) {
@@ -118,11 +119,17 @@ describe('recipes page', () => {
     }
     expect((load(event(false, '?brewnow=gone')) as Data).brewNow).toBeNull();
     expect((load(event(false)) as Data).brewNow).toBeNull();
-    void fresh;
     db.prepare(`DELETE FROM brew_recipe_matches WHERE recipe_id = ?`).run(id);
     db.prepare(`DELETE FROM beanconqueror_brews WHERE bean_id LIKE 'pb%'`).run();
     db.prepare(`DELETE FROM beanconqueror_beans WHERE id LIKE 'pb%'`).run();
     db.prepare(`DELETE FROM coffees WHERE slug IN ('aaa-tried','zzz-fresh','backlog-one','archived-one')`).run();
+    deleteRecipe(db, id);
+  });
+
+  it('?brewnow= with no open coffees lists none', async () => {
+    const id = saveRecipe(db, { name: 'Picker two', tags: [], def: (load(event(true)) as Data).groups[0].draft });
+    const slug = (load(event(false)) as Data).recipes.find((r: { recipe: { id: number } }) => r.recipe.id === id).slug as string;
+    expect((load(event(false, `?brewnow=${slug}`)) as Data).brewNow.coffees).toEqual([]);
     deleteRecipe(db, id);
   });
 
