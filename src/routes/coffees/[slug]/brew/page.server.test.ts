@@ -6,6 +6,8 @@ process.env.DB_PATH = ':memory:';
 import { getDb } from '#lib/server/db.ts';
 import { createCoffee } from '#lib/server/coffees.ts';
 import { setRoasterWebsite } from '#lib/server/roasterWebsites.ts';
+import { saveRecipe } from '#lib/server/recipes.ts';
+import { withDefaults } from '#lib/recipes.ts';
 import { actions, load } from './+page.server';
 
 const db = getDb();
@@ -172,5 +174,66 @@ describe('?/deleteMark', () => {
     expect((await run(brewed.slug)).marks).toEqual([]);
     expect(await del(true, String(id))).toMatchObject({ status: 400 });
     expect(await del(true, 'x')).toMatchObject({ status: 400 });
+  });
+});
+
+describe('recipe-aware brew now', () => {
+  const pour = { bloom: false, grams: null, share: 0.5, speed: 'fast', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: null, durationS: null, length: null };
+  const def = (o: Record<string, unknown> = {}) => withDefaults({ v: 1, pours: [{ ...pour, bloom: true }, pour], pourCount: { min: 2, max: 2 }, ratio: { targets: [16], tol: 0.5 }, ...o });
+  const slugOf = (d: { recipes: { slug: string }[] }, i: number) => d.recipes[i].slug;
+  it('no recipes in the db: no recipe, empty picker', async () => {
+    const d = await run(brewed.slug);
+    expect(d.recipe).toBeNull();
+    expect(d.recipes).toEqual([]);
+    expect(d.defaults.recipe).toBeNull();
+  });
+  it('loads the suggested recipe, the picked one, and falls back on an unknown one', async () => {
+    const a = saveRecipe(db, { name: 'Alpha', tags: [], def: def({ tempC: 91, drippers: ['V60'] }) });
+    saveRecipe(db, { name: 'Beta', tags: [], def: def({ tempC: 96, drippers: ['V60'], ratio: { targets: [15], tol: 0.5 } }) });
+    saveRecipe(db, { name: 'Gamma', tags: [], def: def({ drippers: ['Orea'] }) });
+    db.prepare(`INSERT INTO brew_recipe_matches (brew_id, recipe_id, how) SELECT id, ?, 'logged' FROM beanconqueror_brews WHERE bean_id = ?`).run(a, `bean${brewed.id}`);
+    const bare = await run(brewed.slug);
+    expect(bare.recipe.slug).toBe(bare.defaults.recipe);
+    expect(bare.recipe).toMatchObject({ name: 'Alpha', hasAmounts: true, fitNote: null });
+    expect(bare.recipes.map((r: { name: string; fits: boolean }) => [r.name, r.fits])).toEqual([['Alpha', true], ['Beta', true], ['Gamma', false]]);
+    const other = await run(brewed.slug, `?recipe=${slugOf(bare, 1)}`);
+    expect(other.recipe.name).toBe('Beta');
+    expect(other.suggestion).not.toEqual(bare.suggestion);
+    const gone = await run(brewed.slug, '?recipe=gone');
+    expect(gone.recipe.slug).toBe(bare.defaults.recipe);
+    const orea = await run(brewed.slug, `?recipe=${slugOf(bare, 2)}`);
+    expect(orea.recipe).toMatchObject({ name: 'Gamma', fitNote: 'Saved for the Orea; you picked the V60.' });
+  });
+  it('a chosen recipe keeps its slug when the dripper changes, with a fit note', async () => {
+    const bare = await run(brewed.slug);
+    db.exec(`INSERT INTO beanconqueror_methods (id, name, imported_at) VALUES ('m9', 'Graycano - Sibarist Fast', 'x')`);
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, rating, imported_at)
+      VALUES (?, ?, 'm9', 'g1', '5.5', 8, 'x')`).run(`${today}T08:00:20.000Z`, `bean${brewed.id}`);
+    const d = await run(brewed.slug, `?recipe=${bare.recipe.slug}&dripper=graycano`);
+    expect(d.recipe.slug).toBe(bare.recipe.slug);
+    expect(d.recipe.fitNote).toBe('Saved for the V60; you picked the Graycano.');
+    db.prepare(`DELETE FROM beanconqueror_brews WHERE preparation_id = 'm9'`).run();
+    db.exec(`DELETE FROM beanconqueror_methods WHERE id = 'm9'`);
+  });
+  it('step amounts: running totals by default, per pour with amounts=pour', async () => {
+    const dflt = await run(brewed.slug), pr = await run(brewed.slug, '?amounts=pour');
+    expect(dflt.amounts).toBeNull();
+    expect(pr.amounts).toBe('pour');
+    expect(dflt.recipe.steps.every((s: { text: string }) => /to \d+g/.test(s.text))).toBe(true);
+    expect(pr.recipe.steps.every((s: { text: string }) => /pour|bloom/.test(s.text) && !/to \d+g/.test(s.text) && /\d+g/.test(s.text))).toBe(true);
+  });
+  it('signed out: no notes on any evidence row, same recipe data', async () => {
+    const anon = await run(brewed.slug), admin = await run(brewed.slug, '', true);
+    expect(JSON.stringify(anon.suggestion)).not.toContain('try finer');
+    expect(anon.recipe).toEqual(admin.recipe);
+    expect(anon.suggestion.rows.flatMap((r: { evidence: { notes: string | null }[] }) => r.evidence).every((b: { notes: string | null }) => b.notes === null)).toBe(true);
+  });
+  it('brewThis stores the posted recipe name in the mark', async () => {
+    const bare = await run(brewed.slug);
+    await actions.brewThis({ params: { slug: brewed.slug }, locals: { isAdmin: true },
+      request: new Request('http://x', { method: 'POST', body: new URLSearchParams({ recipe: slugOf(bare, 1), from: 'recipe' }) }) } as never);
+    const mark = db.prepare(`SELECT suggestion FROM brew_now_marks ORDER BY id DESC LIMIT 1`).get() as { suggestion: string };
+    expect(JSON.parse(mark.suggestion).recipe).toBe('Beta');
+    db.exec(`DELETE FROM brew_now_marks`);
   });
 });

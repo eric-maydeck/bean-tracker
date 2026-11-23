@@ -328,6 +328,16 @@ describe('recipe-aware suggestions', () => {
     expect(get(withRec(rows, rec({ tempC: 93 })), 'temp')).toMatchObject({ source: 'recipe', confidence: 'guess' });
     expect(withRec(rows, rec({ tempC: 93 })).confidence).toBe('high');
   });
+  it('the recipe row never lowers the confidence when a recipe is chosen', () => {
+    const rows = Array.from({ length: 3 }, () => brew({ recipeId: null, recipeName: null, recipeSlug: null }));
+    expect(get(withRec(rows, rec()), 'recipe')).toMatchObject({ value: 'BBS', confidence: 'guess' });
+    expect(withRec(rows, rec()).confidence).toBe(withRec(rows, null).confidence);
+  });
+  it('the synopsis sentence is on the grind row too, and switchable comes with as written', () => {
+    expect(get(withRec(onRec(2), rec()), 'grind').synopsis.join(' ')).toContain('2 of these 2 brews used BBS.');
+    expect(withRec(onRec(3, { tempC: 91 }), rec({ tempC: 93 })).switchable).toBe(true);
+    expect(get(withRec(onRec(3, { tempC: 91 }), rec({ tempC: 93, asWritten: true })), 'temp')).toMatchObject({ value: '93°C', source: 'recipe' });
+  });
   it('no brews at all: the recipe still fills temp and ratio', () => {
     const s = withRec([], rec({ tempC: 93, ratios: [16] }));
     expect(get(s, 'temp')).toMatchObject({ value: '93°C', source: 'recipe', tier: null, confidence: 'guess', evidence: [], synopsis: [], reason: 'From the recipe' });
