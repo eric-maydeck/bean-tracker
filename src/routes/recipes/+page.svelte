@@ -81,6 +81,16 @@
     return !!cur && ('recipe' in item ? 'recipe' in cur && cur.recipe === item.recipe : 'key' in cur && cur.key === item.key);
   };
   const orderHref = (order?: 'top') => `?${recipesParams({ ...data.view, order })}`;
+  // Brew now: the picker is the URL's ?brewnow=<slug> (relative, so /recipes/<slug> keeps its path); closing keeps the other params.
+  const brewNowHref = (slug?: string) => `?${recipesParams({ ...data.view, brewnow: slug })}`;
+  let pickerEl = $state<HTMLElement | null>(null);
+  $effect(() => {
+    if (!pickerEl) return;
+    const opener = document.activeElement as HTMLElement | null;
+    pickerEl.focus(); // the dialog, never a field
+    return () => { if (opener?.isConnected) opener.focus(); };
+  });
+  const closePicker = () => document.getElementById('picker-close')?.click(); // the Close link keeps the scroll position
   const n = (c: number, one: string, many: string) => `${c} ${c === 1 ? one : many}`;
 </script>
 
@@ -202,6 +212,7 @@
             </div>
             <div class="row-actions" data-button-row>
               <a class="button" class:button-secondary={!isOpen({ recipe: r.recipe.id })} href={brewsHref({ recipe: r.recipe.id })} aria-expanded={isOpen({ recipe: r.recipe.id })} data-sveltekit-reset="false">{isOpen({ recipe: r.recipe.id }) ? 'Hide brews' : 'See brews'}</a>
+              <a class="button button-secondary" href={brewNowHref(r.slug)} data-sveltekit-replacestate data-sveltekit-reset="false">Brew now</a>
               {#if isAdmin}
                 <button class="button button-secondary" type="button" onclick={() => (editing = 'r' + r.recipe.id)}>Edit</button>
                 <button class="button button-danger button-ghost" type="button" onclick={() => (deleting = r.recipe.id)}>Delete</button>
@@ -352,7 +363,69 @@
 {/if}
 </div>
 
+<svelte:window onkeydown={(e) => { if (data.brewNow && e.key === 'Escape' && !e.defaultPrevented && !document.querySelector(':popover-open')) closePicker(); }} />
+{#if data.brewNow}
+  {@const bn = data.brewNow}
+  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+  <div class="modal-backdrop" onclick={(e) => { if (e.target === e.currentTarget) closePicker(); }}>
+    <div class="modal picker" role="dialog" aria-modal="true" aria-labelledby="picker-title" tabindex="-1" bind:this={pickerEl}>
+      <div class="picker-head">
+        <h2 id="picker-title">Brew {bn.name} with</h2>
+        <a id="picker-close" class="button button-secondary" href={brewNowHref()} data-sveltekit-replacestate data-sveltekit-reset="false">Close</a>
+      </div>
+      <PourTimeline timeline={bn.timeline} label={bn.description} />
+      <p class="text-muted">{bn.description}</p>
+      {#if bn.coffees.length}
+        <ul class="picks">
+          {#each bn.coffees as c (c.slug)}
+            <li>
+              <a class="pick" href="/coffees/{c.slug}/brew?recipe={bn.slug}">
+                <span class="pick-thumb" style:background-color={c.image?.fill}>
+                  {#if c.image}<img src={c.image.src} alt={c.image.alt} />{/if}
+                </span>
+                <span class="pick-body">
+                  <span class="pick-name"><CoffeeName name={c.name} /></span>
+                  <span class="text-muted">{c.roaster}</span>
+                  <span class="pick-meta">
+                    {#if c.brews}
+                      <span>{n(c.brews, 'brew', 'brews')}</span>
+                      {#if c.avg != null}<span class="badge badge-neutral">avg {c.avg.toFixed(1)}</span>{/if}
+                      {#if c.best}<span class="badge badge-fresh">Best</span>{/if}
+                    {:else}
+                      <span class="text-muted">Not tried</span>
+                    {/if}
+                  </span>
+                </span>
+              </a>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p>No open coffees. <a href="/coffees">Open one on Coffees</a> first.</p>
+      {/if}
+    </div>
+  </div>
+{/if}
+
 <style>
+  .picker { max-width: 720px; display: grid; gap: var(--space-3); align-content: start; }
+  .picker:focus { outline: none; }
+  .picker h2, .picker p { margin: 0; }
+  .picker-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .picker-head .button { margin: 0; flex: none; }
+  .picks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); grid-template-columns: 1fr; }
+  @media (min-width: 641px) { .picks { grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); } }
+  .pick {
+    display: flex; gap: var(--space-3); align-items: center; min-height: 44px; height: 100%; box-sizing: border-box;
+    padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); color: inherit; text-decoration: none;
+  }
+  .pick:hover, .pick:focus-visible { border-color: var(--color-accent); }
+  .pick-thumb { flex: none; width: 4rem; aspect-ratio: 1; border-radius: var(--radius); background: var(--color-border); overflow: hidden; display: block; }
+  .pick-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .pick-body { display: grid; gap: var(--space-1); min-width: 0; }
+  .pick-name { font-weight: 600; overflow-wrap: anywhere; }
+  .pick-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: center; font-size: 0.875rem; }
+
   .legend {
     display: flex;
     flex-wrap: wrap;
