@@ -30,25 +30,41 @@
   });
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
 
-  // Paging. The cards are sized (css) so a whole number fit the row, so the viewport is a whole number of card steps: a page is
-  // that many cards, and the browser's clamp to the end makes the last page a full row. An arrow is enabled only when there is more
-  // that way (updated on scroll and resize); wide, a disabled one is hidden, on a phone it stays, dimmed, below the row.
+  // Paging. The cards are sized (css) so a whole number (n) fit the row. An arrow is enabled only when there is more that way
+  // (updated on scroll and resize). On a phone the arrows sit below the row and a page is n cards. Wide, they lie over the row's
+  // edges: the card under one is a peek, not part of the shown page (dimmed, not clickable, out of the tab order), so a page is
+  // n - 2 cards and the covered card becomes the first uncovered one on the next turn. The browser's clamp to the end keeps the
+  // last page full and end-aligned.
   let row: HTMLDivElement | undefined = $state();
   let prevBtn: HTMLButtonElement | undefined = $state(), nextBtn: HTMLButtonElement | undefined = $state();
   let more = $state({ prev: false, next: false });
+  let cover = $state({ prev: -1, next: -1 }); // index of the card under each arrow, -1 for none
+  const geom = () => {
+    const gap = parseFloat(getComputedStyle(row!).columnGap) || 0, step = (row!.firstElementChild as HTMLElement).offsetWidth + gap;
+    return { step, n: Math.round((row!.clientWidth + gap) / step), wide: getComputedStyle(nextBtn!).position === 'absolute' };
+  };
   function measure() {
-    if (!row) return;
+    if (!row || !row.firstElementChild) return;
     const m = { prev: row.scrollLeft > 1, next: row.scrollLeft + row.clientWidth < row.scrollWidth - 1 };
     // The focused arrow going away (disabled) would drop focus to the body: hand it to the other one.
     if (!m.prev && document.activeElement === prevBtn && m.next) nextBtn?.focus();
     if (!m.next && document.activeElement === nextBtn && m.prev) prevBtn?.focus();
+    const { step, n, wide } = geom(), i = Math.round(row.scrollLeft / step);
     more = m;
+    cover = { prev: wide && m.prev ? i : -1, next: wide && m.next ? i + n - 1 : -1 };
+    // Keyboard focus that landed on a covered card moves it out from under its arrow.
+    const foc = cards.findIndex((c) => anchors[c.key] === document.activeElement);
+    if (foc >= 0 && foc === cover.prev) row.scrollBy({ left: -step, behavior: 'auto' });
+    else if (foc >= 0 && foc === cover.next) row.scrollBy({ left: step, behavior: 'auto' });
   }
   function page(dir: 1 | -1) {
     if (!row) return;
-    const gap = parseFloat(getComputedStyle(row).columnGap) || 0, step = (row.firstElementChild as HTMLElement).offsetWidth + gap;
-    row.scrollBy({ left: dir * Math.max(1, Math.round((row.clientWidth + gap) / step)) * step, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    const { step, n, wide } = geom();
+    moved = false; // cards sliding under a still pointer don't open their tips until it moves (2B)
+    row.scrollBy({ left: dir * Math.max(1, wide ? n - 2 : n) * step, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
+  let moved = true, at: [number, number] = [0, 0];
+  const track = (e: PointerEvent) => { if (e.clientX !== at[0] || e.clientY !== at[1]) moved = true; at = [e.clientX, e.clientY]; };
   onMount(() => {
     const ro = new ResizeObserver(measure);
     if (row) ro.observe(row);
@@ -57,20 +73,22 @@
   });
 </script>
 
-<svelte:document onclick={(e) => open && !(e.target as Element).closest('.gear-item') && st.close()} onkeydown={(e) => e.key === 'Escape' && st.close()} />
+<svelte:document onpointermovecapture={track} onclick={(e) => open && !(e.target as Element).closest('.gear-item') && st.close()} onkeydown={(e) => e.key === 'Escape' && st.close()} />
 
 <section class="chart-panel gear-panel" id="gear-trophies" data-section="gear-trophies">
   <h2>Your gear</h2>
   <div class="pager">
     <button type="button" class="page-btn prev" aria-label="Previous gear" bind:this={prevBtn} disabled={!more.prev} onclick={() => page(-1)}><Icon name="caret-left" /></button>
   <div class="cards" role="list" bind:this={row} onscroll={measure}>
-    {#each cards as c (c.key)}
+    {#each cards as c, ix (c.key)}
+      {@const covered = ix === cover.prev || ix === cover.next}
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions (focus moving to an element outside the card and its tip closes the tip; a null relatedTarget, as when a mac browser doesn't focus a clicked link, doesn't: the document click handles outside clicks) -->
       <div class="gear-item" role="listitem" onfocusout={(e) => open === c.key && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node) && st.close()}>
         <!-- svelte-ignore a11y_no_static_element_interactions (a button by role: hover, click and Enter share one handler) -->
-        <div class="gear-card" role="button" tabindex="0" aria-expanded={open === c.key} aria-label="{c.name}: {tipText(tip(c))}"
+        <div class="gear-card" class:covered role="button" tabindex={covered ? -1 : 0} aria-expanded={open === c.key} aria-label="{c.name}: {tipText(tip(c))}"
           bind:this={anchors[c.key]} style="--kc:var(--series-{KIND_COLOR[c.kind]})"
-          onpointerenter={(e) => e.pointerType === 'mouse' && hover(c.key)}
+          onpointerenter={(e) => e.pointerType === 'mouse' && moved && hover(c.key)}
+          onpointermove={(e) => e.pointerType === 'mouse' && moved && open !== c.key && hover(c.key)}
           onpointerleave={(e) => e.pointerType === 'mouse' && !st.pinned && st.later()}
           onfocus={(e) => e.currentTarget.matches(':focus-visible') && focus(c.key)}
           onclick={() => pin(c.key)}
@@ -133,8 +151,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 5rem;
+    height: 3.5rem;
     padding: 0;
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
@@ -155,8 +173,13 @@
     cursor: default;
   }
   .page-btn :global(svg) {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+  /* A card under an arrow is a peek, not part of the page: dimmed, and a click on it goes nowhere. */
+  .gear-card.covered {
+    opacity: 0.45;
+    pointer-events: none;
   }
   @media (hover: hover) {
     .page-btn:not(:disabled):hover {
@@ -177,6 +200,8 @@
       top: 50%;
       translate: 0 -50%;
       box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+      width: 4rem;
+      height: 4rem;
     }
     .page-btn.prev {
       left: var(--space-2);
@@ -184,6 +209,10 @@
     .page-btn.next {
       right: var(--space-2);
       left: auto;
+    }
+    .page-btn :global(svg) {
+      width: 2rem;
+      height: 2rem;
     }
     .page-btn:disabled {
       visibility: hidden;

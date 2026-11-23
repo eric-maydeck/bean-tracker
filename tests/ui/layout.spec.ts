@@ -11010,7 +11010,8 @@ export const STATES: State[] = [
         for (const b of [prev, next]) {
           const bb = (await b.boundingBox())!;
           expect(bb.y, 'the arrow is below the row').toBeGreaterThanOrEqual(rowB.y + rowB.height - 1);
-          expect(Math.min(bb.width, bb.height), '44px tap target').toBeGreaterThanOrEqual(44);
+          expect(bb.height, 'a big arrow: well over 44px tall').toBeGreaterThanOrEqual(52);
+          expect(bb.width, 'a big arrow: wide').toBeGreaterThanOrEqual(72);
         }
         await expect(prev).toBeDisabled();
         await expect(next).toBeEnabled();
@@ -11022,6 +11023,30 @@ export const STATES: State[] = [
         expect(await next.evaluate((e) => { const r = e.getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === e || e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); }), 'the arrow is above the card in z-order').toBe(true);
       }
       expect(await row.evaluate((r) => r.getBoundingClientRect().width), 'the row fills the panel content').toBeGreaterThan(box.width - 80);
+      let parked = { x: 0, y: 0 };
+      if (!isPhone(page)) {
+        const nb = (await next.boundingBox())!;
+        expect(Math.min(nb.width, nb.height), 'a big overlay arrow').toBeGreaterThanOrEqual(60);
+        parked = { x: nb.x + nb.width / 2, y: nb.y + nb.height / 2 };
+        // The card under an arrow is a peek, not part of the page: next makes it the first uncovered card, prev the last uncovered.
+        const firstUncovered = () => row.evaluate((r) => { const rb = r.getBoundingClientRect(); return ([...r.querySelectorAll('.gear-card')] as HTMLElement[]).find((c) => !c.classList.contains('covered') && c.getBoundingClientRect().right > rb.left + 1)!.querySelector('.name')!.textContent; });
+        const lastUncovered = () => row.evaluate((r) => { const rb = r.getBoundingClientRect(); return ([...r.querySelectorAll('.gear-card')] as HTMLElement[]).findLast((c) => !c.classList.contains('covered') && c.getBoundingClientRect().left < rb.right - 1)!.querySelector('.name')!.textContent; });
+        const covered = panel.locator('.gear-card.covered');
+        await expect(covered).toHaveCount(1); // at the start only the right arrow covers a card
+        const peekR = (await covered.locator('.name').textContent())!;
+        const cb = (await covered.boundingBox())!;
+        expect(parked.x > cb.x && parked.x < cb.x + cb.width, 'the covered card is the one under the arrow').toBe(true);
+        await page.mouse.click(cb.x + cb.width - 6, cb.y + cb.height / 2); // a click on the covered card goes nowhere
+        await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
+        await expect(panel.locator('.gear-card[aria-expanded="true"]')).toHaveCount(0);
+        await next.click();
+        await expect.poll(firstUncovered).toBe(peekR);
+        await expect(covered).toHaveCount(2);
+        const peekL = (await covered.first().locator('.name').textContent())!;
+        await prev.click();
+        await expect.poll(lastUncovered).toBe(peekL);
+        await expect.poll(async () => (await info()).left).toBe(0);
+      }
       await next.click();
       await expect(page.locator('.cell-tip:popover-open'), 'an arrow click opens no tip').toHaveCount(0);
       await expect(panel.locator('.gear-card[aria-expanded="true"]')).toHaveCount(0);
@@ -11037,6 +11062,14 @@ export const STATES: State[] = [
       }
       await expect.poll(async () => (await wholeCards())).toBe(true);
       await (isPhone(page) ? expect(next).toBeDisabled() : expect(next).toBeHidden());
+      if (!isPhone(page)) {
+        // 2B: the last page turn slid a card under the parked pointer; its tip stays shut until the pointer really moves.
+        await page.waitForTimeout(300);
+        await expect(page.locator('.cell-tip:popover-open')).toHaveCount(0);
+        await page.mouse.move(parked.x - 40, parked.y + 3);
+        await expect(page.locator('.cell-tip:popover-open')).toBeVisible();
+        await page.mouse.move(2, 2);
+      }
       const [lastB, endB] = [(await cards.last().boundingBox())!, (await row.boundingBox())!];
       expect(Math.abs(lastB.x + lastB.width - (endB.x + endB.width)), 'the last page is full, end-aligned').toBeLessThanOrEqual(2);
       await expect(page.locator('nav.board-jump').getByRole('link', { name: 'Your gear' })).toBeVisible();
