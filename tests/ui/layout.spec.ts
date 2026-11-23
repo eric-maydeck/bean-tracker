@@ -10991,6 +10991,28 @@ export const STATES: State[] = [
       expect(box.width).toBeLessThanOrEqual(main.width + 1);
       const row = panel.locator('.cards');
       expect(await row.evaluate((e) => getComputedStyle(e).overflowX)).toBe('auto');
+      // Whole cards only, arrows in their own gutters: one shows only when there is more that way, a click pages by the cards that fit.
+      const prev = panel.getByRole('button', { name: 'Previous gear' }), next = panel.getByRole('button', { name: 'Next gear' });
+      const wholeCards = () => row.evaluate((r) => {
+        const rb = r.getBoundingClientRect();
+        return [...r.children].every((c) => { const b = c.getBoundingClientRect(); return (b.left >= rb.left - 1 && b.right <= rb.right + 1) || b.right <= rb.left + 1 || b.left >= rb.right - 1; });
+      });
+      const info = () => row.evaluate((r) => ({ left: r.scrollLeft, over: r.scrollWidth > r.clientWidth + 1, end: r.scrollLeft + r.clientWidth >= r.scrollWidth - 1 }));
+      await expect(prev).toBeHidden();
+      expect(await wholeCards(), 'no part-visible card at the start').toBe(true);
+      if ((await info()).over) {
+        await expect(next).toBeVisible();
+        const [rb, nb] = [(await row.boundingBox())!, (await next.boundingBox())!];
+        expect(nb.x >= rb.x + rb.width - 1 || nb.x + nb.width <= rb.x + 1, 'the arrow is outside the row').toBe(true);
+        await next.click();
+        await expect.poll(async () => (await info()).left).toBeGreaterThan(0);
+        await expect(prev).toBeVisible();
+        while (!(await info()).end) { await next.click(); await page.waitForTimeout(0); await expect.poll(async () => (await wholeCards())).toBe(true); }
+        await expect(next).toBeHidden();
+        expect(await wholeCards(), 'no part-visible card at the end').toBe(true);
+        const [lastB, rowB] = [(await cards.last().boundingBox())!, (await row.boundingBox())!];
+        expect(Math.abs(lastB.x + lastB.width - (rowB.x + rowB.width)), 'the last page is full, end-aligned').toBeLessThanOrEqual(2);
+      } else await expect(next).toBeHidden();
       await expect(page.locator('nav.board-jump').getByRole('link', { name: 'Your gear' })).toBeVisible();
       await go.click();
       await expect(page).toHaveURL(/\/gear$/);
@@ -11008,6 +11030,13 @@ export const STATES: State[] = [
         await card.hover();
         await expect(tip).toBeVisible();
         await tip.getByRole('link').hover(); // the pointer crosses onto the tip: it stays (the click below needs it open)
+      }
+      const labels = await tip.locator('.tip-rows dt').allTextContents();
+      expect(labels[0], 'the brand is the first row').toBe('Brand');
+      expect(labels, 'no model row (the name carries it)').not.toContain('Model');
+      for (const dd of await tip.locator('.tip-rows dt, .tip-rows dd').all()) { // no row cut off or pushed out of the tip
+        const [tb, db] = [(await tip.boundingBox())!, (await dd.boundingBox())!];
+        expect(db.x >= tb.x - 1 && db.x + db.width <= tb.x + tb.width + 1, 'row inside the tip').toBe(true);
       }
       await expect(tip).toContainText('Average');
       await expect(tip).toContainText('Brews');

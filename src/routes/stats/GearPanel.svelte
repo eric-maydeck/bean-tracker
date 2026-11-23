@@ -8,7 +8,7 @@
   import { formatGrams } from '#lib/grams.ts';
   import { backdrop } from '#lib/imageBackdrop.ts';
   import type { GearPanelCard } from '#lib/server/insights/trophies.ts';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
 
   // The Gear tab's way to /gear: a scrolling row of the active gear's cards, each the anchor of a sticky tip (ui-rules 54)
   // with its figures, a couple of specs and a link to that gear's dialog on /gear; the blurb and a real link to /gear below.
@@ -26,16 +26,40 @@
 
   const tip = (c: GearPanelCard): Tip => ({
     title: c.name,
-    rows: [['Average', c.rating === null ? 'No ratings' : c.rating.toFixed(1)], ['Brews', String(c.brews)], ['Brewed', formatGrams(c.grams)], ...c.specs]
+    rows: [...c.specs.filter(([l]) => l === 'Brand'), ['Average', c.rating === null ? 'No ratings' : c.rating.toFixed(1)], ['Brews', String(c.brews)], ['Brewed', formatGrams(c.grams)], ...c.specs.filter(([l]) => l !== 'Brand')]
   });
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
+
+  // Paging. The cards are sized (css) so a whole number fit the row, so the viewport is a whole number of card steps: a page is
+  // that many cards, and the browser's clamp to the end makes the last page a full row. An arrow shows only when there is more
+  // that way (updated on scroll and resize); the gutters stay reserved, so showing one never resizes the row.
+  let row: HTMLDivElement | undefined = $state();
+  let more = $state({ prev: false, next: false });
+  function measure() {
+    if (!row) return;
+    more = { prev: row.scrollLeft > 1, next: row.scrollLeft + row.clientWidth < row.scrollWidth - 1 };
+  }
+  function page(dir: 1 | -1) {
+    if (!row) return;
+    const gap = parseFloat(getComputedStyle(row).columnGap) || 0, step = (row.firstElementChild as HTMLElement).offsetWidth + gap;
+    row.scrollBy({ left: dir * Math.max(1, Math.round((row.clientWidth + gap) / step)) * step, behavior: 'smooth' });
+  }
+  onMount(() => {
+    const ro = new ResizeObserver(measure);
+    if (row) ro.observe(row);
+    measure();
+    return () => ro.disconnect();
+  });
 </script>
 
 <svelte:document onclick={(e) => open && !(e.target as Element).closest('.gear-item') && st.close()} onkeydown={(e) => e.key === 'Escape' && st.close()} />
 
 <section class="chart-panel gear-panel" id="gear-trophies" data-section="gear-trophies">
   <h2>Your gear</h2>
-  <div class="cards" role="list">
+  <div class="pager">
+    <button type="button" class="page-btn" aria-label="Previous gear" style:visibility={more.prev ? 'visible' : 'hidden'} onclick={() => page(-1)}><Icon name="caret-left" /></button>
+    <div class="cards-box">
+  <div class="cards" role="list" bind:this={row} onscroll={measure}>
     {#each cards as c (c.key)}
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions (focus moving to an element outside the card and its tip closes the tip; a null relatedTarget, as when a mac browser doesn't focus a clicked link, doesn't: the document click handles outside clicks) -->
       <div class="gear-item" role="listitem" onfocusout={(e) => open === c.key && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node) && st.close()}>
@@ -55,11 +79,14 @@
         </div>
         {#if open === c.key && anchors[c.key]}
           <FloatTip anchor={anchors[c.key]!} onclose={st.close}>
-            <StickyTipBody sticky={st} href="/gear?card={c.key}" linkText="See details on the Gear page"><TipBody tip={tip(c)} /></StickyTipBody>
+            <StickyTipBody sticky={st} values href="/gear?card={c.key}" linkText="See details on the Gear page"><TipBody tip={tip(c)} /></StickyTipBody>
           </FloatTip>
         {/if}
       </div>
     {/each}
+  </div>
+    </div>
+    <button type="button" class="page-btn" aria-label="Next gear" style:visibility={more.next ? 'visible' : 'hidden'} onclick={() => page(1)}><Icon name="caret-right" /></button>
   </div>
   <div class="go-row">
     <p class="blurb">Browse your drippers, grinders and filters, and see or edit their details, on the Gear page.</p>
@@ -71,18 +98,74 @@
   h2 {
     margin: 0 0 var(--space-3);
   }
-  /* A row that scrolls sideways, cards that never stack; each snaps to the row's start. */
+  /* arrow | the row | arrow: the arrows sit in their own gutters, never over a card. */
+  .pager {
+    --gap: var(--space-3);
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) 1.75rem; /* narrow on a phone: the 44px tap target overhangs into the panel's padding */
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-inline-start: -1rem; /* the previous arrow overhangs left, the next one (below) right: never onto a card */
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    cursor: pointer;
+  }
+  .page-btn :global(svg) {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  @media (hover: hover) {
+    .page-btn:hover {
+      border-color: var(--color-accent);
+      background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+    }
+  }
+  .cards-box + .page-btn {
+    margin-inline: 0 -1rem;
+  }
+  @media (min-width: 641px) {
+    .pager {
+      grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+    }
+    .page-btn, .cards-box + .page-btn {
+      margin-inline: 0;
+    }
+  }
+  /* A row of whole cards: --n of them exactly fill the width (the count steps up with it), so no card is part visible. It scrolls
+     sideways by whole cards (snap), the scrollbar hidden: the arrows and touch drag are the way. */
+  .cards-box {
+    container-type: inline-size;
+    min-width: 0;
+  }
   .cards {
     display: flex;
-    gap: var(--space-3);
+    gap: var(--gap);
     overflow-x: auto;
-    padding-bottom: var(--space-2);
-    scroll-snap-type: x proximity;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
   }
   .gear-item {
-    flex: 0 0 8.5rem;
+    --n: 2;
+    flex: 0 0 calc((100% - (var(--n) - 1) * var(--gap)) / var(--n));
+    min-width: 0;
     scroll-snap-align: start;
   }
+  @container (min-width: 474px) { .gear-item { --n: 3; } }
+  @container (min-width: 636px) { .gear-item { --n: 4; } }
+  @container (min-width: 798px) { .gear-item { --n: 5; } }
+  @container (min-width: 960px) { .gear-item { --n: 6; } }
+  @container (min-width: 1122px) { .gear-item { --n: 7; } }
+  @container (min-width: 1284px) { .gear-item { --n: 8; } }
   .gear-card {
     display: flex;
     flex-direction: column;

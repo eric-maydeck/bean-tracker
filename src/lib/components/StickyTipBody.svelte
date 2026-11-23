@@ -4,11 +4,12 @@
 
   // A sticky tip's content (inside a FloatTip): the tip is pointer-events: none (a hover tip), so this wrapper fills it
   // (cancelling its padding) and lets the pointer rest on it and click the link. A click on the body of a pinned tip closes it.
-  let { sticky, href, linkText, children }: { sticky: StickyTip; href?: string; linkText?: string; children: Snippet } = $props();
+  // `values`: the long text is the rows' values (a spec's text), not their labels: the labels keep their width and the values wrap, right-aligned.
+  let { sticky, href, linkText, values = false, children }: { sticky: StickyTip; href?: string; linkText?: string; values?: boolean; children: Snippet } = $props();
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events (a mouse-only extra: Escape closes it, the link is a real link) -->
-<div class="tip-hover" onpointerenter={sticky.keep} onpointerleave={(e) => e.pointerType === 'mouse' && !sticky.pinned && sticky.later()} onclick={(e) => sticky.pinned && !(e.target as Element).closest('a') && sticky.close()}>
+<div class="tip-hover" class:values onpointerenter={sticky.keep} onpointerleave={(e) => e.pointerType === 'mouse' && !sticky.pinned && sticky.later()} onclick={(e) => sticky.pinned && !(e.target as Element).closest('a') && sticky.close()}>
   {@render children()}
   {#if href}<a class="tip-link" {href}>{linkText}</a>{/if}
 </div>
@@ -29,6 +30,18 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .tip-hover.values :global(.tip-rows) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .tip-hover.values :global(.tip-rows dt) {
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .tip-hover.values :global(.tip-rows dd) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
   }
   .tip-link {
     display: block;

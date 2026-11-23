@@ -96,9 +96,9 @@ export const fieldsFor = (kind: GearKind, opts: { adjustableSpeed?: boolean } = 
 
 export type GearValues = Record<string, string | number>;
 export const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? withUnit(v, f.unit) : String(v));
-// The first n filled-in specs as [label, text], in the form's order (links skipped): a tip's short list.
+// The first n filled-in specs as [label, text], in the form's order, so the brand comes first (links and the model skipped: the name carries it): a tip's short list.
 export const topSpecs = (t: { kind: GearKind; values: GearValues; adjustableSpeed: boolean }, n: number): [string, string][] =>
-  fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed }).filter((f) => f.type !== 'url' && t.values[f.key] !== undefined).slice(0, n).map((f) => [f.label, specText(f, t.values[f.key])]);
+  fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed }).filter((f) => f.type !== 'url' && f.key !== 'model' && t.values[f.key] !== undefined).slice(0, n).map((f) => [f.label, specText(f, t.values[f.key])]);
 const MAX_TEXT = 120;
 
 // Validates a details form/import payload: known keys only, trimmed, blanks dropped. First problem wins.
