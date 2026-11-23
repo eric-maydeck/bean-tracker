@@ -9682,7 +9682,7 @@ export const STATES: State[] = [
     } },
   { name: 'insights-brewing-zp6', viewports: 'two', path: () => '/stats?tab=brewing&grinder=zp6-special',
     act: async (page) => {
-      await expect(page.getByLabel('Grinder')).toHaveValue('zp6-special');
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(1); // the Grinder filter is also the Grind for
       await expect(page.locator('[data-section="brewing-grind"] .bar-row.small').first()).toBeVisible();
       // ZP6 half-number bands are labeled by their first setting, the tip gives the range (no-match bands: vitest).
       const grind = page.locator('[data-section="brewing-grind"]');
@@ -9704,8 +9704,7 @@ export const STATES: State[] = [
   { name: 'insights-brewing-all-ratings', path: () => '/stats?tab=brewing&ratings=all' },
   { name: 'insights-sweetspots-grinder', path: () => '/stats?tab=sweetspots&grinder=zp6-special',
     act: async (page) => {
-      await expect(page.getByLabel('Grind for:')).toHaveValue('zp6-special');
-      const name = await page.getByLabel('Grind for:').locator('option:checked').innerText();
+      const name = await page.locator('.coffee-chips .filter-chip-label').innerText();
       await expect(page.locator('#spot-grind .hl-caption')).toContainText(`Grind ${name}`); // only this card follows the grinder
       await expect(page.locator('#spot-temp .hl-caption')).not.toContainText(name);
       await expectGridRowsFull(page, '.spot-grid');
@@ -9873,7 +9872,7 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: /^Filters/ }).click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await expect(dlg).toBeVisible();
-      for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
+      for (const l of ['Dripper', 'Filter', 'Grinder', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT');
       await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
       await dlg.getByLabel('Dose', { exact: true }).selectOption({ label: '15g' });
@@ -9890,7 +9889,7 @@ export const STATES: State[] = [
       await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await expect(dlg).toBeVisible();
-      for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
+      for (const l of ['Dripper', 'Filter', 'Grinder', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
     } },
   // Regression: a Dripper pick set back to "Any" in the dialog drops the param and shows every dripper again.
   { name: 'insights-trophy-pick-any', viewports: 'two', path: () => '/stats?tab=gear',

@@ -5,15 +5,16 @@
   import { useEmptyLine } from './coffeeNote';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import Icon from '#lib/components/Icon.svelte';
-  import { MON, type InsightsUrlState, type Kind } from '#lib/insightsUrl.ts';
+  import { MON, type BrewFilterKey, type InsightsUrlState, type Kind } from '#lib/insightsUrl.ts';
   import { ICON, LABEL } from './KindsBar.svelte';
   import type { MilestonesTab } from '#lib/server/insights/milestones.ts';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
+  import WholeNote from './WholeNote.svelte';
   import TileCaption from './TileCaption.svelte';
   import { rulerTicks, tickAt, rulerToFeed, feedToRuler, type Section } from './ruler';
 
-  let { m }: { m: MilestonesTab } = $props();
+  let { m, wholeKeys }: { m: MilestonesTab; wholeKeys: BrewFilterKey[] } = $props();
 
   const FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const month = (ym: string) => `${FULL[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
@@ -186,6 +187,7 @@
       </div>
     {/each}
   </div>
+  {#if wholeKeys.length}<WholeNote keys={wholeKeys} items={['Bags bought', 'Coffee bought', 'Bags finished']} />{/if}
 </section>
 
 <section class="chart-panel">

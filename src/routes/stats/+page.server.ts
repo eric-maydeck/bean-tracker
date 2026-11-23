@@ -23,7 +23,7 @@ import { trophyCase, gearArchive } from '#lib/server/insights/trophies.ts';
 import { insightsTab } from '#lib/server/insights/insightGenerators.ts';
 import { getRoastLevels } from '#lib/server/roastLevels.ts';
 import { loadPourFacts, poursTab } from '#lib/server/insights/pours.ts';
-import { labOptions, matchesBrew, matchesCoffee, ratedIn, bothCaffeineKinds, sweetSpotsTab, brewingTab, waterTab, gearTab } from '#lib/server/insights/lab.ts';
+import { labOptions, matchesBrew, exceptOwn, matchesCoffee, ratedIn, bothCaffeineKinds, sweetSpotsTab, brewingTab, waterTab, gearTab } from '#lib/server/insights/lab.ts';
 import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, VIEW_BOARDS, boardAvg, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn, activeBrewFilters } from '#lib/insightsUrl.ts';
 
 // Public, like /stats.
@@ -70,7 +70,9 @@ export const load: PageServerLoad = ({ url, locals }) => {
     : caffeine === 'all' ? everyBrew : everyBrew.map((b) => (b.decaf ? { ...b, rating: null } : b));
   // The brew filters narrow brews after the coffee filters and after `dialIn`, so a brew keeps its
   // whole-bag position. `whole` is what whole-bag figures read (on hand, time to clear, Net, What-if, settle).
+  // The URL carries the grinder as a slug; brews carry its name.
   const bf = activeBrewFilters(s);
+  if (bf.grinder) bf.grinder = opts.grinders.find((g) => g.slug === bf.grinder)!.name; // the parser kept only listed slugs
   const whole = pool.filter(matches);
   const brews = whole.filter(matchesBrew(bf));
   const bags = everyBag.filter((b) => (caffeine !== 'decaf' || b.decaf) && matches(b));
@@ -140,7 +142,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
     defaultCaffeine,
     // What applied on this tab, and the pickers' values (from the unfiltered data, every tab).
     brewFilters: bf,
-    brewOptions: { drippers: opts.drippers, filters: opts.filters, waters: opts.waters, doses: opts.doses, temps: opts.temps },
+    brewOptions: { grinders: opts.grinders, drippers: opts.drippers, filters: opts.filters, waters: opts.waters, doses: opts.doses, temps: opts.temps },
     coffeeFilters: pageFilters({ ...coffees, caffeine }, everyBag),
     householdSize,
     years,
@@ -226,7 +228,7 @@ export const load: PageServerLoad = ({ url, locals }) => {
     coffeeOptions: { roasts: opts.roasts, processes: opts.processes, origins: opts.origins, roasters: opts.roasters },
     grinder,
     sweetSpots: s.tab === 'sweetspots'
-      ? sweetSpotsTab(scored, bags, { ...labCtx, grinder, filters: coffees, all: s.dial === 'all' ? pool : onceDialed(pool, dialIn) })
+      ? sweetSpotsTab(scored, bags, { ...labCtx, grinder, filters: coffees, all: (s.dial === 'all' ? pool : onceDialed(pool, dialIn)).filter(matchesBrew(bf)) })
       : null,
     brewing: s.tab === 'brewing'
       ? brewingTab(scored, { ...labCtx, all: brews, whole, bags, brewFilters: bf, grinder, exact: Object.fromEntries(Object.entries(EXACT_PARAM).map(([v, k]) => [v, s[k] === 'exact'])),
@@ -234,7 +236,11 @@ export const load: PageServerLoad = ({ url, locals }) => {
       : null,
     pours: poursData,
     water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,
-    gear: s.tab === 'gear' ? gearTab(scored, bags, { ...labCtx, speedBy: s.speedBy }) : null,
+    gear: s.tab === 'gear' ? gearTab(scored, bags, {
+        ...labCtx, speedBy: s.speedBy,
+        // A usage chart ignores its own kind's filter.
+        usage: (k) => { const xs = whole.filter(matchesBrew(exceptOwn(bf, k))); return s.dial === 'all' ? xs : onceDialed(xs, dialIn); }
+      }) : null,
     recapsTab,
     recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin, period) : null,
     // The last-brews and finished-bags lists show every coffee and its rating, whatever the Caffeine filter says.

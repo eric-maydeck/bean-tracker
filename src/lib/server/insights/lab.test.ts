@@ -802,6 +802,12 @@ describe('gearTab', () => {
     expect(t.eras!.lines.map((l) => l.label)).toEqual(['V60']);
     expect(gearTab(many(30, 1, 92, 8, { dripper: 'V60' }), [], { period: P, ratings: 'all' }).grinderEras).toBeNull();
   });
+  it('eras: usage brews replace the narrowed ones, so a usage chart can ignore its own filter', () => {
+    const r = ['2026-07-10', '2026-08-10', '2026-09-10'].flatMap((localDate) => ['V60', 'Origami'].flatMap((dripper) => many(10, 1, 92, 8, { dripper, localDate })));
+    const narrowed = r.filter((b) => b.dripper === 'V60');
+    const t = gearTab(narrowed, [], { period: { start: null, end: '2026-09-30' }, ratings: 'all', usage: (k) => (k === 'dripper' ? r : narrowed) });
+    expect(t.eras!.lines.map((l) => l.label).sort()).toEqual(['Origami', 'V60']);
+  });
   it('eras: "Other" lists what it holds each month, biggest share first', () => {
     const months = ['2026-07-10', '2026-08-10', '2026-09-10'];
     const r = months.flatMap((localDate) => [['A', 40], ['B', 40], ['C', 40], ['D', 40], ['E', 20], ['F', 5]].flatMap(([dripper, n]) =>
@@ -859,6 +865,9 @@ describe('matchesBrew', () => {
     expect(matchesBrew({ brewDose: '18' })(brew({ dose: null }))).toBe(false);
     expect(matchesBrew({ brewTemp: '93' })(brew({ tempC: 93 }))).toBe(true);
     expect(matchesBrew({ brewTemp: '93' })(brew({ tempC: 92.5 }))).toBe(false);
+    expect(matchesBrew({ grinder: 'ZP6' })(brew({ grinder: 'ZP6' }))).toBe(true);
+    expect(matchesBrew({ grinder: 'ZP6' })(brew({ grinder: 'A4Z' }))).toBe(false);
+    expect(matchesBrew({ grinder: 'ZP6' })(brew({ grinder: null }))).toBe(false);
     expect(matchesBrew({})(brew({}))).toBe(true);
   });
   it('exceptOwn drops only a filter key', () => {

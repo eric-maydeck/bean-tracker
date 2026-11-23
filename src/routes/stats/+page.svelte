@@ -20,14 +20,13 @@
   import { plural } from '#lib/linkPreview.ts';
   import { formatDays, hour12 } from '#lib/hours.ts';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '#lib/insightsUrl.ts';
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { page } from '$app/state';
   import HeadingAnchor from './HeadingAnchor.svelte';
-  import GrinderSelect from './GrinderSelect.svelte';
   import KindsBar from './KindsBar.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import { packSpans } from './rows';
@@ -93,19 +92,19 @@
   // Brew filters: one select each, on the tabs that use them (BREW_FILTERS_ON); a chip for every one set, any tab.
   const BREW_OPTIONS = $derived({
     dripper: data.brewOptions.drippers, filter: data.brewOptions.filters, water: data.brewOptions.waters,
-    brewDose: data.brewOptions.doses, brewTemp: data.brewOptions.temps
+    brewDose: data.brewOptions.doses, brewTemp: data.brewOptions.temps,
+    grinder: data.brewOptions.grinders.length > 1 ? data.brewOptions.grinders.map((g) => g.slug) : [] // one grinder: nothing to pick
   });
-  const brewSelects = $derived(brewSelectsOn(s.tab).filter((k) => BREW_OPTIONS[k].length));
+  // The Grinder's value is a slug; its label is the name.
+  const brewText = (k: BrewFilterKey, v: string) => (k === 'grinder' ? (data.brewOptions.grinders.find((g) => g.slug === v)?.name ?? v) : brewFilterText(k, v));
+  const brewSelects = $derived(BREW_FILTERS_ON[s.tab].filter((k) => BREW_OPTIONS[k].length));
   const brewChips = $derived(BREW_FILTER_KEYS.filter((k) => s[k]));
-  // Gear's Grinder pick (a slug, not a BrewFilterKey: Brewing's own grinder select shares the param) lives in this dialog too.
-  const gearGrinder = $derived(s.tab === 'gear' && s.grinder ? (data.lab?.grinders.find((g) => g.slug === s.grinder)?.name ?? s.grinder) : undefined);
-  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => brewSelectsOn(s.tab).includes(k)).length + (gearGrinder ? 1 : 0));
+  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => BREW_FILTERS_ON[s.tab].includes(k)).length);
   const brewOff = Object.fromEntries(BREW_FILTER_KEYS.map((k) => [k, undefined]));
 
   // The Filters dialog edits a draft (fdraft, '' = Any/Default) seeded from the URL on open. Only Apply / Reset reach the URL;
   // Esc, a backdrop click or any other close just drops it (the next open reseeds).
-  const grinderShown = $derived(s.tab === 'gear' && (data.lab?.grinders.length ?? 0) > 1);
-  const filterKeys = $derived<string[]>([...COFFEE_FIELDS.map(([k]) => k), 'caffeine', ...brewSelects, ...(grinderShown ? ['grinder'] : [])]);
+  const filterKeys = $derived<string[]>([...COFFEE_FIELDS.map(([k]) => k), 'caffeine', ...brewSelects]);
   let fdraft = $state<Record<string, string>>({});
   function openFilters() {
     fdraft = Object.fromEntries(filterKeys.map((k) => [k, ((s as Record<string, unknown>)[k] as string | undefined) ?? '']));
@@ -498,10 +497,10 @@
     leaderboards: 'Applies when ranking by Rating or vs like coffees'
   };
   let menuOff = $derived(ratingsMenu ? undefined : MENU_OFF[s.tab]);
-  // The tab's own controls row: Leaderboards, Habits, Consumption, Milestones, Sweet spots, and Brewing with 2+ grinders.
+  // The tab's own controls row: Leaderboards, Habits, Consumption, Milestones and Sweet spots.
   let tabBarOn = $derived(
     !!(data.boards || (s.tab === 'habits' && data.habits) || (s.tab === 'consumption' && data.consumptionTab) || (s.tab === 'milestones' && data.milestones) ||
-      (s.tab === 'sweetspots' && data.sweetSpots) || (s.tab === 'brewing' && data.brewing && (data.lab?.grinders.length ?? 0) > 1))
+      (s.tab === 'sweetspots' && data.sweetSpots))
   );
   // Phones (≤480): the narrow Period and Compare selects read "Last 12 mo." instead of clipping "Last 12 months".
   // The data-short attribute lets app.html's first-paint script show the short text before hydration.
@@ -701,12 +700,11 @@
   {#if tabBarOn}
     <div class="tab-controls">
       {#if s.tab === 'milestones'}<KindsBar kinds={s.kinds} {choose} />
-      {:else if s.tab === 'brewing'}<div class="insights-bar"><GrinderSelect grinders={data.lab!.grinders} grinder={s.grinder} {choose} /></div>
       {:else}{@render tab('bar')}{/if}
     </div>
   {/if}
   <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. Sweet spots' Bag set Roast and Process, so dropping either (or Clear all) drops the Bag too. -->
-  {#if coffeeChips.length || brewChips.length || gearGrinder}
+  {#if coffeeChips.length || brewChips.length}
     <div class="filter-chips coffee-chips">
       {#each coffeeChips as [key, value] (key)}
         <span class="filter-chip"
@@ -717,8 +715,8 @@
         >
       {/each}
       {#each brewChips as k (k)}
-        {@const off = !brewSelectsOn(s.tab).includes(k)}
-        {@const value = brewFilterText(k, s[k]!)}
+        {@const off = !BREW_FILTERS_ON[s.tab].includes(k)}
+        {@const value = brewText(k, s[k]!)}
         <span class="filter-chip" class:muted={off}
           ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => !off && openFilters()}>{value}</button
           ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
@@ -726,16 +724,8 @@
           ></span
         >
       {/each}
-      {#if gearGrinder}
-        <span class="filter-chip"
-          ><button type="button" class="filter-chip-label" use:labelTip={'Edit in Filters'} onclick={() => openFilters()}>{gearGrinder}</button
-          ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
-            aria-label="Remove filter: {gearGrinder}" onclick={() => choose({ grinder: undefined })}>✕</button
-          ></span
-        >
-      {/if}
       <button type="button" class="filter-clear-all"
-        onclick={() => choose({ ...brewOff, ...(s.tab === 'gear' ? { grinder: undefined } : {}), roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined, bag: undefined })}>Clear all</button>
+        onclick={() => choose({ ...brewOff, roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined, bag: undefined })}>Clear all</button>
     </div>
   {/if}
 </div>
@@ -798,20 +788,10 @@
           <select class="ctl-select" aria-label={BREW_FILTER_LABEL[key]} value={fdraft[key] ?? ''}
             onchange={(e) => (fdraft[key] = e.currentTarget.value)}>
             <option value="">Any</option>
-            {#each BREW_OPTIONS[key] as v (v)}<option value={v}>{brewFilterText(key, v)}</option>{/each}
+            {#each BREW_OPTIONS[key] as v (v)}<option value={v}>{brewText(key, v)}</option>{/each}
           </select>
         </label>
       {/each}
-      {#if grinderShown}
-        <label class="form-field">
-          <span>Grinder</span>
-          <select class="ctl-select" aria-label="Grinder" value={fdraft.grinder ?? ''}
-            onchange={(e) => (fdraft.grinder = e.currentTarget.value)}>
-            <option value="">Any</option>
-            {#each data.lab!.grinders as g (g.slug)}<option value={g.slug}>{g.name}</option>{/each}
-          </select>
-        </label>
-      {/if}
     </div>
     <!-- Under the fields, its space always reserved: nothing above or below moves when the Default hint comes and goes. -->
     <p class="coffees-note" class:off={!!fdraft.caffeine}><span class="setting-name">Caffeine</span>, <span class="setting-name">Default ({data.defaultCaffeine})</span>: {DEFAULT_HINT[data.defaultCaffeine]}</p>
@@ -986,7 +966,7 @@
     {link}
   />
 {:else if s.tab === 'milestones' && data.milestones}
-  <Milestones m={data.milestones} />
+  <Milestones m={data.milestones} {wholeKeys} />
 {:else if s.tab === 'insights' && data.insights}
   <Insights
     t={data.insights}
@@ -1400,13 +1380,13 @@
   .coffees-note.off {
     visibility: hidden;
   }
-  /* Phone landscape (333px tall): the fields in five columns so the panel fits without scrolling. */
+  /* Phone landscape (333px tall): the fields in six columns so the panel fits without scrolling. */
   @media (max-height: 450px) {
     .coffees-dialog {
       width: min(56rem, 100% - 2rem);
     }
     .coffees-fields {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
     }
   }
   .range-dialog::backdrop {

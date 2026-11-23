@@ -308,7 +308,7 @@ export function labOptions(brews: readonly BrewFact[], bags: readonly BagFact[])
 // The brew filters: each set key must match; a missing value or the mixed filter never does.
 export const matchesBrew = (f: BrewFilters) => (b: BrewFact): boolean =>
   (!f.dripper || b.dripper === f.dripper) && (!f.filter || (b.filter !== MIXED_FILTER && b.filter === f.filter)) &&
-  (!f.water || b.water === f.water) && (!f.brewDose || doseBand(b.dose) === f.brewDose) &&
+  (!f.grinder || b.grinder === f.grinder) && (!f.water || b.water === f.water) && (!f.brewDose || doseBand(b.dose) === f.brewDose) &&
   (!f.brewTemp || (b.tempC !== null && b.tempC === Number(f.brewTemp)));
 // A control's own filter doesn't narrow its own options.
 export const exceptOwn = (f: BrewFilters, k: BrewFilterKey | string): BrewFilters => {
@@ -654,7 +654,8 @@ export function speedTab(rows: readonly BrewFact[], slice: (b: BrewFact) => stri
 }
 
 export interface GearTab { drippers: BandStat[]; filters: BandStat[]; matrix: Breakdown | null; byRoast: Breakdown | null; speeds: BandStat[]; speedPlot: SpeedPlot | null; speedByGroup: Breakdown | null; speedOmitted: { label: string; brews: number }[]; eras: Eras | null; grinderEras: Eras | null }
-export function gearTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings; speedBy?: Slice }): GearTab {
+// `usage`: the brews a usage chart reads for its own kind (the page passes them without that kind's filter); default `brews`.
+export function gearTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings; speedBy?: Slice; usage?: (k: 'dripper' | 'grinder') => readonly BrewFact[] }): GearTab {
   const rows = ratedIn(brews, c.period, c.ratings);
   const filter = labFn('filter');
   const drippers = ranked(pairedDeltas(rows, labFn('dripper')));
@@ -675,7 +676,7 @@ export function gearTab(brews: readonly BrewFact[], bags: readonly BagFact[], c:
     }) : null,
     byRoast: breakdown(rows, labFn('dripper'), SLICE_OF.roast, drippers.map((d) => d.label)),
     ...speed,
-    eras: eraOf(brews, c.period, (b) => b.dripper),
-    grinderEras: eraOf(brews, c.period, (b) => b.grinder)
+    eras: eraOf(c.usage?.('dripper') ?? brews, c.period, (b) => b.dripper),
+    grinderEras: eraOf(c.usage?.('grinder') ?? brews, c.period, (b) => b.grinder)
   };
 }

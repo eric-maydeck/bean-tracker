@@ -737,10 +737,29 @@ describe('brew filters', () => {
   });
   it('filters not offered on this tab do nothing', () => {
     seedBrews();
-    expect(run('?tab=sweetspots&dripper=V60').sweetSpots.matching).toEqual(run('?tab=sweetspots').sweetSpots.matching);
-    const g = run('?tab=gear&dripper=V60');
+    const g = run('?tab=spend&dripper=V60');
     expect(g.brewFilters).toEqual({});
     expect(g.explicit.dripper).toBe('V60');
+  });
+  it('gear filters narrow the tabs that gained them', () => {
+    seedBrews();
+    const matching = (q: string) => run(`?range=all&ratings=all&dial=all&tab=sweetspots${q}`).sweetSpots.matching.brews;
+    expect(matching('&dripper=V60')).toBeLessThan(matching(''));
+    const brews = (tab: string, q: string) => run(`?range=all&tab=${tab}${q}`).milestones.totals.find((x: { key: string }) => x.key === 'brews').value;
+    expect(brews('milestones', '&dripper=V60')).toBe(6);
+    expect(run('?range=all&tab=milestones').milestones.totals.find((x: { key: string }) => x.key === 'brews').value).toBe(14);
+    expect(run('?range=all&tab=gear&dripper=V60').brewFilters).toEqual({ dripper: 'V60' });
+  });
+  it('grinder is a brew filter by slug, applied by name', () => {
+    seedBrews();
+    const db = getDb();
+    db.exec(`DELETE FROM beanconqueror_grinders; INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'A4Z', '${today}'), ('g2', 'ZP6', '${today}')`);
+    db.prepare(`UPDATE beanconqueror_brews SET mill_id = CASE WHEN rowid % 2 = 0 THEN 'g1' ELSE 'g2' END`).run();
+    const d = run('?range=all&grinder=a4z');
+    expect(d.brewFilters).toEqual({ grinder: 'A4Z' });
+    expect(d.tiles.brews).toBe(7);
+    expect(run('?range=all&tab=sweetspots&grinder=a4z').brewFilters).toEqual({ grinder: 'A4Z' });
+    expect(run('?range=all').brewOptions.grinders.map((g: { slug: string }) => g.slug).sort()).toEqual(['a4z', 'zp6']);
   });
   it('a brew filter that empties the period', () => {
     seedBrews();
