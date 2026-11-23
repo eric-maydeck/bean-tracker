@@ -39,10 +39,10 @@
     { href: '/subscriptions', label: 'Subscriptions' },
     { href: '/stats', label: 'Stats' },
     { href: '/gear', label: 'Gear' },
-    { href: '/recipes', label: 'Recipes' },
-    { href: '/water', label: 'Water' }
+    { href: '/water', label: 'Water' },
+    { href: '/recipes', label: 'Recipes' }
   ];
-  // The bottom bar is full at phone width; Gear, Recipes and Water live in More there.
+  // The bottom bar is full at phone width; Gear, Water and Recipes live in More there.
   const tabLinks = links.filter((l) => !['/gear', '/recipes', '/water'].includes(l.href));
 
   let theme = $state<'light' | 'dark'>('light');
@@ -202,11 +202,11 @@
     <a class="nav-link-button" href="/gear" aria-current={page.url.pathname === '/gear' ? 'page' : undefined}
       ><Icon name="gear" /> Gear</a
     >
-    <a class="nav-link-button" href="/recipes" aria-current={current('/recipes') ? 'page' : undefined}
-      ><Icon name="list-checks" /> Recipes</a
-    >
     <a class="nav-link-button" href="/water" aria-current={page.url.pathname === '/water' ? 'page' : undefined}
       ><Icon name="drop" /> Water</a
+    >
+    <a class="nav-link-button" href="/recipes" aria-current={current('/recipes') ? 'page' : undefined}
+      ><Icon name="list-checks" /> Recipes</a
     >
     {#if data.isAdmin}
       <a class="nav-link-button" href="/account" aria-current={onAccount ? 'page' : undefined}

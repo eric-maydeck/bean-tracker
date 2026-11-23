@@ -4379,18 +4379,19 @@ export const STATES: State[] = [
     ];
   })(),
   {
-    // On /recipes the Recipes nav item is current, between Stats and Water (desktop nav, phone More panel).
+    // On /recipes the Recipes nav item is current, after Stats, Gear and Water (desktop nav, phone More panel).
     name: 'recipes-nav', viewports: 'two',
     path: () => '/recipes',
     act: async (page) => {
       if (isPhone(page)) {
         await page.getByRole('button', { name: 'More' }).click();
         await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
+        expect((await page.locator('.bottom-tabs-more-panel > a').allTextContents()).slice(0, 3).map((n) => n.trim())).toEqual(['Gear', 'Water', 'Recipes']);
       } else {
         const links = page.locator('.nav-links > a');
         await expect(links.filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
         const names = await links.allTextContents();
-        expect(names.map((n) => n.trim()).slice(names.indexOf('Stats'), names.indexOf('Stats') + 3)).toEqual(['Stats', 'Recipes', 'Water']);
+        expect(names.map((n) => n.trim()).slice(names.indexOf('Stats'), names.indexOf('Stats') + 4)).toEqual(['Stats', 'Gear', 'Water', 'Recipes']);
       }
     }
   },
