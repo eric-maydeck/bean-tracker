@@ -20,7 +20,7 @@
   import { plural } from '#lib/linkPreview.ts';
   import { formatDays, hour12 } from '#lib/hours.ts';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '#lib/insightsUrl.ts';
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
@@ -59,7 +59,7 @@
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
   // to the URL with a shallow goto: no refetch, no re-render of the other tiles. `local` holds them until the next real
   // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
-  const LOCAL_KEYS = ['open', 'low', 'views', 'card', 'chart', 'retired', 'gear', 'spendView', 'spendSeries', 'rcSort', 'rcDir', 'rcTop', 'waitBy', 'recipeBy', 'pourThin', 'recipeVs'] as const;
+  const LOCAL_KEYS = ['open', 'low', 'views', 'chart', 'spendView', 'spendSeries', 'rcSort', 'rcDir', 'rcTop', 'waitBy', 'recipeBy', 'pourThin', 'recipeVs'] as const;
   let local = $state<Pick<InsightsUrlState, (typeof LOCAL_KEYS)[number]> | null>(null);
   const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
   let s = $derived(withDefaults(explicit));
@@ -95,11 +95,11 @@
     dripper: data.brewOptions.drippers, filter: data.brewOptions.filters, water: data.brewOptions.waters,
     brewDose: data.brewOptions.doses, brewTemp: data.brewOptions.temps
   });
-  const brewSelects = $derived(brewSelectsOn(s.tab).filter((k) => BREW_OPTIONS[k].length));
+  const brewSelects = $derived(BREW_FILTERS_ON[s.tab].filter((k) => BREW_OPTIONS[k].length));
   const brewChips = $derived(BREW_FILTER_KEYS.filter((k) => s[k]));
   // Gear's Grinder pick (a slug, not a BrewFilterKey: Brewing's own grinder select shares the param) lives in this dialog too.
   const gearGrinder = $derived(s.tab === 'gear' && s.grinder ? (data.lab?.grinders.find((g) => g.slug === s.grinder)?.name ?? s.grinder) : undefined);
-  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => brewSelectsOn(s.tab).includes(k)).length + (gearGrinder ? 1 : 0));
+  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => BREW_FILTERS_ON[s.tab].includes(k)).length + (gearGrinder ? 1 : 0));
   const brewOff = Object.fromEntries(BREW_FILTER_KEYS.map((k) => [k, undefined]));
 
   // The Filters dialog edits a draft (fdraft, '' = Any/Default) seeded from the URL on open. Only Apply / Reset reach the URL;
@@ -138,7 +138,7 @@
     if (!('chart' in change)) next.chart = undefined;
     // The hash follows chart: a new chart's id, none when a tab switch or the dropped chart's own id (a reload would scroll back to it).
     const hash = change.chart ? `#${change.chart}` : change.tab || (!('chart' in change) && location.hash === `#${explicit.chart}`) ? '' : location.hash;
-    // Only open / views / card / chart / retired / gear, and every Over time board already has its series: nothing to fetch.
+    // Only open / views / chart, and every Over time board already has its series: nothing to fetch.
     if (Object.keys(change).every((k) => (LOCAL_KEYS as readonly string[]).includes(k)) && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
       local = Object.fromEntries(LOCAL_KEYS.map((k) => [k, next[k]]));
       const qs = insightsParams(next).toString();
@@ -190,7 +190,7 @@
     const qs = insightsParams(data.explicit).toString();
     try {
       if (!qs && !location.search && (!from || from.url.pathname !== location.pathname)) {
-        const saved = loadInsightsState(localStorage.getItem(INSIGHTS_STORAGE_KEY), Date.now());
+        const saved = withoutDeepLinks(loadInsightsState(localStorage.getItem(INSIGHTS_STORAGE_KEY), Date.now()) ?? ''); // an old remembered gear= must not redirect
         if (saved) return void goto(`?${saved}${location.hash}`, { replace: true, reset: false });
       }
     } catch {
@@ -579,7 +579,7 @@
     if (s.tab === 'brewing' && data.brewing && data.lab) return brewingLinks(data.brewing);
     if (s.tab === 'pours') return poursLinks(data.pours);
     if (s.tab === 'water' && data.water) return waterLinks(data.water);
-    if (s.tab === 'gear' && data.gear) return gearLinks(data.gear, data.trophies);
+    if (s.tab === 'gear' && data.gear) return gearLinks(data.gear, data.gearPanel);
     if (s.tab === 'onhand' && data.onHand) return onHandLinks(data.onHand);
     if (s.tab === 'spend' && data.spend) return spendLinks(data.spend);
     if (s.tab === 'recaps') return [];
@@ -717,7 +717,7 @@
         >
       {/each}
       {#each brewChips as k (k)}
-        {@const off = !brewSelectsOn(s.tab).includes(k)}
+        {@const off = !BREW_FILTERS_ON[s.tab].includes(k)}
         {@const value = brewFilterText(k, s[k]!)}
         <span class="filter-chip" class:muted={off}
           ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => !off && openFilters()}>{value}</button
@@ -1006,7 +1006,7 @@
 {:else if s.tab === 'water' && data.water}
   <Water t={data.water} {s} {placeTip} {choose} />
 {:else if s.tab === 'gear' && data.gear}
-  <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
+  <Gear t={data.gear} panel={data.gearPanel} {s} {placeTip} {choose} />
 {:else if s.tab === 'onhand' && data.onHand}
   {#snippet runwayChart()}
     <RunwayChart t={data.onHand!} today={data.today} paces={runwayPaces({ range: s.range, periodLabel, runwayDays: data.onHand!.runway.days, allDays: data.onHand!.runwayAll.days })} />
@@ -1513,39 +1513,6 @@
   .stat-label.wrap {
     white-space: normal; /* a caption block's items wrap (ui-rules 55) */
   }
-  /* Records and Milestones card grids (ui-rules 33): each card's row length comes from rows.ts
-     (--q4 / --q3 / --q2), picked here by the grid's width, so every row runs edge to edge. Findings
-     cards also get their row's height token the same way (--h, rows.ts sizedGrid). */
-  :global(.hl-grid) {
-    --gap: var(--space-3);
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--gap);
-    container-type: inline-size;
-  }
-  :global(.hl-grid > .hl-card) {
-    --q: var(--q2);
-    --h: var(--h2);
-    flex: 1 0 calc((100% - (var(--q) - 1) * var(--gap)) / var(--q) - 0.5px);
-  }
-  @container (min-width: 520px) {
-    :global(.hl-grid > .hl-card) {
-      --q: var(--q3);
-      --h: var(--h3);
-    }
-  }
-  @container (min-width: 900px) {
-    :global(.hl-grid > .hl-card) {
-      --q: var(--q4);
-      --h: var(--h4);
-    }
-  }
-  @container (min-width: 1150px) {
-    :global(.hl-grid > .hl-card) {
-      --q: var(--q5, var(--q4));
-      --h: var(--h5, var(--h4));
-    }
-  }
   /* Findings card height tokens (ui-rules 34; rows.ts sizedGrid picks one per row, --h above by width),
      measured from the 2026-10-12 layout the user picked. Shared by Insights' Findings and Sweet spots. */
   :global(.finding-grid) {
@@ -1701,56 +1668,6 @@
       color: var(--color-text);
     }
   }
-  /* The stat tile's language in flow layout: value largest, muted context, caption at the foot.
-     Cards in a row share its height, so captions line up. */
-  :global(.hl-card) {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.2rem;
-    min-width: 0;
-    box-sizing: border-box;
-    padding: var(--space-3) var(--space-2);
-    text-align: center;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    transition: background-color 150ms ease, border-color 150ms ease;
-  }
-  /* Sized by the card's share of the grid (its container): 2-up phone cards fit "11:42 PM", and a
-     phone row of 3 (rows.ts) shrinks to fit. */
-  :global(.hl-value) {
-    margin-top: var(--space-1);
-    font-size: min(2rem, 15cqw / var(--q, 2));
-    font-weight: 600;
-    line-height: 1.1;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-  }
-  :global(.hl-value small) {
-    font-size: 0.45em;
-    font-weight: 600;
-  }
-  :global(.hl-holder),
-  :global(.hl-line) {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  /* Names get two lines before the ellipsis: one line cut most coffees mid-name. */
-  :global(.hl-holder) {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    white-space: normal;
-    font-weight: 600;
-  }
-  :global(.hl-line) {
-    color: var(--color-text-muted);
-    font-size: 0.8rem;
-  }
   :global(.hl-badge) {
     background: color-mix(in srgb, var(--color-accent) 15%, transparent);
     color: var(--color-accent);
@@ -1784,12 +1701,6 @@
     :global(.hl-caption .stat-label) {
       min-height: 2lh;
     }
-  }
-  :global(.hl-empty) {
-    margin: 0;
-    padding: var(--space-4) 0;
-    text-align: center;
-    color: var(--color-text-muted);
   }
 
   /* Reset sits beside Share, not mid-row (the toolbar spaces its children apart). */
@@ -1956,8 +1867,7 @@
   /* Records and Milestones cards (.hl-card) share the stat tiles' hover tint (app.css's tint, from the
      page-colour base; mouse only); the gentle row's surface version is in Records.svelte. */
   @media (hover: hover) {
-    .stat-item:hover,
-    :global(.hl-card:hover) {
+    .stat-item:hover {
       background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg));
       border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
     }

@@ -10,7 +10,7 @@ export function rowSizes(n: number, cols: number): number[] {
   return Array.from({ length: rows }, (_, r) => (r < extra ? base + 1 : base)).flatMap((q) => Array(q).fill(q));
 }
 
-// The grid's CSS picks --q5 / --q4 / --q3 / --q2 by its own width (.hl-grid in +page.svelte). Five cards
+// The grid's CSS picks --q5 / --q4 / --q3 / --q2 by its own width (.hl-grid in app.css). Five cards
 // on a very wide grid make one row of five, not 3 + 2 (two cards would stretch to half the page each);
 // --q5 is --q4 for every other count.
 export const rowVars = (n: number) => {

@@ -1225,7 +1225,7 @@
     border-radius: var(--radius);
     transition: background-color 150ms ease, border-color 150ms ease;
   }
-  /* The same hover tint as the other tiles (+page.svelte's .hl-card:hover); mouse only. */
+  /* The same hover tint as the other tiles (app.css's .hl-card:hover); mouse only. */
   @media (hover: hover) {
     .story:hover,
     .early li:hover {

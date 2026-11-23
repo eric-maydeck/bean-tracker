@@ -1,4 +1,8 @@
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { gearRedirect } from '#lib/gearUrl.ts';
+import { getGearDetails } from '#lib/server/gearDetails.ts';
+import { trophyCase, gearArchive, gearPanel } from '#lib/server/insights/trophies.ts';
 import { hasRecaps, recapTiles } from '#lib/server/recaps/recap.ts';
 import { getDb, getDateFormat, getHouseholdSize, getDefaultCaffeine, lastImportedAt } from '#lib/server/db.ts';
 import { loadFacts } from '#lib/server/insights/facts.ts';
@@ -18,8 +22,6 @@ import { milestonesTab } from '#lib/server/insights/milestones.ts';
 import { recentExtra } from '#lib/server/insights/recentTips.ts';
 import { formatDay, DEFAULT_DATE_FORMAT } from '#lib/localDate.ts';
 import { dialInIds, onceDialed } from '#lib/server/insights/dialed.ts';
-import { getGearDetails } from '#lib/server/gearDetails.ts';
-import { trophyCase, gearArchive } from '#lib/server/insights/trophies.ts';
 import { insightsTab } from '#lib/server/insights/insightGenerators.ts';
 import { getRoastLevels } from '#lib/server/roastLevels.ts';
 import { loadPourFacts, poursTab } from '#lib/server/insights/pours.ts';
@@ -29,6 +31,9 @@ import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, VIEW_BOARDS, boardAvg
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
 export const load: PageServerLoad = ({ url, locals }) => {
+  // The gear showcase moved to /gear: its old tab=gear&card/gear/retired addresses go there for good.
+  const gone = gearRedirect(url);
+  if (gone) redirect(308, gone);
   const db = getDb();
   const { brews: everyBrew, bags: everyBag } = loadFacts(db);
   const householdSize = getHouseholdSize(db);
@@ -167,11 +172,6 @@ export const load: PageServerLoad = ({ url, locals }) => {
       : null,
     boardsSmall: boards ? smallHidden(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : {},
     boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : [],
-    // Gear tab only: every dripper, grinder and filter with a brew in the Period; the Ratings and Brews switches reach only
-    // the ratings. Coffees filters, Compare, People and the other brew filters never apply.
-    trophies: s.tab === 'gear'
-      ? trophyCase(everyBrew, gearArchive(db), today, { period, ratings: s.ratings, scored: s.dial === 'all' ? everyBrew : onceDialed(everyBrew, dialIn) }, getGearDetails(db))
-      : null,
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:
       s.tab === 'consumption'
@@ -235,6 +235,8 @@ export const load: PageServerLoad = ({ url, locals }) => {
     pours: poursData,
     water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,
     gear: s.tab === 'gear' ? gearTab(scored, bags, { ...labCtx, speedBy: s.speedBy }) : null,
+    // The Your gear panel: the same all-time call as /gear, so it agrees with that page whatever the Period.
+    gearPanel: s.tab === 'gear' ? gearPanel(trophyCase(everyBrew, gearArchive(db), today, { ratings: 'current', scored: onceDialed(everyBrew, dialIn) }, getGearDetails(db))) : null,
     recapsTab,
     recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin, period) : null,
     // The last-brews and finished-bags lists show every coffee and its rating, whatever the Caffeine filter says.

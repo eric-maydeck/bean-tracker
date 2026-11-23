@@ -3403,3 +3403,101 @@ button .sample-chip {
 @media (max-width: 640px) {
   .bn-add input { font-size: 16px; min-height: 44px; }
 }
+
+/* Highlight cards (Records, Milestones, Findings, Gear): the grid, the card, its value and name, the empty line. */
+/* Records and Milestones card grids (ui-rules 33): each card's row length comes from rows.ts
+   (--q4 / --q3 / --q2), picked here by the grid's width, so every row runs edge to edge. Findings
+   cards also get their row's height token the same way (--h, rows.ts sizedGrid). */
+.hl-grid {
+  --gap: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  container-type: inline-size;
+}
+.hl-grid > .hl-card {
+  --q: var(--q2);
+  --h: var(--h2);
+  flex: 1 0 calc((100% - (var(--q) - 1) * var(--gap)) / var(--q) - 0.5px);
+}
+@container (min-width: 520px) {
+  .hl-grid > .hl-card {
+    --q: var(--q3);
+    --h: var(--h3);
+  }
+}
+@container (min-width: 900px) {
+  .hl-grid > .hl-card {
+    --q: var(--q4);
+    --h: var(--h4);
+  }
+}
+@container (min-width: 1150px) {
+  .hl-grid > .hl-card {
+    --q: var(--q5, var(--q4));
+    --h: var(--h5, var(--h4));
+  }
+}
+/* The stat tile's language in flow layout: value largest, muted context, caption at the foot.
+   Cards in a row share its height, so captions line up. */
+.hl-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: var(--space-3) var(--space-2);
+  text-align: center;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+/* Sized by the card's share of the grid (its container): 2-up phone cards fit "11:42 PM", and a
+   phone row of 3 (rows.ts) shrinks to fit. */
+.hl-value {
+  margin-top: var(--space-1);
+  font-size: min(2rem, 15cqw / var(--q, 2));
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.hl-value small {
+  font-size: 0.45em;
+  font-weight: 600;
+}
+.hl-holder,
+.hl-line {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Names get two lines before the ellipsis: one line cut most coffees mid-name. */
+.hl-holder {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  font-weight: 600;
+}
+.hl-line {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+.hl-empty {
+  margin: 0;
+  padding: var(--space-4) 0;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+/* Highlight cards share the stat tiles' hover tint (the tint from the page-colour base; mouse only). */
+@media (hover: hover) {
+  .hl-card:hover {
+    background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg));
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+  }
+}
