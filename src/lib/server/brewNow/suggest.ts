@@ -8,8 +8,11 @@ import type { Confidence } from '#lib/brewNowConfidence.ts';
 
 export type Setting = 'grind' | 'temp' | 'dose' | 'ratio' | 'recipe' | 'water';
 export type { Confidence };
+export const RECIPE_WEIGHT = 3;
+export interface RecipeChoice { id: number; name: string; slug: string; tempC: number | null; ratios: number[]; asWritten: boolean }
 export interface Row {
   setting: Setting; value: string | null; reason: string; tier: Tier | null; confidence: Confidence;
+  source?: 'recipe'; // the value is the chosen recipe's own, not from brews
   synopsis: string[]; // 2-4 short sentences shown when the row expands (empty when there is no value)
   evidence: BrewRow[]; // up to 8, highest weight first, low ratings kept
   link: string | null; reference?: { grinder: string; grind: string }[] // grind with no data on this grinder
@@ -22,6 +25,8 @@ export interface Suggestion {
   rows: Row[]; dose: number | null; ratio: number | null; // the pair in use (the user's pick, else the suggestion)
   suggestedDose: number | null; suggestedRatio: number | null; dosePlan: DosePlan | null; confidence: Confidence; basis: string; basisCoffees: BasisCoffee[]; lastNote: string | null;
   otherGrinders: OtherGrinder[]; // other grinders with tier 1-3 data: their best / typical setting, not converted
+  recipeRank: number[]; // recipe ids in the recipe pick, highest summed weight first (never uses the chosen recipe)
+  switchable: boolean; // the chosen recipe has a temp or ratio that differs from what "Your brews" shows
 }
 export interface Gear { grinder: string | null; dripper: string | null; filter: string | null }
 export interface SimilarCoffee {
@@ -118,7 +123,9 @@ interface PickOpts { anyGear?: boolean; /* dose / ratio: the same whatever gear 
 
 export interface Chosen { dose: number | null; ratio: number | null }
 export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: GearClass, doses: number[], today: string,
-  ratios: number[] = [], chosen: Chosen = { dose: null, ratio: null }): Suggestion {
+  ratios: number[] = [], chosen: Chosen = { dose: null, ratio: null }, recipe: RecipeChoice | null = null): Suggestion {
+  const usedRecipe = (r: BrewRow) => !!recipe && r.recipeId === recipe.id;
+  const recipeFactor = (r: BrewRow) => (usedRecipe(r) ? RECIPE_WEIGHT : 1);
   const tiers = new Map(rows.map((r) => [r, tierOf(target, r)]));
   const rated = rows.filter((r) => r.rating !== null);
   const tg = processGroup(target.processing);
@@ -190,6 +197,10 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   };
   const row = (setting: Setting, p: Pick, value: string, reason: string, link: string | null = null, extras: string[] = []): Row => {
     used.push(p);
+    if (recipe && ['grind', 'temp', 'dose', 'ratio'].includes(setting)) {
+      const n = p.set.filter(usedRecipe).length;
+      extras = [...extras, n ? `${n} of these ${p.set.length} brews used ${recipe.name}` : `None of these brews used ${recipe.name}, so this comes from your other recipes`];
+    }
     return {
       setting, value, reason: p.loose ? `No brews on this gear; ${reason}` : reason, tier: p.tier, confidence: conf(p),
       synopsis: synopsis(p, setting, p.loose ? ['You have no brews on this exact gear, so this uses other gear', ...extras] : extras),
@@ -207,14 +218,23 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   };
   const left = target.gramsLeft;
   // E1 (round 5): dose and ratio never depend on the gear picked; the filter's gear weight and pool were moving the dose.
-  const dS = stat((r) => r.dose, { anyGear: true }), rS = stat((r) => (r.dose && r.waterG ? r.waterG / r.dose : null), { anyGear: true });
+  const dS = stat((r) => r.dose, { anyGear: true, factor: recipeFactor }), rS = stat((r) => (r.dose && r.waterG ? r.waterG / r.dose : null), { anyGear: true, factor: recipeFactor });
   const snapRatio = (v: number) => (ratios.length ? ratios.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a)) : Math.round(v * 2) / 2);
   const sugDose = dS ? (() => { const d = snap(dS.v); return left !== null && left > 0 && left < d ? Math.round(left * 10) / 10 : d; })() : null; // never more than the bag holds
-  const sugRatio = rS ? snapRatio(rS.v) : null;
+  // The recipe's ratio: the target nearest the brews' median (the first with no brews), not snapped to the user's list.
+  const recipeRatio = recipe?.ratios.length ? (rS ? recipe.ratios.reduce((a, b) => (Math.abs(b - rS.v) < Math.abs(a - rS.v) ? b : a)) : recipe.ratios[0]) : null;
+  const brewsRatio = rS ? snapRatio(rS.v) : null;
+  const ratioN = rS ? rS.p.set.filter(usedRecipe).length : 0;
+  const ratioDiff = recipeRatio !== null && brewsRatio !== null && fmtRatio(recipeRatio) !== fmtRatio(brewsRatio);
+  const ratioFromRecipe = recipeRatio !== null && (recipe!.asWritten || ratioN < 3 || !rS);
+  const sugRatio = ratioFromRecipe ? recipeRatio : brewsRatio;
   const brewDose = chosen.dose ?? sugDose, brewRatio = chosen.ratio ?? sugRatio;
   const water = brewDose !== null && brewRatio !== null ? Math.round(brewDose * brewRatio) : null;
   const want = chosen.dose ?? (dS ? snap(dS.v) : null); // the dose before the bag limit
   const plan = left !== null && brewDose !== null && want !== null && left >= want ? dosePlan(left - brewDose, doses) : null;
+  const fromRecipe = (setting: Setting, base: Row | null, value: string, brewsSay: string | null): Row =>
+    ({ ...(base ?? noData(setting, '')), value, source: 'recipe', tier: null, confidence: 'guess',
+      reason: `From the recipe${brewsSay ? `; your brews ran about ${brewsSay}` : ''}`, ...(base ? {} : { synopsis: [], evidence: [] }) });
   const picked = (setting: Setting, value: string, suggested: string | null): Row => ({ setting, value, reason: suggested ? `Your choice; suggested ${suggested}` : 'Your choice',
     tier: null, confidence: 'guess', synopsis: [], evidence: [], link: null });
   const doseRow = ((): Row => {
@@ -230,14 +250,16 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   const ratioRow = ((): Row => {
     if (brewRatio === null) return noData('ratio', 'a water amount');
     if (chosen.ratio !== null && chosen.ratio !== sugRatio) return rS ? { ...row('ratio', rS.p, fmtRatio(brewRatio), `Your choice; suggested ${fmtRatio(sugRatio!)}`), tier: rS.p.tier } : picked('ratio', fmtRatio(brewRatio), null);
-    return row('ratio', rS!.p, fmtRatio(brewRatio), `Median ${fmtRatio(rS!.v)} of ${src(rS!.p)}`, null,
-      [`These brews ran about ${fmtRatio(rS!.v)}, and ${fmtRatio(brewRatio)} is the nearest ratio on your list`]);
+    const base = rS ? row('ratio', rS.p, fmtRatio(brewRatio), `Median ${fmtRatio(rS.v)} of ${src(rS.p)}`, null,
+      [`These brews ran about ${fmtRatio(rS.v)}, and ${fmtRatio(brewRatio)} is the nearest ratio on your list`]) : null;
+    if (ratioFromRecipe) return fromRecipe('ratio', base, fmtRatio(brewRatio), ratioDiff ? fmtRatio(rS!.v) : null);
+    return ratioDiff ? { ...base!, reason: `${base!.reason}; recipe says ${fmtRatio(recipeRatio!)}` } : base!;
   })();
   // E4: brews with a dose near the suggested one count more for grind.
   const doseFactor = (r: BrewRow) => (brewDose !== null && r.dose !== null ? 1 / (1 + Math.abs(r.dose - brewDose) / 2) : 1);
 
   // Grind: only the chosen grinder's brews, in its own scale. `plain` keeps a single setting (no range) for reference lists.
-  const grindPick = (grinder: string, maxTier?: Tier) => pick((r) => lin(r.grind) !== null, { rest: true, grinder, maxTier, factor: doseFactor });
+  const grindPick = (grinder: string, maxTier?: Tier) => pick((r) => lin(r.grind) !== null, { rest: true, grinder, maxTier, factor: (r) => doseFactor(r) * recipeFactor(r) });
   const grindOn = (grinder: string, maxTier?: Tier, plain = false): { p: Pick; value: string; reason: string; extras: string[] } => {
     const p = grindPick(grinder, maxTier)!, k = parts(rows.filter((r) => r.grinder === grinder).map((r) => r.grind));
     const own = p.set.filter((r) => tiers.get(r) === p.tier);
@@ -293,8 +315,8 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
 
   // E3: temps from the same process group count double, other processes half.
   const procFactor = (r: BrewRow) => (tg === OTHER ? 1 : r.processGroup === tg ? 2 : 0.5);
-  const tempRow = ((): Row => {
-    const t = stat((r) => r.tempC, { rest: true, factor: procFactor });
+  const t = stat((r) => r.tempC, { rest: true, factor: (r) => procFactor(r) * recipeFactor(r) });
+  const brewsTemp = (): Row => {
     if (!t) return noData('temp', 'temp');
     const p = t.p;
     const by = new Map<string, number[]>();
@@ -304,13 +326,22 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     if (!mine || !other || tg === OTHER) return row('temp', p, `${num(t.v)}°C`, `Median ${num(t.v)}°C of ${src(p)}`);
     const d = median(mine) - median(other[1]);
     return row('temp', p, `${num(t.v)}°C`, `Median ${num(t.v)}°C of ${src(p)}`, null, Math.abs(d) < 0.5 ? [] : [`Your ${tg.toLowerCase()} coffees ran about ${num(Math.abs(d))}°C ${d < 0 ? 'cooler' : 'warmer'} than ${other[0].toLowerCase()} ones`]);
-  })();
+  };
+  const tempN = t ? t.p.set.filter(usedRecipe).length : 0;
+  const recipeT = recipe?.tempC != null ? `${num(recipe.tempC)}°C` : null, brewsT = t ? `${num(t.v)}°C` : null;
+  const tempDiff = recipeT !== null && brewsT !== null && recipeT !== brewsT;
+  const bt = brewsTemp();
+  const tempRow = recipeT !== null && (recipe!.asWritten || tempN < 3 || !t) ? fromRecipe('temp', t ? bt : null, recipeT, tempDiff ? brewsT : null)
+    : tempDiff ? { ...bt, reason: `${bt.reason}; recipe says ${recipeT}` } : bt;
+  let recipeRank: number[] = [];
   const groupRow = (setting: 'recipe' | 'water', key: (r: BrewRow) => string | number | null, name: (r: BrewRow) => string, link: (r: BrewRow) => string): Row => {
     const p = pick((r) => key(r) !== null);
     if (!p) return noData(setting, setting);
     const sums = new Map<string | number, { w: number; n: number; r: BrewRow }>();
     for (const r of p.set) { const s = sums.get(key(r)!); sums.set(key(r)!, { w: (s?.w ?? 0) + p.w.get(r)!, n: (s?.n ?? 0) + 1, r: s?.r ?? r }); }
-    const [best, next] = [...sums.values()].sort((a, b) => b.w - a.w);
+    const ranked = [...sums].sort((a, b) => b[1].w - a[1].w);
+    if (setting === 'recipe') recipeRank = ranked.map(([k]) => k as number);
+    const [best, next] = ranked.map(([, s]) => s);
     return row(setting, p, name(best.r), `${best.n} of ${src(p)}`, link(best.r),
       [`${best.n} of these ${p.set.length} brews used ${name(best.r)}`, ...(next ? [`The next most common is ${name(next.r)}, with ${next.n} ${plural(next.n, 'brew', 'brews')}`] : [])]);
   };
@@ -320,9 +351,15 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     groupRow('recipe', (r) => r.recipeId, (r) => r.recipeName ?? '', (r) => recipeHref(r.recipeSlug ?? '')),
     groupRow('water', (r) => r.water?.trim() || null, (r) => r.water!, (r) => `/stats?tab=water&water=${encodeURIComponent(r.water!)}`)
   ];
+  const ri = rowsOut.findIndex((r) => r.setting === 'recipe');
+  if (recipe && recipeRank[0] !== recipe.id) {
+    const was = rowsOut[ri];
+    rowsOut[ri] = { ...(was.value === null ? noData('recipe', 'recipe') : was), value: recipe.name, link: recipeHref(recipe.slug), reason: 'Your choice',
+      ...(was.value === null ? { tier: null, confidence: 'guess' as const, synopsis: [], evidence: [] } : {}) };
+  }
 
   const filled = rowsOut.filter((r) => r.value !== null);
-  const confidence = rowsOut.filter((r) => r.value !== null || r.setting === 'grind') // a missing grind drags it to guess
+  const confidence = rowsOut.filter((r) => r.source !== 'recipe' && (r.value !== null || r.setting === 'grind')) // a missing grind drags it to guess
     .reduce<Confidence>((c, r) => (rank(r.confidence) < rank(c) ? r.confidence : c), 'high');
   const lead = used.length ? [...used].sort((a, b) => a.tier - b.tier || b.set.length - a.set.length)[0] : null; // the lowest tier, then the most brews
   const basis = lead ? `Based on ${basisText(lead)}.` : 'No brews to base this on yet.';
@@ -330,6 +367,7 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   for (const r of lead?.set ?? []) byCoffee.set(r.coffeeId, { slug: r.slug, name: r.coffeeName, roaster: r.roaster, brews: (byCoffee.get(r.coffeeId)?.brews ?? 0) + 1 });
   const lastNote = rows.filter((r) => tiers.get(r) === 1 && r.notes).sort((a, b) => b.localTime.localeCompare(a.localTime) || b.id - a.id)[0]?.notes ?? null;
   return {
+    recipeRank, switchable: ((tempDiff && tempN >= 3) || (ratioDiff && ratioN >= 3)),
     rows: rowsOut, confidence: filled.length ? confidence : 'guess', basis, lastNote, otherGrinders,
     dose: brewDose, ratio: brewRatio, suggestedDose: sugDose, suggestedRatio: sugRatio, dosePlan: plan,
     basisCoffees: [...byCoffee.values()].sort((a, b) => b.brews - a.brews || a.name.localeCompare(b.name))
