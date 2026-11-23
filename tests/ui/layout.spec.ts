@@ -2844,23 +2844,22 @@ export const STATES: State[] = [
         await expect(page.locator(`[id="${id}"]`), id).toHaveCount(1);
       }
     } },
-  // A gear chip's goto keeps the hash and does not scroll to it: the page stays where it was.
+  // A gear chip's goto keeps the hash and does not scroll to it. The page is first wheeled away from #start-here, so a jump back to it would show.
   { name: 'brew-now-hash-kept', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew#start-here`,
-    act: async (page, s) => {
-      const chip = () => page.getByRole('group', { name: 'Dripper' }).locator('button[aria-pressed="false"]:not([aria-haspopup])').first();
-      const pick = async () => { // dispatchEvent: no scroll-into-view, so scrollY is only what goto does
-        const y0 = await page.evaluate(() => scrollY);
-        await chip().evaluate((b: HTMLElement) => b.click());
-        await expect(page).toHaveURL(/dripper=/);
-        return [y0, await page.evaluate(() => scrollY)];
-      };
-      const [h0, h1] = await pick();
-      expect(new URL(page.url()).hash).toBe('#start-here');
-      expect(Math.abs(h1 - h0)).toBeLessThanOrEqual(2);
-      await gotoReady(page, `/coffees/${s.slugs.brew}/brew`);
-      const [n0, n1] = await pick();
-      expect(new URL(page.url()).hash).toBe('');
-      expect(Math.abs(n1 - n0)).toBeLessThanOrEqual(2);
+    act: async (page) => {
+      const y = () => page.evaluate(() => scrollY);
+      const top = () => page.locator('#start-here').evaluate((el) => el.getBoundingClientRect().top);
+      await page.mouse.move(10, 10);
+      await page.mouse.wheel(0, (await y()) > 0 ? -100000 : 400);
+      await expect.poll(async () => Math.abs(await top()) > 100, { message: 'scrolled away from the header' }).toBe(true);
+      let last = -1; // settled: scrollY equal on two reads
+      await expect.poll(async () => { const v = await y(); const same = v === last; last = v; return same; }).toBe(true);
+      const y0 = await y();
+      await page.getByRole('group', { name: 'Dripper' }).locator('button[aria-pressed="false"]:not([aria-haspopup])').first().evaluate((b: HTMLElement) => b.click()); // no scroll-into-view
+      await expect(page).toHaveURL(/dripper=.*#start-here$/);
+      await expect(page.locator('#start-here')).toBeVisible();
+      expect(Math.abs((await y()) - y0)).toBeLessThanOrEqual(2);
+      expect(Math.abs(await top())).toBeGreaterThan(100);
     } },
   { name: 'brew-now-filter-keeps-dripper', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
