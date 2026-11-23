@@ -9073,6 +9073,11 @@ export const STATES: State[] = [
         await expect.poll(off).toBeLessThan(max);
       };
       await below(head, 80);
+      // Phones: the bar has scrolled away under the pinned row; open it the way a reader does (a programmatic scroll up
+      // to the chips raced the bar's hash re-landing, which scrolled back before the click).
+      const showControls = page.getByRole('button', { name: 'Show controls' });
+      const vp = page.viewportSize()!;
+      if (vp.width <= 640 || vp.height <= 450) await showControls.click();
       await page.getByRole('group', { name: 'Kinds' }).getByRole('button', { name: 'Counts' }).click();
       await expect(page).toHaveURL(new RegExp(`kinds=counts.*#${id}$`));
       // A month outside the period: no error, the page stays at the top.
