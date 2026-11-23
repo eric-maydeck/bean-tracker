@@ -9,6 +9,8 @@ import { MIXED_FILTER, parseMethod, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { daysBetween, inPeriod, type Period } from './time';
 import type { Ratings } from '#lib/insightsUrl.ts';
+import { statsLink } from '#lib/gearUrl.ts';
+import type { LabOptions } from './lab';
 
 export const RETIRED_AFTER_DAYS = 90;
 
@@ -142,4 +144,17 @@ export function gearPanel(trophies: readonly Trophy[]): GearPanelCard[] | null {
     key: t.key, name: t.name, kind: t.kind, image: t.image, rating: t.rating, brews: t.brews, grams: t.grams, specs: topSpecs(t, 2)
   }));
   return cards.length ? cards : null;
+}
+
+// The Stats link of each piece of gear Stats would accept: its URL parser keeps only values in the lab's picker lists (rated
+// brews only, for grinders; the slug is the lab's own), and silently shows the unfiltered page for any other. Keyed by trophy key.
+export function statsLinks(trophies: readonly Trophy[], lab: LabOptions): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of trophies) {
+    if (t.kind === 'grinder') {
+      const g = lab.grinders.find((x) => x.name === t.name);
+      if (g) out[t.key] = statsLink({ kind: 'grinder', key: `grinder-${g.slug}`, name: t.name });
+    } else if ((t.kind === 'dripper' ? lab.drippers : lab.filters).includes(t.name)) out[t.key] = statsLink(t);
+  }
+  return out;
 }

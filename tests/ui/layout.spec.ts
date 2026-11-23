@@ -10954,7 +10954,8 @@ export const STATES: State[] = [
       await kinds.getByRole('button', { name: 'Grinders' }).click();
       await expect(page).toHaveURL(/gear=dripper$/);
       await expect(page.locator('button.retired-toggle')).toContainText('Retired (1)'); // Switch
-      await kinds.getByRole('button', { name: 'Drippers' }).click(); // the last one stays on
+      await expect(kinds.getByRole('button', { name: 'Drippers' })).toHaveAttribute('aria-disabled', 'true');
+      await kinds.getByRole('button', { name: 'Drippers' }).click({ force: true }); // aria-disabled: Playwright would wait forever; the last one stays on
       await expect(kinds.getByRole('button', { name: 'Drippers' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page).toHaveURL(/gear=dripper$/);
       await expectGridRowsFull(page, '.trophy-grid');
@@ -11033,9 +11034,7 @@ export const STATES: State[] = [
       } else {
         await card.hover();
         await expect(tip).toBeVisible();
-        await page.waitForTimeout(400);
-        await tip.getByRole('link').hover(); // the pointer crosses onto the tip: it stays
-        await expect(tip).toBeVisible();
+        await tip.getByRole('link').hover(); // the pointer crosses onto the tip: it stays (the click below needs it open)
       }
       await expect(tip).toContainText('Average');
       await expect(tip).toContainText('Brews');
@@ -11045,6 +11044,27 @@ export const STATES: State[] = [
       await link.click();
       await expect(page).toHaveURL(/\/gear\?card=dripper-v60$/);
       await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
+    } },
+  // By keyboard: Enter pins, Tab reaches the tip's link and keeps it open, focus leaving closes it; focusing another card opens that one.
+  { name: 'stats-gear-panel-tip-keys', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      const cards = page.locator('[data-section="gear-trophies"] .gear-card');
+      const tip = page.locator('.cell-tip:popover-open');
+      await cards.first().focus();
+      await page.keyboard.press('Enter');
+      await expect(tip).toBeVisible();
+      await page.keyboard.press('Tab');
+      await expect(tip.getByRole('link')).toBeFocused();
+      await expect(tip).toBeVisible();
+      await page.keyboard.press('Tab'); // out of the card and its tip: the next card (a keyboard focus) opens its own
+      await expect(cards.nth(1)).toBeFocused();
+      await expect(tip).toContainText((await cards.nth(1).locator('.name').textContent())!);
+      await expect(tip).toHaveCount(1);
+      await page.keyboard.press('Shift+Tab'); // focusing another card opens that card's tip
+      await expect(cards.first()).toBeFocused();
+      await expect(tip).toContainText((await cards.first().locator('.name').textContent())!);
+      await page.getByRole('heading', { level: 1 }).click(); // a click outside
+      await expect(tip).toHaveCount(0);
     } },
   { name: 'gear-dialog', viewports: 'two', path: () => '/gear?card=grinder-zp6-special',
     act: async (page) => {

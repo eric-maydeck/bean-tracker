@@ -33,7 +33,7 @@
 <p><a href="/stats?tab=gear">Charts and ratings for your gear on Stats →</a></p>
 
 {#if data.trophies.length}
-  <TrophyCase list={data.trophies} {s} {choose} />
+  <TrophyCase list={data.trophies} links={data.statsLinks} {s} {choose} />
 {:else}
   <section class="chart-panel"><p class="hl-empty">No gear yet: gear shows up here once brews record it.</p></section>
 {/if}

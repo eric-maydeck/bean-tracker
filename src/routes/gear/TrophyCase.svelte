@@ -7,15 +7,16 @@
   import { formatGrams } from '#lib/grams.ts';
   import { backdrop } from '#lib/imageBackdrop.ts';
   import { hostOf } from '#lib/imageSuggest.ts';
-  import { statsLink, type GearUrlState } from '#lib/gearUrl.ts';
+  import type { GearUrlState } from '#lib/gearUrl.ts';
   import type { Trophy } from '#lib/server/insights/trophies.ts';
   import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import GearForm from './GearForm.svelte';
   import { rowVars } from '../stats/rows';
 
-  let { list, s, choose }: {
+  let { list, links, s, choose }: {
     list: Trophy[]; s: GearUrlState;
+    links: Record<string, string>; // each gear's Stats link, only where Stats would filter on it
     choose: (c: Partial<GearUrlState>) => void;
   } = $props();
 
@@ -23,10 +24,11 @@
   const present = $derived(GEAR_KINDS.filter((k) => list.some((t) => t.kind === k)));
   const on = $derived(s.gear ?? GEAR_KINDS);
   const sections = $derived(present.filter((k) => on.includes(k)).map((kind) => ({ kind, ...shownTrophies(list.filter((t) => t.kind === kind)) })));
-  // At least one chip stays on: turning off the last one does nothing.
+  // At least one kind that has gear stays on: the last such chip is aria-disabled and turning it off is refused.
+  const lastOn = $derived(sections.length === 1 ? sections[0].kind : null);
   function toggleKind(k: GearKind) {
-    const next = GEAR_KINDS.filter((x) => (x === k ? !on.includes(x) : on.includes(x)));
-    if (next.length) choose({ gear: next });
+    if (k === lastOn) return;
+    choose({ gear: GEAR_KINDS.filter((x) => (x === k ? !on.includes(x) : on.includes(x))) });
   }
   function toggleShelf(k: GearKind) {
     const open = s.retired ?? [];
@@ -155,7 +157,7 @@
       <span class="show-label" id="show-label">Show:</span>
       <div class="tab-group kind-chips" role="group" aria-labelledby="show-label">
         {#each present as k (k)}
-          <button aria-pressed={on.includes(k)} onclick={() => toggleKind(k)}>{KIND_LABEL[k]}s</button>
+          <button aria-pressed={on.includes(k)} aria-disabled={k === lastOn ? 'true' : undefined} onclick={() => toggleKind(k)}>{KIND_LABEL[k]}s</button>
         {/each}
       </div>
     </div>
@@ -225,7 +227,7 @@
           </article>
           {/if}
             {@render usage(t)}
-          {#if !editing}<a class="stats-link" href={statsLink(t)}>See stats for this gear</a>{/if}
+          {#if !editing && links[t.key]}<a class="stats-link" href={links[t.key]}>See stats for this gear</a>{/if}
         </div>
         {#if leaving}
           <!-- Inside the dialog, so in the top layer; Escape = Keep editing (window keydown above). -->
@@ -410,6 +412,10 @@
     align-items: center;
     gap: var(--space-2);
     margin-bottom: var(--space-3);
+  }
+  .kind-chips button[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.7;
   }
   .show-label {
     color: var(--color-text-muted);

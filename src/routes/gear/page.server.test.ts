@@ -29,4 +29,21 @@ describe('/gear load', () => {
     expect(v60.brews).toBe(2);
     expect(v60.brews).toBe(all.brews);
   });
+
+  it('offers a Stats link only where Stats would filter on it', () => {
+    const db = getDb();
+    const today = localToday();
+    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m9', 'Unrated Dripper', '${today}')`);
+    db.exec(`INSERT OR REPLACE INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'Rated Mill', '${today}'), ('g2', 'Unrated Mill', '${today}')`);
+    const ins = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, ground_coffee_g, rating, preparation_id, mill_id, imported_at) VALUES (?, 15, ?, ?, ?, ?)`);
+    ins.run(`${today}T16:00:00.000Z`, null, 'm9', 'g2', today); // no rating
+    ins.run(`${today}T16:00:01.000Z`, 8, 'm1', 'g1', today);
+    const d = run();
+    const key = (n: string) => d.trophies.find((x: { name: string }) => x.name === n).key;
+    // Drippers list every brew's, rated or not: the link works.
+    expect(d.statsLinks[key('Unrated Dripper')]).toBe('/stats?dripper=Unrated+Dripper');
+    expect(d.statsLinks[key('Rated Mill')]).toBe('/stats?tab=sweetspots&grinder=rated-mill');
+    // Stats' grinder list is rated brews only: no link rather than one that shows the unfiltered page.
+    expect(d.statsLinks[key('Unrated Mill')]).toBeUndefined();
+  });
 });
