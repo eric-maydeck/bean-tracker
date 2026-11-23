@@ -124,7 +124,7 @@
 </section>
 
 <style>
-  h2 {
+  .gear-panel :global(h2) {
     margin: 0 0 var(--space-3);
   }
   /* A row of whole cards, the full content width: --n of them exactly fill it (the count steps up with the width, cards about

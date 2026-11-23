@@ -11029,7 +11029,7 @@ export const STATES: State[] = [
       await expect(panel.getByRole('heading', { level: 2, name: 'Your gear' })).toBeVisible();
       const go = panel.getByRole('link', { name: 'Open the Gear page →' });
       await expect(go).toHaveAttribute('href', '/gear');
-      await expect(panel.getByRole('link')).toHaveCount(1); // the cards are tip anchors, not links
+      await expect(panel.locator('a:not(h2 a)')).toHaveCount(1); // the cards are tip anchors, not links (the heading's own link aside)
       const blurb = panel.getByText('Browse your drippers, grinders and filters, and see or edit their details, on the Gear page.');
       const [bb, gb] = [(await blurb.boundingBox())!, (await go.boundingBox())!];
       expect(Math.abs(bb.y + bb.height / 2 - (gb.y + gb.height / 2)) < 40 || gb.y >= bb.y + bb.height - 1, 'the button is beside or under the blurb').toBe(true);

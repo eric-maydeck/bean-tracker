@@ -6,7 +6,7 @@ export async function expectHeadingLinks(page: Page, ids: string[], land: string
   for (const id of ids) {
     const h = page.locator(`:is(h2,h3)#${id}`);
     await expect(h, id).toHaveCount(1);
-    expect(await h.locator('> a').getAttribute('href'), id).toMatch(new RegExp(`#${id}$`));
+    await expect(h.locator('> a'), id).toHaveAttribute('href', new RegExp(`#${id}$`));
     await expect(h.locator('.copy-link'), id).toHaveCount(1);
   }
   const atTop = () =>
