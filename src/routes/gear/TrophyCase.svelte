@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from '#lib/components/Icon.svelte';
   import SampleNote from '#lib/components/SampleNote.svelte';
-  import { GEAR_KINDS, KIND_LABEL, fieldsFor, specText, shownTrophies, type GearField, type GearKind } from '#lib/gear.ts';
+  import { GEAR_KINDS, KIND_LABEL, fieldsFor, specText, shownTrophies, type GearKind } from '#lib/gear.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import Stamp from '#lib/components/Stamp.svelte';
   import { formatGrams } from '#lib/grams.ts';
@@ -12,7 +12,6 @@
   import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import GearForm from './GearForm.svelte';
-  import { rowVars } from '../stats/rows';
 
   let { list, links, s, choose }: {
     list: Trophy[]; s: GearUrlState;
@@ -20,16 +19,8 @@
     choose: (c: Partial<GearUrlState>) => void;
   } = $props();
 
-  // One section per kind that has gear, in GEAR_KINDS order; the Show chips (absent = all) hide whole kinds, each with its own retired shelf.
-  const present = $derived(GEAR_KINDS.filter((k) => list.some((t) => t.kind === k)));
-  const on = $derived(s.gear ?? GEAR_KINDS);
-  const sections = $derived(present.filter((k) => on.includes(k)).map((kind) => ({ kind, ...shownTrophies(list.filter((t) => t.kind === kind)) })));
-  // At least one kind that has gear stays on: the last such chip is aria-disabled and turning it off is refused.
-  const lastOn = $derived(sections.length === 1 ? sections[0].kind : null);
-  function toggleKind(k: GearKind) {
-    if (k === lastOn) return;
-    choose({ gear: GEAR_KINDS.filter((x) => (x === k ? !on.includes(x) : on.includes(x))) });
-  }
+  // One section per kind that has gear, in GEAR_KINDS order, each with its own retired shelf.
+  const sections = $derived(GEAR_KINDS.filter((k) => list.some((t) => t.kind === k)).map((kind) => ({ kind, ...shownTrophies(list.filter((t) => t.kind === kind)) })));
   function toggleShelf(k: GearKind) {
     const open = s.retired ?? [];
     const next = GEAR_KINDS.filter((x) => (x === k ? !open.includes(x) : open.includes(x)));
@@ -135,11 +126,10 @@
 {/snippet}
 
 {#snippet grid(items: Trophy[], retired: boolean)}
-  {@const vars = rowVars(items.length)}
-  <div class="trophy-grid hl-grid" class:retired>
+  <div class="trophy-grid" class:retired>
     {#each items as t, i (t.key)}
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-      <div class="hl-card trophy-card" data-key={t.key} style="{vars[i]};{kindVars(t)}" onclick={(e) => cardClick(e, t.key)}>
+      <div class="hl-card trophy-card" data-key={t.key} style={kindVars(t)} onclick={(e) => cardClick(e, t.key)}>
         {@render img(t)}
         <div class="trophy-main">
           <span class="trophy-kind">{KIND_LABEL[t.kind]}</span>
@@ -153,20 +143,10 @@
 
 {#if list.length}
   <section class="chart-panel" data-section="gear-trophies">
-    <div class="show-row" data-button-row>
-      <span class="show-label" id="show-label">Show:</span>
-      <div class="tab-group kind-chips" role="group" aria-labelledby="show-label">
-        {#each present as k (k)}
-          <button aria-pressed={on.includes(k)} aria-disabled={k === lastOn ? 'true' : undefined} onclick={() => toggleKind(k)}>{KIND_LABEL[k]}s</button>
-        {/each}
-      </div>
-    </div>
-    {#if sections.length}
-      <nav class="board-jump" aria-label="Jump to a section">
-        <span>Jump to</span>
-        {#each sections as { kind } (kind)}<a href="#gear-{kind}s">{KIND_LABEL[kind]}s</a>{/each}
-      </nav>
-    {:else}<p class="hl-empty">No gear of that kind.</p>{/if}
+    <nav class="board-jump" aria-label="Jump to a section">
+      <span>Jump to</span>
+      {#each sections as { kind } (kind)}<a href="#gear-{kind}s">{KIND_LABEL[kind]}s</a>{/each}
+    </nav>
     {#each sections as { kind, active, retired } (kind)}
       {@const shelf = !!s.retired?.includes(kind)}
       <section class="kind-section" id="gear-{kind}s" data-section="gear-{kind}s">
@@ -405,20 +385,26 @@
     align-items: center;
   }
 
-  /* The Show chips, the Findings theme chips' look (.tab-group): multi-select toggles, a 2-up grid on phones. */
-  .show-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
+  /* Fixed columns by width, never spread over the row: every card on the page is the same size, in the active grid and on a
+     retired shelf (a lone retired card is not stretched across the page). A short last row stays short. */
+  .kind-section {
+    container-type: inline-size;
   }
-  .kind-chips button[aria-disabled='true'] {
-    cursor: not-allowed;
-    opacity: 0.7;
+  .trophy-grid {
+    --q: 2; /* the .hl-value size reads it */
+    display: grid;
+    grid-template-columns: repeat(var(--q), minmax(0, 1fr));
+    gap: var(--space-3);
   }
-  .show-label {
-    color: var(--color-text-muted);
+  @container (min-width: 520px) {
+    .trophy-grid {
+      --q: 3;
+    }
+  }
+  @container (min-width: 900px) {
+    .trophy-grid {
+      --q: 4;
+    }
   }
   .kind-section h2 {
     margin: var(--space-4) 0 var(--space-3);
@@ -428,19 +414,6 @@
     color: var(--color-text-muted);
     font-weight: 400;
     font-size: 0.85em;
-  }
-  .kind-chips button {
-    margin: 0;
-    white-space: nowrap;
-  }
-  @media (max-width: 640px) {
-    .kind-chips {
-      flex: 1 1 100%;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-      grid-auto-flow: column;
-      gap: var(--space-2);
-    }
   }
 
   /* ---- Retired shelf ---- */

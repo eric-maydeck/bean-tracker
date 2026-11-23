@@ -10453,7 +10453,6 @@ export const STATES: State[] = [
       await expect(page.getByRole('heading', { level: 1, name: 'Gear' })).toBeVisible();
       await expect(sec.locator('.trophy-grid:not(.retired) .trophy-card[data-key="dripper-switch"]')).toHaveCount(0);
       await expect(sec.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'false');
-      await expectGridRowsFull(page, '.trophy-grid');
       // The low-confidence chip sits centered between brews and grams without touching either, and never grows the row.
       const chipCards = page.locator('.trophy-card:has(.sample-note)');
       expect(await chipCards.count()).toBeGreaterThan(0);
@@ -10935,61 +10934,35 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/retired=dripper/);
       expect(loads).toEqual([]);
     } },
-  // The Show chips: multi-select, URL, no refetch, sections and jump buttons follow them, the last chip stays on, legacy gear=grinder.
-  { name: 'gear-trophy-kind', path: () => '/gear',
+  // No card on the page stretches: with every shelf open, a lone retired card is as wide as an active one; the Show chips and the gear param are gone.
+  { name: 'gear-trophy-kind', viewports: 'two', path: () => '/gear?retired=open&gear=grinder',
     act: async (page) => {
-      const loads: string[] = [];
-      page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
-      const kinds = page.getByRole('group', { name: 'Show:' });
-      const jump = page.getByRole('navigation', { name: 'Jump to a section' });
-      for (const n of ['Drippers', 'Filters', 'Grinders']) {
-        await expect(kinds.getByRole('button', { name: n })).toHaveAttribute('aria-pressed', 'true');
-        await expect(page.getByRole('heading', { level: 2, name: new RegExp(`^${n}`) })).toBeVisible();
-        await expect(jump.getByRole('link', { name: n })).toBeVisible();
-      }
-      await kinds.getByRole('button', { name: 'Filters' }).click();
-      await expect(page).toHaveURL(/gear=dripper%2Cgrinder|gear=dripper,grinder/);
-      await expect(page.locator('.trophy-card[data-key^="filter-"]')).toHaveCount(0);
-      await expect(jump.getByRole('link', { name: 'Filters' })).toHaveCount(0);
-      await kinds.getByRole('button', { name: 'Grinders' }).click();
-      await expect(page).toHaveURL(/gear=dripper$/);
-      await expect(page.locator('button.retired-toggle')).toContainText('Retired (1)'); // Switch
-      await expect(kinds.getByRole('button', { name: 'Drippers' })).toHaveAttribute('aria-disabled', 'true');
-      await kinds.getByRole('button', { name: 'Drippers' }).click({ force: true }); // aria-disabled: Playwright would wait forever; the last one stays on
-      await expect(kinds.getByRole('button', { name: 'Drippers' })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page).toHaveURL(/gear=dripper$/);
-      await expectGridRowsFull(page, '.trophy-grid');
-      await kinds.getByRole('button', { name: 'Filters' }).click();
-      await kinds.getByRole('button', { name: 'Grinders' }).click();
-      await expect(page).not.toHaveURL(/gear=/);
-      expect(loads).toEqual([]);
+      await expect(page.getByRole('group', { name: 'Show:' })).toHaveCount(0);
+      await expect(page).toHaveURL(/retired=open&gear=grinder$/); // a stray param is neither acted on nor rewritten
+      for (const n of ['Drippers', 'Filters', 'Grinders']) await expect(page.getByRole('heading', { level: 2, name: new RegExp(`^${n}`) })).toBeVisible();
+      const widths = await page.locator('.trophy-card').evaluateAll((cs) => cs.map((c) => Math.round(c.getBoundingClientRect().width)));
+      expect(widths.length).toBeGreaterThan(3);
+      expect(await page.locator('.trophy-grid.retired .trophy-card').count()).toBeGreaterThan(0);
+      expect(Math.max(...widths) - Math.min(...widths), `card widths ${widths}`).toBeLessThanOrEqual(1);
     } },
-  // Each kind keeps its own retired shelf; the old retired=open opens them all, the old gear=grinder shows only grinders.
+  // Each kind keeps its own retired shelf; the old retired=open opens them all.
   { name: 'gear-trophy-retired', path: () => '/gear?retired=open',
     act: async (page) => {
       await expect(page.locator('button.retired-toggle').first()).toHaveAttribute('aria-expanded', 'true');
       await expect(page.locator('.trophy-grid.retired .trophy-card[data-key="dripper-switch"]')).toBeVisible();
-      await expectGridRowsFull(page, '.trophy-grid');
-      await gotoReady(page, '/gear?gear=grinder');
-      await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
-      await expect(page.getByRole('heading', { level: 2, name: /^Drippers/ })).toHaveCount(0);
-      await expect(page.getByRole('group', { name: 'Show:' }).getByRole('button', { name: 'Grinders' })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.getByRole('group', { name: 'Show:' }).getByRole('button', { name: 'Drippers' })).toHaveAttribute('aria-pressed', 'false');
     } },
-  // The /gear page (#22): the grid with its kind toggle and shelf, a dialog with its Stats link, the old addresses and the previews.
+  // The /gear page (#22): the grid with its shelves, a dialog with its Stats link, the old addresses and the previews.
   { name: 'gear-page', viewports: 'two', path: () => '/gear',
     act: async (page) => {
       await expect(page.getByRole('heading', { level: 1, name: 'Gear' })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Charts and ratings for your gear on Stats →' })).toHaveAttribute('href', '/stats?tab=gear');
       await expect(page.locator('.trophy-grid:not(.retired) .trophy-card').first()).toBeVisible();
       await expect(page.getByRole('combobox')).toHaveCount(0); // the pick dropdowns are gone
-      await expectGridRowsFull(page, '.trophy-grid');
       const toggle = page.locator('button.retired-toggle');
       await expect(toggle).toHaveAttribute('aria-expanded', 'false');
       await toggle.click();
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
       await expect(page).toHaveURL(/\/gear\?retired=dripper$/);
-      await expectGridRowsFull(page, '.trophy-grid');
       // One section per kind in order, each with a count; its jump button scrolls to it.
       const heads = await page.locator('.kind-section > h2').allTextContents();
       expect(heads.map((h) => h.replace(/\s*\d+$/, ''))).toEqual(['Drippers', 'Filters', 'Grinders']);
@@ -11081,9 +11054,9 @@ export const STATES: State[] = [
     } },
   { name: 'gear-redirect', viewports: 'two', path: () => '/stats?tab=gear&gear=grinder&period=2025',
     act: async (page) => {
-      await expect(page).toHaveURL(/\/gear\?gear=grinder$/);
+      await expect(page).toHaveURL(/\/gear$/); // the old kind filter is dropped
       await expect(page.getByRole('heading', { level: 1, name: 'Gear' })).toBeVisible();
-      await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
+      await expect(page.getByRole('heading', { level: 2, name: /^Drippers/ })).toBeVisible();
       await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special&range=1w');
       await expect(page).toHaveURL(/\/gear\?card=grinder-zp6-special$/);
       await expect(page.locator('dialog.trophy-dialog')).toBeVisible();

@@ -2,26 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { gearRedirect, parseGear, serializeGear, statsLink, type GearUrlState } from './gearUrl.ts';
 
 describe('gear url state', () => {
-  it('parses the three params', () => {
+  it('parses the two params; a legacy gear= is ignored', () => {
     expect(parseGear(new URLSearchParams('gear=grinder&retired=open&card=Grinder-ZP6-Special'))).toEqual({
-      gear: ['grinder'], retired: ['dripper', 'filter', 'grinder'], card: 'grinder-zp6-special'
+      retired: ['dripper', 'filter', 'grinder'], card: 'grinder-zp6-special'
     });
     expect(parseGear(new URLSearchParams('gear=kettle&retired=yes'))).toEqual({});
   });
-  it('reads kind lists in GEAR_KINDS order, dropping junk and repeats; all three kinds is the default', () => {
-    expect(parseGear(new URLSearchParams('gear=Grinder,kettle,dripper,dripper&retired=filter,dripper')))
-      .toEqual({ gear: ['dripper', 'grinder'], retired: ['dripper', 'filter'] });
-    expect(parseGear(new URLSearchParams('gear=grinder,filter,dripper'))).toEqual({});
-    expect(parseGear(new URLSearchParams('gear=&retired=,'))).toEqual({});
+  it('reads the retired kind list in GEAR_KINDS order, dropping junk and repeats', () => {
+    expect(parseGear(new URLSearchParams('retired=filter,kettle,dripper,dripper'))).toEqual({ retired: ['dripper', 'filter'] });
+    expect(parseGear(new URLSearchParams('retired=,'))).toEqual({});
   });
   it('round-trips', () => {
-    const states: GearUrlState[] = [{ gear: ['dripper'] }, { gear: ['dripper', 'grinder'], retired: ['filter'] }, { retired: ['dripper', 'filter', 'grinder'], card: 'filter-abc' }, { gear: ['grinder'], retired: ['grinder'], card: 'grinder-zp6-special' }];
+    const states: GearUrlState[] = [{ retired: ['filter'] }, { retired: ['dripper', 'filter', 'grinder'], card: 'filter-abc' }, { card: 'grinder-zp6-special' }];
     for (const s of states) expect(parseGear(serializeGear(s))).toEqual(s);
     expect(serializeGear({}).toString()).toBe('');
-    expect(serializeGear({ gear: ['dripper', 'filter', 'grinder'] }).toString()).toBe('');
   });
-  it('redirects old stats gear urls', () => {
-    expect(gearRedirect(new URL('http://x/stats?tab=gear&period=2025&card=grinder-zp6-special&gear=grinder'))).toBe('/gear?gear=grinder&card=grinder-zp6-special');
+  it('redirects old stats gear urls, dropping the gear kind filter', () => {
+    expect(gearRedirect(new URL('http://x/stats?tab=gear&period=2025&card=grinder-zp6-special&gear=grinder'))).toBe('/gear?card=grinder-zp6-special');
+    expect(gearRedirect(new URL('http://x/stats?tab=gear&gear=grinder'))).toBe('/gear');
     for (const u of ['/stats?tab=gear', '/stats?tab=overview&gear=dripper', '/stats?card=x']) expect(gearRedirect(new URL('http://x' + u))).toBeNull();
   });
   it('builds stats links', () => {

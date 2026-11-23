@@ -1,12 +1,12 @@
 import { GEAR_KINDS, type GearKind } from '#lib/gear.ts';
 
-// /gear view state: the kinds shown (absent = all), the kinds whose retired shelf is open, the open trophy card. Explicit choices only.
-export interface GearUrlState { gear?: GearKind[]; retired?: GearKind[]; card?: string }
+// /gear view state: the kinds whose retired shelf is open, the open trophy card. Explicit choices only.
+export interface GearUrlState { retired?: GearKind[]; card?: string }
 
-// A comma list of kinds, in GEAR_KINDS order; junk is dropped and nothing valid is undefined. "open" (the old retired value) is every kind.
-function kindList(v: string | null, allowOpen = false): GearKind[] | undefined {
+// A comma list of kinds, in GEAR_KINDS order; junk is dropped and nothing valid is undefined. "open" (the old value) is every kind.
+function kindList(v: string | null): GearKind[] | undefined {
   const given = new Set((v ?? '').toLowerCase().split(',').map((x) => x.trim()));
-  const picked = allowOpen && given.has('open') ? [...GEAR_KINDS] : GEAR_KINDS.filter((k) => given.has(k));
+  const picked = given.has('open') ? [...GEAR_KINDS] : GEAR_KINDS.filter((k) => given.has(k));
   return picked.length ? picked : undefined;
 }
 
@@ -18,23 +18,22 @@ export function parseCard(v: string | null): string | undefined {
 }
 
 export function parseGear(p: URLSearchParams): GearUrlState {
-  const gear = kindList(p.get('gear'));
-  return { gear: gear?.length === GEAR_KINDS.length ? undefined : gear, retired: kindList(p.get('retired'), true), card: parseCard(p.get('card')) };
+  return { retired: kindList(p.get('retired')), card: parseCard(p.get('card')) };
 }
 
 export function serializeGear(s: GearUrlState): URLSearchParams {
   const p = new URLSearchParams();
-  if (s.gear?.length && s.gear.length < GEAR_KINDS.length) p.set('gear', s.gear.join(','));
   if (s.retired?.length) p.set('retired', s.retired.join(','));
   if (s.card) p.set('card', s.card);
   return p;
 }
 
-// The old /stats?tab=gear address: its gear/retired/card params move to /gear; null when it isn't one (or carries none).
+// The old /stats?tab=gear address: its retired/card params (and the retired `gear` kind filter, dropped) move to /gear; null when it carries none.
 export function gearRedirect(url: URL): string | null {
-  if (url.searchParams.get('tab') !== 'gear') return null;
-  const q = serializeGear(parseGear(url.searchParams)).toString();
-  return q ? `/gear?${q}` : null;
+  const p = url.searchParams;
+  if (p.get('tab') !== 'gear' || !['gear', 'retired', 'card'].some((k) => p.has(k))) return null;
+  const q = serializeGear(parseGear(p)).toString();
+  return q ? `/gear?${q}` : '/gear';
 }
 
 // A trophy's link to its stats: dripper and filter filter the Overview by name; a grinder opens Sweet Spots on its slug (the key minus "grinder-").
