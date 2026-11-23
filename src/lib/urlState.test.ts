@@ -26,6 +26,12 @@ describe('writeUrlParams', () => {
     expect(goto).toHaveBeenCalledExactlyOnceWith('/coffees?q=a', { shallow: true, replace: true, state: {} });
   });
 
+  it('keeps the hash', () => {
+    at('?q=a', '#origin');
+    writeUrlParams(new URLSearchParams({ q: 'ab' }));
+    expect(goto.mock.calls[0][0]).toBe('/coffees?q=ab#origin');
+  });
+
   it('keeps rapid successive writes in call order', () => {
     for (const q of ['a', 'ab', 'abc']) writeUrlParams(new URLSearchParams({ q }));
     expect(goto.mock.calls.map((c) => c[0])).toEqual(['/coffees?q=a', '/coffees?q=ab', '/coffees?q=abc']);

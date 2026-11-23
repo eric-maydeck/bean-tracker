@@ -10,7 +10,7 @@
 <script lang="ts">
   import { labelTip } from '#lib/components/labelTip.ts';
   import { useEmptyLine } from './coffeeNote';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { habitsCharts, HOUR_LABELS, WEEKEND_TOKENS } from './consumptionSeries';
   import type { Snippet } from 'svelte';
   import { sampleField } from '#lib/sample.ts';

@@ -26,7 +26,7 @@
   import { provideChartLink, insightsPreview } from './chartLink';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { page } from '$app/state';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import KindsBar from './KindsBar.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import { packSpans } from './rows';

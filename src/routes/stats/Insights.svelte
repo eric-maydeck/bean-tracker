@@ -41,7 +41,7 @@
   import type { Finding } from '#lib/server/insights/insightGenerators.ts';
   import { lines, smooth } from './multiLine';
   import { rowVars, sizedGrid } from './rows';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
   import TextTip from '#lib/components/TextTip.svelte';
 

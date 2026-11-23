@@ -10426,6 +10426,12 @@ export const STATES: State[] = [
       await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
     } },
   // Grind speed: the seed's A4Z lab brews alternate 750 / 1250 RPM; the last week has none (the lab bags are older), so both sections show their one line.
+  { name: 'insights-gear-trophies-link', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      // "Your gear" is a linkable heading like the other panels: a text click puts its chart link in the address bar.
+      await page.locator('h2#gear-trophies a').click();
+      await expect(page).toHaveURL(/chart=gear-trophies.*#gear-trophies$/);
+    } },
   { name: 'insights-gear-speeds', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
       const board = page.locator('[data-section="gear-speeds"]'), map = page.locator('[data-section="gear-speed-coffee"]');

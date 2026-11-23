@@ -1,4 +1,3 @@
-import { getContext, setContext } from 'svelte';
 import { BAG_BOARDS, BOARDS, LIKE_BOARDS, MON, lowFirst, type Board, type Rank, type Tab } from '#lib/insightsUrl.ts';
 import { DESCRIPTION_MAX, fitList, plural, type Card, type Preview, type Thumb } from '#lib/linkPreview.ts';
 import { originWithFlag } from '#lib/countryFlags.ts';
@@ -18,15 +17,11 @@ import { ERAS_THUMBS } from './thumbs/eras';
 import type { BoardRow } from '#lib/server/insights/leaderboards.ts';
 import type { Fmt, Holder, RecordPick, RecordsTab, Section } from '#lib/server/insights/records.ts';
 
-// +page.svelte provides how a heading links to itself: an href carrying chart=<id> (link previews name the chart)
-// and a click that puts the same URL in the address bar without a reload. Same shape as coffeeNote.ts.
-export interface ChartLink {
-  href: (id: string) => string;
-  go: (id: string) => void;
-}
-const KEY = 'insights-chart-link';
-export const provideChartLink = (l: ChartLink): void => void setContext(KEY, l);
-export const useChartLink = (): ChartLink => getContext<ChartLink>(KEY);
+// The heading link context lives in #lib/headingLink.ts; /stats keeps its old names.
+import { provideHeadingLink, useHeadingLink, type HeadingLink } from '#lib/headingLink.ts';
+export type ChartLink = HeadingLink;
+export const provideChartLink = provideHeadingLink;
+export const useChartLink = (): ChartLink => useHeadingLink()!; // /stats always provides one
 
 // ---- Formatters shared by Leaderboards/Records and the link preview (moved verbatim from the components). ----
 

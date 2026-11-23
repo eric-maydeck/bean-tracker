@@ -17,7 +17,7 @@
   import Chart from '#lib/components/Chart.svelte';
   import { formatGrams } from '#lib/grams.ts';
   import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '#lib/insightsUrl.ts';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { consumptionCharts, consumptionFmt } from './consumptionSeries';
   import ChartToggle from './ChartToggle.svelte';
   import TimeToOpen from './TimeToOpen.svelte';

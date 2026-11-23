@@ -27,7 +27,7 @@
   import { SAMPLE_HELP, sampleField } from '#lib/sample.ts';
   import DeltaBars, { bandRows, SAME_BAG_HELP } from './DeltaBars.svelte';
   import { signed } from '#lib/components/deltaColor.ts';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import WaitWindow from './WaitWindow.svelte';
