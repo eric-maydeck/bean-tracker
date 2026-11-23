@@ -2718,7 +2718,56 @@ export const STATES: State[] = [
       await expect(page.locator('li[id^="brew-"]').first()).toContainText('Best');
       await expect(page.locator('.gt figure > svg')).toBeVisible();
       await expect(page.locator('.gt .crown')).toHaveCount(2); // the Best brew's crown and the legend's
-      await expect(page.getByRole('link', { name: 'Recipe', exact: true })).toHaveAttribute('href', /^\/recipes\/[a-z0-9-]+$/); // a recipe's own page, by name
+      await expect(page.locator('#steps').locator('xpath=ancestor::section[1]').getByRole('link').first()).toHaveAttribute('href', /^\/recipes\/[a-z0-9-]+$/); // the chosen recipe's own page, by name
+      await expect(page.locator('.rows .lab', { hasText: 'Recipe' })).toHaveCount(0); // the picker replaces the row
+    } },
+  // Brew now with a recipe: the picker row, Steps under Start here, and the two switches. A switch flipping must not move or resize what is around it.
+  { name: 'brew-now-recipe', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      await expect(page.getByRole('heading', { name: 'Steps', level: 2 })).toBeVisible();
+      const row = page.locator('.pk2-row').filter({ has: page.locator('#pk-recipe') });
+      await expect(row.locator('button[aria-pressed="true"]')).toHaveCount(1);
+      await expect(row.locator('+ .pk2-row #pk-dose, + .pk2-row button#pk-dose')).toHaveCount(1); // between Filter and Dose
+      await expect(page.locator('.steps-card .tab-group button')).toHaveText(['Running total', 'Per pour']);
+      await expect(page.locator('.steps-card .rsteps li').first()).toBeVisible();
+      await expect(page.locator('.steps-card svg').first()).toBeVisible(); // the pour timeline
+      await expect(page.getByRole('link', { name: 'Add a recipe' })).toHaveCount(0); // only with none to pick
+      const start = page.locator('.start');
+      const after = await start.locator('xpath=following-sibling::section[1]').getAttribute('aria-labelledby');
+      expect(after).toBe('steps'); // Steps sits directly under Start here
+    } },
+  { name: 'brew-now-recipe-from', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?recipe=seed-low-agitation`, // 3 of its brews ran at 1:16.7 against its 1:16.8
+    act: async (page, s) => {
+      const url = `/coffees/${s.slugs.brew}/brew`;
+      const sw = page.locator('.start .tab-group');
+      await expect(sw.getByRole('button', { name: 'Your brews' })).toHaveAttribute('aria-pressed', 'true');
+      const boxes = () => page.locator('.start .head, .start .tab-group, .start .rows > li').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x + scrollX, r.y + scrollY, r.width, r.height].map(Math.round); }));
+      const before = await boxes();
+      await sw.getByRole('button', { name: 'As written' }).click();
+      await expect(page).toHaveURL(/from=recipe/); // the suggested recipe stays out of the URL
+      await expect(sw.getByRole('button', { name: 'As written' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.rows').getByText('From the recipe').first()).toBeVisible();
+      expect(await boxes()).toEqual(before); // flipping the switch moves nothing
+      await gotoReady(page, `${url}?from=recipe`);
+      await expect(page.locator('.start .tab-group').getByRole('button', { name: 'As written' })).toHaveAttribute('aria-pressed', 'true');
+      await page.locator('.start .tab-group').getByRole('button', { name: 'Your brews' }).click();
+      await expect(page).not.toHaveURL(/from=/);
+    } },
+  { name: 'brew-now-recipe-amounts', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      const steps = () => page.locator('.rsteps li > *').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x + scrollX, r.y + scrollY, r.width, r.height].map(Math.round); }));
+      const sw = page.locator('.steps-card .tab-group');
+      await expect(page.locator('.rsteps li').first()).toContainText(/to \d+g/);
+      const total = await steps();
+      await sw.getByRole('button', { name: 'Per pour' }).click();
+      await expect(page).toHaveURL(/amounts=pour/);
+      await expect(page.locator('.rsteps li').first()).not.toContainText(/to \d+g/);
+      expect(await steps()).toEqual(total); // the lines stay where they were
+      await page.mouse.move(0, 0);
+      await sw.getByRole('button', { name: 'Per pour' }).hover();
+      await expect(page.locator('.float-tip, [role="tooltip"]').filter({ hasText: 'How much water each pour adds' })).toBeVisible();
+      await sw.getByRole('button', { name: 'Running total' }).click();
+      await expect(page).not.toHaveURL(/amounts=/);
     } },
   { name: 'brew-now-why-open', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?why=temp`,
     act: async (page) => {

@@ -16,6 +16,8 @@
   import { showToast } from '#lib/toast.svelte.ts';
   import { cutTip } from './cutTip';
   import { recipeHref } from '#lib/recipeSlug.ts';
+  import PourTimeline from '#lib/components/PourTimeline.svelte';
+  import { labelTip } from '#lib/components/labelTip.ts';
   import TipBody from '#lib/components/TipBody.svelte';
 
   let { data, form } = $props();
@@ -29,10 +31,10 @@
   const toggle = (kind: 'basis' | 'plan' | 'prefs', el: Element) => (pop = pop?.kind === kind ? null : { kind, el });
   const BADGE = { high: 'badge-fresh', moderate: 'badge-neutral', low: 'badge-warm', guess: 'badge-warm' } as const;
 
-  type Patch = Partial<{ grinder: string | null; dripper: string | null; filter: string | null; why: Setting | null; dose: number | null; ratio: number | null }>;
+  type Patch = Partial<{ grinder: string | null; dripper: string | null; filter: string | null; why: Setting | null; dose: number | null; ratio: number | null; recipe: string | null; from: 'recipe' | null; amounts: 'pour' | null }>;
   function go(patch: Patch) {
     const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why,
-      dose: data.suggestion.dose, ratio: data.suggestion.ratio, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
+      dose: data.suggestion.dose, ratio: data.suggestion.ratio, recipe: data.recipe?.slug ?? null, from: data.from, amounts: data.amounts, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
     goto(page.url.pathname + (q ? `?${q}` : ''), { replace: true, reset: false });
   }
   const dripperFirst = (key: string): Patch => (key === 'dripper' ? { filter: null } : {});
@@ -41,8 +43,11 @@
   const picks = $derived([
     { key: 'grinder', label: 'Grinder', main: data.options.grinders, other: [] as string[], cur: data.gear.grinder },
     { key: 'dripper', label: 'Dripper', main: data.options.drippers, other: data.options.otherDrippers, cur: data.gear.dripper },
-    { key: 'filter', label: 'Filter', main: data.options.filters, other: data.options.otherFilters, cur: data.gear.filter }
+    { key: 'filter', label: 'Filter', main: data.options.filters, other: data.options.otherFilters, cur: data.gear.filter },
+    { key: 'recipe', label: 'Recipe', main: data.recipes.filter((r: { fits: boolean }) => r.fits).map((r: { name: string }) => r.name), other: [] as string[], cur: data.recipe?.name ?? null }
   ] as const);
+  const slugOf = (name: string) => data.recipes.find((r: { name: string }) => r.name === name)?.slug ?? null;
+  const pick = (key: string, o: string) => (key === 'recipe' ? { recipe: slugOf(o) } : { [key]: o, ...dripperFirst(key) });
   const CHIP_MAX = 3, CHIP_LEN = 22;
   const split = (p: { main: readonly string[]; other: readonly string[]; cur: string | null }) => {
     const all = [...new Set([...(p.cur && !p.main.includes(p.cur) && !p.other.includes(p.cur) ? [p.cur] : []), ...p.main, ...p.other])];
@@ -84,6 +89,7 @@
     brewForm?.requestSubmit();
   }
 
+  const lowTip = { title: 'Water low', lines: ['Start this pour when the water is low, close to the bed.'] };
   const gearText = (b: BrewRow) => [b.dripper, b.filter].filter(Boolean).join(' · ');
 </script>
 
@@ -196,8 +202,12 @@
       <div class="pk2-row">
         <span class="pk2-label" id="pk-{p.key}">{p.label}</span>
         <div class="pk2-chips" role="group" aria-labelledby="pk-{p.key}">
+          {#if p.key === 'recipe' && !sp.chips.length}
+            <span class="none pk2-none">{data.recipes.length ? 'No saved recipe for this dripper yet' : 'No saved recipes yet'}</span>
+            {#if data.isAdmin}<a href="/recipes">Add a recipe</a>{/if}
+          {/if}
           {#each sp.chips as o (o)}
-            <button type="button" class="pk2-chip" aria-pressed={o === p.cur} onclick={() => { menu = null; go({ [p.key]: o, ...dripperFirst(p.key) }); }}>{o}</button>
+            <button type="button" class="pk2-chip" aria-pressed={o === p.cur} onclick={() => { menu = null; go(pick(p.key, o)); }}>{o}</button>
           {/each}
           {#if sp.rest.length}
             <span class="pk2-menu-wrap">
@@ -206,7 +216,7 @@
               {#if menu?.key === p.key}
                 <ul class="pk2-menu" class:flip={menu.flip} role="menu" aria-label="Other {p.label.toLowerCase()}s">
                   {#each sp.rest as o (o)}
-                    <li role="none"><button type="button" role="menuitem" class="pk2-item" aria-current={o === p.cur} onclick={() => { menu = null; go({ [p.key]: o, ...dripperFirst(p.key) }); }}>{o}</button></li>
+                    <li role="none"><button type="button" role="menuitem" class="pk2-item" aria-current={o === p.cur} onclick={() => { menu = null; go(pick(p.key, o)); }}>{o}</button></li>
                   {/each}
                 </ul>
               {/if}
@@ -240,9 +250,17 @@
   {#if data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
 
   <section class="bn-card start" aria-labelledby="bn-start">
-    <h2 id="bn-start">Start here <span class="badge {BADGE[data.suggestion.confidence]}">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></h2>
+    <div class="head">
+      <h2 id="bn-start">Start here <span class="badge {BADGE[data.suggestion.confidence]}">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></h2>
+      {#if data.suggestion.switchable}
+        <div class="tab-group" role="group" aria-label="Numbers from">
+          <button type="button" aria-pressed={!data.from} onclick={() => go({ from: null })}>Your brews</button>
+          <button type="button" aria-pressed={!!data.from} onclick={() => go({ from: 'recipe' })}>As written</button>
+        </div>
+      {/if}
+    </div>
     <ul class="rows">
-      {#each data.suggestion.rows as r (r.setting)}
+      {#each data.suggestion.rows.filter((r: { setting: string }) => r.setting !== 'recipe') as r (r.setting)}
         {@const open = data.why === r.setting}
         <li class:open>
           <div class="rowhead">
@@ -252,7 +270,8 @@
             {#if r.value !== null}
               <strong class="val">{r.value}</strong>
               {#if r.link}<a class="more" href={r.link}>{r.setting === 'recipe' ? 'Recipe' : 'Profile'}</a>{/if}
-              <span class="badge rowconf {BADGE[r.confidence]}">{CONFIDENCE_LABEL[r.confidence]}</span>
+              {#if r.source === 'recipe'}<span class="badge badge-neutral rowconf">From the recipe</span>
+              {:else}<span class="badge rowconf {BADGE[r.confidence]}">{CONFIDENCE_LABEL[r.confidence]}</span>{/if}
             {:else}
               <span class="none">{r.reason}</span>
             {/if}
@@ -316,12 +335,41 @@
     {#if data.isAdmin}
       <form class="mark" method="POST" action="?/brewThis" bind:this={brewForm} use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false, navigate: false }); if (result.type === 'success') { const id = (result.data as { markId?: number } | undefined)?.markId; showToast('Marked. Your next BQ brew of this coffee will be compared.', id === undefined ? {} : { undo: () => post('deleteMark', { id: String(id) }) }); } } finally { submitting = false; } }; }}>
         {#each ['grinder', 'dripper', 'filter'] as const as k (k)}{#if data.gear[k]}<input type="hidden" name={k} value={data.gear[k]} />{/if}{/each}
+        {#if data.recipe}<input type="hidden" name="recipe" value={data.recipe.slug} />{/if}
+        {#if data.from}<input type="hidden" name="from" value={data.from} />{/if}
         {#if data.suggestion.dose !== null}<input type="hidden" name="dose" value={data.suggestion.dose} />{/if}
         {#if data.suggestion.ratio !== null}<input type="hidden" name="ratio" value={data.suggestion.ratio} />{/if}
         <button type={notOpen ? 'button' : 'submit'} class="button" disabled={submitting} onclick={notOpen ? () => (confirmOpen = true) : undefined}>Brew this</button>
       </form>
     {/if}
   </section>
+
+  {#if data.recipe}
+    {@const rc = data.recipe}
+    <section class="bn-card steps-card" aria-labelledby="steps">
+      <div class="head">
+        <h2 id="steps">Steps</h2>
+        {#if rc.hasAmounts}
+          <div class="tab-group" role="group" aria-label="Water amounts">
+            <button type="button" aria-pressed={!data.amounts} use:labelTip={{ title: 'Running total', lines: ['What your scale should read when each pour ends'] }} onclick={() => go({ amounts: null })}>Running total</button>
+            <button type="button" aria-pressed={!!data.amounts} use:labelTip={{ title: 'Per pour', lines: ['How much water each pour adds'] }} onclick={() => go({ amounts: 'pour' })}>Per pour</button>
+          </div>
+        {/if}
+      </div>
+      <p class="rname"><a href={recipeHref(rc.slug)}>{rc.name}</a></p>
+      {#if rc.notes}<p class="muted">{rc.notes}</p>{/if}
+      {#if rc.fitNote}<p class="muted">{rc.fitNote}</p>{/if}
+      <PourTimeline timeline={rc.timeline} label={rc.description} />
+      <ol class="rsteps" aria-label="Steps">
+        {#each rc.steps as st, i (i)}
+          <li>
+            {#if st.alt}<span class="step-time low" tabindex="0" use:labelTip={st.alt}>{st.time}</span>{:else if st.low}<span class="step-time low" tabindex="0" use:labelTip={lowTip}>{st.time}</span>{:else}<span class="step-time">{st.time}</span>{/if}
+            <span>{st.text}</span>
+          </li>
+        {/each}
+      </ol>
+    </section>
+  {/if}
 
   {#if data.marks.length}
     <section class="bn-card" aria-labelledby="bn-marks">
@@ -460,6 +508,15 @@
   .basis-list { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; }
   .basis-list li { padding: var(--space-1) 0; }
   .bn-tip button.tip-link { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; }
+  .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-3); }
+  .head h2 { margin: 0; }
+  .steps-card { display: flex; flex-direction: column; gap: var(--space-2); }
+  .steps-card > p, .steps-card > .head { margin: 0; }
+  .rsteps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content 1fr; column-gap: var(--space-3); row-gap: var(--space-1); }
+  .rsteps li { display: contents; }
+  .step-time { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+  .step-time.low { width: fit-content; text-decoration: underline dotted; }
+  .pk2-none { align-self: center; }
   #similar { scroll-margin-top: 5rem; }
   #bn-open-title .line { display: block; }
   #bn-open-title .line + .line { margin-top: 1.25rem; }
