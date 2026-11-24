@@ -117,6 +117,7 @@ describe('recipes page', () => {
       expect(d.brewNow.coffees.map((c: { name: string }) => c.name)).toEqual(['Aaa Tried', 'Zzz Fresh']);
       expect(d.brewNow.coffees[0]).toMatchObject({ brews: 2, avg: 8.5, best: true, status: 'open', gramsLeft: 250 });
       expect(d.brewNow.coffees[1]).toMatchObject({ brews: 0, avg: null, best: false, status: 'open', gramsLeft: null }); // no bag size: unknown
+      expect(d.brewNow.coffees[0]).toMatchObject({ id: expect.any(Number), urgency: expect.toSatisfy((u: unknown) => u === null || typeof u === 'number') }); // the open action and the Urgency sort
     }
     const backlog = (load(event(false, `?brewnow=${slug}&bnstatus=backlog&bnq=x`)) as Data);
     expect(backlog.brewNow.coffees.map((c: { name: string; status: string }) => [c.name, c.status])).toEqual([['Backlog One', 'backlog']]); // only when asked

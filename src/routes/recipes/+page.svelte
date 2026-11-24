@@ -20,8 +20,9 @@
   import { stepsText } from '#lib/recipeSteps.ts';
   import { formatGrams } from '#lib/grams.ts';
   import { labelTip } from '#lib/components/labelTip.ts';
-  import { recipesParams, BN_SORTS, type BnSort, type RecipesItem, type RecipesView } from '#lib/recipesView.ts';
-  import { writeUrlParams } from '#lib/urlState.ts';
+  import { recipesParams, BN_SORTS, BN_DEFAULT_DIR, type BnSort, type RecipesItem, type RecipesView } from '#lib/recipesView.ts';
+  import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
+  import { coffeeToast, commitChanges, restoreStates, type States } from '#lib/coffeeToast.ts';
   import type { Timeline } from '#lib/pours.ts';
   let { data, form } = $props();
   const isAdmin = $derived(!!page.data.isAdmin);
@@ -94,26 +95,42 @@
     return () => { if (opener?.isConnected) opener.focus(); };
   });
   // The picker's search / sort: local while typing (mirrored into the URL without a navigation), reseeded from the URL after any load.
-  const BN_LABELS: Record<BnSort, string> = { brews: 'Brews', rating: 'Average rating', name: 'Name', roaster: 'Roaster', grams: 'Grams left' };
+  const BN_LABELS: Record<BnSort, string> = { urgency: 'Urgency', brews: 'Brews', rating: 'Average rating', name: 'Name', roaster: 'Roaster', grams: 'Grams left' };
   type Bn = Pick<RecipesView, 'bnq' | 'bnsort' | 'bndir'>; // only what the user set; defaults stay out of the URL
   let bnLocal = $state<Bn | null>(null);
   $effect(() => { void data.view; bnLocal = null; });
   const bnExplicit = $derived<Bn>(bnLocal ?? { bnq: data.view.bnq, bnsort: data.view.bnsort, bndir: data.view.bndir });
-  const bnView = $derived({ q: bnExplicit.bnq ?? '', sort: bnExplicit.bnsort ?? 'brews', dir: bnExplicit.bndir ?? 'desc' });
+  const bnView = $derived({ q: bnExplicit.bnq ?? '', sort: bnExplicit.bnsort ?? 'urgency', dir: bnExplicit.bndir ?? BN_DEFAULT_DIR[bnExplicit.bnsort ?? 'urgency'] });
   const bnSet = (patch: Bn) => {
     bnLocal = { ...bnExplicit, ...patch };
     writeUrlParams(recipesParams({ ...data.view, ...bnLocal }));
   };
   const bnBacklog = $derived(data.view.bnstatus === 'backlog');
   const bnShow = (backlog: boolean) => goto(`?${recipesParams({ ...data.view, ...bnExplicit, bnstatus: backlog ? 'backlog' : undefined })}`, { replace: true, reset: false });
-  type PickCoffee = { slug: string; name: string; roaster: string; brews: number; avg: number | null; gramsLeft: number | null };
-  const bnKey = (c: PickCoffee, k: BnSort): string | number => k === 'brews' ? c.brews : k === 'rating' ? c.avg ?? -1 : k === 'grams' ? c.gramsLeft ?? -1 : k === 'name' ? c.name.toLowerCase() : c.roaster.toLowerCase();
+  type PickCoffee = { id: number; slug: string; name: string; roaster: string; status: string; brews: number; avg: number | null; gramsLeft: number | null; urgency: number | null };
+  const bnKey = (c: PickCoffee, k: BnSort): string | number => k === 'urgency' ? c.urgency ?? -Infinity : k === 'brews' ? c.brews : k === 'rating' ? c.avg ?? -1 : k === 'grams' ? c.gramsLeft ?? -1 : k === 'name' ? c.name.toLowerCase() : c.roaster.toLowerCase();
   const bnShown = $derived.by(() => {
     const q = bnView.q.trim().toLowerCase(), sign = bnView.dir === 'asc' ? 1 : -1;
     return (data.brewNow?.coffees ?? [])
       .filter((c: PickCoffee) => !q || `${c.name} ${c.roaster}`.toLowerCase().includes(q))
       .sort((a: PickCoffee, b: PickCoffee) => { const x = bnKey(a, bnView.sort), y = bnKey(b, bnView.sort); return (x < y ? -1 : x > y ? 1 : 0) * sign || a.name.localeCompare(b.name); });
   });
+  // Picking a backlog coffee asks to open it first (admin only: the open action is theirs; others just follow the link), via the site's batch action + Undo toast.
+  let searchEl = $state<HTMLInputElement | null>(null);
+  let ask = $state<{ c: PickCoffee; opener: HTMLElement } | null>(null), askEl = $state<HTMLElement | null>(null), askError = $state(''), asking = $state(false);
+  $effect(() => { if (askEl) askEl.focus(); });
+  const cancelAsk = () => { const o = ask?.opener; ask = null; askError = ''; o?.focus(); };
+  async function openAndBrew() {
+    if (!ask || asking) return;
+    const { c } = ask, changes = [{ id: c.id, statusAction: 'open' }];
+    asking = true; askError = '';
+    let states: States;
+    try { states = await commitChanges(changes); } catch (e) { askError = e instanceof Error ? e.message : 'Could not open that coffee.'; asking = false; return; }
+    showToast(coffeeToast(changes, () => c.name) ?? '', { undo: async () => { await restoreStates(states); await refreshTracked(); } });
+    const slug = data.brewNow?.slug;
+    ask = null; asking = false;
+    await goto(`/coffees/${c.slug}/brew?recipe=${slug}`);
+  }
   const closePicker = () => document.getElementById('picker-close')?.click(); // the Close link keeps the scroll position
   const n = (c: number, one: string, many: string) => `${c} ${c === 1 ? one : many}`;
 </script>
@@ -387,7 +404,7 @@
 {/if}
 </div>
 
-<svelte:window onkeydown={(e) => { if (data.brewNow && e.key === 'Escape' && !e.defaultPrevented && !document.querySelector(':popover-open')) closePicker(); }} />
+<svelte:window onkeydown={(e) => { if (!data.brewNow || e.key !== 'Escape' || e.defaultPrevented || document.querySelector(':popover-open')) return; if (ask) cancelAsk(); else closePicker(); }} />
 {#if data.brewNow}
   {@const bn = data.brewNow}
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
@@ -404,11 +421,14 @@
         <button type="button" aria-pressed={bnBacklog} onclick={() => bnShow(true)}>Backlog</button>
       </div>
       <div class="search-row picker-controls">
-        <input class="search-input" type="search" aria-label="Search coffees" placeholder="Search coffee or roaster…" value={bnView.q} oninput={(e) => bnSet({ bnq: e.currentTarget.value })} />
+        <div class="picker-search">
+          <input class="search-input" type="text" role="searchbox" aria-label="Search coffees" placeholder="Search coffee or roaster…" value={bnView.q} bind:this={searchEl} oninput={(e) => bnSet({ bnq: e.currentTarget.value })} />
+          {#if bnView.q}<button type="button" class="picker-clear" aria-label="Clear search" onclick={() => { bnSet({ bnq: '' }); searchEl?.focus(); }}><Icon name="x" /></button>{/if}
+        </div>
         <div class="form-field group-field sort-field">
           <label for="picker-sort">Sort by</label>
           <div class="sort-controls">
-            <select id="picker-sort" class="ctl-select" value={bnView.sort} onchange={(e) => bnSet({ bnsort: e.currentTarget.value as BnSort })}>
+            <select id="picker-sort" class="ctl-select" value={bnView.sort} onchange={(e) => bnSet({ bnsort: e.currentTarget.value as BnSort, bndir: undefined })}>
               {#each BN_SORTS as k (k)}<option value={k}>{BN_LABELS[k]}</option>{/each}
             </select>
             <button type="button" class="icon-button sort-dir" aria-label="Sort {bnView.dir === 'asc' ? 'ascending' : 'descending'}"
@@ -423,7 +443,8 @@
         <ul class="picks">
           {#each bnShown as c (c.slug)}
             <li>
-              <a class="pick" class:untried={!c.brews} href="/coffees/{c.slug}/brew?recipe={bn.slug}">
+              <a class="pick" class:untried={!c.brews} href="/coffees/{c.slug}/brew?recipe={bn.slug}"
+                onclick={(e) => { if (c.status === 'backlog' && isAdmin && !e.metaKey && !e.ctrlKey && !e.shiftKey) { e.preventDefault(); ask = { c, opener: e.currentTarget }; } }}>
                 {#if c.image}<img class="card-thumb" src={c.image.src} alt={c.image.alt} style:background-color={c.image.fill} />{/if}
                 <span class="pick-name" title={c.name}><CoffeeName name={c.name} /></span>
                 <span class="text-muted pick-line">{c.roaster}</span>
@@ -452,6 +473,18 @@
     </div>
   </div>
 {/if}
+{#if ask}
+  <div class="modal-backdrop">
+    <div class="modal bn-confirm" role="dialog" aria-modal="true" aria-labelledby="ask-title" tabindex="-1" bind:this={askEl}>
+      <h2 id="ask-title"><span class="line">This coffee isn't open yet.</span> <span class="line">Open it now?</span></h2>
+      {#if askError}<p role="alert" class="badge badge-urgent">{askError}</p>{/if}
+      <div class="action-buttons">
+        <button class="button" type="button" disabled={asking} onclick={openAndBrew}>Open and brew</button>
+        <button class="button button-secondary" type="button" onclick={cancelAsk}>Cancel</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .picker { max-width: 720px; display: grid; gap: var(--space-3); align-content: start; align-self: flex-start; } /* top-anchored: a search or tab that shortens the list must not re-centre the controls */
@@ -459,9 +492,21 @@
   .picker h2, .picker p { margin: 0; }
   .picker-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
   .picker-head .button { margin: 0; flex: none; }
-  .picker-controls { margin: 0; }
+  .picker-controls { margin: 0; align-items: center; }
   .picker .tab-group { justify-self: start; }
-  @media (max-width: 640px) { .picker :global(.sort-dir) { width: 44px; height: 44px; } } /* tap target; /coffees keeps 2.25rem */
+  /* One height for the search box, the sort dropdown and the direction button (a 44px tap target at every width). */
+  .picker-search { position: relative; flex: 1 1 12rem; min-width: 0; }
+  @media (max-width: 640px) { .picker-search { flex-basis: 100%; } }
+  .picker .search-input, .picker .ctl-select, .picker .sort-dir { box-sizing: border-box; height: 44px; }
+  .picker .search-input { padding-top: 0; padding-bottom: 0; padding-right: 44px; }
+  .picker .sort-dir { width: 44px; }
+  .picker-clear { position: absolute; top: 0; right: 0; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; background: none; color: var(--color-text-muted); cursor: pointer; }
+  .picker-clear :global(svg) { width: 1.1rem; height: 1.1rem; }
+  .picker-clear:hover, .picker-clear:focus-visible { color: var(--color-text); }
+  .bn-confirm { max-width: 18rem; }
+  .bn-confirm :global(.action-buttons) { margin-top: var(--space-5); }
+  .bn-confirm .line { display: block; }
+  .bn-confirm .line + .line { margin-top: 1.25rem; }
   /* Image-led grid: 2 columns on a phone, 3 at the modal's desktop width; the thumbnail is the global .card-thumb. */
   .picks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
   @media (min-width: 641px) { .picks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

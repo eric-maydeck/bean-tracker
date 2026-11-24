@@ -3983,6 +3983,12 @@ export const STATES: State[] = [
           // Search + sort row: search left with Sort by and the direction button on its line (desktop), under it on a phone; never focused at open.
           const search = dlg.getByRole('searchbox', { name: 'Search coffees' }), sort = dlg.locator('#picker-sort'), dirBtn = dlg.locator('.sort-dir');
           await expect(search).not.toBeFocused();
+          expect(new URL(page.url()).search, 'bare URL = Urgency, descending').toBe(`?brews=r${s.recipes.recipeId}&brewnow=seed-equal-pours`);
+          await expect(sort).toHaveValue('urgency');
+          await expect(dirBtn).toHaveAccessibleName('Sort descending');
+          // The search box, the dropdown and the direction button share one height (44px).
+          const hs = await dlg.locator('.picker-controls .search-input, #picker-sort, .sort-dir').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+          expect(hs, `control heights ${hs}`).toEqual([44, 44, 44]);
           const sb = (await search.boundingBox())!, ob = (await sort.boundingBox())!, db = (await dirBtn.boundingBox())!;
           if (page.viewportSize()!.width > 640) { expect(sb.x).toBeLessThan(ob.x); expect(Math.abs(sb.y + sb.height / 2 - (ob.y + ob.height / 2))).toBeLessThan(sb.height / 2); }
           else { expect(ob.y).toBeGreaterThanOrEqual(sb.y + sb.height); expect(ob.height).toBeGreaterThanOrEqual(44); expect(db.height).toBeGreaterThanOrEqual(44); }
@@ -3992,6 +3998,12 @@ export const STATES: State[] = [
           await expect(page).toHaveURL(/bndir=asc/);
           await sort.selectOption('name');
           await expect(page).toHaveURL(/bnsort=name/);
+          await expect(page).not.toHaveURL(/bndir=/); // choosing an option resets the direction to its own default (Name: ascending)
+          await expect(dirBtn).toHaveAccessibleName('Sort ascending');
+          await sort.selectOption('brews');
+          await expect(page).toHaveURL(/bnsort=brews/);
+          await expect(dirBtn).toHaveAccessibleName('Sort descending');
+          await sort.selectOption('name');
           expect(await boxes()).toEqual(still); // flipping sort or direction moves no control
           const names = await picks.locator('.pick-name').allInnerTexts();
           expect(names.map((x) => x.toLowerCase())).toEqual([...names.map((x) => x.toLowerCase())].sort());
@@ -4004,7 +4016,11 @@ export const STATES: State[] = [
           await expect(dlg.getByText('No coffees match')).toBeVisible();
           await expect(picks).toHaveCount(0);
           expect(await boxes()).toEqual(still); // an empty result leaves the controls where they were
-          await search.fill('');
+          await dlg.getByRole('button', { name: 'Clear search' }).click(); // the X inside the box: clears, keeps focus in it
+          await expect(search).toHaveValue('');
+          await expect(search).toBeFocused();
+          await expect(dlg.getByRole('button', { name: 'Clear search' })).toHaveCount(0);
+          expect(await boxes()).toEqual(still);
           await expect(picks.first()).toBeVisible();
           await expect(page).not.toHaveURL(/bnq=/);
           // Backlog switch: same cards with a Backlog badge, or the empty message; Open brings the open ones back.
@@ -4014,6 +4030,30 @@ export const STATES: State[] = [
           if (await picks.count()) for (const b of await picks.locator('.badge').first().allInnerTexts()) expect(b).toBe('Backlog');
           else await expect(dlg.getByText('No backlog coffees.')).toBeVisible();
           expect(await boxes()).toEqual(still);
+          // Tapping a backlog card asks first (Cancel leaves the picker as it was); confirming opens it through the site's batch action
+          // (stubbed here: the DB is shared) and shows the Undo toast, then lands on its Brew now page with the recipe.
+          if (await picks.count()) {
+            const posts: string[] = [];
+            await page.route('**/api/coffees/commit-batch', (r) => { posts.push(r.request().postData() ?? ''); return r.fulfill({ json: { success: true, before: [], after: [] } }); });
+            await page.route('**/api/coffees/restore-state', (r) => { posts.push('restore'); return r.fulfill({ json: { success: true } }); });
+            const href = await picks.first().getAttribute('href');
+            await picks.first().click();
+            const ask = page.getByRole('dialog', { name: /isn't open yet/ });
+            await expect(ask).toBeVisible();
+            await ask.getByRole('button', { name: 'Cancel' }).click();
+            await expect(ask).toBeHidden();
+            await expect(dlg).toBeVisible();
+            expect(posts).toEqual([]);
+            await picks.first().click();
+            await ask.getByRole('button', { name: 'Open and brew' }).click();
+            await expect(page).toHaveURL(new RegExp(`${href!.replace(/[?]/g, '\\?')}$`));
+            expect(JSON.parse(posts[0]).changes[0]).toMatchObject({ statusAction: 'open' });
+            const toast = page.locator('.toast', { hasText: 'marked as open' });
+            await expect(toast).toBeVisible();
+            await toast.getByRole('button', { name: /undo/i }).click();
+            await expect.poll(() => posts.at(-1)).toBe('restore');
+            await gotoReady(page, `/recipes?brews=r${s.recipes.recipeId}&brewnow=seed-equal-pours&bnstatus=backlog`);
+          }
           await dlg.getByRole('button', { name: 'Open', exact: true }).click();
           await expect(page).not.toHaveURL(/bnstatus=/);
           await expect(picks.first()).toBeVisible();

@@ -9,13 +9,15 @@ export interface RecipesView {
   brewnow?: string; // a saved recipe slug; the server checks it exists
   // The Brew now picker's own state; only meaningful (parsed, written) while brewnow is set.
   bnq?: string; // search text
-  bnsort?: BnSort; // absent = brews
-  bndir?: 'asc' | 'desc'; // absent = desc
+  bnsort?: BnSort; // absent = urgency
+  bndir?: 'asc' | 'desc'; // absent = the sort's own default direction
   bnstatus?: 'backlog'; // absent = open coffees
 }
 
-export const BN_SORTS = ['brews', 'rating', 'name', 'roaster', 'grams'] as const;
+export const BN_SORTS = ['urgency', 'brews', 'rating', 'name', 'roaster', 'grams'] as const;
 export type BnSort = (typeof BN_SORTS)[number];
+// Each option's own starting direction: how much / how good first, names and amounts A to Z.
+export const BN_DEFAULT_DIR: Record<BnSort, 'asc' | 'desc'> = { urgency: 'desc', brews: 'desc', rating: 'desc', name: 'asc', roaster: 'asc', grams: 'asc' };
 
 // Wider than 12 pours / 2-digit ratio: detector keys are not capped (controller ruling 2).
 const KEY = /^\d+b-[fs]{1,40}-(\d{1,3}|x)$/;
@@ -57,8 +59,8 @@ export function recipesParams(v: RecipesView): URLSearchParams {
     p.set('brewnow', v.brewnow);
     if (v.bnstatus) p.set('bnstatus', v.bnstatus);
     if (v.bnq) p.set('bnq', v.bnq);
-    if (v.bnsort) p.set('bnsort', v.bnsort);
-    if (v.bndir) p.set('bndir', v.bndir);
+    if (v.bnsort && v.bnsort !== 'urgency') p.set('bnsort', v.bnsort);
+    if (v.bndir && v.bndir !== BN_DEFAULT_DIR[v.bnsort ?? 'urgency']) p.set('bndir', v.bndir);
   }
   return p;
 }

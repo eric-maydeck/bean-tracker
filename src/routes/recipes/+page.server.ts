@@ -15,6 +15,8 @@ import { recipeIdBySlug, recipeSlugs } from '#lib/recipeSlug.ts';
 import { getBacklogCoffees, getOpenCoffees } from '#lib/server/coffees.ts';
 import { loadBrewRows } from '#lib/server/brewNow/load.ts';
 import { coffeeImage } from '#lib/coffeeImage.ts';
+import { withComputedFields } from '#lib/server/urgency.ts';
+import { localTodayDate } from '#lib/server/localToday.ts';
 
 // The page for /recipes and /recipes/<name-slug> (the latter scrolls to, highlights and previews that recipe).
 export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, slug?: string) {
@@ -117,7 +119,7 @@ export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, 
   // ?brewnow=<recipe slug>: the open coffees to brew it with (an unknown slug is ignored). Counts only, never brew notes.
   let brewNow: {
     slug: string; name: string; description: string; timeline: ReturnType<typeof recipeTimeline>;
-    coffees: { slug: string; name: string; roaster: string; image: ReturnType<typeof coffeeImage>; brews: number; avg: number | null; best: boolean; status: string; gramsLeft: number | null }[];
+    coffees: { slug: string; name: string; roaster: string; image: ReturnType<typeof coffeeImage>; brews: number; avg: number | null; best: boolean; status: string; gramsLeft: number | null; id: number; urgency: number | null }[];
   } | null = null;
   const pick = view.brewnow ? recipes.find((r) => r.slug === view.brewnow) : undefined;
   if (pick) {
@@ -131,11 +133,13 @@ export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, 
       m.best ||= b.best;
       mine.set(key(b.roaster, b.coffeeName), m);
     }
-    const coffees = (view.bnstatus === 'backlog' ? getBacklogCoffees(db) : getOpenCoffees(db)).map((c) => {
+    const coffees = (view.bnstatus === 'backlog' ? getBacklogCoffees(db) : getOpenCoffees(db)).map((raw) => {
+      const c = withComputedFields(raw, localTodayDate());
       const m = mine.get(key(c.roaster, c.coffee_name));
       return {
         slug: c.slug, name: c.coffee_name, roaster: c.roaster, image: coffeeImage(c, ''), brews: m?.n ?? 0,
-        avg: m?.rated.length ? m.rated.reduce((a, b) => a + b, 0) / m.rated.length : null, best: m?.best ?? false, status: c.status, gramsLeft: c.grams_left ?? null
+        avg: m?.rated.length ? m.rated.reduce((a, b) => a + b, 0) / m.rated.length : null, best: m?.best ?? false, status: c.status, gramsLeft: c.grams_left ?? null, id: c.id,
+        urgency: typeof c.urgency_rating === 'number' ? c.urgency_rating : null // /coffees' own rating ('Done' has none)
       };
     }).sort((a, b) => b.brews - a.brews || a.name.localeCompare(b.name));
     brewNow = { slug: pick.slug, name: pick.recipe.name, description: pick.description, timeline: pick.timeline, coffees };
