@@ -3,8 +3,8 @@ import fixture from './fixtures/bq-export-main.json';
 import { bcRoastDate } from './beanConquerorJson.ts';
 import { coffeeBeanUuid } from './bqBeanUuid.ts';
 import {
-  NEW_BEAN_TEMPLATE, applyPatchPlan, bqDateFromLocal, buildPatchPlan, comparePatched, setBrewSpeeds,
-  type PatchCoffee, type PatchPlan
+  NEW_BEAN_TEMPLATE, applyPatchPlan, bqDateFromLocal, buildPatchPlan, comparePatched, convertToTools, setBrewSpeeds,
+  verifyTools, type PatchCoffee, type PatchPlan, type ToolPlan
 } from './bqPatch.ts';
 
 const m = fixture as Record<string, unknown>;
@@ -282,5 +282,120 @@ describe('setBrewSpeeds', () => {
   });
   it('refuses a brew that already has a speed', () => {
     expect(() => setBrewSpeeds([brew('a', 6)], { a: 4 })).toThrow(/already has/);
+  });
+});
+
+describe('convertToTools', () => {
+  type Rec = Record<string, unknown>;
+  const ts = (iso: string) => Date.parse(iso) / 1000; // Denver is UTC-7 in winter
+  const tool = (id: string, name: string) => ({ name, config: { uuid: id, unix_timestamp: 1 }, archived: false });
+  const method = (id: string, name: string, tools: Rec[] = []) => ({ name, config: { uuid: id, unix_timestamp: 1 }, tools });
+  const brew = (id: string, m: string, at: string, ticks: string[] = []) => ({
+    config: { uuid: id, unix_timestamp: ts(at) }, method_of_preparation: m, method_of_preparation_tools: ticks, note: id
+  });
+  const main = (): Rec => ({
+    SETTINGS: { default_method: 'new-v60' },
+    PREPARATION: [
+      method('old-abaca', 'V60 - Cafec Abaca'), method('old-t90', 'V60 - Cafec T90'), method('old-paper', 'Aeropress - Paper'),
+      method('new-v60', 'V60 Ceramic - 2', [tool('t-abaca', 'Cafec Abaca'), tool('t-t90', 'Cafec T-90')]),
+      method('new-ap', 'Aeropress - 01', [tool('t-paper', 'Paper filters')]),
+      method('gabi', 'Gabi Master A', [tool('t-k', 'Kalita 155'), tool('t-t', 'Timemore 155')])
+    ],
+    BREWS: [
+      brew('a1', 'old-abaca', '2026-03-01T01:00:00Z'),
+      brew('a2', 'old-t90', '2026-03-01T01:00:00Z'),
+      brew('g1', 'gabi', '2026-03-01T16:59:00Z')
+    ]
+  });
+  const files = (): Rec[][] => [[
+    brew('b1', 'old-paper', '2026-03-01T01:00:00Z'),
+    brew('g2', 'gabi', '2026-03-01T17:00:00Z'),
+    brew('g3', 'gabi', '2026-03-01T17:00:00Z'),
+    brew('b4', 'new-v60', '2026-03-01T01:00:00Z', ['t-abaca'])
+  ]];
+  const plan = (): ToolPlan => ({
+    methodRenames: { 'V60 Ceramic - 2': 'V60 Ceramic - 02' },
+    drippers: { V60: 'V60 Ceramic - 02', Aeropress: 'Aeropress - 01' },
+    filters: { 'Cafec T90': 'Cafec T-90' },
+    assign: { 'Gabi Master A': { tool: 'Timemore 155', byDate: [{ before: '2026-03-01T10:00', tool: 'Kalita 155' }] } },
+    overrides: { g3: 'Kalita 155' }
+  });
+  const all = (r: { main: Rec; brewFiles: Rec[][] }) =>
+    new Map([r.main.BREWS as Rec[], ...r.brewFiles].flat().map((b) => [(b.config as Rec).uuid, b]));
+
+  it('ticks the right tool, moves brews, drops old methods, renames, splits by minute, overrides', () => {
+    const r = convertToTools(main(), files(), plan());
+    expect(r.report).toEqual({
+      converted: 6, untouched: 1, dropped: ['V60 - Cafec Abaca', 'V60 - Cafec T90', 'Aeropress - Paper'], problems: []
+    });
+    const b = all(r);
+    const at = (id: string) => [b.get(id)!.method_of_preparation, b.get(id)!.method_of_preparation_tools];
+    expect(at('a1')).toEqual(['new-v60', ['t-abaca']]);
+    expect(at('a2')).toEqual(['new-v60', ['t-t90']]);
+    expect(at('b1')).toEqual(['new-ap', ['t-paper']]);
+    expect(at('g1')).toEqual(['gabi', ['t-k']]); // 09:59 local
+    expect(at('g2')).toEqual(['gabi', ['t-t']]); // 10:00 local
+    expect(at('g3')).toEqual(['gabi', ['t-k']]); // override
+    expect(at('b4')).toEqual(['new-v60', ['t-abaca']]);
+    expect((r.main.PREPARATION as Rec[]).map((m) => m.name)).toEqual(['V60 Ceramic - 02', 'Aeropress - 01', 'Gabi Master A']);
+    expect(r.main.SETTINGS).toEqual({ default_method: 'new-v60' });
+  });
+
+  it('does not mutate its input', () => {
+    const m = main();
+    convertToTools(m, files(), plan());
+    expect(m).toEqual(main());
+  });
+
+  it('a missing tool is a problem and changes nothing', () => {
+    const p = plan();
+    p.filters = { 'Cafec T90': 'Cafec T-91' };
+    const r = convertToTools(main(), files(), p);
+    expect(r.report.problems.join()).toMatch(/no tool "Cafec T-91"/);
+    expect(r.main).toEqual(main());
+    expect(r.brewFiles).toEqual(files());
+  });
+
+  it('a missing target method and a duplicate name are problems', () => {
+    const p = { ...plan(), drippers: { V60: 'Nope', Aeropress: 'Aeropress - 01' } };
+    expect(convertToTools(main(), files(), p).report.problems.join()).toMatch(/"Nope"/);
+    const m = main();
+    (m.PREPARATION as Rec[]).push(method('dup', 'Aeropress - 01'));
+    expect(convertToTools(m, files(), plan()).report.problems.join()).toMatch(/2 found/);
+  });
+
+  it('plan typos are problems: unknown override brew, unknown assign method, unordered byDate', () => {
+    const run = (p: ToolPlan) => convertToTools(main(), files(), p).report.problems.join();
+    expect(run({ ...plan(), overrides: { nope: 'Kalita 155' } })).toMatch(/override nope: no such brew/);
+    expect(run({ ...plan(), assign: { 'Gabi Master B': { tool: 'Timemore 155' } } })).toMatch(/"Gabi Master B": 0 found/);
+    const byDate = [{ before: '2026-03-02T10:00', tool: 'Kalita 155' }, { before: '2026-03-01T10:00', tool: 'Kalita 155' }];
+    expect(run({ ...plan(), assign: { 'Gabi Master A': { tool: 'Timemore 155', byDate } } })).toMatch(/ascending/);
+  });
+
+  it('verifyTools catches a changed top-level key and a missing brew', () => {
+    const r = convertToTools(main(), files(), plan());
+    const key = structuredClone(r);
+    key.main.SETTINGS = { default_method: 'other' };
+    expect(verifyTools(main(), files(), key.main, key.brewFiles, plan()).join()).toMatch(/key SETTINGS: differs/);
+    const gone = structuredClone(r);
+    (gone.main.BREWS as Rec[]).pop();
+    expect(verifyTools(main(), files(), gone.main, gone.brewFiles, plan()).join()).toMatch(/brews: 7 expected, 6 actual/);
+  });
+
+  it('a dropped uuid referenced elsewhere is a problem', () => {
+    const m = main();
+    m.SETTINGS = { default_method: 'old-abaca' };
+    expect(convertToTools(m, files(), plan()).report.problems.join()).toMatch(/still referenced/);
+  });
+
+  it('verifyTools passes on the output and catches a swapped tick or an edited field', () => {
+    const r = convertToTools(main(), files(), plan());
+    expect(verifyTools(main(), files(), r.main, r.brewFiles, plan())).toEqual([]);
+    const swapped = structuredClone(r);
+    (swapped.main.BREWS as Rec[])[0].method_of_preparation_tools = ['t-t90'];
+    expect(verifyTools(main(), files(), swapped.main, swapped.brewFiles, plan()).join()).toMatch(/brew a1.*expected/);
+    const edited = structuredClone(r);
+    edited.brewFiles[0][0].note = 'changed';
+    expect(verifyTools(main(), files(), edited.main, edited.brewFiles, plan()).join()).toMatch(/brew b1.*other than/);
   });
 });

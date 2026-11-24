@@ -4,6 +4,8 @@
 //   apply  --export <dir> --out <dir> --db <DB COPY> --images <images root> --keep <keep.json>
 //          [--settled <settled.json>] [--dry-run]   (builds the plan from the site; --dry-run writes report.json and copies nothing)
 //   verify --zip <zip> --dump <dump.json>
+//   tools        --export <dir> --out <dir> --plan <plan.json>   (filters as tools: writes the converted JSON files + report.json)
+//   verify-tools --export <dir> --out <dir> --plan <plan.json>   (prints failures, exit 1 on any)
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import {
@@ -15,7 +17,8 @@ import { parseArgs } from 'node:util';
 import JSZip from 'jszip';
 import sharp from 'sharp';
 import {
-  applyPatchPlan, buildPatchPlan, comparePatched, setBrewSpeeds, type PatchCoffee, type PatchPlan
+  applyPatchPlan, buildPatchPlan, comparePatched, convertToTools, setBrewSpeeds, verifyTools,
+  type PatchCoffee, type PatchPlan, type ToolPlan
 } from '../src/lib/server/bqPatch.ts';
 import { coffeeBeanUuid } from '../src/lib/server/bqBeanUuid.ts';
 import { copyPath } from '../src/lib/server/imageCopies.ts';
@@ -115,32 +118,37 @@ async function apply() {
     if (warnings.length) fail(`${warnings.length} own image file(s) missing (listed above); rsync the images first`);
   }
 
-  execFileSync('cp', ['-c', '-R', `${src}/.`, out]); // APFS clone; copies flow files and photos too
+  cloneExport(src, out);
   for (const b of plan.beans) {
     if (b.photo && photoed.has(b.uuid)) await sharp(b.photo).jpeg({ quality: 90 }).toFile(join(out, photoNames[b.uuid]));
   }
   for (const [u, p] of newPhotos) await sharp(p).jpeg({ quality: 90 }).toFile(join(out, photoNames[u]));
 
+  await finishExport(out, zip, new Map([['Beanconqueror.json', patched], ...brewFiles]), { summary, ...extra, changes });
+  console.log(`${changes.length} changes, ${plan.newBeans.length} new beans -> ${out}`);
+}
+
+function cloneExport(src: string, out: string) {
+  execFileSync('cp', ['-c', '-R', `${src}/.`, out]); // APFS clone; copies flow files and photos too
+}
+
+// Rebuilds Beanconqueror.zip with `replaced` JSON entries (name -> value), writes report.json and bq-patched.zip.
+async function finishExport(out: string, zip: JSZip, replaced: Map<string, unknown>, report: unknown) {
   const next = new JSZip();
-  for (const n of names) {
+  for (const n of Object.keys(zip.files)) {
     const f = zip.files[n];
     if (f.dir) next.folder(n);
-    else {
-      const bytes = n === 'Beanconqueror.json' ? JSON.stringify(patched)
-        : brewFiles.has(n) ? JSON.stringify(brewFiles.get(n)) : await f.async('uint8array');
-      next.file(n, bytes, { date: f.date });
-    }
+    else next.file(n, replaced.has(n) ? JSON.stringify(replaced.get(n)) : await f.async('uint8array'), { date: f.date });
   }
   writeFileSync(
     join(out, 'Beanconqueror.zip'),
     await next.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
   );
-  writeFileSync(join(out, 'report.json'), JSON.stringify({ summary, ...extra, changes }, null, 2));
+  writeFileSync(join(out, 'report.json'), JSON.stringify(report, null, 2));
 
   const tmp = `${out}.tmp.zip`; // outside out so the archive does not contain itself
   execFileSync('ditto', ['-c', '-k', out, tmp]);
   renameSync(tmp, join(out, 'bq-patched.zip'));
-  console.log(`${changes.length} changes, ${plan.newBeans.length} new beans -> ${out}`);
 }
 
 async function planFromSite(main: Record<string, unknown>) {
@@ -205,6 +213,44 @@ async function verify() {
   process.exit(diffs.length ? 1 : 0);
 }
 
+// Beanconqueror.json plus Beanconqueror_Brews_N.json (in N order) from the Beanconqueror.zip in an export folder.
+async function readBq(dir: string) {
+  const zip = await JSZip.loadAsync(readFileSync(join(dir, 'Beanconqueror.zip')));
+  const brewNames = Object.keys(zip.files).filter((n) => /^Beanconqueror_Brews_\d+\.json$/.test(n))
+    .sort((x, y) => parseInt(x.replace(/\D/g, '')) - parseInt(y.replace(/\D/g, '')));
+  const read = async (n: string) => JSON.parse(await zip.files[n].async('string'));
+  return {
+    zip, main: await read('Beanconqueror.json'),
+    brewNames, brewFiles: await Promise.all(brewNames.map(read))
+  };
+}
+
+async function tools() {
+  const srcDir = need(a.export, 'export');
+  const src = await readBq(srcDir);
+  const out = resolve(need(a.out, 'out'));
+  const plan: ToolPlan = JSON.parse(readFileSync(need(a.plan, 'plan'), 'utf8'));
+  const r = convertToTools(src.main, src.brewFiles, plan);
+  console.log(JSON.stringify(r.report, null, 1));
+  if (r.report.problems.length) fail('Problems found, nothing written');
+  if (existsSync(out) && readdirSync(out).length) fail(`${out} is not empty`);
+  mkdirSync(out, { recursive: true });
+  cloneExport(srcDir, out);
+  const replaced = new Map<string, unknown>([['Beanconqueror.json', r.main]]);
+  src.brewNames.forEach((n, i) => replaced.set(n, r.brewFiles[i]));
+  await finishExport(out, src.zip, replaced, r.report);
+}
+
+async function verifyToolsCmd() {
+  const [o, n] = [await readBq(need(a.export, 'export')), await readBq(need(a.out, 'out'))];
+  const plan: ToolPlan = JSON.parse(readFileSync(need(a.plan, 'plan'), 'utf8'));
+  const fails = verifyTools(o.main, o.brewFiles, n.main, n.brewFiles, plan);
+  console.log(fails.length ? fails.join('\n') : 'No failures');
+  process.exit(fails.length ? 1 : 0);
+}
+
 if (positionals[0] === 'apply') await apply();
 else if (positionals[0] === 'verify') await verify();
-else fail('usage: bq-patch.ts apply|verify ...');
+else if (positionals[0] === 'tools') await tools();
+else if (positionals[0] === 'verify-tools') await verifyToolsCmd();
+else fail('usage: bq-patch.ts apply|verify|tools|verify-tools ...');

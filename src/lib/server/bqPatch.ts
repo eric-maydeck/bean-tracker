@@ -316,3 +316,143 @@ export function buildPatchPlan(
   }
   return { plan, unexpected, untouchedBeans };
 }
+
+// ---- Filters as tools (#184): one method per dripper, the filter ticked on each brew ----
+
+export interface ToolPlan {
+  methodRenames?: Record<string, string>; // old method name -> new, applied first
+  drippers: Record<string, string>; // old dripper -> target method name (after renames)
+  filters?: Record<string, string>; // old filter -> tool name
+  // methods converted in place, keyed by method name; byDate.before = local wall time YYYY-MM-DDTHH:mm, earliest
+  // first, brews at or after the last one get `tool`
+  assign?: Record<string, { tool?: string; byDate?: { before: string; tool: string }[] }>;
+  overrides?: Record<string, string>; // brew uuid -> tool name, applied last
+}
+export type ToolReport = { converted: number; untouched: number; dropped: string[]; problems: string[] };
+
+const toolKey = (s: unknown) => String(s ?? '').trim().toLowerCase().replace(/ filters$/, '');
+const toolsOf = (m: Rec) => (m.tools as Rec[]) ?? [];
+const ticksOf = (b: Rec) => (Array.isArray(b.method_of_preparation_tools) ? b.method_of_preparation_tools : []);
+const wallOf = (b: Rec) => bcTimestamp(Number((b.config as Rec).unix_timestamp)).slice(0, 16);
+
+// The site's pairing rule as of 2026-11-24 (parseMethod in insights/facts.ts, minus the Gabi hardcode, which `assign`
+// covers). Copied, not imported: facts.ts pulls in extensionless imports that plain `node scripts/*.ts` cannot load,
+// and the conversion must keep reading old names this way after the site's rule changes (#184).
+function parseMethod(name: string, tools: string): { dripper: string; filter: string | null } {
+  const i = name.indexOf(' - ');
+  if (i >= 0) return { dripper: name.slice(0, i).trim(), filter: name.slice(i + 3).trim() || null };
+  return { dripper: name.trim(), filter: tools.replace(/ filters$/i, '').trim() || null };
+}
+
+// Where a brew belongs under the plan: target method name and tool name (either may be missing).
+function wanted(b: Rec, origMethods: Map<unknown, Rec>, plan: ToolPlan): { method?: string; tool?: string; err?: string } {
+  const om = origMethods.get(b.method_of_preparation);
+  if (!om) return { err: `brew ${uuidOf(b)}: method ${b.method_of_preparation} not in PREPARATION` };
+  const old = String(om.name);
+  const cur = plan.methodRenames?.[old] ?? old;
+  const over = plan.overrides?.[uuidOf(b)!];
+  if (ticksOf(b).length) return { method: cur, tool: over }; // already ticked: left alone unless overridden
+  const e = plan.assign?.[cur];
+  if (e) return { method: cur, tool: over ?? e.byDate?.find((d) => wallOf(b) < d.before)?.tool ?? e.tool };
+  const { dripper, filter } = parseMethod(old, toolsOf(om).map((t) => t.name).join(', '));
+  const method = plan.drippers[dripper];
+  if (!method) return { err: `brew ${uuidOf(b)}: no target method for dripper ${dripper} (${old})` };
+  return { method, tool: over ?? (filter ? plan.filters?.[filter] ?? filter : undefined) };
+}
+
+/** Moves each unticked brew to its dripper's method with its filter ticked, then drops methods no brew uses any more. */
+export function convertToTools(
+  main: Rec,
+  brewFiles: Rec[][],
+  plan: ToolPlan
+): { main: Rec; brewFiles: Rec[][]; report: ToolReport } {
+  const out = structuredClone(main);
+  const files = structuredClone(brewFiles);
+  const brews = [out.BREWS as Rec[], ...files].flat();
+  const methods = out.PREPARATION as Rec[];
+  const origMethods = new Map(methods.map((m) => [uuidOf(m), structuredClone(m)]));
+  const usedMethods = () => new Set(brews.map((b) => b.method_of_preparation));
+  const before = usedMethods();
+  const problems: string[] = [];
+  for (const m of methods) m.name = plan.methodRenames?.[String(m.name)] ?? m.name;
+  const byName = (n: string) => methods.filter((m) => m.name === n);
+  for (const n of new Set([...Object.values(plan.drippers), ...Object.keys(plan.assign ?? {})])) {
+    if (byName(n).length !== 1) problems.push(`method "${n}": ${byName(n).length} found, need exactly 1`);
+  }
+  const brewIds = new Set(brews.map(uuidOf));
+  for (const u of Object.keys(plan.overrides ?? {})) if (!brewIds.has(u)) problems.push(`override ${u}: no such brew`);
+  for (const [n, e] of Object.entries(plan.assign ?? {})) {
+    const bs = e.byDate?.map((d) => d.before) ?? [];
+    if (bs.some((x, i) => i && x <= bs[i - 1])) problems.push(`assign "${n}": byDate must be in ascending order`);
+  }
+
+  const changed = new Set<unknown>();
+  let untouched = 0;
+  for (const b of brews) {
+    const w = wanted(b, origMethods, plan);
+    if (w.err) { problems.push(w.err); continue; }
+    if (!w.tool && ticksOf(b).length) { untouched++; continue; }
+    const m = byName(w.method!)[0];
+    const tool = m && toolsOf(m).find((t) => toolKey(t.name) === toolKey(w.tool));
+    if (!tool) { problems.push(`brew ${uuidOf(b)}: method "${w.method}" has no tool "${w.tool}"`); continue; }
+    b.method_of_preparation = uuidOf(m);
+    b.method_of_preparation_tools = [uuidOf(tool)];
+    changed.add(uuidOf(b));
+  }
+
+  const after = usedMethods();
+  const gone = methods.filter((m) => before.has(uuidOf(m)) && !after.has(uuidOf(m)));
+  out.PREPARATION = methods.filter((m) => !gone.includes(m));
+  const rest = JSON.stringify([out, files]);
+  for (const m of gone) if (rest.includes(uuidOf(m)!)) problems.push(`dropped method "${m.name}" ${uuidOf(m)} is still referenced`);
+
+  const report = { converted: changed.size, untouched, dropped: gone.map((m) => String(m.name)), problems };
+  return problems.length ? { main, brewFiles, report } : { main: out, brewFiles: files, report };
+}
+
+/** Failures (empty = pass) of a converted export against the original under the plan. */
+export function verifyTools(origMain: Rec, origBrews: Rec[][], newMain: Rec, newBrews: Rec[][], plan: ToolPlan): string[] {
+  const fails: string[] = [];
+  const ob = [origMain.BREWS as Rec[], ...origBrews].flat();
+  const nb = [newMain.BREWS as Rec[], ...newBrews].flat();
+  const newByUuid = new Map(nb.map((b) => [uuidOf(b), b]));
+  if (ob.length !== nb.length || newByUuid.size !== nb.length || ob.some((b) => !newByUuid.has(uuidOf(b)))) {
+    fails.push(`brews: ${ob.length} expected, ${nb.length} actual, or uuids differ`);
+  }
+  const origMethods = new Map((origMain.PREPARATION as Rec[]).map((m) => [uuidOf(m), m]));
+  const newMethods = new Map((newMain.PREPARATION as Rec[]).map((m) => [uuidOf(m), m]));
+  const strip = ({ method_of_preparation: _m, method_of_preparation_tools: _t, ...r }: Rec) => canon(r);
+  for (const o of ob) {
+    const u = uuidOf(o);
+    const n = newByUuid.get(u);
+    if (!n) continue;
+    if (strip(o) !== strip(n)) fails.push(`brew ${u}: a field other than method and ticks changed`);
+    const m = newMethods.get(n.method_of_preparation as string);
+    const ticks = ticksOf(n);
+    const tool = ticks.length === 1 ? toolsOf(m ?? {}).find((t) => uuidOf(t) === ticks[0]) : undefined;
+    if (!m || !tool) { fails.push(`brew ${u}: ${ticks.length} ticks, need exactly 1 of its own method's tools`); continue; }
+    const w = wanted(o, origMethods, plan);
+    if (w.err) { fails.push(w.err); continue; }
+    if (!w.tool && ticksOf(o).length) {
+      if (canon([o.method_of_preparation, ticksOf(o)]) !== canon([n.method_of_preparation, ticks])) fails.push(`brew ${u}: a ticked brew was changed`);
+    } else if (m.name !== w.method || toolKey(tool.name) !== toolKey(w.tool)) {
+      fails.push(`brew ${u}: is ${m.name} / ${tool.name}, expected ${w.method} / ${w.tool}`);
+    }
+  }
+  const used = new Set(nb.map((b) => b.method_of_preparation));
+  const origUsed = new Set(ob.map((b) => b.method_of_preparation));
+  for (const [id, m] of newMethods) {
+    const o = origMethods.get(id);
+    if (!o) fails.push(`method ${id}: not in the original`);
+    else if (canon({ ...o, name: plan.methodRenames?.[String(o.name)] ?? o.name }) !== canon(m)) fails.push(`method "${m.name}": changed beyond a planned rename`);
+    if (origUsed.has(id) && !used.has(id)) fails.push(`method "${m.name}": no brew uses it any more, drop it`);
+  }
+  const everything = JSON.stringify([newMain, newBrews]);
+  for (const [id, m] of origMethods) {
+    if (!newMethods.has(id) && everything.includes(id as string)) fails.push(`dropped method "${m.name}" is still referenced`);
+  }
+  for (const k of Object.keys({ ...origMain, ...newMain }).filter((k) => k !== 'BREWS' && k !== 'PREPARATION')) {
+    if (canon(origMain[k]) !== canon(newMain[k])) fails.push(`key ${k}: differs`);
+  }
+  return fails;
+}
