@@ -20,6 +20,8 @@ function seed() {
   run(`INSERT INTO beanconqueror_methods (id, name, imported_at) VALUES ('m1', 'Used Method', 'x'), ('m2', 'Spare Method', 'x')`);
   run(`INSERT INTO beanconqueror_method_tools (uuid, method_id, name) VALUES ('t1', 'm2', 'Tool')`);
   run(`INSERT INTO beanconqueror_brews (bc_created_at, preparation_id, imported_at) VALUES ('x', 'm1', 'x')`);
+  run(`INSERT INTO coffees (roaster, coffee_name, created_at, updated_at) VALUES ('R', 'C', 'x', 'x')`);
+  run(`INSERT INTO brew_now_marks (coffee_id, marked_at, marked_local, dripper, filter, suggestion) VALUES (1, 'x', 'x', 'Old Dripper', 'Old Filter', '{}')`);
   return db;
 }
 const names = (db: ReturnType<typeof seed>, q: string) => (db.prepare(q).all() as { n: string }[]).map((r) => r.n);
@@ -35,6 +37,7 @@ describe('rename-gear', () => {
     expect(JSON.parse((db.prepare(`SELECT definition d FROM recipes`).get() as { d: string }).d).drippers).toEqual(['New Dripper', 'Other']);
     expect(names(db, `SELECT name n FROM beanconqueror_methods`)).toEqual(['Used Method']);
     expect(db.prepare(`SELECT count(*) c FROM beanconqueror_method_tools`).get()).toEqual({ c: 0 });
+    expect(db.prepare(`SELECT dripper, filter FROM brew_now_marks`).get()).toEqual({ dripper: 'New Dripper', filter: 'New Filter' });
     expect(first).toContain('kept method Used Method: a brew uses it');
     const before = db.prepare(`SELECT * FROM gear_details ORDER BY kind, name`).all();
     renameGear(db, map);

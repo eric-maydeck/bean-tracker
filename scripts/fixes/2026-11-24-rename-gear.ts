@@ -4,8 +4,9 @@
 // Name-storing columns covered: gear_details (kind + name), locked_drippers, recipes.definition (drippers),
 // tool_kinds.name (filters), brew_now_marks.dripper / filter, plus the delete lists. Not covered: short_links
 // (URLs that embed old names; they expire) and the BQ tables (the re-import brings the new names).
-// Every statement matches the old value, so a rerun changes nothing.
-import { readFileSync } from 'node:fs';
+// Every statement matches the old value, so a rerun changes nothing. Each map is applied in one pass per name:
+// don't chain renames (A -> B plus B -> C).
+import { existsSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
 export interface RenameMap {
@@ -65,7 +66,15 @@ export function renameGear(db: DatabaseSync, map: RenameMap): string[] {
 
 if (process.argv[1]?.endsWith('2026-11-24-rename-gear.ts')) {
   const [mapPath, ...dbs] = process.argv.slice(2);
-  if (!mapPath || !dbs.length) throw new Error('usage: 2026-11-24-rename-gear.ts <map.json> <db path>...');
+  if (!mapPath || !dbs.length) {
+    console.error('usage: 2026-11-24-rename-gear.ts <map.json> <db path>...');
+    process.exit(1);
+  }
+  const missing = [mapPath, ...dbs].filter((p) => !existsSync(p));
+  if (missing.length) {
+    console.error(`not found: ${missing.join(', ')}`);
+    process.exit(1);
+  }
   const map = JSON.parse(readFileSync(mapPath, 'utf8')) as RenameMap;
   for (const p of dbs) {
     const db = new DatabaseSync(p);
