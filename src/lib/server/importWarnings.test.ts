@@ -89,6 +89,11 @@ describe('importWarnings', () => {
       expect(reasons()).toEqual(['No filter']);
     });
 
+    it('a forgotten tick on a multi-tool method is No filter, not Two filters', () => {
+      clear(); tooled('V60', ['Cafec Abaca', 'Cafec T-90'], []);
+      expect(reasons()).toEqual(['No filter']);
+    });
+
     it('flags two filters ticked, joined by +', () => {
       clear(); tooled('V60', ['Cafec Abaca', 'Cafec T-90'], [0, 1]);
       expect(importWarnings(db).map((w) => [w.reason, w.value])).toEqual([['Two filters ticked', 'Cafec Abaca + Cafec T-90']]);

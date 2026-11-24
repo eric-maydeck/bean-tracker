@@ -35,7 +35,10 @@ export function readGear(method: string | null, methodTools: string[], ticked: s
   if (!method) return pick(null, [], []);
   if (ticked.length) return pick(method.trim(), ticked.filter((n) => isFilter(kinds, n)), ticked.filter((n) => !isFilter(kinds, n)));
   const old = parseMethod(method, legacyTools);
-  if (methodTools.length >= 2) return pick(method.trim(), methodTools.filter((n) => isFilter(kinds, n)), []);
+  if (methodTools.length >= 2) { // nothing ticked on a multi-tool method: its one Filter-kind tool, else unknown
+    const fs = methodTools.filter((n) => isFilter(kinds, n));
+    return pick(method.trim(), fs.length === 1 ? fs : [], []);
+  }
   if (old.filter && !isFilter(kinds, old.filter)) return pick(old.dripper, [], [old.filter]);
   return pick(old.dripper, old.filter ? [old.filter] : [], []);
 }

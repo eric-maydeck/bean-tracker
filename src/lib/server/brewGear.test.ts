@@ -23,6 +23,13 @@ describe('readGear', () => {
   it('nothing ticked, many tools: whole name, no filter', () => {
     expect(readGear('V60 Neo Tritan - 02', four, [], kinds(), null)).toMatchObject({ dripper: 'V60 Neo Tritan - 02', filter: null });
   });
+  it('nothing ticked, many tools: filters is empty, not every tool', () => {
+    expect(readGear('V60', four, [], kinds(), null).filters).toEqual([]);
+  });
+  it('nothing ticked, one filter plus accessories: that filter', () => {
+    const g = readGear('Switch', ['Cafec Abaca', 'Switch base'], [], kinds({ 'Switch base': 'accessory' }), null);
+    expect(g).toMatchObject({ dripper: 'Switch', filter: 'Cafec Abaca', filters: ['Cafec Abaca'] });
+  });
   it('nothing ticked, old shape: split name', () => {
     expect(readGear('V60 - Cafec T90', [], [], kinds(), 'Cafec T90 filters')).toMatchObject({ dripper: 'V60', filter: 'Cafec T90' });
   });
