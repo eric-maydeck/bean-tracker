@@ -58,6 +58,7 @@
   } from '#lib/coffeeViewState.ts';
   import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
   import { formatBag, formatGrams } from '#lib/grams.ts';
+  import { sortDirLabel, sortDirTip } from '#lib/sortDirLabels.ts';
 
   let { data, form } = $props();
 
@@ -470,7 +471,6 @@
     frozen_start_date: 'Frozen', frozen_end_date: 'Unfrozen', rest_window: 'Rest window', urgency: 'Urgency',
     created_at: 'Date added', updated_at: 'Date updated'
   };
-  let dirLabel = $derived(sortDir === 'asc' ? 'Ascending' : 'Descending');
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -622,8 +622,8 @@
       <button
         type="button"
         class="icon-button sort-dir"
-        aria-label="Sort {dirLabel.toLowerCase()}"
-        use:labelTip={`${dirLabel}: tap for ${sortDir === 'asc' ? 'descending' : 'ascending'}`}
+        aria-label={sortDirLabel(sortDir)}
+        use:labelTip={sortDirTip(sortDir)}
         onclick={() => setSort(sortKey, sortDir === 'asc' ? 'desc' : 'asc')}
       >
         <Icon name={sortDir === 'asc' ? 'sort-ascending' : 'sort-descending'} />

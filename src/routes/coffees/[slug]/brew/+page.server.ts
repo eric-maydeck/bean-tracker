@@ -11,16 +11,18 @@ import { loadBrewRows, loadGearClass, gearOptions, coffeeGearDefaults, coffeeDet
 import { suggest, similarCoffees, thisCoffeeSummary, tierOf } from '#lib/server/brewNow/suggest.ts';
 import { findRoasterRecipe, getRoasterRecipe } from '#lib/server/brewNow/roasterRecipe.ts';
 import { getBrewDoses, getBrewRatios } from '#lib/server/brewNow/prefs.ts';
+import { loadBrewRecipes, orderRecipes, suggestedRecipe, fitsDripper, brewSteps } from '#lib/server/brewNow/recipe.ts';
 import { parseBrewNowView } from './brewNowUrl';
 
 // The chosen gear and its suggestion, from the view params only: the page and ?/brewThis both derive them here.
 function derive(db: ReturnType<typeof getDb>, coffee: NonNullable<ReturnType<typeof coffeeDetails>>, url: URL, today: string) {
   const rows = loadBrewRows(db);
+  const recipes = loadBrewRecipes(db);
   const base = gearOptions(rows, today);
   const doses = getBrewDoses(db), ratios = getBrewRatios(db).ratios;
   // The "other" drippers / filters are valid picks too (E6); dose and ratio must be on the user's lists (R19).
   const view = parseBrewNowView(url, { grinders: base.grinders, drippers: [...base.drippers, ...base.otherDrippers],
-    filters: [...base.filters, ...base.otherFilters], doses, ratios });
+    filters: [...base.filters, ...base.otherFilters], doses, ratios, recipes: recipes.map((r) => r.slug) });
   // E8: this coffee's own most used gear first; the filter is the chosen dripper's own most used.
   const gearDefaults = coffeeGearDefaults(rows, rows.filter((r) => tierOf(coffee, r) === 1), view.dripper);
   // E9: the filter lists follow the dripper.
@@ -30,9 +32,17 @@ function derive(db: ReturnType<typeof getDb>, coffee: NonNullable<ReturnType<typ
   // A filter that is in neither list for this dripper still loads, but falls back to the dripper's default.
   const filter = view.filter && [...filters, ...otherFilters, gearDefaults.filter].includes(view.filter) ? view.filter : null;
   const gear = { grinder: view.grinder ?? gearDefaults.grinder, dripper: view.dripper ?? gearDefaults.dripper, filter: filter ?? gearDefaults.filter };
-  const sug = suggest(coffee, rows, gear, gc, doses, today, ratios, { dose: view.dose ?? null, ratio: view.ratio ?? null });
-  const defaults = { ...gearDefaults, dose: sug.suggestedDose, ratio: sug.suggestedRatio }; // what the URL omits
-  return { rows, options, defaults, view, gear, gc, sug };
+  const chosenDR = { dose: view.dose ?? null, ratio: view.ratio ?? null };
+  const sug0 = suggest(coffee, rows, gear, gc, doses, today, ratios, chosenDR);
+  // The recipe the brews point to (that fits this dripper), unless one is picked; its temp / ratio feed a second pass.
+  const suggested = suggestedRecipe(recipes, sug0.recipeRank, rows, gear.dripper);
+  const recipe = recipes.find((r) => r.slug === view.recipe) ?? suggested;
+  const pass = (asWritten: boolean) => recipe ? suggest(coffee, rows, gear, gc, doses, today, ratios, chosenDR, { id: recipe.id, name: recipe.name, slug: recipe.slug, tempC: recipe.tempC, ratios: recipe.ratios, asWritten }) : sug0;
+  let sug = pass(false);
+  const from = view.from === 'recipe' && sug.switchable ? ('recipe' as const) : null; // ignored when the switch is not shown
+  if (from) sug = pass(true);
+  const defaults = { ...gearDefaults, dose: sug.suggestedDose, ratio: sug.suggestedRatio, recipe: suggested?.slug ?? null }; // what the URL omits
+  return { rows, options, defaults, view, gear, gc, sug, recipes, recipe, from, sug0, suggested };
 }
 
 // The roaster's own site as a bare host (what the search was restricted to), or null when none is on file.
@@ -59,7 +69,11 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     }
     error(404, 'Coffee not found');
   }
-  const { rows, options, defaults, view, gear, gc, sug } = derive(db, coffee, url, today);
+  const { rows, options, defaults, view, gear, gc, sug, sug0, recipes, recipe, from, suggested } = derive(db, coffee, url, today);
+  const amounts = view.amounts ?? null;
+  const water = sug.dose && sug.ratio ? { total: Math.round(sug.dose * sug.ratio), mode: amounts === 'pour' ? ('pour' as const) : ('total' as const) } : null;
+  const fitNote = recipe && !fitsDripper(recipe, gear.dripper)
+    ? `Saved for the ${recipe.drippers.join(' or ')}${gear.dripper ? `; you picked the ${gear.dripper}` : ''}.` : null;
   const marks = marksFor(db, coffee.id);
   const roaster = coffee.roaster.trim().toLowerCase();
   const mine = rows.filter((r) => tierOf(coffee, r) === 1).reverse(); // rows are oldest first
@@ -67,7 +81,11 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
   const strip = <T extends { notes: string | null }>(b: T): T => (locals.isAdmin ? b : { ...b, notes: null });
   return {
     image: coffeeImage(getCoffeeBySlug(db, params.slug)!, ''),
-    coffee, gear, defaults, options, why: view.why,
+    coffee, gear, defaults, options, why: view.why, from, amounts, chosenRecipe: view.recipe ?? null, // the URL's own pick (null = following the suggestion)
+    suggestedRecipe: suggested && { slug: suggested.slug, name: suggested.name },
+    recipes: orderRecipes(recipes, sug0.recipeRank, rows, gear.dripper).map((r) => ({ slug: r.slug, name: r.name, fits: fitsDripper(r, gear.dripper) })),
+    recipe: recipe && { slug: recipe.slug, name: recipe.name, description: recipe.description, notes: recipe.notes, timeline: recipe.timeline,
+      steps: brewSteps(db, recipe.id, water), hasAmounts: recipe.hasAmounts && water !== null, fitNote },
     suggestion: locals.isAdmin ? sug : { ...sug, lastNote: null, rows: sug.rows.map((r) => ({ ...r, evidence: r.evidence.map(strip) })) },
     thisCoffee: [...mine.filter((r) => r.best), ...mine.filter((r) => !r.best)].map(strip), // Best brew pinned
     thisCoffeeSummary: thisCoffeeSummary(coffee, rows, gear, locals.isAdmin), // notes only for the admin (R9)
@@ -90,7 +108,7 @@ export const actions: Actions = {
     if (!coffee) error(404, 'Coffee not found');
     const f = await request.formData();
     const url = new URL('http://x/');
-    for (const k of ['grinder', 'dripper', 'filter', 'dose', 'ratio']) { const v = f.get(k); if (typeof v === 'string' && v) url.searchParams.set(k, v); }
+    for (const k of ['grinder', 'dripper', 'filter', 'dose', 'ratio', 'recipe', 'from']) { const v = f.get(k); if (typeof v === 'string' && v) url.searchParams.set(k, v); }
     const { gear, sug } = derive(db, coffee, url, localToday());
     addMark(db, { coffeeId: coffee.id, gear, suggestion: sug, now: new Date() });
     const { id } = db.prepare(`SELECT last_insert_rowid() AS id`).get() as { id: number }; // the page's Undo deletes this mark

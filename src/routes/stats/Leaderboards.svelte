@@ -1,4 +1,5 @@
 <script lang="ts" module>
+  import { sortDirLabel, sortDirTip } from '#lib/sortDirLabels.ts';
   import { LIKE_BOARDS, type Board, type Rank } from '#lib/insightsUrl.ts';
   import type { PageData } from './$types';
   import type { JumpLink } from './JumpNav.svelte';
@@ -285,7 +286,7 @@
       <div class="board-tools">
         <!-- First in the tools, one box pressed or not; gone (the head keeps its height) where there is nothing to order. -->
         {#if rows.length && !unranked(b) && !fixed}
-          <button class="icon-button low-switch" aria-pressed={isLow} aria-label="Lowest first" use:labelTip={'Lowest first'}
+          <button class="icon-button low-switch" aria-pressed={isLow} aria-label={sortDirLabel(isLow ? 'asc' : 'desc')} use:labelTip={sortDirTip(isLow ? 'asc' : 'desc')}
             onclick={() => toggleLow(b)}><Icon name={isLow ? 'sort-ascending' : 'sort-descending'} /></button>
         {/if}
         {#if switchable}

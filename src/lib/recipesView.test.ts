@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseRecipesView, recipesParams } from './recipesView';
+import { BN_DEFAULT_DIR, parseRecipesView, recipesParams } from './recipesView';
 
 const parse = (q: string) => parseRecipesView(new URLSearchParams(q));
 
@@ -28,5 +28,33 @@ describe('parseRecipesView', () => {
       expect(recipesParams(parse(q)).toString()).toBe(q);
     expect(recipesParams(parse('')).toString()).toBe('');
     expect(recipesParams(parse('order=top')).toString()).toBe(''); // order only means something with brews=
+  });
+  it('reads brewnow as a lowercase slug and ignores junk', () => {
+    expect(parse('brewnow=BBS')).toEqual({ brewnow: 'bbs' });
+    for (const q of ['brewnow=', 'brewnow=a/b']) expect(parse(q), q).toEqual({});
+  });
+  it('writes brewnow next to brews and view', () => {
+    expect(recipesParams({ brewnow: 'bbs' }).toString()).toBe('brewnow=bbs');
+    expect(recipesParams(parse('brews=r3&view=hidden&brewnow=bbs')).toString()).toBe('brews=r3&view=hidden&brewnow=bbs');
+  });
+  it('reads the picker params (case-insensitive) only with brewnow, and round-trips them', () => {
+    expect(parse('brewnow=bbs&bnq=%20Sey%20&bnsort=RATING&bndir=ASC&bnstatus=Backlog')).toEqual({ brewnow: 'bbs', bnq: 'Sey', bnsort: 'rating', bndir: 'asc', bnstatus: 'backlog' });
+    expect(parse('bnq=sey&bnsort=name&bndir=asc&bnstatus=backlog')).toEqual({}); // no picker open: ignored
+    expect(parse('brewnow=bbs&bnsort=nope&bndir=up&bnstatus=open&bnq=')).toEqual({ brewnow: 'bbs' });
+    expect(recipesParams(parse('brewnow=bbs&bnstatus=backlog&bnq=sey&bnsort=grams&bndir=desc')).toString()).toBe('brewnow=bbs&bnstatus=backlog&bnq=sey&bnsort=grams&bndir=desc');
+    expect(parse('brewnow=bbs&bnsort=brews')).toEqual({ brewnow: 'bbs', bnsort: 'brews' }); // old links keep working
+    expect(parse('brewnow=bbs&bnsort=URGENCY')).toEqual({ brewnow: 'bbs', bnsort: 'urgency' });
+    expect(recipesParams({ bnq: 'x', bndir: 'asc' }).toString()).toBe(''); // dropped when the picker closes
+    expect(parse(`brewnow=bbs&bnq=${'a'.repeat(300)}`).bnq).toHaveLength(100);
+  });
+  it('writes bnsort only off urgency, and bndir only when it differs from that sort\'s default direction', () => {
+    const w = (v: object) => recipesParams({ brewnow: 'bbs', ...v }).toString();
+    expect(w({ bnsort: 'urgency', bndir: 'desc' })).toBe('brewnow=bbs');
+    expect(w({ bndir: 'asc' })).toBe('brewnow=bbs&bndir=asc');
+    expect(w({ bnsort: 'name', bndir: 'asc' })).toBe('brewnow=bbs&bnsort=name');
+    expect(w({ bnsort: 'name', bndir: 'desc' })).toBe('brewnow=bbs&bnsort=name&bndir=desc');
+    expect(w({ bnsort: 'brews', bndir: 'desc' })).toBe('brewnow=bbs&bnsort=brews');
+    expect(w({ bnsort: 'grams', bndir: 'asc' })).toBe('brewnow=bbs&bnsort=grams');
+    expect(BN_DEFAULT_DIR).toEqual({ urgency: 'desc', brews: 'desc', rating: 'desc', name: 'asc', roaster: 'asc', grams: 'asc' });
   });
 });

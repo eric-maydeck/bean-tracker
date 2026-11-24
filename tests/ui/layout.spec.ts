@@ -2735,7 +2735,74 @@ export const STATES: State[] = [
       await expect(page.locator('li[id^="brew-"]').first()).toContainText('Best');
       await expect(page.locator('.gt figure > svg')).toBeVisible();
       await expect(page.locator('.gt .crown')).toHaveCount(2); // the Best brew's crown and the legend's
-      await expect(page.getByRole('link', { name: 'Recipe', exact: true })).toHaveAttribute('href', /^\/recipes\/[a-z0-9-]+$/); // a recipe's own page, by name
+      await expect(page.locator('.steps-card a[href^="/recipes/"]').first()).toHaveAttribute('href', /^\/recipes\/[a-z0-9-]+$/); // the chosen recipe's own page, by name
+      await expect(page.locator('.rows .lab', { hasText: 'Recipe' })).toHaveCount(0); // the picker replaces the row
+    } },
+  // Brew now with a recipe: the picker row, Steps under Start here, and the two switches. A switch flipping must not move or resize what is around it.
+  { name: 'brew-now-recipe', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      await expect(page.getByRole('heading', { name: 'Steps', level: 2 })).toBeVisible();
+      const row = page.locator('.pk2-row').filter({ has: page.locator('#pk-recipe') });
+      await expect(row.locator('button[aria-pressed="true"]')).toHaveCount(1);
+      await expect(row.locator('+ .pk2-row #pk-dose, + .pk2-row button#pk-dose')).toHaveCount(1); // between Filter and Dose
+      await expect(page.locator('.steps-card .tab-group button')).toHaveText(['Running total', 'Per pour']);
+      await expect(page.locator('.steps-card .rsteps li').first()).toBeVisible();
+      await expect(page.locator('.steps-card svg').first()).toBeVisible(); // the pour timeline
+      await expect(page.getByRole('link', { name: 'Add a recipe' })).toHaveCount(0); // only with none to pick
+      const start = page.locator('.start');
+      const after = await start.locator('xpath=following-sibling::section[1]').getAttribute('aria-labelledby');
+      expect(after).toBe('steps-text'); // Steps sits directly under Start here
+    } },
+  // Picking a recipe other than the suggestion shows the hint under the Recipe row; its link switches back, and an explicit pick stays in the URL.
+  { name: 'brew-now-recipe-hint', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      const row = page.locator('.pk2-row').filter({ has: page.locator('#pk-recipe') });
+      const hint = page.locator('.pk2-hint');
+      await expect(hint).toHaveCount(0); // following the suggestion
+      const before = await row.boundingBox();
+      await row.locator('button[aria-pressed="false"]').first().click();
+      await expect(hint).toBeVisible();
+      await expect(hint).toContainText('Suggested for this setup:');
+      expect((await row.boundingBox())!.y).toBe(before!.y); // the chip row does not move
+      expect((await hint.locator('button').boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await hint.locator('button').click();
+      await expect(hint).toHaveCount(0);
+      await expect(page).toHaveURL(/recipe=/); // explicit pick stays even though it is the suggestion
+      await page.locator('.pk2-row').filter({ has: page.locator('#pk-dose') }).locator('button[aria-pressed="false"]').first().click();
+      await expect(page).toHaveURL(/recipe=/);
+    } },
+  { name: 'brew-now-recipe-from', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?recipe=seed-low-agitation`, // 3 of its brews ran at 1:16.7 against its 1:16.8
+    act: async (page, s) => {
+      const url = `/coffees/${s.slugs.brew}/brew`;
+      const sw = page.locator('.start .tab-group');
+      await expect(sw.getByRole('button', { name: 'Your brews' })).toHaveAttribute('aria-pressed', 'true');
+      const boxes = () => page.locator('.start .head, .start .tab-group, .start .rows > li').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x + scrollX, r.y + scrollY, r.width, r.height].map(Math.round); }));
+      const before = await boxes();
+      await sw.getByRole('button', { name: 'As written' }).click();
+      await expect(page).toHaveURL(/from=recipe/); // an explicit recipe stays in the URL
+      await expect(sw.getByRole('button', { name: 'As written' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.rows').getByText('From the recipe').first()).toBeVisible();
+      expect(await boxes()).toEqual(before); // flipping the switch moves nothing
+      await gotoReady(page, `${url}?from=recipe`);
+      await expect(page.locator('.start .tab-group').getByRole('button', { name: 'As written' })).toHaveAttribute('aria-pressed', 'true');
+      await page.locator('.start .tab-group').getByRole('button', { name: 'Your brews' }).click();
+      await expect(page).not.toHaveURL(/from=/);
+    } },
+  { name: 'brew-now-recipe-amounts', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      const steps = () => page.locator('.rsteps li > *').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x + scrollX, r.y + scrollY, r.width, r.height].map(Math.round); }));
+      const sw = page.locator('.steps-card .tab-group');
+      await expect(page.locator('.rsteps li').first()).toContainText(/to \d+g/);
+      const total = await steps();
+      await sw.getByRole('button', { name: 'Per pour' }).click();
+      await expect(page).toHaveURL(/amounts=pour/);
+      await expect(page.locator('.rsteps li').first()).not.toContainText(/to \d+g/);
+      expect(await steps()).toEqual(total); // the lines stay where they were
+      await page.mouse.move(0, 0);
+      await sw.getByRole('button', { name: 'Per pour' }).hover();
+      await expect(page.locator('.float-tip, [role="tooltip"]').filter({ hasText: 'How much water each pour adds' })).toBeVisible();
+      await sw.getByRole('button', { name: 'Running total' }).click();
+      await expect(page).not.toHaveURL(/amounts=/);
     } },
   { name: 'brew-now-why-open', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?why=temp`,
     act: async (page) => {
@@ -3859,7 +3926,7 @@ export const STATES: State[] = [
           await expect(page.locator('.cell-tip:popover-open')).toContainText('Water low');
           await expect(page.locator('.cell-tip:popover-open')).toContainText('Start this pour when the water is low');
           await page.mouse.click(1, 1);
-          await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 24 with notes only')).toBeVisible();
+          await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 27 with notes only')).toBeVisible(); // 24 + the 3 Brew now brews tagged seedlow
         }
       },
       {
@@ -3887,6 +3954,131 @@ export const STATES: State[] = [
           const href = await h.locator('a').getAttribute('href');
           expect(await page.evaluate(() => (window as unknown as { copies: string[] }).copies)).toEqual([new URL(href!, page.url()).href]);
           expect(new URL(page.url()).pathname, 'the icon leaves the address bar alone').toBe('/recipes');
+        }
+      },
+      {
+        // Brew now: the button opens the open-coffee picker (state in ?brewnow=); a coffee card links to its brew page with the
+        // recipe; Escape closes it and keeps the other params. Opening focuses the dialog, never a field.
+        name: 'recipes-brew-now', viewports: 'two' as const,
+        path: (s: Seed) => `/recipes?brews=r${s.recipes.recipeId}`,
+        act: async (page: Page, s: Seed) => {
+          const card = panel(page, 'Your recipes').locator('li.item').filter({ hasText: 'Seed equal pours' });
+          await card.getByRole('link', { name: 'Brew now' }).click();
+          const dlg = page.getByRole('dialog', { name: 'Brew with Seed equal pours: Select a coffee' });
+          await expect(dlg).toBeVisible();
+          await expect(dlg.locator('svg[role="img"]')).toBeVisible();
+          expect(new URL(page.url()).searchParams.get('brewnow')).toBe('seed-equal-pours');
+          expect(await page.evaluate(() => document.activeElement?.matches('input, textarea, select'))).toBe(false);
+          const picks = dlg.locator('a.pick');
+          expect(await picks.count()).toBeGreaterThan(0);
+          await expect(picks.first()).toHaveAttribute('href', /^\/coffees\/[^/]+\/brew\?recipe=seed-equal-pours$/);
+          for (const pk of await picks.all()) expect((await pk.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+          // Image-led grid: 2 columns on a phone, 3 on desktop; each card has its status badge and nothing overflows (long names clamp).
+          const cols = await dlg.locator('.picks').evaluate((e) => getComputedStyle(e).gridTemplateColumns.split(' ').length);
+          expect(cols).toBe(page.viewportSize()!.width > 640 ? 3 : 2);
+          await expect(picks.first().locator('.badge').first()).toHaveText('Open');
+          expect(await picks.evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth).length)).toBe(0);
+          const pad = await picks.first().evaluate((e) => { const a = e.getBoundingClientRect(), t = e.querySelector('img.card-thumb')?.getBoundingClientRect(); return t ? [t.left - a.left, t.top - a.top, a.right - t.right].map(Math.round) : null; });
+          if (pad) expect(new Set(pad.map((x) => x - 1)).size, `thumbnail padding ${pad}`).toBe(1); // 1px border + equal padding
+          // Search + sort row: search left with Sort by and the direction button on its line (desktop), under it on a phone; never focused at open.
+          const search = dlg.getByRole('searchbox', { name: 'Search coffees' }), sort = dlg.locator('#picker-sort'), dirBtn = dlg.locator('.sort-dir');
+          await expect(search).not.toBeFocused();
+          expect(new URL(page.url()).search, 'bare URL = Urgency, descending').toBe(`?brews=r${s.recipes.recipeId}&brewnow=seed-equal-pours`);
+          await expect(sort).toHaveValue('urgency');
+          await expect(dirBtn).toHaveAccessibleName('Sort descending');
+          // The search box, the dropdown and the direction button share one height (44px).
+          const hs = await dlg.locator('.picker-controls .search-input, #picker-sort, .sort-dir').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+          expect(hs, `control heights ${hs}`).toEqual([44, 44, 44]);
+          const sb = (await search.boundingBox())!, ob = (await sort.boundingBox())!, db = (await dirBtn.boundingBox())!;
+          if (page.viewportSize()!.width > 640) { expect(sb.x).toBeLessThan(ob.x); expect(Math.abs(sb.y + sb.height / 2 - (ob.y + ob.height / 2))).toBeLessThan(sb.height / 2); }
+          else { expect(ob.y).toBeGreaterThanOrEqual(sb.y + sb.height); expect(ob.height).toBeGreaterThanOrEqual(44); expect(db.height).toBeGreaterThanOrEqual(44); }
+          const boxes = () => dlg.locator('.tab-group, .picker-controls input, #picker-sort, .sort-dir').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(Math.round); }));
+          const still = await boxes();
+          await dirBtn.click();
+          await expect(page).toHaveURL(/bndir=asc/);
+          await sort.selectOption('name');
+          await expect(page).toHaveURL(/bnsort=name/);
+          await expect(page).not.toHaveURL(/bndir=/); // choosing an option resets the direction to its own default (Name: ascending)
+          await expect(dirBtn).toHaveAccessibleName('Sort ascending');
+          await sort.selectOption('brews');
+          await expect(page).toHaveURL(/bnsort=brews/);
+          await expect(dirBtn).toHaveAccessibleName('Sort descending');
+          await sort.selectOption('name');
+          expect(await boxes()).toEqual(still); // flipping sort or direction moves no control
+          const names = await picks.locator('.pick-name').allInnerTexts();
+          expect(names.map((x) => x.toLowerCase())).toEqual([...names.map((x) => x.toLowerCase())].sort());
+          // Typing narrows the cards in real time (name or roaster, any case) and lands in the URL; no match shows a muted message.
+          const roaster = (await picks.first().locator('.pick-line').innerText()).slice(0, 4).toUpperCase();
+          await search.fill(roaster);
+          await expect(page).toHaveURL(new RegExp(`bnq=${roaster}`, 'i'));
+          for (const l of await picks.locator('.pick-line').allInnerTexts()) expect(l.toUpperCase()).toContain(roaster);
+          await search.fill('zzzqqq');
+          await expect(dlg.getByText('No coffees match')).toBeVisible();
+          await expect(picks).toHaveCount(0);
+          expect(await boxes()).toEqual(still); // an empty result leaves the controls where they were
+          await dlg.getByRole('button', { name: 'Clear search' }).click(); // the X inside the box: clears, keeps focus in it
+          await expect(search).toHaveValue('');
+          await expect(search).toBeFocused();
+          await expect(dlg.getByRole('button', { name: 'Clear search' })).toHaveCount(0);
+          expect(await boxes()).toEqual(still);
+          await expect(picks.first()).toBeVisible();
+          await expect(page).not.toHaveURL(/bnq=/);
+          // Backlog switch: same cards with a Backlog badge, or the empty message; Open brings the open ones back.
+          await dlg.getByRole('button', { name: 'Backlog' }).click();
+          await expect(page).toHaveURL(/bnstatus=backlog/);
+          await expect(dlg.getByRole('button', { name: 'Backlog' })).toHaveAttribute('aria-pressed', 'true');
+          if (await picks.count()) for (const b of await picks.locator('.badge').first().allInnerTexts()) expect(b).toBe('Backlog');
+          else await expect(dlg.getByText('No backlog coffees.')).toBeVisible();
+          expect(await boxes()).toEqual(still);
+          // Tapping a backlog card asks first (Cancel leaves the picker as it was); confirming opens it through the site's batch action
+          // (stubbed here: the DB is shared) and shows the Undo toast, then lands on its Brew now page with the recipe.
+          if (await picks.count()) {
+            const posts: string[] = [];
+            await page.route('**/api/coffees/commit-batch', (r) => { posts.push(r.request().postData() ?? ''); return r.fulfill({ json: { success: true, before: [], after: [] } }); });
+            await page.route('**/api/coffees/restore-state', (r) => { posts.push('restore'); return r.fulfill({ json: { success: true } }); });
+            let href = await picks.first().getAttribute('href');
+            await picks.first().click();
+            const ask = page.getByRole('dialog', { name: /isn't open yet/ });
+            await expect(ask).toBeVisible();
+            const btns = await ask.locator('.action-buttons .button').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { t: e.textContent!.trim(), h: Math.round(r.height), w: Math.round(r.width), right: Math.round(r.right) } }));
+            expect(btns.map((b) => b.t)).toEqual(['Open and brew', 'See recipe without opening', 'Cancel']);
+            expect(new Set(btns.map((b) => b.h)).size, `button heights ${btns.map((b) => b.h)}`).toBe(1); // same size
+            if (page.viewportSize()!.width <= 640) for (const b of btns) expect(b.h, b.t).toBeGreaterThanOrEqual(44);
+            expect(Math.max(...btns.map((b) => b.right)) <= page.viewportSize()!.width).toBe(true);
+            await ask.getByRole('button', { name: 'Cancel' }).click();
+            await expect(ask).toBeHidden();
+            await expect(dlg).toBeVisible();
+            expect(posts).toEqual([]);
+            await picks.first().click(); // See recipe without opening: a plain link to the brew page, nothing posted
+            const preview = ask.getByRole('link', { name: 'See recipe without opening' });
+            await expect(preview).toHaveAttribute('href', href!);
+            await preview.click();
+            await expect(page).toHaveURL((u) => u.href.endsWith(href!));
+            expect(posts).toEqual([]);
+            await gotoReady(page, `/recipes?brews=r${s.recipes.recipeId}&brewnow=seed-equal-pours&bnstatus=backlog`);
+            href = await picks.first().getAttribute('href'); // the bare URL sorts by Urgency again
+            await picks.first().click();
+            await ask.getByRole('button', { name: 'Open and brew' }).click();
+            await expect(page).toHaveURL((u) => u.href.endsWith(href!));
+            expect(JSON.parse(posts[0]).changes[0]).toMatchObject({ statusAction: 'open' });
+            const toast = page.locator('.toast', { hasText: 'marked as open' });
+            await expect(toast).toBeVisible();
+            await toast.getByRole('button', { name: /undo/i }).click();
+            await expect.poll(() => posts.at(-1)).toBe('restore');
+            await gotoReady(page, `/recipes?brews=r${s.recipes.recipeId}&brewnow=seed-equal-pours&bnstatus=backlog`);
+          }
+          await dlg.getByRole('button', { name: 'Open', exact: true }).click();
+          await expect(page).not.toHaveURL(/bnstatus=/);
+          await expect(picks.first()).toBeVisible();
+          await page.keyboard.press('Escape');
+          await expect(dlg).toBeHidden();
+          expect(new URL(page.url()).search).toBe(`?brews=r${s.recipes.recipeId}`); // the picker's own params go with it
+          await page.goto('/recipes?brewnow=seed-equal-pours');
+          await expect(dlg).toBeVisible();
+          await dlg.getByRole('link', { name: 'Close' }).click();
+          await expect(dlg).toBeHidden();
+          await page.goto('/recipes?brewnow=gone');
+          await expect(page.getByRole('dialog')).toHaveCount(0);
         }
       },
       {
@@ -8390,6 +8582,9 @@ export const STATES: State[] = [
       });
       await expect(page.locator('[data-board="varieties"] .low-switch')).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('[data-board="producers"] .low-switch')).toHaveAttribute('aria-pressed', 'false');
+      // Same captions as the /coffees and picker direction buttons, and they differ per direction.
+      await expect(page.locator('[data-board="varieties"] .low-switch')).toHaveAttribute('aria-label', 'Sort ascending');
+      await expect(page.locator('[data-board="producers"] .low-switch')).toHaveAttribute('aria-label', 'Sort descending');
       const pressed = await box('varieties'), idle = await box('producers');
       for (let i = 0; i < 4; i++) expect(Math.abs(pressed[i] - idle[i]), `box ${i}: ${pressed} vs ${idle}`).toBeLessThanOrEqual(1);
       // Lowest first: ascending values (Varieties' first row is at most its last).
