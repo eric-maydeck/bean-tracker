@@ -380,14 +380,14 @@ describe('busiest-day, bags-finished, spend, best-value', () => {
     const one = fact('spend').run(full())!;
     const num = (t: string) => Number(t.replace(/[^0-9.]/g, ''));
     expect(one.lead).toBe('You spent');
-    expect(one.context).toMatch(/^on 121 bags, \$[\d.,]+\/100g on average\.$/);
+    expect(one.context).toMatch(/^on 121 bags, \$[\d.,]+\/g on average\.$/);
     const each = one.each!.replace(/^An average of | per person$/g, '');
     expect(Math.abs(num(each) - num(one.big) / 2)).toBeLessThanOrEqual(0.5);
-    const cents = /^\$[\d,]+\.\d\d$/; // the big (over $1,000 here), the companion, the $/100g and every bar
+    const cents = /^\$[\d,]+\.\d\d$/; // the big (over $1,000 here), the companion, the $/g and every bar
     expect(one.big).toMatch(cents);
     expect(each).toMatch(cents);
     expect(Number(num(one.big))).toBeGreaterThan(1000);
-    expect(one.context).toMatch(/, \$[\d,]+\.\d\d\/100g/);
+    expect(one.context).toMatch(/, \$[\d,]+\.\d\d\/g/);
     for (const r of (one.viz as any).rows) expect(r.texts[0]).toMatch(cents);
     const cheap = fact('spend').run(full({ bags: shelf.bags.map((b) => (b.cost ? { ...b, cost: 1 } : b)) }))!; // under $1,000: the same
     expect(cheap.big).toMatch(/\.\d\d$/);
@@ -400,7 +400,7 @@ describe('busiest-day, bags-finished, spend, best-value', () => {
     const s = fact('best-value').run(full())!;
     expect(s).toMatchObject({ lead: 'Your best value bag was', big: expect.stringMatching(/^Bag \d+$/) });
     expect(s.roaster).toBeTruthy();
-    expect(s.sub).toMatch(/^\$[\d.,]+\/100g · \d+\.\d\d average$/);
+    expect(s.sub).toMatch(/^\$[\d.,]+\/g · \d+\.\d\d average$/);
     expect((s.viz as any).rows.length).toBeLessThanOrEqual(3);
     expect(fact('best-value').run(full({ bags: shelf.bags.map((b) => ({ ...b, cost: null })) }))).toBeNull();
   });

@@ -360,6 +360,10 @@ for (let j = 0; j < 4; j++) // bag 2 on the A4Z
   bnBrew.run(atLocal(11 - j, 8, 10), 'bean-bn-1', 'm4', 'g2', `1.${Math.max(5 - j, 3)}.0`, 18, 92, 270, 7 + j * 0.4, j === 3 ? 1 : 0, j === 3 ? 'Try a touch finer next' : null, now);
 for (let j = 0; j < 3; j++) // Origami brews (no gear_details row, so isolated)
   bnBrew.run(atLocal(6 - j, 9, 0), 'bean-bn-1', 'm3', 'g2', '1.3.0', 15, 90, 250, 7.5 - j * 0.5, 0, null, now);
+// The first three of those A4Z brews carry the "seedlow" tag: logged with "Seed low agitation" (ratio 1:16.8 against their 1:16.7),
+// so Brew now's Your brews / As written switch shows for it.
+db.prepare(`UPDATE beanconqueror_brews SET notes = 'seedlow' WHERE bean_id = 'bean-bn-1' AND preparation_id = 'm4' AND mill_id = 'g2' AND notes IS NULL AND rating IS NOT NULL`).run();
+rematchBrews(db);
 // One unrated brew with a second filter on the Origami (brew-now-filter-keeps-dripper picks it: filters follow the dripper).
 db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
   VALUES ('m12', 'CUSTOM_PREPARATION', 'Origami - Sibarist Fast', 'POUR OVER', ?)`).run(now);

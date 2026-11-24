@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RecipeDef, Length, RecipePour } from './recipes';
-import { recipeSteps, stepsText, tempNotesLine } from './recipeSteps';
+import { hasStepAmounts, recipeSteps, stepsText, tempNotesLine } from './recipeSteps';
 
 // `trigger` reads as "what starts this pour"; mk() shifts it onto the previous step's length.
 type P = Partial<RecipePour> & { trigger?: Length };
@@ -76,5 +76,35 @@ describe('tempNotesLine', () => {
     expect(tempNotesLine(mk([rp()], { notes: 'hi' }))).toBe('hi');
     expect(tempNotesLine(mk([rp()]))).toBeNull();
     expect(tempNotesLine(mk([rp()], { tempC: 91.5 }))).toBe('91.5°C');
+  });
+});
+
+describe('recipeSteps water amounts', () => {
+  const shared = () => mk([rp({ bloom: true, grams: null, share: 0.18, swirlAfter: true, speed: 'slow' }), rp({ grams: null, share: 0.32 }), rp({ grams: null, share: 0.5 })]);
+  const texts = (d: RecipeDef, w?: Parameters<typeof recipeSteps>[1]) => recipeSteps(d, w).map((s) => s.text.split(' (')[0].split(',')[0]);
+  it('total mode gives running totals, right after the verb', () => {
+    const lines = recipeSteps(shared(), { total: 300, mode: 'total' });
+    expect(texts(shared(), { total: 300, mode: 'total' })).toEqual(['bloom to 54g', 'pour to 150g', 'pour to 300g']);
+    expect(lines[0].text).toBe('bloom to 54g (slow pour), swirl');
+  });
+  it('pour mode gives each pour', () => {
+    expect(texts(shared(), { total: 300, mode: 'pour' })).toEqual(['bloom 54g', 'pour 96g', 'pour 150g']);
+  });
+  it('equal split and grams-only recipes', () => {
+    const eq = mk([rp({ grams: null }), rp({ grams: null }), rp({ grams: null }), rp({ grams: null })], { equalSplit: true });
+    expect(texts(eq, { total: 300, mode: 'total' })).toEqual(['pour to 75g', 'pour to 150g', 'pour to 225g', 'pour to 300g']);
+    const g = mk([rp({ grams: 50 }), rp({ grams: 100 }), rp({ grams: 100 })]);
+    expect(texts(g, { total: 500, mode: 'total' })).toEqual(['pour to 100g', 'pour to 300g', 'pour to 500g']);
+  });
+  it('rounded pour amounts add up to the total', () => {
+    const d = mk([rp({ grams: null }), rp({ grams: null }), rp({ grams: null })], { equalSplit: true });
+    const sum = recipeSteps(d, { total: 100, mode: 'pour' }).reduce((a, s) => a + Number(/ (\d+)g/.exec(s.text)![1]), 0);
+    expect(sum).toBe(100);
+  });
+  it('no amounts without shares or grams, and none requested', () => {
+    const d = mk([rp({ grams: null }), rp({ grams: null })]);
+    expect(hasStepAmounts(d)).toBe(false);
+    expect(recipeSteps(d, { total: 300, mode: 'total' })).toEqual(recipeSteps(d));
+    expect(hasStepAmounts(shared())).toBe(true);
   });
 });

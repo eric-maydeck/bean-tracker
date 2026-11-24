@@ -7,6 +7,9 @@ import { getDb, setHouseholdSize, setDefaultCaffeine } from '#lib/server/db.ts';
 import { createCoffee } from '#lib/server/coffees.ts';
 import { localToday, periodBounds, previousPeriod, addDays, daysBetween, trackedDays, comparePeriod, type Period } from '#lib/server/insights/time.ts';
 import { setBrewingZone } from '#lib/localDate.ts';
+import { loadFacts } from '#lib/server/insights/facts.ts';
+import { trophyCase, gearArchive } from '#lib/server/insights/trophies.ts';
+import { saveGearDetails } from '#lib/server/gearDetails.ts';
 import { load } from './+page.server';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -737,10 +740,29 @@ describe('brew filters', () => {
   });
   it('filters not offered on this tab do nothing', () => {
     seedBrews();
-    expect(run('?tab=sweetspots&dripper=V60').sweetSpots.matching).toEqual(run('?tab=sweetspots').sweetSpots.matching);
-    const g = run('?tab=gear&dripper=V60');
+    const g = run('?tab=spend&dripper=V60');
     expect(g.brewFilters).toEqual({});
     expect(g.explicit.dripper).toBe('V60');
+  });
+  it('gear filters narrow the tabs that gained them', () => {
+    seedBrews();
+    const matching = (q: string) => run(`?range=all&ratings=all&dial=all&tab=sweetspots${q}`).sweetSpots.matching.brews;
+    expect(matching('&dripper=V60')).toBeLessThan(matching(''));
+    const brews = (tab: string, q: string) => run(`?range=all&tab=${tab}${q}`).milestones.totals.find((x: { key: string }) => x.key === 'brews').value;
+    expect(brews('milestones', '&dripper=V60')).toBe(6);
+    expect(run('?range=all&tab=milestones').milestones.totals.find((x: { key: string }) => x.key === 'brews').value).toBe(14);
+    expect(run('?range=all&tab=gear&dripper=V60').brewFilters).toEqual({ dripper: 'V60' });
+  });
+  it('grinder is a brew filter by slug, applied by name', () => {
+    seedBrews();
+    const db = getDb();
+    db.exec(`DELETE FROM beanconqueror_grinders; INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'A4Z', '${today}'), ('g2', 'ZP6', '${today}')`);
+    db.prepare(`UPDATE beanconqueror_brews SET mill_id = CASE WHEN rowid % 2 = 0 THEN 'g1' ELSE 'g2' END`).run();
+    const d = run('?range=all&grinder=a4z');
+    expect(d.brewFilters).toEqual({ grinder: 'A4Z' });
+    expect(d.tiles.brews).toBe(7);
+    expect(run('?range=all&tab=sweetspots&grinder=a4z').brewFilters).toEqual({ grinder: 'A4Z' });
+    expect(run('?range=all').brewOptions.grinders.map((g: { slug: string }) => g.slug).sort()).toEqual(['a4z', 'zp6']);
   });
   it('a brew filter that empties the period', () => {
     seedBrews();
@@ -755,18 +777,14 @@ describe('brew filters', () => {
     expect(run('?dripper=V60').brewOptions.drippers).toEqual(['Origami', 'V60']);
   });
 
-  it('trophies only on the gear tab: Period-scoped, the Coffees and other filters ignored', () => {
-    seed([[addDays(today, -400), 15], [today, 15]]);
-    const db = getDb();
-    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m1', 'V60', '${today}');
-      UPDATE beanconqueror_brews SET preparation_id = 'm1'`);
-    expect(run('?tab=overview').trophies).toBeNull();
-    const t = run('?tab=gear&range=all&dripper=V60&ratings=current&dial=dialed&caffeine=decaf').trophies;
-    expect(t.find((x: { key: string }) => x.key === 'dripper-v60').brews).toBe(2);
-    // A short Period drops the brew 400 days back; first used stays lifetime.
-    const w = run('?tab=gear&range=1w').trophies.find((x: { key: string }) => x.key === 'dripper-v60');
-    expect(w.brews).toBe(1);
-    expect(w.firstUsed).toBe(addDays(today, -400));
+  it('old gear showcase addresses redirect (308) to /gear with only its params; other tabs and a bare gear tab stay', () => {
+    const to = (q: string) => { try { run(q); } catch (e) { return e as { status: number; location: string }; } };
+    expect(to('?tab=gear&card=x')).toMatchObject({ status: 308, location: '/gear' }); // a junk card key is dropped, the address still moved
+    expect(to('?tab=gear&gear=grinder')).toMatchObject({ status: 308, location: '/gear' }); // the old kind filter is dropped
+    expect(to('?tab=gear&card=dripper-v60&range=1w')).toMatchObject({ status: 308, location: '/gear?card=dripper-v60' });
+    expect(to('?tab=gear&gear=grinder&retired=open&range=all')).toMatchObject({ status: 308, location: '/gear?retired=dripper%2Cfilter%2Cgrinder' });
+    expect(to('?tab=gear')).toBeUndefined();
+    expect(to('?tab=overview&gear=dripper')).toBeUndefined();
   });
   it('pours: only on tab=pours; Calibrated names the recipe it hides, ratings=all does not', () => {
     seed([[today, 15]]);
@@ -795,5 +813,26 @@ describe('brew filters', () => {
     db.exec(`UPDATE beanconqueror_brews SET rating = NULL WHERE bc_created_at >= '2026-06-01'`);
     const none = run('?tab=pours&range=all&dial=all').pours;
     expect(none).toMatchObject({ recipes: [], technique: [], hiddenByRatings: ['Rcp'] });
+  });
+
+  it('gear tab: the Your gear panel is every active piece of gear, with its figures and specs, whatever the period', () => {
+    const db = getDb();
+    expect(run('?tab=gear').gearPanel).toBeNull(); // no gear yet
+    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m1', 'V60', '${today}'), ('m2', 'Kalita', '${today}'), ('m3', 'Switch', '${today}')`);
+    const ins = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, ground_coffee_g, rating, preparation_id, imported_at) VALUES (?, 15, 8, ?, ?)`);
+    ins.run(`${today}T15:00:00.000Z`, 'm1', today);
+    ins.run(`${today}T15:00:01.000Z`, 'm3', today);
+    ins.run('2020-01-01T15:00:00.000Z', 'm2', today); // long unused: retired
+    saveGearDetails(db, { kind: 'dripper', name: 'V60', values: { shape: 'Conical', material: 'Glass', size: '02' }, imageUrl: 'https://x/y.jpg' });
+    const live = trophyCase(loadFacts(db).brews, gearArchive(db), today).filter((t) => !t.retired);
+    const d = run('?tab=gear').gearPanel;
+    expect(d.map((c: { key: string }) => c.key)).toEqual(live.map((t) => t.key));
+    expect(d.map((c: { key: string }) => c.key)).toEqual(['dripper-switch', 'dripper-v60']); // no retired Kalita
+    const v60 = d.find((c: { key: string }) => c.key === 'dripper-v60');
+    expect(v60).toMatchObject({ name: 'V60', kind: 'dripper', rating: 8, brews: 1, grams: 15, specs: [['Shape', 'Conical'], ['Material', 'Glass']] });
+    expect(v60.image).toMatchObject({ src: 'https://x/y.jpg' });
+    expect(d.find((c: { key: string }) => c.key === 'dripper-switch')).toMatchObject({ image: null, specs: [] }); // no photo: still a card
+    expect(run('?tab=gear&range=2025').gearPanel).toEqual(d);
+    expect(run('?tab=overview').gearPanel).toBeNull();
   });
 });

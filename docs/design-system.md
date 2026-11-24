@@ -41,6 +41,7 @@ cited file, not by copying it elsewhere.
 - Card: `.card` is surface, 1px border, `--radius`, `--shadow`, `--space-4` padding. Lists use `.grid` (`repeat(auto-fill, minmax(260px, 1fr))`, gap `--space-4`). Example: `src/routes/coffees/+page.svelte`.
 - Stat tile: `.stat-item` is a square (`aspect-ratio: 1`) card; compact rows drop the ratio. `.stat-grid` is `auto-fill, minmax(140px, 1fr)` (`src/app.css`).
 - Section break: `.section-heading` adds a top border and `--space-6` margin.
+- Section headings: a fixed section's `h2`/`h3` is a `HeadingAnchor` with a plain-word `id` (ui-rules 56); the id sits on the heading, not its `<section>`.
 - Table: `table.data-table` at 100% width, `--space-2` x `--space-3` cell padding, 1px row borders, hover tint. Wide tables sit in `.table-scroll` (`overflow-x: auto`), never scroll the page. Example: `src/routes/coffees/+page.svelte`, `src/routes/stats/ReportCard.svelte`.
 - Breakpoints: phone is `max-width: 640px` (narrow layout, 44px targets); `max-width: 419px` for the narrowest; `max-height: 450px` is phone landscape (one short row, captions hidden but kept as `aria-label`). `src/app.css`.
 - Test viewports: 360, 390, 480, 768, 1280 wide, phone portrait 480x909, phone landscape 1003x333 (`tests/ui/viewports.ts`).

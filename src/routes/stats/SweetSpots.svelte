@@ -10,7 +10,6 @@
   import SampleNote from '#lib/components/SampleNote.svelte';
   import { sampleField } from '#lib/sample.ts';
   import LabHead from './LabHead.svelte';
-  import GrinderSelect from './GrinderSelect.svelte';
   import TileCaption from './TileCaption.svelte';
   import FloatTip from '#lib/components/FloatTip.svelte';
   import { labDelta } from '#lib/components/deltaColor.ts';
@@ -211,7 +210,6 @@
       {#each bagOptions as b (b.slug)}<option value={b.slug}>{b.label}</option>{/each}
     </select>
   </label>
-  <GrinderSelect label="Grind for:" grinders={lab.grinders} grinder={s.grinder} {choose} />
 </div>
 {/snippet}
 

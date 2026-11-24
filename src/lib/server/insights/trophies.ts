@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { GEAR_KINDS, type GearKind, type GearValues } from '#lib/gear.ts';
+import { GEAR_KINDS, topSpecs, type GearKind, type GearValues } from '#lib/gear.ts';
 import { backdrop } from '#lib/imageBackdrop.ts';
 import { wallToInstant } from '#lib/localDate.ts';
 import type { GearDetail } from '#lib/server/gearDetails.ts';
@@ -9,6 +9,8 @@ import { MIXED_FILTER, parseMethod, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { daysBetween, inPeriod, type Period } from './time';
 import type { Ratings } from '#lib/insightsUrl.ts';
+import { statsLink } from '#lib/gearUrl.ts';
+import type { LabOptions } from './lab';
 
 export const RETIRED_AFTER_DAYS = 90;
 
@@ -129,4 +131,26 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
   });
   const order = (k: GearKind) => GEAR_KINDS.indexOf(k);
   return out.sort((a, b) => order(a.kind) - order(b.kind) || b.brews - a.brews || a.name.localeCompare(b.name));
+}
+
+// The Stats Gear tab's "Your gear" panel: every non-retired piece of gear, in showcase order, with what its card and tip show
+// (photo or null, figures, up to 2 filled-in specs). Null when there is none.
+export interface GearPanelCard {
+  key: string; name: string; kind: GearKind; image: { src: string; fill: string } | null;
+  rating: number | null; brews: number; grams: number; specs: [string, string][];
+}
+export function gearPanel(trophies: readonly Trophy[]): GearPanelCard[] | null {
+  const cards = trophies.filter((t) => !t.retired).map((t) => ({
+    key: t.key, name: t.name, kind: t.kind, image: t.image, rating: t.rating, brews: t.brews, grams: t.grams, specs: topSpecs(t, 2)
+  }));
+  return cards.length ? cards : null;
+}
+
+// The Stats link of every card, keyed by trophy key. A card exists only for gear with brews, and Stats' pickers list every brewed
+// dripper, filter and grinder; a grinder's slug is the lab's own (the card's key slug if the lab lacks it).
+export function statsLinks(trophies: readonly Trophy[], lab: LabOptions): Record<string, string> {
+  return Object.fromEntries(trophies.map((t) => {
+    const slug = t.kind === 'grinder' && lab.grinders.find((x) => x.name === t.name)?.slug;
+    return [t.key, statsLink(slug ? { kind: 'grinder', key: `grinder-${slug}`, name: t.name } : t)];
+  }));
 }

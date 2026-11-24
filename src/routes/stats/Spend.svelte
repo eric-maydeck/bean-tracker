@@ -12,7 +12,7 @@
   import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, RcCol, SpendSeries, Top } from '#lib/insightsUrl.ts';
   import Chart from '#lib/components/Chart.svelte';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import { SAMPLE_HELP } from '#lib/sample.ts';
   import { usd } from '#lib/money.ts';
@@ -121,7 +121,7 @@
       </section>
       <section class="chart-panel" data-section="spend-best-value">
         <LabHead id="spend-best-value" title="Best value" {placeTip}
-          help={['Rating divided by price per 100g, the Records formula.', 'Coffees with 4+ rated brews this period, best first.']} />
+          help={['Rating divided by price per gram, the Records formula.', 'Coffees with 4+ rated brews this period, best first.']} />
         <div class="fit-body">
           {#if vm.best.length}
             <ol class="board-rows best-rows" style:--rows={vm.best.length} style:--row-h="3rem">

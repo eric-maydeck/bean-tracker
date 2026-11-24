@@ -3,6 +3,7 @@
   import { afterNavigate } from '$app/navigation';
   import ShareButton from '#lib/components/ShareButton.svelte';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { waterPreview } from '#lib/linkPreview.ts';
   import { currentParams } from '#lib/pageUrlState.ts';
   import { writeUrlParams } from '#lib/urlState.ts';
@@ -287,7 +288,7 @@
 <p class="text-muted water-hint" class:water-hint-off={valid}>Enter {MIN_ML}-{MAX_ML}mL.</p>
 <section class="wr water-results">
   <div class="card wr-head">
-    <h2>Lotus drops for {volume}mL of water</h2>
+    <HeadingAnchor id="lotus-drops">Lotus drops for {volume}mL of water</HeadingAnchor>
     <ul class="wr-drops" aria-label="Drops to add">
       {#each CONCENTRATES as [key, label] (key)}
         <li class="wr-drop" style:--el="var(--el-{key})" class:wr-zero={drops[key] === 0} aria-label="{drops[key]} {label}"><b>{drops[key]}</b><span>{SYMBOL[key]}</span></li>
@@ -295,7 +296,7 @@
     </ul>
   </div>
     <div class="card wr-card">
-      <h3>Minerals</h3>
+      <HeadingAnchor id="minerals" level={3}>Minerals</HeadingAnchor>
       <ul class="wr-meters">
         {#each [...IONS, ...ANIONS] as [key, label] (key)}
           {@const top = key === 'cl' || key === 'hco3' ? anionTop : ionTop}
@@ -304,7 +305,7 @@
       </ul>
     </div>
     <div class="card wr-card">
-      <h3>Hardness</h3>
+      <HeadingAnchor id="hardness" level={3}>Hardness</HeadingAnchor>
       <div class="wr-gauges">
         {#each [['GH', result.gh, target.gh], ['KH', result.kh, target.kh]] as [label, value, goal] (label)}
           {@const top = hardTop(value as number, goal as number)}
@@ -443,8 +444,8 @@
 
   /* Results: a headline card of drop counts, then minerals and hardness cards (side by side from 768px). */
   .wr small { color: var(--color-text-muted); font-size: 0.75em; margin-left: 0.25em; font-weight: 400; }
-  .wr h2 { margin: 0 0 var(--space-3); font-size: 1.1rem; }
-  .wr h3 { margin: 0 0 var(--space-3); font-size: 0.9rem; color: var(--color-label); }
+  .wr :global(h2) { margin: 0 0 var(--space-3); font-size: 1.1rem; }
+  .wr :global(h3) { margin: 0 0 var(--space-3); font-size: 0.9rem; color: var(--color-label); }
   .wr-head { margin-bottom: var(--space-4); border-left: 4px solid var(--color-accent); }
   .wr-drops { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); list-style: none; margin: 0; padding: 0; }
   .wr-drop { display: flex; align-items: baseline; justify-content: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); white-space: nowrap; }

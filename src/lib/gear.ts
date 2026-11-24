@@ -1,4 +1,5 @@
-import { unitGap } from './unitGap.ts';
+import { unitGap, withUnit } from './unitGap.ts';
+import { usd } from './money.ts';
 // An http(s) address of sane length.
 export function isWebUrl(s: string): boolean {
   try { return /^https?:$/.test(new URL(s).protocol) && s.length <= 2000; } catch { return false; }
@@ -8,18 +9,9 @@ export const GEAR_KINDS = ['dripper', 'filter', 'grinder'] as const;
 export type GearKind = (typeof GEAR_KINDS)[number];
 export const KIND_LABEL: Record<GearKind, string> = { dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder' };
 
-// Which trophy cards show: a pick rules out the other cards of its own kind only (a dripper pick hides the other
-// drippers, grinders and filters stay). The retired shelf holds whichever retired cards survive. Dripper/filter
-// picks match a name; the grinder pick is a slug.
-export function shownTrophies<T extends { kind: GearKind; key: string; name: string; retired: boolean }>(
-  list: readonly T[], pick: { dripper?: string; filter?: string; grinder?: string }
-): { active: T[]; retired: T[] } {
-  const keep = (t: T) =>
-    t.kind === 'dripper' ? !pick.dripper || t.name === pick.dripper
-    : t.kind === 'filter' ? !pick.filter || t.name === pick.filter
-    : !pick.grinder || t.key === `grinder-${pick.grinder}`;
-  const kept = list.filter(keep);
-  return { active: kept.filter((t) => !t.retired), retired: kept.filter((t) => t.retired) };
+// The trophy cards split into active and the retired shelf.
+export function shownTrophies<T extends { retired: boolean }>(list: readonly T[]): { active: T[]; retired: T[] } {
+  return { active: list.filter((t) => !t.retired), retired: list.filter((t) => t.retired) };
 }
 
 // The per-kind metadata standard. `options` are datalist suggestions (free text is the "other"); `aliases` are the
@@ -103,6 +95,10 @@ export const fieldsFor = (kind: GearKind, opts: { adjustableSpeed?: boolean } = 
   [...COMMON_FIELDS, ...KIND_FIELDS[kind]].filter((f) => f.key === 'rpm' ? !opts.adjustableSpeed : !CONVERT_KEYS.includes(f.key) || !!opts.adjustableSpeed);
 
 export type GearValues = Record<string, string | number>;
+export const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? withUnit(v, f.unit) : String(v));
+// The first n filled-in specs as [label, text], in the form's order, so the brand comes first (links and the model skipped: the name carries it): a tip's short list.
+export const topSpecs = (t: { kind: GearKind; values: GearValues; adjustableSpeed: boolean }, n: number): [string, string][] =>
+  fieldsFor(t.kind, { adjustableSpeed: t.adjustableSpeed }).filter((f) => f.type !== 'url' && f.key !== 'model' && t.values[f.key] !== undefined).slice(0, n).map((f) => [f.label, specText(f, t.values[f.key])]);
 const MAX_TEXT = 120;
 
 // Validates a details form/import payload: known keys only, trimmed, blanks dropped. First problem wins.

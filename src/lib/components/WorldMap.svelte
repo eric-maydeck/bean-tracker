@@ -5,6 +5,8 @@
   import { onDestroy } from 'svelte';
   import { fade } from 'svelte/transition';
   import FloatTip from './FloatTip.svelte';
+  import StickyTipBody from './StickyTipBody.svelte';
+  import { StickyTip } from '#lib/stickyTip.ts';
   import Icon from './Icon.svelte';
   import { MAX_ZOOM, STEP, WHOLE, clampView, panBy, visibleBox, zoomAbout, type View } from './mapZoom';
   import TipBody, { type TipRow } from './TipBody.svelte';
@@ -61,7 +63,7 @@
     view = v;
     if (!tip) return;
     const [x, y] = toPx(tip, v);
-    if (!pinned || x < 0 || y < 0 || x > cw || y > ch) close();
+    if (!st.pinned || x < 0 || y < 0 || x > cw || y > ch) st.close();
   }
   const zoomCentered = (f: number) => setView(zoomAbout(view, f, vis.x + vis.w / 2, vis.y + vis.h / 2, vis, VB));
   function zoomKey(e: KeyboardEvent) {
@@ -137,7 +139,7 @@
       if (Math.hypot(dx, dy) <= 4) return;
       drag.moved = dragged = true;
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
-      if (!pinned) close();
+      if (!st.pinned) st.close();
     }
     setView(panBy(drag.view, (dx * vis.w) / cw, (dy * vis.h) / ch, vis, VB));
   }
@@ -149,15 +151,9 @@
   let tip = $state<{ iso: string; name: string; mx: number; my: number } | null>(null);
   let [ax, ay] = $derived(tip ? toPx(tip) : [0, 0]);
   // A click or tap pins the tip open until a click or tap elsewhere (or Escape); a mouse hover shows it only while
-  // over the country (user, 2026-10-18).
-  let pinned = false;
-  // An unpinned hover tip closes after a short delay, so the mouse can cross the gap from the country onto the tip
-  // (its link is clickable); entering either cancels it (user, 2026-10-20).
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const keep = () => clearTimeout(timer);
-  const close = () => (keep(), (tip = null), (pinned = false));
-  const later = () => ((keep(), (timer = setTimeout(close, 100))));
-  onDestroy(keep);
+  // over the country (user, 2026-10-18). The bridge delay and `st.pinned` are the shared sticky tip's (stickyTip.ts).
+  const st = new StickyTip(() => (tip = null));
+  onDestroy(st.keep);
 
   // A tip stays where the pointer entered its country (no re-placing on every move inside it).
   function place(el: SVGPathElement, clientX: number, clientY: number) {
@@ -169,22 +165,22 @@
   // Hover (mouse) and tap (touch/click) share one handler; the sea clears the tip.
   function at(e: MouseEvent) {
     const el = e.target;
-    if (el instanceof SVGPathElement) (keep(), place(el, e.clientX, e.clientY));
+    if (el instanceof SVGPathElement) (st.keep(), place(el, e.clientX, e.clientY));
     else tip = null;
   }
   // Hover only: the sea and the map's edge close an unpinned tip after the bridge delay, not at once.
   function hover(e: PointerEvent) {
-    if (e.pointerType !== 'mouse' || pinned || drag?.moved) return;
+    if (e.pointerType !== 'mouse' || st.pinned || drag?.moved) return;
     if (e.target instanceof SVGPathElement) at(e);
-    else later();
+    else st.later();
   }
   // A click pins; clicking the pinned country again closes it.
   function pin(e: MouseEvent) {
     if (dragged) return;
-    const same = pinned && e.target instanceof SVGPathElement && e.target.dataset.iso === tip?.iso;
-    if (same) return close();
+    const same = st.pinned && e.target instanceof SVGPathElement && e.target.dataset.iso === tip?.iso;
+    if (same) return st.close();
     at(e);
-    pinned = !!tip;
+    st.pinned = !!tip;
   }
   function focusTip(e: Event) {
     const el = e.currentTarget as SVGPathElement;
@@ -200,7 +196,7 @@
 </script>
 
 <!-- A click or tap outside the map, or Escape, closes a pinned tip. -->
-<svelte:document onclick={(e) => tip && !wrap?.contains(e.target as Node) && close()} onkeydown={(e) => e.key === 'Escape' && close()} />
+<svelte:document onclick={(e) => tip && !wrap?.contains(e.target as Node) && st.close()} onkeydown={(e) => e.key === 'Escape' && st.close()} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions (+ / - zoom while focus is inside; the buttons are the pointer way) -->
 <!-- The buttons' icons sit beside .world-map, not in it: `.world-map svg` is the map alone. -->
@@ -218,7 +214,7 @@
     onpointermove={(e) => (move(e), hover(e))}
     onpointerup={(e) => ((drag = null), touchEnd(e))}
     onpointercancel={(e) => ((drag = null), touchEnd(e))}
-    onpointerleave={(e) => (touchEnd(e), e.pointerType === 'mouse' && !pinned && later())}
+    onpointerleave={(e) => (touchEnd(e), e.pointerType === 'mouse' && !st.pinned && st.later())}
     onclick={pin}
   >
     <g transform="translate({view.x} {view.y}) scale({view.k})">
@@ -236,7 +232,7 @@
           aria-label="{d.label}: {d.text}"
           onkeydown={key}
           onfocus={focusTip}
-          onblur={(e) => !wrap?.contains(e.relatedTarget as Node) && !pinned && close()}
+          onblur={(e) => !wrap?.contains(e.relatedTarget as Node) && !st.pinned && st.close()}
         />
       {:else}
         <path d={c.d} data-iso={c.iso} data-name={c.name} />
@@ -253,7 +249,7 @@
   </div>
   {#if hint}<p class="map-hint" style:--gh={ch < 560 ? '44px' : '140px'} role="status" aria-live="polite" out:fade={{ duration: fadeMs() }}>{hint}</p>{/if}
   {#if tip && anchor}
-    {#key tip.iso}{@const href = byIso.get(tip.iso)?.href}<FloatTip {anchor} onclose={close} placeKey={`${ax},${ay}`}><!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events (the tip body is a mouse-only extra: Escape closes it, the link is a real link) --><div class="tip-hover" onpointerenter={keep} onpointerleave={(e) => e.pointerType === 'mouse' && !pinned && later()} onclick={(e) => pinned && !(e.target as Element).closest('a') && close()}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [], groups: byIso.get(tip.iso)?.groups }} />{#if href}<a class="tip-link" href={href}>See coffees</a>{/if}</div></FloatTip>{/key}
+    {#key tip.iso}{@const href = byIso.get(tip.iso)?.href}<FloatTip {anchor} onclose={st.close} placeKey={`${ax},${ay}`}><StickyTipBody sticky={st} {href} linkText="See coffees"><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [], groups: byIso.get(tip.iso)?.groups }} /></StickyTipBody></FloatTip>{/key}
   {/if}
 </div>
 
@@ -287,30 +283,6 @@
     outline: none;
     stroke: var(--color-accent);
     stroke-width: calc(2px / var(--k, 1));
-  }
-  /* The tip is pointer-events: none (a hover tip); this wrapper fills it (cancelling its padding) so the mouse can
-     rest on it and click the link. */
-  .tip-hover {
-    margin: -0.5rem -0.75rem;
-    padding: 0.5rem 0.75rem;
-    pointer-events: auto;
-    cursor: default;
-  }
-  /* A long region name ellipsizes; the tip never grows past its max width. */
-  .tip-hover :global(.tip-rows) {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .tip-hover :global(.tip-rows dt) {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .tip-link {
-    display: block;
-    margin-top: 0.35rem;
-    color: var(--color-accent);
-    cursor: pointer;
   }
   .map-zoom {
     position: absolute;

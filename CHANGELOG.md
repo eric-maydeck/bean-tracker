@@ -1,3 +1,62 @@
+## [2.6.1](https://github.com/eric-maydeck/bean-tracker/compare/v2.6.0...v2.6.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* image takes debian security updates so the release scan passes ([784c0b3](https://github.com/eric-maydeck/bean-tracker/commit/784c0b34596bcf1b790d40dcec3b6ee444e94327))
+
+# [2.6.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.5.0...v2.6.0) (2026-11-23)
+
+
+### Bug Fixes
+
+* a fresh database gets the schema only; owner fixes move to legacyFixes and skip it ([54022b7](https://github.com/eric-maydeck/bean-tracker/commit/54022b74f78ca70dcdd70888b23a48f5976a152a))
+* a shared result link with a coffee always plays the site's coffees ([7c20ce5](https://github.com/eric-maydeck/bean-tracker/commit/7c20ce5c1d8913db8ead5cb32497cf11ace9f1e4))
+* an odd last gear fact spans its row; tests count the setting format field ([1da5cfb](https://github.com/eric-maydeck/bean-tracker/commit/1da5cfbcb5c98527c64de092ae96e7a3f892e763))
+* banner share uses the body font, custom shared pop-up pairs back with close ([319972d](https://github.com/eric-maydeck/bean-tracker/commit/319972d3e7b11a6609c91d7fcaeb324d46eb93b5))
+* **charts:** apply a resize chart.js parked mid-animation ([1ac329f](https://github.com/eric-maydeck/bean-tracker/commit/1ac329f9fed0308ae04d15bd9d6da0b66a6be6ab)), closes [#40](https://github.com/eric-maydeck/bean-tracker/issues/40)
+* coffees list pins the actions column and row form when it scrolls sideways ([ac3495a](https://github.com/eric-maydeck/bean-tracker/commit/ac3495a2d7d863dcd533e10c0e2bf9d35fdf262c)), closes [#34](https://github.com/eric-maydeck/bean-tracker/issues/34)
+* covered gear cards stay reachable by keyboard and never open a tip ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([6f1a42d](https://github.com/eric-maydeck/bean-tracker/commit/6f1a42d4c79960dc5fc609cc9d5145741ea88552))
+* gear fill from url trims page-title junk from model and reuses the site's brand spelling ([4a75284](https://github.com/eric-maydeck/bean-tracker/commit/4a752844fb30bbd3a24c81f22fd84a38003148dc))
+* gear panel keyboard test no longer focuses the covered card before enter ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([46d88a9](https://github.com/eric-maydeck/bean-tracker/commit/46d88a98572ae1b1bae8cccc56e17adcf5333b33))
+* pick card share gets its own row, back spans two columns, out results keep a disabled share ([1996ed0](https://github.com/eric-maydeck/bean-tracker/commit/1996ed09dfa7db26ab90fd23d49771834945f9fe))
+* pick result share moves to the top right of the card heading and the pop-up ([6d6aa82](https://github.com/eric-maydeck/bean-tracker/commit/6d6aa820c08904963b961ce4e60aa2f1ae6c966f))
+* row form action row keeps its gap; row-height test skips the pinned actions width ([69cc06b](https://github.com/eric-maydeck/bean-tracker/commit/69cc06b5039234a8339787b83043ec94e2107756))
+* shared d20 rolls throw on an empty board, full-size banner label on phones, shared-by wording ([3425ddb](https://github.com/eric-maydeck/bean-tracker/commit/3425ddba057be4b3af5ee363e31b899c2157244d))
+* shared roll lens follows the link's crit, heading row spacing and crit tag gap ([19e8f39](https://github.com/eric-maydeck/bean-tracker/commit/19e8f39f2713808e531d8b8466d55f514084f5fe))
+* stats link only where stats filters, disabled last show chip, tip key states ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([0fa58f8](https://github.com/eric-maydeck/bean-tracker/commit/0fa58f85f70a11fe1f5094168768e44d8b7d9871))
+* sticky tip survives a click on its link on mac browsers ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([ce1b5e9](https://github.com/eric-maydeck/bean-tracker/commit/ce1b5e94d967d5661e5837afb59e6200a5427501))
+
+
+### Features
+
+* a click on the card under an arrow scrolls it into view, no dimming ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([5b51024](https://github.com/eric-maydeck/bean-tracker/commit/5b51024cab98f7df96c20aa91ce77bc4e271b283))
+* custom grinder setting format accepts any text ([25fbd47](https://github.com/eric-maydeck/bean-tracker/commit/25fbd478da127af7aa5a524c95be3bef4a161668))
+* custom shares carry the coffee name, no spin when off the wheel, share in the banner ([46f74aa](https://github.com/eric-maydeck/bean-tracker/commit/46f74aa59d4499a21ebefff408a5e701d936590c))
+* dedicated /gear page with the gear showcase ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([e0c3a82](https://github.com/eric-maydeck/bean-tracker/commit/e0c3a82e7aa89d7de2a31817f7022ac6c3044943))
+* dialog links to the gear's stats with see stats for this gear ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([84bf4f3](https://github.com/eric-maydeck/bean-tracker/commit/84bf4f399e627470d2af3b5ba26f0a3eb55c3680))
+* gear page drops the show chips and never stretches a card ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([cca9f09](https://github.com/eric-maydeck/bean-tracker/commit/cca9f09132453812749e3a2fc87caff53a65c737))
+* gear page groups by kind with show chips, jump buttons and per-kind retired shelves ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([ab98b16](https://github.com/eric-maydeck/bean-tracker/commit/ab98b168a7f052ccc62a35943c3ee9a7eed375b1))
+* gear page shows each kind as its own panel with jump to above ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([cb19fd6](https://github.com/eric-maydeck/bean-tracker/commit/cb19fd608a318584c3d5c24439621d4c0f5bd24b))
+* gear page url state and old-url redirect rule ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([67b10d7](https://github.com/eric-maydeck/bean-tracker/commit/67b10d7a44b93e2a7ffd97bb15bed8eec19b3a7d))
+* grinder is a brew filter; dripper, filter and grinder on every brew stats tab ([b8f9e34](https://github.com/eric-maydeck/bean-tracker/commit/b8f9e34bda307d862934ddf9aeaa464a3708d104))
+* import data-quality warnings on account ([1959d89](https://github.com/eric-maydeck/bean-tracker/commit/1959d89251aa25dd9ace95408d010b5c26c4c56f))
+* link previews for the gear page and each gear ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([f64d828](https://github.com/eric-maydeck/bean-tracker/commit/f64d828fd5a92df0e5c1f047aa08dd7d3f76869a))
+* nav order stats, gear, water, recipes ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([d48b656](https://github.com/eric-maydeck/bean-tracker/commit/d48b656feb30f6ad57c8441dbaf5cc141e7f2662))
+* old stats gear urls redirect to /gear ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([f323d1b](https://github.com/eric-maydeck/bean-tracker/commit/f323d1ba1b5d8535cfe088cdb890bafafaa77c9c))
+* pick-for-me d20 board coffees link to their pages ([71296cb](https://github.com/eric-maydeck/bean-tracker/commit/71296cbb9ca4b4cda1b05a039796061ad1e92a5e))
+* share button on the pick result card, shared results replay view-only ([d2dcad9](https://github.com/eric-maydeck/bean-tracker/commit/d2dcad981815bc917244e73a44869521125e9d22))
+* shared pick results pin the coffee and crit, wheel title, roll number in heading ([b8662f9](https://github.com/eric-maydeck/bean-tracker/commit/b8662f9484cf1843a284e96f35a2ceab8b68e46d))
+* stats gear tab links to the gear page with a your gear panel ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([cdce23e](https://github.com/eric-maydeck/bean-tracker/commit/cdce23e91eb282f86b6499a5ad4e12101ce1cea7))
+* **stats:** show bag prices per gram instead of per 100g ([ee1dbbf](https://github.com/eric-maydeck/bean-tracker/commit/ee1dbbfb154aaa92bfcf72ed017d58a7e33c64ac))
+* usd tip reads exact price; recaps show $/g ([79898bc](https://github.com/eric-maydeck/bean-tracker/commit/79898bcabe544040974f1cd88ff8acdf65aaa528))
+* warning rows read type, value, then a red clarifying message ([b8b80e9](https://github.com/eric-maydeck/bean-tracker/commit/b8b80e993a0f3178d685285ee9f7acb17c7e442b))
+* warning rows show the type and value in bold red, no extra message ([93d399e](https://github.com/eric-maydeck/bean-tracker/commit/93d399e0641a2dc6d1c2078e87f7f2ece6755deb))
+* your gear panel fills its width, arrows overlay wide and sit below on phones ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([b17aed4](https://github.com/eric-maydeck/bean-tracker/commit/b17aed420a3fe21fbeead339b0e0b27c3489c817))
+* your gear panel is a scrolling row of cards with sticky tips ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([8aac1d2](https://github.com/eric-maydeck/bean-tracker/commit/8aac1d2713a4eb09039a6439da802516691d49c3))
+* your gear panel pages by whole cards with arrows, tip leads with the brand ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([5a3c898](https://github.com/eric-maydeck/bean-tracker/commit/5a3c898edfb16a3de73a8bb4b8f77afa65b0677d))
+* your gear panel peeks the card under an arrow, bigger arrows, no hover after a page turn ([#22](https://github.com/eric-maydeck/bean-tracker/issues/22)) ([29ca3fe](https://github.com/eric-maydeck/bean-tracker/commit/29ca3fefb89d23eb17af8e880696954d1f2e6631))
+
 # [2.5.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.4.2...v2.5.0) (2026-11-21)
 
 

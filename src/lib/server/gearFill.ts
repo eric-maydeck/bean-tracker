@@ -1,6 +1,6 @@
 import { KIND_FIELDS, parseGearValues, type GearKind, type GearValues } from '#lib/gear.ts';
 import type { ProductData } from './productParse';
-import { stripSiteSuffix, toUsd, formatMoney, type UsdRates } from './productFill';
+import { toUsd, formatMoney, type UsdRates } from './productFill';
 
 export interface GearFill { values: GearValues; imageUrl: string | null; notes: string[] }
 
@@ -15,6 +15,19 @@ export function cleanBrand(brand: string): string {
     if (t) b = t;
   } while (b !== prev);
   return b;
+}
+
+// A page title carries more than the model: a leading separator ("| ZP6 Special"), pipe-separated SKU tails, a
+// site/brand suffix ("— OPTION-O") and dash-led marketing tails ("- Small for 1-2 Cup Brewing"). Keep the text
+// before the first spaced separator; an unspaced hyphen (T-90, Micro-Filters, 1-2) is part of the name.
+// ponytail: cuts a dash-led variant too ("V60 02 - Metallic Pearl"); the user re-adds one by hand.
+export function cleanModel(title: string): string {
+  return title.replace(/^[\s|\-–—]+/, '').split(/\s[|\-–—]\s/)[0].trim();
+}
+
+// The site's existing spelling of a brand wins over the page's casing (HARIO → Hario, Cafec → CAFEC).
+export function matchBrand(brand: string, known: string[]): string {
+  return known.find((k) => k.toLowerCase() === brand.toLowerCase()) ?? brand;
 }
 
 // Prose cues for option fields that no labeled spec line filled ("its conical shape", "Porcelain", "lack of flow
@@ -72,11 +85,14 @@ function proseHit(cues: Record<string, RegExp>, texts: string[]): string | undef
 
 // Turns a parsed product page into gear details. Every value is checked with parseGearValues, so the form never
 // receives something the save would reject; a field that fails is simply left out.
-export function buildGearFill(p: ProductData, ctx: { url: string; kind: GearKind; rates: UsdRates | null }): GearFill {
+export function buildGearFill(
+  p: ProductData, ctx: { url: string; kind: GearKind; rates: UsdRates | null; brands?: string[] }
+): GearFill {
   const rawBrand = p.brand ?? p.vendor ?? p.siteName;
-  const brand = rawBrand && cleanBrand(rawBrand);
-  let model = p.title ? stripSiteSuffix(p.title, [rawBrand, brand, p.vendor, p.siteName]) : '';
-  if (brand && model.toLowerCase().startsWith(brand.toLowerCase() + ' ')) model = model.slice(brand.length).trim();
+  const brand = rawBrand && matchBrand(cleanBrand(rawBrand), ctx.brands ?? []);
+  let model = p.title ?? '';
+  if (brand && model.toLowerCase().startsWith(brand.toLowerCase() + ' ')) model = model.slice(brand.length);
+  model = cleanModel(model);
   const notes: string[] = [];
   const raw: Record<string, string | number> = { website: ctx.url };
   if (brand) raw.brand = brand;

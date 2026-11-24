@@ -1,5 +1,4 @@
 import { pickOne } from '#lib/pageUrlState.ts';
-import { GEAR_KINDS, type GearKind } from '#lib/gear.ts';
 import { upsertFilter, type Filter } from '#lib/coffeeFilters.ts';
 import { fromParams, toParams } from '#lib/coffeeViewState.ts';
 
@@ -51,15 +50,15 @@ export type Caffeine = (typeof CAFFEINES)[number];
 export const TOPS = [20, 50] as const;
 export type Top = (typeof TOPS)[number];
 
-// Insights brew filters: one value each, in the URL as these param names.
-export const BREW_FILTER_KEYS = ['dripper', 'filter', 'water', 'brewDose', 'brewTemp'] as const;
+// Insights brew filters: one value each, in the URL as these param names (grinder's value is a slug; the server swaps in the name).
+export const BREW_FILTER_KEYS = ['dripper', 'filter', 'grinder', 'water', 'brewDose', 'brewTemp'] as const;
 export type BrewFilterKey = (typeof BREW_FILTER_KEYS)[number];
 export type BrewFilters = Partial<Record<BrewFilterKey, string>>;
 export const DOSE_BANDS: readonly { slug: string; label: string }[] = [
   { slug: 'lt12', label: '< 12g' }, { slug: '12', label: '12g' }, { slug: '15', label: '15g' },
   { slug: '18', label: '18g' }, { slug: '20', label: '20g' }, { slug: 'gt20', label: '> 20g' }
 ];
-export const BREW_FILTER_LABEL: Record<BrewFilterKey, string> = { dripper: 'Dripper', filter: 'Filter', water: 'Water', brewDose: 'Dose', brewTemp: 'Temp' };
+export const BREW_FILTER_LABEL: Record<BrewFilterKey, string> = { dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder', water: 'Water', brewDose: 'Dose', brewTemp: 'Temp' };
 export const brewFilterText = (k: BrewFilterKey, v: string): string =>
   k === 'brewDose' ? (DOSE_BANDS.find((d) => d.slug === v)?.label ?? v) : k === 'brewTemp' ? `${v}°C` : v;
 
@@ -263,7 +262,7 @@ export interface InsightsUrlState {
   process?: string;
   origin?: string;
   roaster?: string;
-  grinder?: string; // a grinder slug (absent = the most-used one)
+  grinder?: string; // a grinder slug: a brew filter; on Sweet spots / Brewing also the Grind for (absent = the most-used one)
   dripper?: string; // brew filters (BREW_FILTER_KEYS), one value each
   filter?: string;
   water?: string;
@@ -281,10 +280,7 @@ export interface InsightsUrlState {
   time?: 'exact';
   bloom?: 'exact';
   grind?: 'exact';
-  card?: string; // Gear's open trophy card (key "kind-slug")
   chart?: string; // a heading's id: the page scrolls to it on load (link previews name it)
-  retired?: 'open'; // Gear's retired shelf is open
-  gear?: GearKind; // Gear showcase's kind toggle: absent = All
   spendView?: 'ppg'; // Spend: price per gram chart (absent = Spend)
   spendSeries?: SpendSeries; // Spend: which series the chart draws (absent = One-off vs sub)
   rcSort?: RcCol; // Spend: Report card sort column (absent = Bags)
@@ -306,12 +302,12 @@ export interface InsightsUrlState {
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
 type Optional = 'avg' | 'trend' | 'gearBy' | 'gearView' | 'waterView' | 'speedBy' | 'open' | 'low' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'chart' | 'retired' | 'gear' | 'spendView' | 'spendSeries' | 'rcSort' | 'rcDir' | 'rcTop' | 'waitBy' | 'recipeBy' | 'pourThin' | 'recipeVs';
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'chart' | 'spendView' | 'spendSeries' | 'rcSort' | 'rcDir' | 'rcTop' | 'waitBy' | 'recipeBy' | 'pourThin' | 'recipeVs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   avg?: Avg; trend?: Trend; gearBy?: 'grinder'; gearView?: 'lines'; waterView?: 'lines'; speedBy?: 'process' | 'origin'; open?: Board[]; low?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
-  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; chart?: string; retired?: 'open'; gear?: GearKind; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top; waitBy?: WaitBy; recipeBy?: 'process' | 'roaster'; pourThin?: 'open'; recipeVs?: (typeof RECIPE_VS)[number];
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; chart?: string; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top; waitBy?: WaitBy; recipeBy?: 'process' | 'roaster'; pourThin?: 'open'; recipeVs?: (typeof RECIPE_VS)[number];
 } & Partial<Record<ExactParam, 'exact'>> & BrewFilters;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
@@ -466,10 +462,7 @@ export function parseInsightsUrl(
     grindBy: pickOne(p, 'grindBy', SLICES),
     ...(Object.fromEntries(EXACT_PARAMS.map((k) => [k, p.get(k)?.toLowerCase() === 'exact' ? 'exact' : undefined])) as Partial<Record<ExactParam, 'exact'>>),
     pairs: parsePairs(p.get('pairs')),
-    card: parseCard(p.get('card')),
     chart: parseChart(p.get('chart')),
-    retired: pickOne(p, 'retired', ['open']),
-    gear: pickOne(p, 'gear', GEAR_KINDS),
     spendView: pickOne(p, 'spendView', ['ppg']),
     spendSeries: pickOne(p, 'spendSeries', SPEND_SERIES),
     rcSort: pickOne(p, 'rcSort', RC_COLS),
@@ -494,13 +487,6 @@ function parsePairs(v: string | null): string[] | undefined {
 function parseChart(v: string | null): string | undefined {
   const x = (v ?? '').trim();
   return /^[A-Za-z0-9-]{1,100}$/.test(x) ? x : undefined;
-}
-
-// The open trophy card on Gear: one "kind-slug" key, lowercased; anything else is dropped.
-const CARD = /^(dripper|grinder|filter)-[a-z0-9]+(-[a-z0-9]+)*$/;
-function parseCard(v: string | null): string | undefined {
-  const x = (v ?? '').trim().toLowerCase();
-  return CARD.test(x) ? x : undefined;
 }
 
 // The coffee page's Vs like coffees panel (gate P4) honors the insights Ratings and Brews params. It always compares
@@ -542,12 +528,9 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.recentc) p.set('recentc', String(s.recentc));
   if (s.theme) p.set('theme', s.theme);
   for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
-  for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BREW_FILTER_KEYS, ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
+  for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', ...BREW_FILTER_KEYS, ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
   if (s.pairs?.length) p.set('pairs', s.pairs.join(','));
-  if (s.card) p.set('card', s.card);
   if (s.chart) p.set('chart', s.chart);
-  if (s.retired) p.set('retired', s.retired);
-  if (s.gear) p.set('gear', s.gear);
   if (s.spendView) p.set('spendView', s.spendView);
   if (s.spendSeries) p.set('spendSeries', s.spendSeries);
   if (s.rcSort) p.set('rcSort', s.rcSort);
@@ -587,15 +570,13 @@ export const emptyLine = (text: string, note: string): string =>
   note ? text.replace(/ in this period(.*?)\.?$/, ` matching ${note} in this period$1.`) : text;
 
 // Which brew filters each tab offers (spec table); the rest don't apply there (a muted chip; they still ride the URL and links).
+const GEAR3 = ['dripper', 'filter', 'grinder'] as const;
 export const BREW_FILTERS_ON: Record<Tab, readonly BrewFilterKey[]> = {
   overview: BREW_FILTER_KEYS, leaderboards: BREW_FILTER_KEYS, insights: BREW_FILTER_KEYS,
-  habits: ['dripper', 'brewDose'], consumption: ['dripper', 'brewDose'], records: ['dripper', 'water', 'brewDose'],
-  milestones: [], onhand: [], spend: [], sweetspots: [], brewing: ['dripper', 'filter', 'water'], pours: ['dripper', 'filter', 'water'],
-  water: ['dripper', 'filter', 'brewDose', 'brewTemp'], gear: ['water', 'brewDose', 'brewTemp'], recaps: []
+  habits: [...GEAR3, 'brewDose'], consumption: [...GEAR3, 'brewDose'], records: [...GEAR3, 'water', 'brewDose'],
+  milestones: GEAR3, onhand: [], spend: [], sweetspots: GEAR3, brewing: [...GEAR3, 'water'], pours: [...GEAR3, 'water'],
+  water: [...GEAR3, 'brewDose', 'brewTemp'], gear: BREW_FILTER_KEYS, recaps: []
 };
-// Gear's Dripper and Filter selects pick trophy cards, so they are offered there but filter nothing (activeBrewFilters).
-export const GEAR_PICKS: readonly BrewFilterKey[] = ['dripper', 'filter'];
-export const brewSelectsOn = (tab: Tab): readonly BrewFilterKey[] => (tab === 'gear' ? [...GEAR_PICKS, ...BREW_FILTERS_ON.gear] : BREW_FILTERS_ON[tab]);
 export const activeBrewFilters = (s: InsightsView): BrewFilters =>
   Object.fromEntries(BREW_FILTERS_ON[s.tab].filter((k) => s[k]).map((k) => [k, s[k]]));
 // The note under a figure that counts whole bags: brew filters can't narrow it. `items` names the figures.
@@ -694,7 +675,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     bag: s.bag, roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster, grinder: s.grinder,
     dripper: s.dripper, filter: s.filter, water: s.water, brewDose: s.brewDose, brewTemp: s.brewTemp,
     tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
-    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, card: s.card, chart: s.chart, retired: s.retired, gear: s.gear,
+    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, chart: s.chart,
     spendView: s.spendView, spendSeries: s.spendSeries, rcSort: s.rcSort, rcDir: s.rcDir, rcTop: s.rcTop, waitBy: s.waitBy, recipeBy: s.recipeBy, pourThin: s.pourThin, recipeVs: s.recipeVs
   };
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { suggest, dosePlan, thisCoffeeSummary, tierOf, grindStep, similarCoffees, type Gear } from './suggest';
+import { suggest, dosePlan, thisCoffeeSummary, tierOf, grindStep, similarCoffees, type Gear, type RecipeChoice } from './suggest';
 import type { BrewRow, CoffeeDetails, GearClass } from './load';
 
 let id = 0;
@@ -277,5 +277,83 @@ describe('dose and ratio ignore the gear picked (round 5 E1)', () => {
     const s = suggest(target, mixed, gear, gc, [15, 18, 20], '2026-10-28', [16, 17]);
     for (const k of ['dose', 'ratio']) expect(get(s, k).synopsis.join(' ')).not.toMatch(/rather than|another grinder/);
     expect(get(s, 'temp').synopsis.join(' ')).toMatch(/rather than the V60/);
+  });
+});
+
+describe('recipe-aware suggestions', () => {
+  const rec = (o: Partial<RecipeChoice> = {}): RecipeChoice => ({ id: 9, name: 'BBS', slug: 'bbs', tempC: null, ratios: [], asWritten: false, ...o });
+  const withRec = (rows: BrewRow[], recipe: RecipeChoice | null, chosen = { dose: null as number | null, ratio: null as number | null }) =>
+    suggest(target, rows, gear, gc, [15, 18, 20], '2026-10-28', [15, 16, 16.5, 17], chosen, recipe);
+  const onRec = (n: number, o: Partial<BrewRow> = {}) => Array.from({ length: n }, () => brew({ recipeId: 9, recipeName: 'BBS', recipeSlug: 'bbs', ...o }));
+  const grindRows = () => [brew({ grind: '5.0', recipeId: 2, recipeName: 'Other', recipeSlug: 'other' }), brew({ grind: '7.0', recipeId: 9, recipeName: 'BBS', recipeSlug: 'bbs' })];
+
+  it('brews with the chosen recipe weigh 3x', () => {
+    expect(get(withRec(grindRows(), null), 'grind').value).toBe('6.0');
+    expect(get(withRec(grindRows(), rec()), 'grind').value).toBe('7.0');
+  });
+  it('recipeRank ignores the chosen recipe', () => {
+    const rows = [...onRec(1), brew({ recipeId: 2, recipeName: 'Other', recipeSlug: 'other' }), brew({ recipeId: 2, recipeName: 'Other', recipeSlug: 'other' })];
+    expect(withRec(rows, null).recipeRank).toEqual([2, 9]);
+    expect(withRec(rows, rec()).recipeRank).toEqual([2, 9]);
+  });
+  it('synopsis says how many brews used the recipe', () => {
+    const rows = [...onRec(1), ...onRec(0), brew({ recipeId: 2 }), brew({ recipeId: 2 })];
+    expect(get(withRec(rows, rec()), 'temp').synopsis.join(' ')).toContain('1 of these 3 brews used BBS.');
+    expect(get(withRec(rows.slice(1), rec()), 'temp').synopsis.join(' ')).toContain('None of these brews used BBS, so this comes from your other recipes.');
+  });
+  it('temp: the recipe value until 3 brews with it, then the brews', () => {
+    const two = withRec(onRec(2, { tempC: 91 }), rec({ tempC: 93 }));
+    expect(get(two, 'temp')).toMatchObject({ value: '93°C', source: 'recipe', tier: null });
+    expect(get(two, 'temp').reason).toContain('your brews ran about 91°C');
+    const three = withRec(onRec(3, { tempC: 91 }), rec({ tempC: 93 }));
+    expect(get(three, 'temp').value).toBe('91°C');
+    expect(get(three, 'temp').source).toBeUndefined();
+    expect(get(three, 'temp').reason).toContain('recipe says 93°C');
+    expect(get(withRec(onRec(3, { tempC: 91 }), rec({ tempC: 93, asWritten: true })), 'temp').value).toBe('93°C');
+  });
+  it('ratio: the recipe target nearest the brews, else the first', () => {
+    const near = withRec([brew({ dose: 15, waterG: 252 })], rec({ ratios: [15, 16.5] }));
+    expect(get(near, 'ratio')).toMatchObject({ value: '1:16.5', source: 'recipe' });
+    expect(near.suggestedRatio).toBe(16.5);
+    expect(get(near, 'dose').value).toContain('· 248g water');
+    expect(get(withRec([brew({ waterG: null })], rec({ ratios: [15, 16.5] })), 'ratio').value).toBe('1:15');
+  });
+  it('switchable only when brews would show something different', () => {
+    expect(withRec(onRec(3, { tempC: 91 }), rec({ tempC: 93 })).switchable).toBe(true);
+    expect(withRec(onRec(2, { tempC: 91 }), rec({ tempC: 93 })).switchable).toBe(false);
+    expect(withRec(onRec(3, { tempC: 91 }), rec()).switchable).toBe(false);
+  });
+  it('a recipe-sourced temp does not lower the overall confidence', () => {
+    const rows = onRec(3, { tempC: null });
+    expect(get(withRec(rows, rec({ tempC: 93 })), 'temp')).toMatchObject({ source: 'recipe', confidence: 'guess' });
+    expect(withRec(rows, rec({ tempC: 93 })).confidence).toBe('high');
+  });
+  it('the recipe row never lowers the confidence when a recipe is chosen', () => {
+    const rows = Array.from({ length: 3 }, () => brew({ recipeId: null, recipeName: null, recipeSlug: null }));
+    expect(get(withRec(rows, rec()), 'recipe')).toMatchObject({ value: 'BBS', confidence: 'guess' });
+    expect(withRec(rows, rec()).confidence).toBe(withRec(rows, null).confidence);
+  });
+  it('the synopsis sentence is on the grind row too, and switchable comes with as written', () => {
+    expect(get(withRec(onRec(2), rec()), 'grind').synopsis.join(' ')).toContain('2 of these 2 brews used BBS.');
+    expect(withRec(onRec(3, { tempC: 91 }), rec({ tempC: 93 })).switchable).toBe(true);
+    expect(get(withRec(onRec(3, { tempC: 91 }), rec({ tempC: 93, asWritten: true })), 'temp')).toMatchObject({ value: '93°C', source: 'recipe' });
+  });
+  it('no brews at all: the recipe still fills temp and ratio', () => {
+    const s = withRec([], rec({ tempC: 93, ratios: [16] }));
+    expect(get(s, 'temp')).toMatchObject({ value: '93°C', source: 'recipe', tier: null, confidence: 'guess', evidence: [], synopsis: [], reason: 'From the recipe' });
+    expect(get(s, 'ratio')).toMatchObject({ value: '1:16', source: 'recipe' });
+    expect(get(s, 'grind').value).toBeNull();
+    expect(get(s, 'dose').value).toBeNull();
+    expect(s.confidence).toBe('guess');
+  });
+  it('a ratio chip beats as written', () => {
+    const s = withRec([], rec({ ratios: [16], asWritten: true }), { dose: 15, ratio: 17 });
+    expect(s.ratio).toBe(17);
+    expect(get(s, 'ratio').value).toBe('1:17');
+  });
+  it('the recipe row shows the chosen recipe', () => {
+    const rows = [...onRec(1), brew({ recipeId: 2, recipeName: 'Other', recipeSlug: 'other' }), brew({ recipeId: 2, recipeName: 'Other', recipeSlug: 'other' })];
+    expect(get(withRec(rows, rec()), 'recipe')).toMatchObject({ value: 'BBS', link: '/recipes/bbs', reason: 'Your choice' });
+    expect(get(withRec([], rec()), 'recipe')).toMatchObject({ value: 'BBS', tier: null, evidence: [], reason: 'Your choice' });
   });
 });

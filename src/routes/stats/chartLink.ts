@@ -1,4 +1,3 @@
-import { getContext, setContext } from 'svelte';
 import { BAG_BOARDS, BOARDS, LIKE_BOARDS, MON, lowFirst, type Board, type Rank, type Tab } from '#lib/insightsUrl.ts';
 import { DESCRIPTION_MAX, fitList, plural, type Card, type Preview, type Thumb } from '#lib/linkPreview.ts';
 import { originWithFlag } from '#lib/countryFlags.ts';
@@ -6,6 +5,7 @@ import { formatGrams } from '#lib/grams.ts';
 import { clock12 } from '#lib/hours.ts';
 import { usd, wholeUsd } from '#lib/money.ts';
 import { likeGap } from '#lib/components/deltaColor.ts';
+import { unitGap } from '#lib/unitGap.ts';
 import type { ThumbCtx, ThumbFn } from './thumbTypes';
 import { leaderboardTimeThumb } from './thumbs/leaderboards';
 import { CONSUMPTION_THUMBS } from './thumbs/consumption';
@@ -17,15 +17,10 @@ import { ERAS_THUMBS } from './thumbs/eras';
 import type { BoardRow } from '#lib/server/insights/leaderboards.ts';
 import type { Fmt, Holder, RecordPick, RecordsTab, Section } from '#lib/server/insights/records.ts';
 
-// +page.svelte provides how a heading links to itself: an href carrying chart=<id> (link previews name the chart)
-// and a click that puts the same URL in the address bar without a reload. Same shape as coffeeNote.ts.
-export interface ChartLink {
-  href: (id: string) => string;
-  go: (id: string) => void;
-}
-const KEY = 'insights-chart-link';
-export const provideChartLink = (l: ChartLink): void => void setContext(KEY, l);
-export const useChartLink = (): ChartLink => getContext<ChartLink>(KEY);
+// The heading link context lives in #lib/headingLink.ts; /stats keeps its old names.
+import { provideHeadingLink, useHeadingLink, type HeadingLink } from '#lib/headingLink.ts';
+export const provideChartLink = provideHeadingLink;
+export const useChartLink = (): HeadingLink => useHeadingLink()!; // /stats always provides one
 
 // ---- Formatters shared by Leaderboards/Records and the link preview (moved verbatim from the components). ----
 
@@ -68,7 +63,7 @@ export function recordParts(p: RecordPick, fmt: Fmt): [string, string?, string?]
     case 'days': return [num(n), n === 1 ? 'day' : 'days'];
     case 'gpd': return [num(n), 'g/day'];
     case 'money': return [usd(n)];
-    case 'per100': return [usd(n), '/ 100g'];
+    case 'ppg': return [usd(n), '/g'];
     case 'clock': { const [hm, ap] = clock12(n).split(' '); return [hm, ap]; }
     case 'seconds': return [mss(n)];
     case 'ratio': return [`1:${n.toFixed(1)}`];
@@ -77,11 +72,14 @@ export function recordParts(p: RecordPick, fmt: Fmt): [string, string?, string?]
     case 'delta': return [`${p.mean! < 0 ? '−' : '+'}${Math.abs(p.mean!).toFixed(2)}`, undefined, 'Vs your average rating'];
     // An encoded setting: the text is the value.
     case 'grind': return [p.detail ?? ''];
-    // Rating ÷ $/100 g isn't readable: the mean rating, "at $9.30/100 g" under it.
-    case 'value': return [p.mean!.toFixed(1), undefined, `At ${usd(p.per100!)}/100g`];
+    // Rating ÷ $/g isn't readable: the mean rating, "at $0.09/g" under it.
+    case 'value': return [p.mean!.toFixed(1), undefined, `At ${usd(p.ppg!)}/g`];
   }
 }
-export const recordValue = (p: RecordPick, fmt: Fmt): string => recordParts(p, fmt).filter(Boolean).join(' ');
+export const recordValue = (p: RecordPick, fmt: Fmt): string => {
+  const [v, unit, line] = recordParts(p, fmt);
+  return [unit ? v + unitGap(unit) + unit : v, line].filter(Boolean).join(' '); // "$0.09/g", "3 days", as the tile shows
+};
 
 // ---- The /stats link preview ----
 
@@ -128,10 +126,6 @@ export function bars(rows: { value: number; text: string; name: string }[], plai
   const top = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9);
   return { kind: 'bars', rows: rows.slice(0, 5).map((r) => [clip(r.name), clip(r.text), Math.abs(r.value) / top]), ...(plain && { plain }) };
 }
-// The thumbnail shows a bag's price per gram ("$0.09/g", as the $/g rank does), not the page's per 100g (fmt 'per100': the
-// priciest and cheapest bag tiles); the label's "per 100g" follows.
-const thumbValue = (t: RecordPick, fmt: Fmt) => (fmt === 'per100' ? `${usd(t.value / 100)}/g` : recordValue(t, fmt));
-const thumbLabel = (label: string, fmt: Fmt) => (fmt === 'per100' ? label.replace(/ per 100g$/, ' per g') : label);
 const holderRow = (h: Holder) => [h.sub, h.label].filter(Boolean).join(' · ');
 
 // The Chart.js tabs' thumbnails by chart id. Merged per call: the thumb files import this one, so a module-level spread could hit a half-loaded cycle.
@@ -173,7 +167,7 @@ export function insightsPreview(v: PreviewInput): Preview {
   if (section?.tiles.length) {
     const prefix = `${v.period}\n`;
     const items = section.tiles.map((t) => `${t.label} · ${recordValue(t, t.fmt)}`);
-    const grid: Thumb = { kind: 'grid', tiles: section.tiles.slice(0, 6).map((t) => [clip(thumbLabel(t.label, t.fmt)), clip(thumbValue(t, t.fmt))]) };
+    const grid: Thumb = { kind: 'grid', tiles: section.tiles.slice(0, 6).map((t) => [clip(t.label), clip(recordValue(t, t.fmt))]) };
     return { title: `Stats: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length), card: statsCard(RECORD_TITLE[section.key], v, grid) };
   }
   const tile = rec?.sections.flatMap((s) => s.tiles).find((t) => chart === recordAnchor(t.key));
@@ -184,8 +178,8 @@ export function insightsPreview(v: PreviewInput): Preview {
       !isDateHolder(tile.holder) && tile.holder.date, tile.ties.length > 0 && `Tied with ${tile.ties.length} more`
     ].filter(Boolean) as string[];
     const date = isDateHolder(tile.holder);
-    const thumb: Thumb = { kind: 'tile', value: clip(thumbValue(tile, tile.fmt)), holder: clip(date ? holderName(tile.holder) : tile.key === 'leastOrigin' ? originWithFlag(tile.holder.label) : holderRow(tile.holder)), ...(!date && tile.holder.date && { date: tile.holder.date }) };
-    return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false), card: statsCard(thumbLabel(tile.label, tile.fmt), v, thumb) };
+    const thumb: Thumb = { kind: 'tile', value: clip(recordValue(tile, tile.fmt)), holder: clip(date ? holderName(tile.holder) : tile.key === 'leastOrigin' ? originWithFlag(tile.holder.label) : holderRow(tile.holder)), ...(!date && tile.holder.date && { date: tile.holder.date }) };
+    return { title: `Stats: ${tile.label}`, description: fitList(lines, '\n', false), card: statsCard(tile.label, v, thumb) };
   }
   const page = pagePreview(v);
   const t = v.ctx && thumbFor(chart)?.(v.ctx);

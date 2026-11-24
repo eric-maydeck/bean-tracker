@@ -7,7 +7,7 @@
   import type { RecentBrew, RecentBag } from '#lib/server/insights/overview.ts';
   import CoffeeName from '#lib/components/CoffeeName.svelte';
   import ShowMore from './ShowMore.svelte';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
 
   let { brews, bags, n, nc, choose, wholeKeys }: {
     wholeKeys: BrewFilterKey[]; brews: RecentBrew[]; bags: RecentBag[]; n: Top | undefined; nc: Top | undefined; choose: (c: InsightsUrlState) => void;

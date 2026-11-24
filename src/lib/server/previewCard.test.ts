@@ -118,7 +118,7 @@ describe('verifyCard with a coffee card', () => {
   it.each([
     ['a remote URL', ['https://x.example/a.webp', '#e6ddd2']],
     ['a path out of the images folder', [`/img/coffees/../${'a'.repeat(64)}.webp`, '#e6ddd2']],
-    ['another copy kind', [`/img/gear/${'a'.repeat(64)}.webp`, '#e6ddd2']],
+    ['another copy kind', [`/img/other/${'a'.repeat(64)}.webp`, '#e6ddd2']],
     ['a fill that is not a hex colour', [src, 'red;x']],
     ['a wrong shape', [src]]
   ])('rejects %s', (_n, ph) => expect(check(['A', 'B', null, null, ph])).toBeNull());

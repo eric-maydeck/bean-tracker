@@ -91,7 +91,7 @@ test('household of one hides the people switch everywhere', { tag: '@stats' }, a
   const saveSize = async (n: string) => {
     await gotoReady(page, '/account');
     await page.getByLabel('Household size').fill(n);
-    await page.locator('#household').getByRole('button', { name: 'Save', exact: true }).click();
+    await page.locator('[data-section="household"]').getByRole('button', { name: 'Save', exact: true }).click();
     await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: n });
   };
   await gotoReady(page, '/stats?people=person');
@@ -236,14 +236,14 @@ test.describe('coffee added popup', { tag: '@coffees' }, () => {
   });
 });
 
-test('trophy card: Edit the grinder burr size, Save, the card shows it after reload', { tag: '@stats' }, async ({ page }) => {
+test('trophy card: Edit the grinder burr size, Save, the card shows it after reload', { tag: '@gear' }, async ({ page }) => {
   const restore = () => {
     const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
     db.prepare(`UPDATE gear_details SET fields = ?, created_at = ?, updated_at = ? WHERE kind = 'grinder' AND name = 'ZP6 Special'`).run(JSON.stringify({ brand: 'Timemore', burrSize: 64 }), '2026-09-02T12:00:00.000Z', '2026-09-02T12:00:00.000Z');
     db.close();
   };
   try {
-    await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
+    await gotoReady(page, '/gear?card=grinder-zp6-special');
     const dlg = page.locator('dialog.trophy-dialog');
     await dlg.getByRole('button', { name: 'Edit' }).click();
     await dlg.getByLabel('Burr size (mm)').fill('54');
@@ -255,11 +255,11 @@ test('trophy card: Edit the grinder burr size, Save, the card shows it after rel
   } finally { restore(); }
 });
 
-test('trophy card: adjustable grinder converts dial to RPM, Save names the missing field', { tag: '@stats' }, async ({ page }) => {
+test('trophy card: adjustable grinder converts dial to RPM, Save names the missing field', { tag: '@gear' }, async ({ page }) => {
   const flag = (v: number) => { const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 }); db.prepare(`UPDATE beanconqueror_grinders SET has_adjustable_speed = ? WHERE name = 'ZP6 Special'`).run(v); db.close(); };
   flag(1);
   try {
-    await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
+    await gotoReady(page, '/gear?card=grinder-zp6-special');
     const dlg = page.locator('dialog.trophy-dialog');
     await dlg.getByRole('button', { name: 'Edit' }).click();
     await expect(dlg.getByLabel('Motor speed (RPM)', { exact: true })).toHaveCount(0);
@@ -274,8 +274,8 @@ test('trophy card: adjustable grinder converts dial to RPM, Save names the missi
   } finally { flag(0); }
 });
 
-test('trophy card: unreadable text in a number field blocks Save and saves nothing', { tag: '@stats' }, async ({ page }) => {
-  await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
+test('trophy card: unreadable text in a number field blocks Save and saves nothing', { tag: '@gear' }, async ({ page }) => {
+  await gotoReady(page, '/gear?card=grinder-zp6-special');
   const dlg = page.locator('dialog.trophy-dialog');
   await dlg.getByRole('button', { name: 'Edit' }).click();
   const posts: string[] = [];
@@ -287,8 +287,8 @@ test('trophy card: unreadable text in a number field blocks Save and saves nothi
 });
 
 // The save toast must sit above the open modal dialog and take clicks (the modal makes the rest of the page inert).
-test('trophy card: the save toast shows over the open dialog and its Undo works', { tag: '@stats' }, async ({ page }) => {
-  await gotoReady(page, '/stats?tab=gear&card=grinder-zp6-special');
+test('trophy card: the save toast shows over the open dialog and its Undo works', { tag: '@gear' }, async ({ page }) => {
+  await gotoReady(page, '/gear?card=grinder-zp6-special');
   const dlg = page.locator('dialog.trophy-dialog');
   await dlg.getByRole('button', { name: 'Edit' }).click();
   const burr = dlg.getByLabel('Burr size (mm)');
@@ -565,7 +565,7 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
 // Household panel on Account: a real save toasts with Undo, which restores the old size (layout checks stub this).
 test('account household: save toasts, Undo restores', { tag: '@stats' }, async ({ page }) => {
   await gotoReady(page, '/account');
-  const panel = page.locator('#household');
+  const panel = page.locator('[data-section="household"]');
   const input = panel.getByLabel('Household size');
   const size = await input.inputValue(); // earlier save tests may have left it at 1
   await input.fill('3');
@@ -581,7 +581,7 @@ test('account household: save toasts, Undo restores', { tag: '@stats' }, async (
 // Kit 3's enhance navigates to the action URL minus `?/name`, which drops the page's own query: every form passes navigate: false.
 test('enhanced form on a URL with a query stays put: same URL, no history entry', { tag: '@stats' }, async ({ page }) => {
   await gotoReady(page, '/account?untracked=all');
-  const panel = page.locator('#household');
+  const panel = page.locator('[data-section="household"]');
   const input = panel.getByLabel('Household size');
   const size = await input.inputValue();
   const entries = await page.evaluate(() => history.length);
@@ -649,7 +649,7 @@ test.describe('settings', () => {
     await expect(foot).not.toContainText('UTC');
     const tokyo = await offset(foot);
     const pick = async (label: string, value: string, toast: string) => {
-      await page.locator('#time, #stats-settings').getByLabel(label).selectOption(value);
+      await page.locator('[data-section="time"], [data-section="stats-settings"]').getByLabel(label).selectOption(value);
       await expect(page.getByRole('status').filter({ hasText: toast })).toBeVisible();
     };
     await pick('Display timezone', 'America/New_York', 'Display timezone set to America/New_York.');
@@ -660,7 +660,7 @@ test.describe('settings', () => {
     await pick('Date format', 'eu', 'Date format set to 22/10/2026 20:05:23.');
     await expect(foot).toContainText(/Last updated: \d\d\/\d\d\/\d{4} \d\d:\d\d(?!:)/);
     // Every calendar date follows it: the gear card's First/Last used, the Overview tables, the /coffees roast dates.
-    await gotoReady(page, '/stats?tab=gear&card=dripper-v60');
+    await gotoReady(page, '/gear?card=dripper-v60');
     const dateRe = /^\d\d\/\d\d\/\d{4}$/;
     await expect(page.locator('dialog.trophy-dialog .stat:has(.stat-label:text-is("First used")) .stat-value')).toHaveText(dateRe);
     await expect(page.locator('dialog.trophy-dialog .stat:has(.stat-label:text-is("Last used")) .stat-value')).toHaveText(dateRe);

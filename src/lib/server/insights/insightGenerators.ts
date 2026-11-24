@@ -416,7 +416,7 @@ const money = usd;
 const pct = (x: number) => `${Math.round(100 * x)}%`;
 const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 const period = (c: GenCtx) => ({ start: c.period.from, end: c.period.to });
-const per100 = (b: BagFact) => (b.cost && b.amountG ? (100 * b.cost) / b.amountG : null); // cost 0/null excluded
+const ppg = (b: BagFact) => (b.cost && b.amountG ? b.cost / b.amountG : null); // cost 0/null excluded
 // Plain words for a correlation (user, #19: no raw stats in a card's text).
 const moves = (r: number, up: string, down: string, none = "didn't rate differently") => (Math.abs(r) < 0.1 ? none : `${Math.abs(r) < 0.3 ? 'loosely' : 'clearly'} ${r < 0 ? down : up}`);
 const myth = (f: Omit<Finding, 'kind' | 'z' | 'strength'>): Finding => ({ ...f, kind: 'myth', z: null, strength: null });
@@ -695,7 +695,7 @@ const wildcardBrewer: Generator = (c) => {
 // ---- Money ----
 const priceVsRating: Generator = (c) => {
   const means = bagMeans(c);
-  const pts = c.bags.flatMap((b) => { const p = per100(b); return p !== null && means.has(b.id) ? [[p, means.get(b.id)!]] : []; });
+  const pts = c.bags.flatMap((b) => { const p = ppg(b); return p !== null && means.has(b.id) ? [[p, means.get(b.id)!]] : []; });
   // Rank correlation: one pricey outlier bag can't make or break it.
   const r = pts.length >= MIN_BREWS ? spearman(pts.map((p) => p[0]), pts.map((p) => p[1])) : null;
   if (r === null) return null;
@@ -726,17 +726,17 @@ const costPerCup: Generator = (c) => {
   };
 };
 
-// Mean $/100 g of the bags bought each quarter of the period (3+ bags a quarter).
+// Mean $/g of the bags bought each quarter of the period (3+ bags a quarter).
 const pricePerMonth: Generator = (c) => {
   const p = period(c);
-  const bs = c.bags.filter((b) => per100(b) !== null && b.purchaseDate && inPeriod(b.purchaseDate, p));
+  const bs = c.bags.filter((b) => ppg(b) !== null && b.purchaseDate && inPeriod(b.purchaseDate, p));
   const qs = [...groupBy(bs, (b) => `${b.purchaseDate!.slice(0, 4)} Q${Math.ceil(+b.purchaseDate!.slice(5, 7) / 3)}`)]
     .filter(([, g]) => g.length >= MIN_BAGS).sort(([a], [b]) => a.localeCompare(b))
-    .map(([q, g]) => ({ label: q, value: mean(g.map((b) => per100(b)!)) }));
+    .map(([q, g]) => ({ label: q, value: mean(g.map((b) => ppg(b)!)) }));
   if (qs.length < 2) return null;
   const [a, b] = [qs[0].value, qs.at(-1)!.value];
   return {
-    key: 'pricePerMonth', whole: true, theme: 'money', kind: 'pattern', headline: `$/100g went from ${money(a)} to ${money(b)}`, value: money(b),
+    key: 'pricePerMonth', whole: true, theme: 'money', kind: 'pattern', headline: `$/g went from ${money(a)} to ${money(b)}`, value: money(b),
     series: qs, money: true, sample: plural(bs.length, 'bag'), href: `${LB}&open=coffees&rank=ppg`, z: null, strength: null
   };
 };

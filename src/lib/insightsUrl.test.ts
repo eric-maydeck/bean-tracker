@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   lowFirst,
   parseInsightsUrl, insightsParams, boardAvg, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  BREW_FILTERS_ON, activeBrewFilters, wholeNote, brewSelectsOn,
+  BREW_FILTERS_ON, activeBrewFilters, wholeNote,
   parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
 } from './insightsUrl';
 import type { Filter } from '#lib/coffeeFilters.ts';
@@ -864,20 +864,24 @@ describe('brew filters', () => {
   });
   it('BREW_FILTERS_ON covers every tab', () => {
     expect(Object.keys(BREW_FILTERS_ON).sort()).toEqual([...TABS].sort());
-    expect(BREW_FILTERS_ON.sweetspots).toEqual([]);
-    expect(BREW_FILTERS_ON.milestones).toEqual([]);
-    expect(BREW_FILTERS_ON.recaps).toEqual([]);
-    expect(BREW_FILTERS_ON.brewing).toEqual(['dripper', 'filter', 'water']);
-    expect(BREW_FILTERS_ON.pours).toEqual(['dripper', 'filter', 'water']);
-    expect(BREW_FILTERS_ON.water).toEqual(['dripper', 'filter', 'brewDose', 'brewTemp']);
-    expect(BREW_FILTERS_ON.gear).toEqual(['water', 'brewDose', 'brewTemp']);
-    expect(BREW_FILTERS_ON.records).toEqual(['dripper', 'water', 'brewDose']);
-    expect(BREW_FILTERS_ON.habits).toEqual(['dripper', 'brewDose']);
-    expect(BREW_FILTERS_ON.consumption).toEqual(['dripper', 'brewDose']);
-    for (const t of ['overview', 'leaderboards', 'insights'] as const) expect(BREW_FILTERS_ON[t]).toHaveLength(5);
+    const gear = ['dripper', 'filter', 'grinder'];
+    for (const x of ['milestones', 'sweetspots'] as const) expect(BREW_FILTERS_ON[x]).toEqual(gear);
+    for (const x of ['onhand', 'spend', 'recaps'] as const) expect(BREW_FILTERS_ON[x]).toEqual([]);
+    expect(BREW_FILTERS_ON.brewing).toEqual([...gear, 'water']);
+    expect(BREW_FILTERS_ON.pours).toEqual([...gear, 'water']);
+    expect(BREW_FILTERS_ON.water).toEqual([...gear, 'brewDose', 'brewTemp']);
+    expect(BREW_FILTERS_ON.records).toEqual([...gear, 'water', 'brewDose']);
+    expect(BREW_FILTERS_ON.habits).toEqual([...gear, 'brewDose']);
+    expect(BREW_FILTERS_ON.consumption).toEqual([...gear, 'brewDose']);
+    for (const t of ['overview', 'leaderboards', 'insights', 'gear'] as const) expect(BREW_FILTERS_ON[t]).toHaveLength(6);
   });
   it('activeBrewFilters keeps only offered ones', () =>
-    expect(activeBrewFilters(withDefaults({ tab: 'gear', dripper: 'V60', water: 'Lotus 900' }))).toEqual({ water: 'Lotus 900' }));
+    expect(activeBrewFilters(withDefaults({ tab: 'spend', dripper: 'V60', grinder: 'zp6' }))).toEqual({}));
+  it('grinder is a brew filter on every brew tab, carried to page-wide links', () => {
+    expect(activeBrewFilters(withDefaults({ tab: 'sweetspots', grinder: 'zp6' }))).toEqual({ grinder: 'zp6' });
+    expect(insightsParams({ tab: 'habits', grinder: 'zp6' }).toString()).toBe('tab=habits&grinder=zp6');
+    expect(withPageWide('/stats?tab=gear', { grinder: 'zp6' })).toContain('grinder=zp6');
+  });
   it('wholeNote', () => {
     expect(wholeNote(['dripper'])).toBe("Whole bags: the dripper filter doesn't apply.");
     expect(wholeNote(['dripper', 'water'])).toBe("Whole bags: the dripper and water filters don't apply.");
@@ -888,30 +892,13 @@ describe('brew filters', () => {
   it('resetInsights drops brew filters', () => expect(resetInsights({ tab: 'gear', water: 'x' })).toEqual({ tab: 'gear' }));
 });
 
-describe('gear trophy params', () => {
-  it('card: one key, lowercased, junk dropped, absent = closed', () => {
-    expect(parse('card=Grinder-ZP6').card).toBe('grinder-zp6');
-    expect(parse('card=dripper-v60,grinder-zp6').card).toBeUndefined();
-    expect(parse('card=bogus').card).toBeUndefined();
-    expect(parse('card=').card).toBeUndefined();
-    expect(parse('tab=gear').card).toBeUndefined();
-  });
-  it('gear kind toggle: case-insensitive, junk dropped, round-trips, reset clears', () => {
-    expect(parse('gear=Grinder').gear).toBe('grinder');
-    expect(parse('gear=water').gear).toBeUndefined();
-    expect(parse('tab=gear').gear).toBeUndefined();
-    expect(insightsParams({ tab: 'gear', gear: 'filter' }).toString()).toBe('tab=gear&gear=filter');
-    expect(withDefaults(parse('tab=gear&gear=dripper'))).toMatchObject({ gear: 'dripper' });
-    expect(resetInsights({ tab: 'gear', gear: 'filter' })).toEqual({ tab: 'gear' });
-  });
-  it('retired takes only open', () => {
-    expect(parse('retired=OPEN').retired).toBe('open');
-    expect(parse('retired=yes').retired).toBeUndefined();
-  });
-  it('round-trips and is bare when collapsed', () => {
-    expect(insightsParams({ tab: 'gear', card: 'dripper-v60', retired: 'open' }).toString()).toBe('tab=gear&card=dripper-v60&retired=open');
+describe('gear and chart params', () => {
+  it('the showcase params moved to /gear: card, gear and retired no longer parse here', () => {
+    const s = parse('tab=gear&card=dripper-v60&gear=grinder&retired=open');
+    expect(s).not.toHaveProperty('card');
+    expect(s).not.toHaveProperty('gear');
+    expect(s).not.toHaveProperty('retired');
     expect(insightsParams({ tab: 'gear' }).toString()).toBe('tab=gear');
-    expect(withDefaults(parse('tab=gear&card=dripper-v60&retired=open'))).toMatchObject({ card: 'dripper-v60', retired: 'open' });
   });
   it('chart: one id, case kept, junk dropped, kept in the URL, dropped by reset', () => {
     expect(parse('chart=Leaderboard-Origins').chart).toBe('Leaderboard-Origins'); // case kept: tile ids are camelCase (record-oldestBrewed)
@@ -923,11 +910,9 @@ describe('gear trophy params', () => {
     expect(withDefaults(parse('chart=gear-eras')).chart).toBe('gear-eras');
     expect(resetInsights(parse('tab=records&chart=records-taste&range=1m'))).toEqual({ tab: 'records' });
   });
-  it('reset drops card and retired', () => expect(resetInsights({ tab: 'gear', card: 'dripper-v60', retired: 'open' })).toEqual({ tab: 'gear' }));
-  it('gear offers dripper and filter selects without filtering the lab', () => {
-    expect(brewSelectsOn('gear')).toEqual(['dripper', 'filter', 'water', 'brewDose', 'brewTemp']);
-    expect(brewSelectsOn('water')).toEqual(BREW_FILTERS_ON.water);
-    expect(activeBrewFilters(withDefaults({ tab: 'gear', dripper: 'V60' }))).toEqual({});
+  it('gear filters brews by every brew filter', () => {
+    expect(BREW_FILTERS_ON.gear).toHaveLength(6);
+    expect(activeBrewFilters(withDefaults({ tab: 'gear', dripper: 'V60' }))).toEqual({ dripper: 'V60' });
   });
 });
 

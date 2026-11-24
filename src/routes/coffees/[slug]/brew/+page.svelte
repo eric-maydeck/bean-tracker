@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance, deserialize } from '$app/forms';
   import { goto } from '$app/navigation';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { refreshTracked } from '#lib/urlState.ts';
   import { page } from '$app/state';
   import { originWithFlag } from '#lib/countryFlags.ts';
@@ -16,6 +17,8 @@
   import { showToast } from '#lib/toast.svelte.ts';
   import { cutTip } from './cutTip';
   import { recipeHref } from '#lib/recipeSlug.ts';
+  import PourTimeline from '#lib/components/PourTimeline.svelte';
+  import { labelTip } from '#lib/components/labelTip.ts';
   import TipBody from '#lib/components/TipBody.svelte';
 
   let { data, form } = $props();
@@ -29,11 +32,11 @@
   const toggle = (kind: 'basis' | 'plan' | 'prefs', el: Element) => (pop = pop?.kind === kind ? null : { kind, el });
   const BADGE = { high: 'badge-fresh', moderate: 'badge-neutral', low: 'badge-warm', guess: 'badge-warm' } as const;
 
-  type Patch = Partial<{ grinder: string | null; dripper: string | null; filter: string | null; why: Setting | null; dose: number | null; ratio: number | null }>;
+  type Patch = Partial<{ grinder: string | null; dripper: string | null; filter: string | null; why: Setting | null; dose: number | null; ratio: number | null; recipe: string | null; from: 'recipe' | null; amounts: 'pour' | null }>;
   function go(patch: Patch) {
     const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why,
-      dose: data.suggestion.dose, ratio: data.suggestion.ratio, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
-    goto(page.url.pathname + (q ? `?${q}` : ''), { replace: true, reset: false });
+      dose: data.suggestion.dose, ratio: data.suggestion.ratio, recipe: data.chosenRecipe, from: data.from, amounts: data.amounts, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
+    goto(page.url.pathname + (q ? `?${q}` : '') + page.url.hash, { replace: true, reset: false }); // reset: false keeps the scroll even with a hash
   }
   const dripperFirst = (key: string): Patch => (key === 'dripper' ? { filter: null } : {});
   // Up to three chips (names that fit one line); the rest sit behind an "Other" dropdown button, whose label becomes
@@ -41,12 +44,15 @@
   const picks = $derived([
     { key: 'grinder', label: 'Grinder', main: data.options.grinders, other: [] as string[], cur: data.gear.grinder },
     { key: 'dripper', label: 'Dripper', main: data.options.drippers, other: data.options.otherDrippers, cur: data.gear.dripper },
-    { key: 'filter', label: 'Filter', main: data.options.filters, other: data.options.otherFilters, cur: data.gear.filter }
+    { key: 'filter', label: 'Filter', main: data.options.filters, other: data.options.otherFilters, cur: data.gear.filter },
+    { key: 'recipe', label: 'Recipe', main: data.recipes.filter((r: { fits: boolean }) => r.fits).map((r: { slug: string }) => r.slug), other: [] as string[], cur: data.recipe?.slug ?? null }
   ] as const);
+  const nameOf = (key: string, o: string) => (key === 'recipe' ? data.recipes.find((r: { slug: string }) => r.slug === o)?.name ?? data.recipe?.name ?? o : o); // recipe options are slugs
+  const pick = (key: string, o: string) => (key === 'recipe' ? { recipe: o } : { [key]: o, ...dripperFirst(key) });
   const CHIP_MAX = 3, CHIP_LEN = 22;
-  const split = (p: { main: readonly string[]; other: readonly string[]; cur: string | null }) => {
+  const split = (p: { key: string; main: readonly string[]; other: readonly string[]; cur: string | null }) => {
     const all = [...new Set([...(p.cur && !p.main.includes(p.cur) && !p.other.includes(p.cur) ? [p.cur] : []), ...p.main, ...p.other])];
-    const fit = all.filter((o) => o.length <= CHIP_LEN);
+    const fit = all.filter((o) => nameOf(p.key, o).length <= CHIP_LEN);
     const chips = all.length <= CHIP_MAX + 1 && fit.length === all.length ? all : fit.slice(0, CHIP_MAX);
     return { chips, rest: all.filter((o) => !chips.includes(o)) };
   };
@@ -60,7 +66,7 @@
   // "See coffees": close the popover, then scroll to the Similar coffees section (the link would die with the popover).
   function seeCoffees() {
     pop = null;
-    document.getElementById('similar')?.scrollIntoView({ block: 'start' });
+    document.getElementById('similar')?.closest('section')?.scrollIntoView({ block: 'start' });
   }
 
   // Brew this on a coffee that isn't open yet asks first, then opens it and records the mark.
@@ -84,6 +90,7 @@
     brewForm?.requestSubmit();
   }
 
+  const lowTip = { title: 'Water low', lines: ['Start this pour when the water is low, close to the bed.'] };
   const gearText = (b: BrewRow) => [b.dripper, b.filter].filter(Boolean).join(' · ');
 </script>
 
@@ -127,8 +134,8 @@
 
 {#snippet thisCoffee()}
   {#if data.thisCoffee.length}
-    <section class="bn-card" aria-labelledby="bn-this">
-      <h2 id="bn-this">This coffee</h2>
+    <section class="bn-card" aria-labelledby="this-coffee-text">
+      <HeadingAnchor id="this-coffee">This coffee</HeadingAnchor>
       <div class="split">
         <GrindTrend brews={asc} grinder={data.gear.grinder} summary={data.thisCoffeeSummary} />
         <ul class="brews">
@@ -144,8 +151,8 @@
 {#snippet roasterRecipe()}
   {@const rr = data.roasterRecipe}
   {#if rr || data.isAdmin}
-    <section class="bn-card rr" aria-labelledby="bn-rr">
-      <h2 id="bn-rr">Roaster's recipe</h2>
+    <section class="bn-card rr" aria-labelledby="roasters-recipe-text">
+      <HeadingAnchor id="roasters-recipe">Roaster's recipe</HeadingAnchor>
       {#if rr?.url}
         <a class="rr-title" href={rr.url} target="_blank" rel="noopener noreferrer">{rr.title ?? rr.url}</a>
         <p class="rr-meta">
@@ -196,17 +203,21 @@
       <div class="pk2-row">
         <span class="pk2-label" id="pk-{p.key}">{p.label}</span>
         <div class="pk2-chips" role="group" aria-labelledby="pk-{p.key}">
+          {#if p.key === 'recipe' && !sp.chips.length && !sp.rest.length}
+            <span class="none pk2-none">{data.recipes.length ? 'No saved recipe for this dripper yet' : 'No saved recipes yet'}</span>
+            {#if data.isAdmin}<a href="/recipes">Add a recipe</a>{/if}
+          {/if}
           {#each sp.chips as o (o)}
-            <button type="button" class="pk2-chip" aria-pressed={o === p.cur} onclick={() => { menu = null; go({ [p.key]: o, ...dripperFirst(p.key) }); }}>{o}</button>
+            <button type="button" class="pk2-chip" aria-pressed={o === p.cur} onclick={() => { menu = null; go(pick(p.key, o)); }}>{nameOf(p.key, o)}</button>
           {/each}
           {#if sp.rest.length}
             <span class="pk2-menu-wrap">
               <button type="button" class="pk2-chip pk2-drop" aria-pressed={restPick} aria-haspopup="menu" aria-expanded={menu?.key === p.key}
-                onclick={(e) => openMenu(p.key, e.currentTarget)}>{restPick ? p.cur : 'Other'} <Icon name="caret-down" /></button>
+                onclick={(e) => openMenu(p.key, e.currentTarget)}>{restPick ? nameOf(p.key, p.cur!) : 'Other'} <Icon name="caret-down" /></button>
               {#if menu?.key === p.key}
                 <ul class="pk2-menu" class:flip={menu.flip} role="menu" aria-label="Other {p.label.toLowerCase()}s">
                   {#each sp.rest as o (o)}
-                    <li role="none"><button type="button" role="menuitem" class="pk2-item" aria-current={o === p.cur} onclick={() => { menu = null; go({ [p.key]: o, ...dripperFirst(p.key) }); }}>{o}</button></li>
+                    <li role="none"><button type="button" role="menuitem" class="pk2-item" aria-current={o === p.cur} onclick={() => { menu = null; go(pick(p.key, o)); }}>{nameOf(p.key, o)}</button></li>
                   {/each}
                 </ul>
               {/if}
@@ -214,6 +225,10 @@
           {/if}
         </div>
       </div>
+      {@const sug = data.suggestedRecipe}
+      {#if p.key === 'recipe' && sug && data.recipe && sug.slug !== data.recipe.slug}
+        <p class="pk2-hint"><Icon name="sparkle" /><span>Suggested for this setup:</span><button type="button" class="pk2-chip pk2-sug" onclick={() => go({ recipe: sug.slug })}>{sug.name}</button></p>
+      {/if}
     {/each}
     {#if data.options.doses.length}
       <div class="pk2-row">
@@ -239,10 +254,18 @@
 
   {#if data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
 
-  <section class="bn-card start" aria-labelledby="bn-start">
-    <h2 id="bn-start">Start here <span class="badge {BADGE[data.suggestion.confidence]}">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></h2>
+  <section class="bn-card start" aria-labelledby="start-here-text">
+    <div class="head">
+      <HeadingAnchor id="start-here">Start here <span class="badge {BADGE[data.suggestion.confidence]}">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></HeadingAnchor>
+      {#if data.suggestion.switchable}
+        <div class="tab-group" role="group" aria-label="Numbers from">
+          <button type="button" aria-pressed={!data.from} onclick={() => go({ from: null })}>Your brews</button>
+          <button type="button" aria-pressed={!!data.from} onclick={() => go({ from: 'recipe' })}>As written</button>
+        </div>
+      {/if}
+    </div>
     <ul class="rows">
-      {#each data.suggestion.rows as r (r.setting)}
+      {#each data.suggestion.rows.filter((r: { setting: string }) => r.setting !== 'recipe') as r (r.setting)}
         {@const open = data.why === r.setting}
         <li class:open>
           <div class="rowhead">
@@ -252,7 +275,8 @@
             {#if r.value !== null}
               <strong class="val">{r.value}</strong>
               {#if r.link}<a class="more" href={r.link}>{r.setting === 'recipe' ? 'Recipe' : 'Profile'}</a>{/if}
-              <span class="badge rowconf {BADGE[r.confidence]}">{CONFIDENCE_LABEL[r.confidence]}</span>
+              {#if r.source === 'recipe'}<span class="badge badge-neutral rowconf">From the recipe</span>
+              {:else}<span class="badge rowconf {BADGE[r.confidence]}">{CONFIDENCE_LABEL[r.confidence]}</span>{/if}
             {:else}
               <span class="none">{r.reason}</span>
             {/if}
@@ -316,6 +340,8 @@
     {#if data.isAdmin}
       <form class="mark" method="POST" action="?/brewThis" bind:this={brewForm} use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false, navigate: false }); if (result.type === 'success') { const id = (result.data as { markId?: number } | undefined)?.markId; showToast('Marked. Your next BQ brew of this coffee will be compared.', id === undefined ? {} : { undo: () => post('deleteMark', { id: String(id) }) }); } } finally { submitting = false; } }; }}>
         {#each ['grinder', 'dripper', 'filter'] as const as k (k)}{#if data.gear[k]}<input type="hidden" name={k} value={data.gear[k]} />{/if}{/each}
+        {#if data.recipe}<input type="hidden" name="recipe" value={data.recipe.slug} />{/if}
+        {#if data.from}<input type="hidden" name="from" value={data.from} />{/if}
         {#if data.suggestion.dose !== null}<input type="hidden" name="dose" value={data.suggestion.dose} />{/if}
         {#if data.suggestion.ratio !== null}<input type="hidden" name="ratio" value={data.suggestion.ratio} />{/if}
         <button type={notOpen ? 'button' : 'submit'} class="button" disabled={submitting} onclick={notOpen ? () => (confirmOpen = true) : undefined}>Brew this</button>
@@ -323,9 +349,36 @@
     {/if}
   </section>
 
+  {#if data.recipe}
+    {@const rc = data.recipe}
+    <section class="bn-card steps-card" aria-labelledby="steps-text">
+      <div class="head">
+        <HeadingAnchor id="steps">Steps</HeadingAnchor>
+        {#if rc.hasAmounts}
+          <div class="tab-group" role="group" aria-label="Water amounts">
+            <button type="button" aria-pressed={!data.amounts} use:labelTip={{ title: 'Running total', lines: ['What your scale should read when each pour ends'] }} onclick={() => go({ amounts: null })}>Running total</button>
+            <button type="button" aria-pressed={!!data.amounts} use:labelTip={{ title: 'Per pour', lines: ['How much water each pour adds'] }} onclick={() => go({ amounts: 'pour' })}>Per pour</button>
+          </div>
+        {/if}
+      </div>
+      <p class="rname"><a href={recipeHref(rc.slug)}>{rc.name}</a></p>
+      {#if rc.notes}<p class="muted">{rc.notes}</p>{/if}
+      {#if rc.fitNote}<p class="muted">{rc.fitNote}</p>{/if}
+      <PourTimeline timeline={rc.timeline} label={rc.description} />
+      <ol class="rsteps">
+        {#each rc.steps as st, i (i)}
+          <li>
+            {#if st.alt}<span class="step-time low" tabindex="0" use:labelTip={st.alt}>{st.time}</span>{:else if st.low}<span class="step-time low" tabindex="0" use:labelTip={lowTip}>{st.time}</span>{:else}<span class="step-time">{st.time}</span>{/if}
+            <span>{st.text}</span>
+          </li>
+        {/each}
+      </ol>
+    </section>
+  {/if}
+
   {#if data.marks.length}
-    <section class="bn-card" aria-labelledby="bn-marks">
-      <h2 id="bn-marks">Your last brews of this coffee</h2>
+    <section class="bn-card" aria-labelledby="last-brews-text">
+      <HeadingAnchor id="last-brews">Your last brews of this coffee</HeadingAnchor>
       {#if data.bias}<p class="bias">{data.bias}</p>{/if}
       <ul class="brews marks">
         {#each data.marks as m (m.id)}
@@ -355,8 +408,8 @@
   {@render thisCoffee()}
 
   {#if data.similar.length}
-    <section class="bn-card" id="similar" aria-labelledby="bn-similar">
-      <h2 id="bn-similar">{!data.neverBrewedRoaster ? 'Similar coffees' : 'Similar coffees from other roasters'}</h2>
+    <section class="bn-card" aria-labelledby="similar-text">
+      <HeadingAnchor id="similar">{!data.neverBrewedRoaster ? 'Similar coffees' : 'Similar coffees from other roasters'}</HeadingAnchor>
       <ul class="brews">
         {#each data.similar as s (s.slug)}
           <li>
@@ -460,7 +513,20 @@
   .basis-list { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; }
   .basis-list li { padding: var(--space-1) 0; }
   .bn-tip button.tip-link { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; }
-  #similar { scroll-margin-top: 5rem; }
+  .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-3); }
+  .head :global(h2) { margin: 0; }
+  .steps-card { display: flex; flex-direction: column; gap: var(--space-2); }
+  .steps-card > p, .steps-card > .head { margin: 0; }
+  .rsteps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content 1fr; column-gap: var(--space-3); row-gap: var(--space-1); }
+  .rsteps li { display: contents; }
+  .step-time { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+  .step-time.low { width: fit-content; text-decoration: underline dotted; }
+  /* A warm callout (the badge-warm tint), the name a chip like the ones above; tapping it switches. */
+  .pk2-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0; padding: var(--space-1) var(--space-3); border-radius: var(--radius); background: color-mix(in srgb, var(--color-warm) 18%, var(--color-surface)); font-size: 0.9rem; }
+  .pk2-hint :global(svg) { width: 1.1rem; height: 1.1rem; flex: none; color: var(--color-warm); }
+  .pk2-sug { max-width: 100%; white-space: normal; text-align: left; font-weight: 700; }
+  .rsteps li > span:last-child::first-letter { text-transform: uppercase; } /* sentences; display only, the stored text stays as written */
+  .pk2-none { align-self: center; }
   #bn-open-title .line { display: block; }
   #bn-open-title .line + .line { margin-top: 1.25rem; }
   .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-4); margin: 0; }
