@@ -4,7 +4,7 @@
   import TextTip from '#lib/components/TextTip.svelte';
   import type { Snippet } from 'svelte';
   import { SAMPLE_HELP } from '#lib/sample.ts';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
 
   // A lab section's heading (an anchor link) and its `?` explanation popover (ui-rules 27): the section's
   // title in bold, then `help`, one short idea per line (ui-rules 36). `cut`: the chart drops data for practicality

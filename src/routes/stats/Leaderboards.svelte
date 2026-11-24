@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import WholeNote from './WholeNote.svelte';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { bottomInView } from '#lib/scrollToBottom.ts';
   import { setting } from '#lib/settingName.ts';
   import Usd from '#lib/components/Usd.svelte';

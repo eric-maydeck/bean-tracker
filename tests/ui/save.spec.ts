@@ -91,7 +91,7 @@ test('household of one hides the people switch everywhere', { tag: '@stats' }, a
   const saveSize = async (n: string) => {
     await gotoReady(page, '/account');
     await page.getByLabel('Household size').fill(n);
-    await page.locator('#household').getByRole('button', { name: 'Save', exact: true }).click();
+    await page.locator('[data-section="household"]').getByRole('button', { name: 'Save', exact: true }).click();
     await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: n });
   };
   await gotoReady(page, '/stats?people=person');
@@ -565,7 +565,7 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
 // Household panel on Account: a real save toasts with Undo, which restores the old size (layout checks stub this).
 test('account household: save toasts, Undo restores', { tag: '@stats' }, async ({ page }) => {
   await gotoReady(page, '/account');
-  const panel = page.locator('#household');
+  const panel = page.locator('[data-section="household"]');
   const input = panel.getByLabel('Household size');
   const size = await input.inputValue(); // earlier save tests may have left it at 1
   await input.fill('3');
@@ -581,7 +581,7 @@ test('account household: save toasts, Undo restores', { tag: '@stats' }, async (
 // Kit 3's enhance navigates to the action URL minus `?/name`, which drops the page's own query: every form passes navigate: false.
 test('enhanced form on a URL with a query stays put: same URL, no history entry', { tag: '@stats' }, async ({ page }) => {
   await gotoReady(page, '/account?untracked=all');
-  const panel = page.locator('#household');
+  const panel = page.locator('[data-section="household"]');
   const input = panel.getByLabel('Household size');
   const size = await input.inputValue();
   const entries = await page.evaluate(() => history.length);
@@ -649,7 +649,7 @@ test.describe('settings', () => {
     await expect(foot).not.toContainText('UTC');
     const tokyo = await offset(foot);
     const pick = async (label: string, value: string, toast: string) => {
-      await page.locator('#time, #stats-settings').getByLabel(label).selectOption(value);
+      await page.locator('[data-section="time"], [data-section="stats-settings"]').getByLabel(label).selectOption(value);
       await expect(page.getByRole('status').filter({ hasText: toast })).toBeVisible();
     };
     await pick('Display timezone', 'America/New_York', 'Display timezone set to America/New_York.');

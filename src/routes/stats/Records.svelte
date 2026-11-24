@@ -33,7 +33,7 @@
   import type { Fmt, Holder, RecordPick, RecordTile } from '#lib/server/insights/records.ts';
   import { rowVars } from './rows';
   import { holderDate, isDateHolder, holderName, recordAnchor, recordParts, recordValue } from './chartLink';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import LikeLine from './LikeLine.svelte';
   import ShowMore from './ShowMore.svelte';
   import TileCaption from './TileCaption.svelte';

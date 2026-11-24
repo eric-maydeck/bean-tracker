@@ -19,6 +19,7 @@
   import { formatBag } from '#lib/grams.ts';
   import ShareButton from '#lib/components/ShareButton.svelte';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { onDeckPreview, pickPreview } from '#lib/linkPreview.ts';
   import PickForMe from './pick/PickForMe.svelte';
   import { onDeckParams, parseCoffees, parseDefaultRules, parseGame, parseOnDeckView, parseProfile, parseRoll, parseCoffeeParam, parseCrit, parseName, parseRulesCode, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
@@ -178,7 +179,7 @@
 
 {#if view === 'open'}
   <section class="detail-section">
-    <h2>Currently open</h2>
+    <HeadingAnchor id="currently-open">Currently open</HeadingAnchor>
     {#if current.open.length === 0}
       <p class="text-muted">Nothing open right now.</p>
     {:else}
@@ -222,7 +223,7 @@
   </section>
 {:else if view === 'next'}
   <section class="detail-section">
-    <h2>Next up</h2>
+    <HeadingAnchor id="next-up">Next up</HeadingAnchor>
     {#if current.nextUp.length === 0}
       <p class="text-muted">Backlog is empty.</p>
     {:else}
@@ -260,7 +261,7 @@
   </section>
 {:else}
   <section class="detail-section">
-    <h2>Pick for me</h2>
+    <HeadingAnchor id="pick-for-me">Pick for me</HeadingAnchor>
     {#key custom}
     <PickForMe pick={data.pick} admin={page.data.isAdmin} {custom} oncustom={setCustom} enter={enterList} shared={!custom && (explicitProfile || explicitCode || explicitDefaults) ? data.pick.shared : null} onunshare={() => { explicitProfile = undefined; explicitCode = undefined; explicitDefaults = false; }} bind:shareRules link={explicitLink} onleaveroll={leaveRoll} pathFor={resultPath} game={explicitGame} ongame={(g) => (explicitGame = g)} />
     {/key}

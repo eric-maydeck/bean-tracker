@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '#lib/components/Icon.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import FloatTip from '#lib/components/FloatTip.svelte';
   import StickyTipBody from '#lib/components/StickyTipBody.svelte';
   import { StickyTip } from '#lib/stickyTip.ts';
@@ -82,8 +83,8 @@
 
 <svelte:document onpointermovecapture={track} onclick={(e) => open && !(e.target as Element).closest('.gear-item') && st.close()} onkeydown={(e) => e.key === 'Escape' && st.close()} />
 
-<section class="chart-panel gear-panel" id="gear-trophies" data-section="gear-trophies">
-  <h2>Your gear</h2>
+<section class="chart-panel gear-panel" data-section="gear-trophies">
+  <HeadingAnchor id="gear-trophies">Your gear</HeadingAnchor>
   <div class="pager">
     <button type="button" class="page-btn prev" aria-label="Previous gear" bind:this={prevBtn} disabled={!more.prev} onclick={() => page(-1)}><Icon name="caret-left" /></button>
   <div class="cards" role="list" bind:this={row} onscroll={measure} onfocusin={measure}>
@@ -123,9 +124,6 @@
 </section>
 
 <style>
-  h2 {
-    margin: 0 0 var(--space-3);
-  }
   /* A row of whole cards, the full content width: --n of them exactly fill it (the count steps up with the width, cards about
      170px or more), so no card is part visible. It scrolls sideways by whole cards (snap), the scrollbar hidden. */
   .pager {

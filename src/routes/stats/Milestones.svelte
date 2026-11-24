@@ -9,7 +9,7 @@
   import { ICON, LABEL } from './KindsBar.svelte';
   import type { MilestonesTab } from '#lib/server/insights/milestones.ts';
   import { rowVars } from './rows';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import WholeNote from './WholeNote.svelte';
   import TileCaption from './TileCaption.svelte';
   import { rulerTicks, tickAt, rulerToFeed, feedToRuler, type Section } from './ruler';
