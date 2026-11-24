@@ -60,7 +60,7 @@
       const dpr = Math.min(devicePixelRatio, 2);
       const renderer: WebGLRenderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(dpr); renderer.setSize(W, H);
-      renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
       stage.appendChild(renderer.domElement);
       undo.push(() => { renderer.setAnimationLoop(null); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); });
       const scene = new THREE.Scene(); scene.background = new THREE.Color(WALNUT_DARK);
