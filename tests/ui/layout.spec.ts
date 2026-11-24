@@ -3639,7 +3639,9 @@ export const STATES: State[] = [
       await expect(summary).toHaveText(/^Data warnings \(\d+\)$/);
       await expect(page.locator('.warn-row').first()).toBeHidden();
       await summary.click();
-      await expect(page.locator('.warn-row').first()).toContainText('No grind setting');
+      await expect(page.locator('.warn-row').filter({ hasText: 'No grind setting' }).first()).toBeVisible();
+      await expect(page.locator('.warn-row').first()).toContainText('Unfilled water');
+      await expect(page.locator('.warn-row').first()).toContainText('Water added without minerals, GH or KH');
       await checkLayout(page);
     }
   },

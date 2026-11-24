@@ -5,6 +5,7 @@ import { bcLocalTime } from './insights/time';
 import { brewerType } from './insights/facts';
 import { gearOfRow, loadToolKinds, splitTools, toolColumns } from './brewGear';
 import { sameToolSpelling } from '#lib/filterCatalog.ts';
+import { isZeroWater } from '#lib/water.ts';
 
 // The Account page's "Data warnings": BQ brews worth fixing in BQ before re-importing. Computed from the stored
 // brews on each load; never blocks or changes an import.
@@ -72,4 +73,18 @@ export function importWarnings(db: DatabaseSync): ImportWarning[] {
       out.push({ id: r.id, at: bcLocalTime(r.at), coffee: r.coffee, method: r.method, grinder: r.grinder, value: `${a} / ${b}`, reason: 'Two spellings of one tool' });
     }
   return out;
+}
+
+// #198: a live BQ water with no minerals counts in no Stats water chart (GH/KH come from the minerals,
+// a stored GH/KH alone doesn't count); a blank distilled/RO name or note means all-zero is real, so no warning.
+export function waterWarnings(db: DatabaseSync): { water: string; reason: string }[] {
+  const rows = db.prepare(
+    `SELECT name, note, COALESCE(stored_gh, 0) OR COALESCE(stored_kh, 0) AS hardness FROM beanconqueror_waters
+     WHERE bc_archived = 0 AND NOT (COALESCE(calcium, 0) OR COALESCE(magnesium, 0) OR COALESCE(sodium, 0) OR COALESCE(potassium, 0)
+       OR COALESCE(chloride, 0) OR COALESCE(sulfate, 0))
+     ORDER BY name COLLATE NOCASE`
+  ).all() as { name: string; note: string | null; hardness: number }[];
+  return rows.filter((w) => w.hardness || !isZeroWater(w.name, w.note)).map((w) => ({
+    water: w.name, reason: w.hardness ? 'Water has GH or KH but no minerals' : 'Water added without minerals, GH or KH'
+  }));
 }

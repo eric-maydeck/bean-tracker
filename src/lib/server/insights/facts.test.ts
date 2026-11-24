@@ -164,6 +164,16 @@ describe('loadFacts', () => {
     return { db, coffeeId };
   }
 
+  it('a blank distilled or RO water is a zero profile; a blank other water stays as entered (#198)', () => {
+    const { db } = seed();
+    db.exec(`INSERT INTO beanconqueror_waters (id, name, note, imported_at) VALUES ('w2', 'Tap', 'reverse osmosis', 'x'), ('w3', 'Mystery', null, 'x');
+      INSERT INTO beanconqueror_brews (bc_created_at, water_id, imported_at) VALUES ('2026-08-01T08:00:01.000Z', 'w2', 'x'), ('2026-08-02T08:00:01.000Z', 'w3', 'x')`);
+    const [ro, other] = loadFacts(db).brews.slice(-2);
+    expect(ro.waterProfile).toEqual({ calcium: 0, magnesium: 0, sodium: 0, potassium: 0, chloride: 0, sulfate: 0, gh: 0, kh: 0, zero: true });
+    expect(other.waterProfile).toMatchObject({ calcium: null, gh: 0 });
+    expect(other.waterProfile!.zero).toBeUndefined();
+  });
+
   it('flags whole-hour brews as back-filled', () => {
     const { brews } = loadFacts(seed().db);
     expect(brews.map((b) => b.backfilled)).toEqual([false, true, true]);

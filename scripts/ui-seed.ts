@@ -206,6 +206,7 @@ const water = db.prepare(`INSERT INTO beanconqueror_waters (id, name, calcium, m
 water.run('w1', 'Lab Water A', 10, 12, 0, 8, 30, 20, now);
 water.run('w2', 'Lab Water B', 0, 30, 0, 6, 40, 10, now);
 water.run('w3', 'Lab Water C', 4, 4, 5, 0, 25, 30, now);
+water.run('w4', 'Unfilled water', null, null, null, null, null, null, now); // #198: Account data warning, used by no brew
 const method = db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
   VALUES (?, 'CUSTOM_PREPARATION', ?, 'POUR OVER', ?)`);
 method.run('m4', 'V60 - Cafec Abaca', now);
