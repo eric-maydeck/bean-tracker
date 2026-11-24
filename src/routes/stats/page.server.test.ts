@@ -782,7 +782,7 @@ describe('brew filters', () => {
     expect(to('?tab=gear&card=x')).toMatchObject({ status: 308, location: '/gear' }); // a junk card key is dropped, the address still moved
     expect(to('?tab=gear&gear=grinder')).toMatchObject({ status: 308, location: '/gear' }); // the old kind filter is dropped
     expect(to('?tab=gear&card=dripper-v60&range=1w')).toMatchObject({ status: 308, location: '/gear?card=dripper-v60' });
-    expect(to('?tab=gear&gear=grinder&retired=open&range=all')).toMatchObject({ status: 308, location: '/gear?retired=dripper%2Cfilter%2Cgrinder' });
+    expect(to('?tab=gear&gear=grinder&retired=open&range=all')).toMatchObject({ status: 308, location: '/gear?retired=dripper%2Cfilter%2Cgrinder%2Caccessory' });
     expect(to('?tab=gear')).toBeUndefined();
     expect(to('?tab=overview&gear=dripper')).toBeUndefined();
   });
