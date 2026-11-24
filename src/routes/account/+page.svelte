@@ -6,6 +6,7 @@
   import { labelTip } from '#lib/components/labelTip.ts';
   import Icon from '#lib/components/Icon.svelte';
   import BeanTriage from './BeanTriage.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { showToast } from '#lib/toast.svelte.ts';
   import { postAction } from '#lib/postAction.ts';
   import { page } from '$app/state';
@@ -131,9 +132,9 @@
 <div class="acct">
 <div>
 <section data-row-scope class="chart-panel">
-  <h2>Bean Conqueror</h2>
+  <HeadingAnchor id="bean-conqueror">Bean Conqueror</HeadingAnchor>
 
-  <h3>Brew data (zip)</h3>
+  <HeadingAnchor id="brew-data" level={3}>Brew data (zip)</HeadingAnchor>
   <p class="text-muted">Last updated: <Stamp iso={data.lastImportedAt} /></p>
   <form
     class="bq-upload"
@@ -234,7 +235,7 @@
     formError={form && 'error' in form && form.error ? String(form.error) : null}
   />
 
-  <h3>Flow data (automatic upload)</h3>
+  <HeadingAnchor id="flow-data" level={3}>Flow data (automatic upload)</HeadingAnchor>
   <p>
     Flow data for {s.joined} of {s.brewsWithFlow} brews · last upload <Stamp iso={s.lastUploadAt} />{#if s.waiting > 0}<br />
       {s.waiting} {s.waiting === 1 ? 'brew' : 'brews'} not on the site yet: import the Bean Conqueror .zip above to
@@ -254,8 +255,8 @@
   <p class="text-muted">If you change your sign-in password, update it in Bean Conqueror too.</p>
 </section>
 
-<section data-row-scope class="chart-panel" id="household">
-  <h2>Household</h2>
+<section data-row-scope class="chart-panel" data-section="household">
+  <HeadingAnchor id="household">Household</HeadingAnchor>
   <p class="text-muted">Per-person stats divide your totals by this number: an even split, since Bean Conqueror doesn't record who brewed.</p>
   <form class="bn-add" method="POST" action="?/updateHouseholdSize" use:enhance={saveHousehold}>
     <label for="household-size">Household size</label>
@@ -268,16 +269,16 @@
 </div>
 <div>
 <section data-row-scope class="chart-panel">
-  <h2>Recipes</h2>
+  <HeadingAnchor id="recipes">Recipes</HeadingAnchor>
   <p>{data.recipes.saved} saved · {data.recipes.groups} found in your brews.</p>
   <p><a class="button button-secondary" href="/recipes">Open recipes</a></p>
 </section>
 
-<section data-row-scope class="chart-panel" id="brew-now">
-  <h2>Brew now</h2>
+<section data-row-scope class="chart-panel" data-section="brew-now">
+  <HeadingAnchor id="brew-now">Brew now</HeadingAnchor>
   <p class="text-muted">The dose and ratio choices on each coffee's Brew now page, up to 6 of each.</p>
 
-  <h3>Doses (g)</h3>
+  <HeadingAnchor id="doses" level={3}>Doses (g)</HeadingAnchor>
   <ul class="bn-list">
     {#each data.doses as d (d)}
       <li>
@@ -300,7 +301,7 @@
   </form>
   {#if form && 'listError' in form && form.list === 'doses'}<p class="badge badge-urgent" role="alert">{form.listError}</p>{/if}
 
-  <h3>Ratios</h3>
+  <HeadingAnchor id="ratios" level={3}>Ratios</HeadingAnchor>
   <ul class="bn-list">
     {#each data.ratios.ratios as r (r)}
       <li>
@@ -320,14 +321,14 @@
   {#if form && 'listError' in form && form.list === 'ratios'}<p class="badge badge-urgent" role="alert">{form.listError}</p>{/if}
   {#if data.ratios.derived}<p class="text-muted">From your brews: your most common ratios over the last year. Editing the list makes it yours.</p>{/if}
 </section>
-<section data-row-scope class="chart-panel" id="time">
-  <h2>Time</h2>
+<section data-row-scope class="chart-panel" data-section="time">
+  <HeadingAnchor id="time">Time</HeadingAnchor>
   {@render setting('brewingZone', 'Where day and hour lines are drawn in your stats', data.zones.map((z) => [z, z] as const))}
   {@render setting('displayZone', 'How update and upload times are shown', [['browser', 'Browser time'], ...data.zones.map((z) => [z, z] as const)])}
   {@render setting('dateFormat', 'How dates and times are written', FORMAT_OPTIONS)}
 </section>
-<section data-row-scope class="chart-panel" id="stats-settings">
-  <h2>Stats</h2>
+<section data-row-scope class="chart-panel" data-section="stats-settings">
+  <HeadingAnchor id="stats-settings">Stats</HeadingAnchor>
   {@render setting('defaultCaffeine', 'What the Stats Caffeine filter shows when it is on Default', CAFFEINE_OPTIONS)}
 </section>
 </div>
@@ -361,7 +362,6 @@
   .warn-what { color: var(--color-urgent); font-weight: 600; }
   .set-field { margin-bottom: var(--space-3); }
   .set-field select { min-width: 0; max-width: 100%; }
-  #brew-now { scroll-margin-top: var(--space-4); }
   .bn-cells { display: flex; flex-wrap: wrap; flex: 0 1 auto; gap: var(--space-1) var(--space-4); padding: var(--space-2) 0; min-width: 0; }
   .bn-cell { display: flex; flex-direction: column; min-width: 3.75rem; line-height: 1.3; }
   .bn-cell .text-muted { font-size: 0.8rem; }

@@ -8,6 +8,7 @@ import { stringify } from 'devalue';
 import { join } from 'node:path';
 import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody, outerHeight } from './collapsibleBar';
 import { PART, PARTS } from './viewports';
+import { expectAtTop, expectHeadingLinks } from './headingLinks';
 import { glue } from '../../src/lib/unitGap';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
@@ -1847,6 +1848,8 @@ export const STATES: State[] = [
       await expect(panel).toContainText(/\d+(st|nd|rd|th) of \d+/);
       await expectGridRowsFull(page, '[data-section="like"] .stat-grid');
     } },
+  { name: 'coffee-heading-links', viewports: 'two', path: (s) => `/coffees/${s.slugs.lab}#timing`,
+    act: async (page) => { await expectHeadingLinks(page, ['origin-details', 'bag', 'timing', 'vs-like-coffees'], 'timing'); } },
   // The coffee page's Origin and Bag sections and the edit form's groups share one order, so a field spotted on the
   // page sits at about the same place in the form. The seed fills the origin details on brewNew only (Brew Seed Fresh Lot).
   { name: 'form groups follow the page', path: (s) => `/coffees/${s.slugs.brewNew}`,
@@ -2287,6 +2290,20 @@ export const STATES: State[] = [
     }
   },
   {
+    // The section headings link to themselves; changing the volume rewrites the query and keeps the hash and the scroll.
+    name: 'water-heading-links', viewports: 'two',
+    path: () => '/water#hardness',
+    act: async (page) => {
+      await expectHeadingLinks(page, ['lotus-drops', 'minerals', 'hardness'], 'hardness');
+      await page.mouse.wheel(0, -5000);
+      await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+      await page.getByLabel('Water (mL)').fill('900');
+      await expect(page).toHaveURL(/ml=900.*#hardness$/);
+      await expect(page.locator('h2#lotus-drops')).toContainText('900mL');
+      expect(await page.evaluate(() => scrollY)).toBeLessThanOrEqual(2);
+    }
+  },
+  {
     // Best volume above 1000mL: also offers the equally accurate one a 1000mL kettle holds, each with its own button.
     name: 'water-ideal-two', viewports: 'two',
     path: () => '/water?recipe=lume-high-clarity&tip=precision',
@@ -2718,7 +2735,7 @@ export const STATES: State[] = [
       await expect(page.locator('li[id^="brew-"]').first()).toContainText('Best');
       await expect(page.locator('.gt figure > svg')).toBeVisible();
       await expect(page.locator('.gt .crown')).toHaveCount(2); // the Best brew's crown and the legend's
-      await expect(page.locator('#steps').locator('xpath=ancestor::section[1]').getByRole('link').first()).toHaveAttribute('href', /^\/recipes\/[a-z0-9-]+$/); // the chosen recipe's own page, by name
+      await expect(page.locator('.steps-card a[href^="/recipes/"]').first()).toHaveAttribute('href', /^\/recipes\/[a-z0-9-]+$/); // the chosen recipe's own page, by name
       await expect(page.locator('.rows .lab', { hasText: 'Recipe' })).toHaveCount(0); // the picker replaces the row
     } },
   // Brew now with a recipe: the picker row, Steps under Start here, and the two switches. A switch flipping must not move or resize what is around it.
@@ -2734,7 +2751,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('link', { name: 'Add a recipe' })).toHaveCount(0); // only with none to pick
       const start = page.locator('.start');
       const after = await start.locator('xpath=following-sibling::section[1]').getAttribute('aria-labelledby');
-      expect(after).toBe('steps'); // Steps sits directly under Start here
+      expect(after).toBe('steps-text'); // Steps sits directly under Start here
     } },
   // Picking a recipe other than the suggestion shows the hint under the Recipe row; its link switches back, and an explicit pick stays in the URL.
   { name: 'brew-now-recipe-hint', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
@@ -2835,7 +2852,7 @@ export const STATES: State[] = [
   { name: 'brew-now-roaster-recipe', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
     act: async (page) => {
       const sec = page.locator('.rr');
-      await expect(sec.getByRole('link')).toHaveAttribute('href', 'https://example.com/brew-guide');
+      await expect(sec.locator('a[href="https://example.com/brew-guide"]')).toBeVisible(); // not the heading's own link
       await expect(sec).toContainText('Searched');
       await expect(sec.getByRole('button', { name: 'Search again' })).toBeVisible();
       expect(await sec.evaluate((el) => el.scrollWidth <= el.clientWidth && document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -2885,6 +2902,38 @@ export const STATES: State[] = [
       await page.locator('.rows .tiplabel', { hasText: 'Dose' }).click();
       await page.locator('.bn-tip').getByRole('link', { name: 'Open Account' }).click();
       await expect(page).toHaveURL(/\/account#brew-now$/);
+    } },
+  { name: 'brew-now-heading-links', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew#last-brews`,
+    act: async (page) => {
+      await expectHeadingLinks(page, ['this-coffee', 'start-here', 'last-brews', 'similar'], 'last-brews');
+      for (const id of await page.locator('section[aria-labelledby]').evaluateAll((els) => els.map((e) => e.getAttribute('aria-labelledby')!))) {
+        await expect(page.locator(`[id="${id}"]`), id).toHaveCount(1);
+      }
+      // A region is named by the link text, not the heading's whole content (which holds the copy button).
+      for (const name of ['This coffee', "Roaster's recipe", 'Your last brews of this coffee', /^Similar coffees/]) {
+        await expect(page.getByRole('region', { name, exact: typeof name === 'string' }), String(name)).toHaveCount(1);
+      }
+      const start = page.getByRole('region', { name: /^Start here/ });
+      await expect(start).toHaveCount(1);
+      expect(await start.getAttribute('aria-labelledby')).toBe('start-here-text');
+      await expect(page.getByRole('region', { name: /Copy link/ })).toHaveCount(0);
+    } },
+  // A gear chip's goto keeps the hash and does not scroll to it. The page is first wheeled away from #start-here, so a jump back to it would show.
+  { name: 'brew-now-hash-kept', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew#start-here`,
+    act: async (page) => {
+      const y = () => page.evaluate(() => scrollY);
+      const top = () => page.locator('#start-here').evaluate((el) => el.getBoundingClientRect().top);
+      await page.mouse.move(10, 10);
+      await page.mouse.wheel(0, (await y()) > 0 ? -100000 : 400);
+      await expect.poll(async () => Math.abs(await top()) > 100, { message: 'scrolled away from the header' }).toBe(true);
+      let last = -1; // settled: scrollY equal on two reads
+      await expect.poll(async () => { const v = await y(); const same = v === last; last = v; return same; }).toBe(true);
+      const y0 = await y();
+      await page.getByRole('group', { name: 'Dripper' }).locator('button[aria-pressed="false"]:not([aria-haspopup])').first().evaluate((b: HTMLElement) => b.click()); // no scroll-into-view
+      await expect(page).toHaveURL(/dripper=.*#start-here$/);
+      await expect(page.locator('#start-here')).toBeVisible();
+      expect(Math.abs((await y()) - y0)).toBeLessThanOrEqual(2);
+      expect(Math.abs(await top())).toBeGreaterThan(100);
     } },
   { name: 'brew-now-filter-keeps-dripper', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
@@ -3696,7 +3745,7 @@ export const STATES: State[] = [
     name: 'account-time', viewports: 'two',
     path: () => '/account',
     act: async (page) => {
-      const panel = page.locator('#time');
+      const panel = page.locator('[data-section="time"]');
       await expect(panel.getByRole('heading', { name: 'Time' })).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT');
       const brewing = panel.getByLabel('Brewing timezone'), display = panel.getByLabel('Display timezone'), format = panel.getByLabel('Date format');
@@ -3743,7 +3792,7 @@ export const STATES: State[] = [
           ? { type: 'failure', status: 400, data: stringify({ error: 'Household size must be a whole number from 1 to 20' }) }
           : { type: 'success', status: 200, data: stringify({ success: true }) } });
       });
-      const panel = page.locator('#household');
+      const panel = page.locator('[data-section="household"]');
       const input = panel.getByLabel('Household size');
       await expect(input).toHaveValue('2');
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
@@ -3764,6 +3813,41 @@ export const STATES: State[] = [
         await page.evaluate((t) => (document.documentElement.dataset.theme = t), theme);
         await checkLayout(page);
       }
+    }
+  },
+  {
+    // Every fixed header on Account links to itself; a load on #stats-settings lands it at the top.
+    name: 'account-heading-links', viewports: 'two', path: () => '/account#stats-settings',
+    act: async (page) => {
+      await expectHeadingLinks(page, ['bean-conqueror', 'brew-data', 'flow-data', 'not-tracked', 'household', 'recipes', 'brew-now', 'doses', 'ratios', 'time', 'stats-settings'], 'stats-settings');
+    }
+  },
+  {
+    // The untracked show-all toggle on a #hash URL keeps the hash and scrolls exactly as it does without one.
+    name: 'account-untracked-hash-kept', viewports: 'two', path: () => '/account#household',
+    act: async (page) => {
+      const more = page.getByRole('button', { name: /^Show \d+ more$/ });
+      const scrollTo = async (y: number) => {
+        await page.mouse.move(page.viewportSize()!.width / 2, page.viewportSize()!.height / 2);
+        await expect.poll(async () => {
+          const dy = Math.round(y - (await page.evaluate(() => scrollY)));
+          if (dy) await page.mouse.wheel(0, dy);
+          return dy;
+        }, { message: 'scrolled back to the start' }).toBe(0);
+      };
+      await gotoReady(page, '/account');
+      await more.scrollIntoViewIfNeeded();
+      const start = await page.evaluate(() => scrollY);
+      await more.click();
+      await expect(page).toHaveURL(/untracked=all/);
+      await expect(page.locator('.triage-row')).toHaveCount(5);
+      const plain = await page.evaluate(() => scrollY);
+      await gotoReady(page, '/account#household');
+      await scrollTo(start);
+      await more.click();
+      await expect(page).toHaveURL(/\?untracked=all#household$/);
+      await expect(page.locator('.triage-row')).toHaveCount(5);
+      expect(Math.abs((await page.evaluate(() => scrollY)) - plain)).toBeLessThanOrEqual(2);
     }
   },
   {
@@ -4043,6 +4127,19 @@ export const STATES: State[] = [
           await expect(page.getByRole('heading', { name: 'Hidden structures' })).toBeVisible();
           await expect(page.getByRole('button', { name: 'Show again' })).toHaveCount(1);
           await expect(page.locator('li.item').first()).toContainText(/\d+ brews?/); // + " · Now matched by …" when a recipe took them over
+        }
+      },
+      {
+        name: 'recipes-heading-links', viewports: 'two' as const,
+        path: () => '/recipes#words-in-your-notes',
+        act: (page: Page) => expectHeadingLinks(page, ['your-recipes', 'found-in-your-brews', 'words-in-your-notes'], 'words-in-your-notes')
+      },
+      {
+        name: 'recipes-hidden-heading-link', viewports: 'two' as const,
+        path: () => '/recipes?view=hidden#hidden-structures',
+        act: async (page: Page) => {
+          await expectHeadingLinks(page, ['hidden-structures'], 'hidden-structures');
+          expect(page.url()).toContain('view=hidden');
         }
       },
       {
@@ -6185,6 +6282,18 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/show=decaf&view=next|view=next&show=decaf/);
       await view.getByRole('button', { name: 'Currently open' }).click();
       await expect(page).not.toHaveURL(/view=/);
+    }
+  },
+  {
+    name: 'on-deck-heading-links', viewports: 'two',
+    path: () => '/on-deck?view=next#next-up',
+    act: async (page) => {
+      await expectHeadingLinks(page, ['next-up'], 'next-up');
+      expect(page.url()).toContain('view=next');
+      await gotoReady(page, '/on-deck');
+      await expect(page.locator('h2#currently-open .copy-link')).toHaveCount(1);
+      await gotoReady(page, '/on-deck?view=pick');
+      await expect(page.locator('h2#pick-for-me .copy-link')).toHaveCount(1);
     }
   },
   {
@@ -10528,6 +10637,12 @@ export const STATES: State[] = [
       await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
     } },
   // Grind speed: the seed's A4Z lab brews alternate 750 / 1250 RPM; the last week has none (the lab bags are older), so both sections show their one line.
+  { name: 'insights-gear-trophies-link', viewports: 'two', path: () => '/stats?tab=gear',
+    act: async (page) => {
+      // "Your gear" is a linkable heading like the other panels: a text click puts its chart link in the address bar.
+      await page.locator('h2#gear-trophies a').click();
+      await expect(page).toHaveURL(/chart=gear-trophies.*#gear-trophies$/);
+    } },
   { name: 'insights-gear-speeds', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
       const board = page.locator('[data-section="gear-speeds"]'), map = page.locator('[data-section="gear-speed-coffee"]');
@@ -11117,6 +11232,14 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/#gear-grinders$/);
       await expect(page.locator('#gear-grinders')).toBeInViewport();
     } },
+  // Each kind header on Gear links to itself; the Jump to nav still lands its heading.
+  { name: 'gear-heading-links', viewports: 'two', path: () => '/gear#gear-grinders',
+    act: async (page) => {
+      await expectHeadingLinks(page, ['gear-drippers', 'gear-filters', 'gear-grinders'], 'gear-grinders');
+      await page.getByRole('navigation', { name: 'Jump to a section' }).getByRole('link', { name: 'Filters' }).click();
+      await expect(page).toHaveURL(/#gear-filters$/);
+      await expectAtTop(page, 'gear-filters');
+    } },
   // The Your gear panel: a scrolling row of cards that never stack, the blurb beside a real link to /gear.
   { name: 'stats-gear-panel', viewports: 'two', path: () => '/stats?tab=gear',
     act: async (page) => {
@@ -11125,7 +11248,7 @@ export const STATES: State[] = [
       await expect(panel.getByRole('heading', { level: 2, name: 'Your gear' })).toBeVisible();
       const go = panel.getByRole('link', { name: 'Open the Gear page →' });
       await expect(go).toHaveAttribute('href', '/gear');
-      await expect(panel.getByRole('link')).toHaveCount(1); // the cards are tip anchors, not links
+      await expect(panel.locator('a:not(h2 a)')).toHaveCount(1); // the cards are tip anchors, not links (the heading's own link aside)
       const blurb = panel.getByText('Browse your drippers, grinders and filters, and see or edit their details, on the Gear page.');
       const [bb, gb] = [(await blurb.boundingBox())!, (await go.boundingBox())!];
       expect(Math.abs(bb.y + bb.height / 2 - (gb.y + gb.height / 2)) < 40 || gb.y >= bb.y + bb.height - 1, 'the button is beside or under the blurb').toBe(true);
@@ -13883,6 +14006,12 @@ test.describe('signed out', () => {
     await expect(page.locator('[data-section="pours-recipes"] li').filter({ hasText: 'Seed high agitation' })).toHaveCount(1);
     await expect(page.locator('main a[href^="/recipes/"]').first()).toBeVisible(); // recipe names link for everyone
     await checkLayout(page);
+  });
+  test('recipes-heading-absent', { tag: ['@recipes', '@two'] }, async ({ page }) => {
+    await gotoReady(page, '/recipes#found-in-your-brews');
+    await expect(page.locator('#found-in-your-brews')).toHaveCount(0);
+    await expect(page.locator('#your-recipes')).toBeVisible();
+    expect(await page.evaluate(() => scrollY)).toBe(0);
   });
   test('recipes-public', async ({ page }) => {
     await gotoReady(page, '/recipes');

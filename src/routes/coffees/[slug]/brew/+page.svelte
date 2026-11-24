@@ -1,6 +1,7 @@
 <script lang="ts">
   import { enhance, deserialize } from '$app/forms';
   import { goto } from '$app/navigation';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import { refreshTracked } from '#lib/urlState.ts';
   import { page } from '$app/state';
   import { originWithFlag } from '#lib/countryFlags.ts';
@@ -35,7 +36,7 @@
   function go(patch: Patch) {
     const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why,
       dose: data.suggestion.dose, ratio: data.suggestion.ratio, recipe: data.chosenRecipe, from: data.from, amounts: data.amounts, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
-    goto(page.url.pathname + (q ? `?${q}` : ''), { replace: true, reset: false });
+    goto(page.url.pathname + (q ? `?${q}` : '') + page.url.hash, { replace: true, reset: false }); // reset: false keeps the scroll even with a hash
   }
   const dripperFirst = (key: string): Patch => (key === 'dripper' ? { filter: null } : {});
   // Up to three chips (names that fit one line); the rest sit behind an "Other" dropdown button, whose label becomes
@@ -65,7 +66,7 @@
   // "See coffees": close the popover, then scroll to the Similar coffees section (the link would die with the popover).
   function seeCoffees() {
     pop = null;
-    document.getElementById('similar')?.scrollIntoView({ block: 'start' });
+    document.getElementById('similar')?.closest('section')?.scrollIntoView({ block: 'start' });
   }
 
   // Brew this on a coffee that isn't open yet asks first, then opens it and records the mark.
@@ -133,8 +134,8 @@
 
 {#snippet thisCoffee()}
   {#if data.thisCoffee.length}
-    <section class="bn-card" aria-labelledby="bn-this">
-      <h2 id="bn-this">This coffee</h2>
+    <section class="bn-card" aria-labelledby="this-coffee-text">
+      <HeadingAnchor id="this-coffee">This coffee</HeadingAnchor>
       <div class="split">
         <GrindTrend brews={asc} grinder={data.gear.grinder} summary={data.thisCoffeeSummary} />
         <ul class="brews">
@@ -150,8 +151,8 @@
 {#snippet roasterRecipe()}
   {@const rr = data.roasterRecipe}
   {#if rr || data.isAdmin}
-    <section class="bn-card rr" aria-labelledby="bn-rr">
-      <h2 id="bn-rr">Roaster's recipe</h2>
+    <section class="bn-card rr" aria-labelledby="roasters-recipe-text">
+      <HeadingAnchor id="roasters-recipe">Roaster's recipe</HeadingAnchor>
       {#if rr?.url}
         <a class="rr-title" href={rr.url} target="_blank" rel="noopener noreferrer">{rr.title ?? rr.url}</a>
         <p class="rr-meta">
@@ -253,9 +254,9 @@
 
   {#if data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
 
-  <section class="bn-card start" aria-labelledby="bn-start">
+  <section class="bn-card start" aria-labelledby="start-here-text">
     <div class="head">
-      <h2 id="bn-start">Start here <span class="badge {BADGE[data.suggestion.confidence]}">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></h2>
+      <HeadingAnchor id="start-here">Start here <span class="badge {BADGE[data.suggestion.confidence]}">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></HeadingAnchor>
       {#if data.suggestion.switchable}
         <div class="tab-group" role="group" aria-label="Numbers from">
           <button type="button" aria-pressed={!data.from} onclick={() => go({ from: null })}>Your brews</button>
@@ -350,9 +351,9 @@
 
   {#if data.recipe}
     {@const rc = data.recipe}
-    <section class="bn-card steps-card" aria-labelledby="steps">
+    <section class="bn-card steps-card" aria-labelledby="steps-text">
       <div class="head">
-        <h2 id="steps">Steps</h2>
+        <HeadingAnchor id="steps">Steps</HeadingAnchor>
         {#if rc.hasAmounts}
           <div class="tab-group" role="group" aria-label="Water amounts">
             <button type="button" aria-pressed={!data.amounts} use:labelTip={{ title: 'Running total', lines: ['What your scale should read when each pour ends'] }} onclick={() => go({ amounts: null })}>Running total</button>
@@ -376,8 +377,8 @@
   {/if}
 
   {#if data.marks.length}
-    <section class="bn-card" aria-labelledby="bn-marks">
-      <h2 id="bn-marks">Your last brews of this coffee</h2>
+    <section class="bn-card" aria-labelledby="last-brews-text">
+      <HeadingAnchor id="last-brews">Your last brews of this coffee</HeadingAnchor>
       {#if data.bias}<p class="bias">{data.bias}</p>{/if}
       <ul class="brews marks">
         {#each data.marks as m (m.id)}
@@ -407,8 +408,8 @@
   {@render thisCoffee()}
 
   {#if data.similar.length}
-    <section class="bn-card" id="similar" aria-labelledby="bn-similar">
-      <h2 id="bn-similar">{!data.neverBrewedRoaster ? 'Similar coffees' : 'Similar coffees from other roasters'}</h2>
+    <section class="bn-card" aria-labelledby="similar-text">
+      <HeadingAnchor id="similar">{!data.neverBrewedRoaster ? 'Similar coffees' : 'Similar coffees from other roasters'}</HeadingAnchor>
       <ul class="brews">
         {#each data.similar as s (s.slug)}
           <li>
@@ -513,7 +514,7 @@
   .basis-list li { padding: var(--space-1) 0; }
   .bn-tip button.tip-link { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; }
   .head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-3); }
-  .head h2 { margin: 0; }
+  .head :global(h2) { margin: 0; }
   .steps-card { display: flex; flex-direction: column; gap: var(--space-2); }
   .steps-card > p, .steps-card > .head { margin: 0; }
   .rsteps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content 1fr; column-gap: var(--space-3); row-gap: var(--space-1); }
@@ -524,7 +525,6 @@
   .pk2-link { min-height: 44px; padding: 0; background: none; border: 0; font: inherit; color: var(--color-accent); text-decoration: underline; text-align: left; }
   .rsteps li > span:last-child::first-letter { text-transform: uppercase; } /* sentences; display only, the stored text stays as written */
   .pk2-none { align-self: center; }
-  #similar { scroll-margin-top: 5rem; }
   #bn-open-title .line { display: block; }
   #bn-open-title .line + .line { margin-top: 1.25rem; }
   .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-4); margin: 0; }

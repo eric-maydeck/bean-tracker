@@ -12,7 +12,7 @@
   import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, RcCol, SpendSeries, Top } from '#lib/insightsUrl.ts';
   import Chart from '#lib/components/Chart.svelte';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import { SAMPLE_HELP } from '#lib/sample.ts';
   import { usd } from '#lib/money.ts';
