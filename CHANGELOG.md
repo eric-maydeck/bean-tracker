@@ -1,3 +1,16 @@
+# [2.8.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.7.0...v2.8.0) (2026-11-24)
+
+
+### Bug Fixes
+
+* bq-patch tools writes an importable export and rejects plan typos ([c56ed98](https://github.com/eric-maydeck/bean-tracker/commit/c56ed9840a143e5457701452ff9434fa07bf63dc))
+* rename-gear refuses missing paths, exits 1 on bad args, tests brew-now marks ([4745862](https://github.com/eric-maydeck/bean-tracker/commit/4745862bf74b5e7d169516483b92aaf528aef0e0))
+
+
+### Features
+
+* bq-patch tools command converts pairing methods to ticked filters ([ca6ce73](https://github.com/eric-maydeck/bean-tracker/commit/ca6ce73b1154bfefe31b9beab64d53d42ea1c56b))
+
 # [2.7.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.6.1...v2.7.0) (2026-11-24)
 
 
