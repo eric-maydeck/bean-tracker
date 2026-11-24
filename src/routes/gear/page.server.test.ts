@@ -44,4 +44,17 @@ describe('/gear load', () => {
     expect(d.statsLinks[key('Rated Mill')]).toBe('/stats?grinder=rated-mill');
     expect(d.statsLinks[key('Unrated Mill')]).toBe('/stats?grinder=unrated-mill');
   });
+
+  it('doubleFilter counts brews with two filters ticked and links the first one\'s filter card; null when none', () => {
+    const db = getDb();
+    const today = localToday();
+    expect(run().doubleFilter).toBeNull();
+    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m30', 'Wave', '${today}')`);
+    db.exec(`INSERT INTO beanconqueror_method_tools (uuid, method_id, name) VALUES ('ta', 'm30', 'Abaca'), ('tb', 'm30', 'Abaca+')`);
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_uuid, bc_created_at, ground_coffee_g, preparation_id, imported_at) VALUES ('bw1', ?, 15, 'm30', ?)`).run(`${today}T10:00:00.000Z`, today);
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_uuid, bc_created_at, ground_coffee_g, preparation_id, imported_at) VALUES ('bw2', ?, 15, 'm30', ?)`).run(`${today}T11:00:00.000Z`, today);
+    // bw1 ticks both filters; bw2 only Abaca, so Abaca has a card to link to (a two-filter brew counts toward no filter card).
+    db.exec(`INSERT INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES ('bw1', 'ta'), ('bw1', 'tb'), ('bw2', 'ta')`);
+    expect(run().doubleFilter).toEqual({ brews: 1, firstKey: 'filter-abaca' });
+  });
 });

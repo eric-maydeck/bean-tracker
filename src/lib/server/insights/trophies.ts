@@ -42,13 +42,13 @@ export function gearArchive(db: DatabaseSync): GearArchive {
     note('dripper', dripper, !!r.a, r.c);
     note('filter', filter, !!r.a, r.c);
   }
-  // Filters by tool rows: archived when every row of the name is. Accessories are left out until they join GEAR_KINDS.
+  // Tool rows: archived when every row of the name is, under the tool's kind.
   for (const r of db.prepare(`SELECT name, archived AS a, bc_created_at AS c FROM beanconqueror_method_tools`).all() as { name: string; a: number; c: string | null }[]) {
     const name = splitTools(r.name)[0];
-    if (name && kinds.get(name) !== 'accessory') note('filter', name, !!r.a, r.c);
+    if (name) note(kinds.get(name) === 'accessory' ? 'accessory' : 'filter', name, !!r.a, r.c);
   }
   const tools = new Set(kinds.keys());
-  const out: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set(), added, adjustable, tools };
+  const out: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set(), accessory: new Set(), added, adjustable, tools };
   for (const [k, v] of all) if (v) { const [kind, name] = k.split('\0'); out[kind as GearKind].add(name); }
   return out;
 }
@@ -58,6 +58,7 @@ export interface Trophy {
   rating: number | null; best: number | null; sample: Sample; bags: number; days: number;
   firstUsed: string; lastUsed: string; favorite: { name: string; brews: number } | null;
   archived: boolean; retired: boolean; adjustableSpeed: boolean; // grinders only
+  tool: boolean; // a Bean Conqueror tool (a filter or accessory): its Kind can be switched
   // Stored details (exact kind + name match); the picture is our copy, else the original URL, on its backdrop.
   values: GearValues; imageUrl: string | null; image: { src: string; fill: string } | null;
   // ISO instants (the page formats them in the browser's zone). Added: the earlier of Bean Conqueror's created time and the lifetime first brew
@@ -93,16 +94,17 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
   const groups = new Map<string, { kind: GearKind; name: string; all: BrewFact[]; xs: BrewFact[] }>();
   for (const b of brews)
     for (const kind of GEAR_KINDS) {
-      const name = b[kind];
-      if (!name || name === MIXED_FILTER) continue;
-      const k = `${kind}\0${name}`;
-      if (!groups.has(k)) groups.set(k, { kind, name, all: [], xs: [] });
-      const g = groups.get(k)!;
-      g.all.push(b);
-      if (inPeriod(b.localDate, period)) g.xs.push(b);
+      for (const name of kind === 'accessory' ? b.accessories ?? [] : [b[kind]]) {
+        if (!name || name === MIXED_FILTER) continue;
+        const k = `${kind}\0${name}`;
+        if (!groups.has(k)) groups.set(k, { kind, name, all: [], xs: [] });
+        const g = groups.get(k)!;
+        g.all.push(b);
+        if (inPeriod(b.localDate, period)) g.xs.push(b);
+      }
     }
   const slugs = new Map(GEAR_KINDS.map((k) => [k, gearSlugs([...groups.values()].filter((g) => g.kind === k).map((g) => g.name))] as const));
-  const withKind = (kind: GearKind) => (kind === 'dripper' ? 'filter' : 'dripper') as 'filter' | 'dripper';
+  const withKind = (kind: GearKind) => (kind === 'dripper' ? 'filter' : 'dripper') as 'filter' | 'dripper'; // accessories pair with a dripper
   const out = [...groups.values()].filter((g) => g.xs.length).map(({ kind, name, all, xs }): Trophy => {
     const ratedXs = xs.filter((b) => ratingOf(b) !== null);
     const dates = xs.map((b) => b.localDate).sort();
@@ -135,7 +137,7 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
       favorite: fav ? { name: fav[0], brews: fav[1] } : null,
       values: det?.values ?? {}, imageUrl: det?.imageUrl ?? null, image: src ? { src, fill: backdrop(det!.imageFill) } : null,
       added: [archive.added?.get(`${kind}\0${name}`), firstBrew].filter((d): d is string => !!d).map(wallToInstant).sort()[0], updatedAt: det?.updatedAt ?? null,
-      archived, adjustableSpeed: kind === 'grinder' && !!archive.adjustable?.has(name), retired: archived || daysBetween(lastUsed, today) > RETIRED_AFTER_DAYS
+      archived, tool: !!archive.tools?.has(name) && (kind === 'filter' || kind === 'accessory'), adjustableSpeed: kind === 'grinder' && !!archive.adjustable?.has(name), retired: archived || daysBetween(lastUsed, today) > RETIRED_AFTER_DAYS
     };
   });
   const order = (k: GearKind) => GEAR_KINDS.indexOf(k);
@@ -149,7 +151,7 @@ export interface GearPanelCard {
   rating: number | null; brews: number; grams: number; specs: [string, string][];
 }
 export function gearPanel(trophies: readonly Trophy[]): GearPanelCard[] | null {
-  const cards = trophies.filter((t) => !t.retired).map((t) => ({
+  const cards = trophies.filter((t) => !t.retired && t.kind !== 'accessory').map((t) => ({
     key: t.key, name: t.name, kind: t.kind, image: t.image, rating: t.rating, brews: t.brews, grams: t.grams, specs: topSpecs(t, 2)
   }));
   return cards.length ? cards : null;

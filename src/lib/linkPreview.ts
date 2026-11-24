@@ -4,7 +4,7 @@ import type { StatusTab } from './coffeeViewState';
 import { formatBag, formatGrams } from './grams';
 import { originWithFlag } from './countryFlags';
 import { glue, unitGap } from './unitGap';
-import { GEAR_KINDS, KIND_LABEL, fieldsFor, specText, type GearKind, type GearValues } from './gear';
+import { GEAR_KINDS, KIND_LABEL, KIND_PLURAL, fieldsFor, specText, type GearKind, type GearValues } from './gear';
 import { KINDS, type ChartTimeline } from './pourShapes';
 import type { Recap } from './server/recaps/recap';
 
@@ -169,7 +169,7 @@ export function recapPreview(r: Recap, slideId: string | undefined): Preview {
 
 // The Gear page: counts by kind (kinds with none left out).
 export function gearsPreview(list: { kind: GearKind }[]): Preview {
-  const lines = GEAR_KINDS.map((k) => [k, list.filter((g) => g.kind === k).length] as const).filter(([, n]) => n).map(([k, n]) => plural(n, k.toLowerCase()));
+  const lines = GEAR_KINDS.map((k) => [k, list.filter((g) => g.kind === k).length] as const).filter(([, n]) => n).map(([k, n]) => (k === 'accessory' && n > 1 ? `${n} ${KIND_PLURAL[k].toLowerCase()}` : plural(n, k.toLowerCase())));
   return { title: 'Gear', description: lines.join('\n'), card: { big: 'Gear', label: plural(list.length, 'piece') + ' of gear' } };
 }
 

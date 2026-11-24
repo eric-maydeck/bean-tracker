@@ -34,7 +34,8 @@ export function loadYear(db: DatabaseSync, year: number, today: string, preview:
     year, period, today, preview, everyBrew, bags, brews, scored,
     prevBrews: everyBrew.filter((b) => b.localDate.startsWith(`${year - 1}-`)),
     pours: loadPourFacts(db, everyBrew),
-    trophies: trophyCase(everyBrew, gearArchive(db), today, { period, ratings: 'current', scored }, getGearDetails(db)),
+    // Accessories stay out of the recap, like the Stats gear panel.
+    trophies: trophyCase(everyBrew, gearArchive(db), today, { period, ratings: 'current', scored }, getGearDetails(db)).filter((t) => t.kind !== 'accessory'),
     size: getHouseholdSize(db), db
   };
 }

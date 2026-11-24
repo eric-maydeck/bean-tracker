@@ -29,7 +29,7 @@
     title: c.name,
     rows: [...c.specs.filter(([l]) => l === 'Brand'), ['Average', c.rating === null ? 'No ratings' : c.rating.toFixed(1)], ['Brews', String(c.brews)], ['Brewed', formatGrams(c.grams)], ...c.specs.filter(([l]) => l !== 'Brand')]
   });
-  const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
+  const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6, accessory: 2 } as const;
 
   // Paging. The cards are sized (css) so a whole number (n) fit the row. An arrow is enabled only when there is more that way
   // (updated on scroll and resize). On a phone the arrows sit below the row and a page is n cards. Wide, they lie over the row's

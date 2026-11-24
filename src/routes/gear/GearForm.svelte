@@ -1,7 +1,7 @@
 <script lang="ts">
   import { refreshTracked } from '#lib/urlState.ts';
   import { showToast } from '#lib/toast.svelte.ts';
-  import { CONVERT_KEYS, fieldsFor, isWebUrl } from '#lib/gear.ts';
+  import { CONVERT_KEYS, KIND_LABEL, fieldsFor, isWebUrl, type GearKind } from '#lib/gear.ts';
   import ImageSuggest from '#lib/components/ImageSuggest.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import TipBody from '#lib/components/TipBody.svelte';
@@ -18,9 +18,11 @@
 
   // Two to a row, in fieldsFor's order (the view screen uses the same order and pairs).
   const fields = $derived(fieldsFor(trophy.kind, { adjustableSpeed: trophy.adjustableSpeed }));
-  const last = $derived(Math.ceil(fields.length / 2)); // the last field row
+  // A tool card's Kind select is the first field, so the grid counts one more.
+  const count = $derived(fields.length + (trophy.tool ? 1 : 0)), at = $derived(trophy.tool ? 1 : 0);
+  const last = $derived(Math.ceil(count / 2)); // the last field row
   // The row Preview/Discard and Save/Cancel share (the one after a full last row); Image URL is the row above.
-  const act = $derived(fields.length % 2 ? last : last + 1);
+  const act = $derived(count % 2 ? last : last + 1);
   // A number input binds a number (null when emptied), a text input or select a string.
   // Money shows cents ("24.00"); the unsaved-changes check compares numbers, so 24 and "24.00" agree.
   const shown = (key: string, v: string | number) => (fields.find((f) => f.key === key)?.type === 'money' && String(v).trim() !== '' && Number.isFinite(+v) ? (+v).toFixed(2) : String(v));
@@ -28,6 +30,8 @@
   let values = $state<Record<string, string | number | null>>(Object.fromEntries(Object.entries(trophy.values).map(([k, v]) => [k, shown(k, v)])));
   // svelte-ignore state_referenced_locally
   let imageUrl = $state(trophy.imageUrl ?? '');
+  // svelte-ignore state_referenced_locally
+  let toolKind = $state<string>(trophy.kind);
   let error = $state('');
   let notes = $state<string[]>([]); // what Fill from URL reports, in the message spot
   let filling = $state(false);
@@ -84,6 +88,7 @@
       const was = norm(f, trophy.values[f.key]);
       return off(f.key) && was !== '' && was === norm(f, values[f.key]) ? [`${f.label}: ${was} → empty`] : [];
     }),
+    ...(toolKind !== trophy.kind ? [`Kind: ${KIND_LABEL[trophy.kind]} → ${KIND_LABEL[toolKind as GearKind]}`] : []),
     ...(imageUrl.trim() !== (trophy.imageUrl ?? '') ? ['Image URL changed'] : [])
   ]; }
   // The dialog's ✕ asks for these: the changes to leave behind, named (empty = nothing to lose).
@@ -95,9 +100,10 @@
     const badField = fields.find((f) => (document.getElementById(`gear-${f.key}`) as HTMLInputElement | null)?.validity?.badInput);
     if (badField) { error = `${badField.label} must be a number`; return; }
     saving = true; error = '';
-    const post = (v: unknown, image_url: string) => fetch('/api/gear', {
+    // Saved under the card's kind, then moved to `to` when it differs (Undo saves under the new kind and moves back).
+    const post = (v: unknown, image_url: string, kind = trophy.kind, to = toolKind) => fetch('/api/gear', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind: trophy.kind, name: trophy.name, values: v, image_url })
+      body: JSON.stringify({ kind, name: trophy.name, values: v, image_url, ...(trophy.tool ? { toolKind: to } : {}) })
     });
     const res = await post(values, imageUrl).catch(() => null);
     if (res?.ok) {
@@ -105,7 +111,7 @@
       await refreshTracked(); onclose();
       // Undo posts the details and photo URL this form opened with.
       showToast(`${kind[0].toUpperCase() + kind.slice(1)} "${name}" saved.`, {
-        undo: async () => { if (!(await post(was, wasImage)).ok) throw new Error('Could not undo that.'); await refreshTracked(); }
+        undo: async () => { if (!(await post(was, wasImage, toolKind as GearKind, kind)).ok) throw new Error('Could not undo that.'); await refreshTracked(); }
       });
       return;
     }
@@ -130,8 +136,17 @@
   {@render head()}
   <div class="grid">
     <div class="photo">{@render photo()}</div>
+    {#if trophy.tool}
+      <div class="form-field" style="--r:1;--c:2">
+        <div class="label-row"><label for="gear-toolKind">Kind</label></div>
+        <select id="gear-toolKind" bind:value={toolKind}>
+          <option value="filter">{KIND_LABEL.filter}</option>
+          <option value="accessory">{KIND_LABEL.accessory}</option>
+        </select>
+      </div>
+    {/if}
     {#each fields as f, i (f.key)}
-      <div class="form-field" style="--r:{Math.floor(i / 2) + 1};--c:{2 + (i % 2)}">
+      <div class="form-field" style="--r:{Math.floor((i + at) / 2) + 1};--c:{2 + ((i + at) % 2)}">
         <div class="label-row">
           <label for="gear-{f.key}">{f.label}{f.unit ? ` (${f.unit})` : f.type === 'money' ? ' ($)' : ''}</label>
           {#if f.help}

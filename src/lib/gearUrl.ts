@@ -11,7 +11,7 @@ function kindList(v: string | null): GearKind[] | undefined {
 }
 
 // The open trophy card on Gear: one "kind-slug" key, lowercased; anything else is dropped.
-const CARD = /^(dripper|grinder|filter)-[a-z0-9]+(-[a-z0-9]+)*$/;
+const CARD = /^(dripper|grinder|filter|accessory)-[a-z0-9]+(-[a-z0-9]+)*$/;
 export function parseCard(v: string | null): string | undefined {
   const x = (v ?? '').trim().toLowerCase();
   return CARD.test(x) ? x : undefined;
