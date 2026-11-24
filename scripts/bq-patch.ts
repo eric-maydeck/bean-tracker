@@ -4,6 +4,8 @@
 //   apply  --export <dir> --out <dir> --db <DB COPY> --images <images root> --keep <keep.json>
 //          [--settled <settled.json>] [--dry-run]   (builds the plan from the site; --dry-run writes report.json and copies nothing)
 //   verify --zip <zip> --dump <dump.json>
+//   tools        --export <dir> --out <dir> --plan <plan.json>   (filters as tools: writes the converted JSON files + report.json)
+//   verify-tools --export <dir> --out <dir> --plan <plan.json>   (prints failures, exit 1 on any)
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import {
@@ -15,7 +17,8 @@ import { parseArgs } from 'node:util';
 import JSZip from 'jszip';
 import sharp from 'sharp';
 import {
-  applyPatchPlan, buildPatchPlan, comparePatched, setBrewSpeeds, type PatchCoffee, type PatchPlan
+  applyPatchPlan, buildPatchPlan, comparePatched, convertToTools, setBrewSpeeds, verifyTools,
+  type PatchCoffee, type PatchPlan, type ToolPlan
 } from '../src/lib/server/bqPatch.ts';
 import { coffeeBeanUuid } from '../src/lib/server/bqBeanUuid.ts';
 import { copyPath } from '../src/lib/server/imageCopies.ts';
@@ -205,6 +208,48 @@ async function verify() {
   process.exit(diffs.length ? 1 : 0);
 }
 
+// Beanconqueror.json plus Beanconqueror_Brews_N.json (in N order), from an export's zip or a converted output's folder.
+async function readBq(dir: string) {
+  const zipPath = join(dir, 'Beanconqueror.zip');
+  const files: Record<string, string> = {};
+  if (existsSync(zipPath)) {
+    const zip = await JSZip.loadAsync(readFileSync(zipPath));
+    for (const n of Object.keys(zip.files)) if (/^Beanconqueror(_Brews_\d+)?\.json$/.test(n)) files[n] = await zip.files[n].async('string');
+  } else {
+    for (const n of readdirSync(dir)) if (/^Beanconqueror(_Brews_\d+)?\.json$/.test(n)) files[n] = readFileSync(join(dir, n), 'utf8');
+  }
+  const brewNames = Object.keys(files).filter((n) => n !== 'Beanconqueror.json')
+    .sort((x, y) => parseInt(x.replace(/\D/g, '')) - parseInt(y.replace(/\D/g, '')));
+  return {
+    main: JSON.parse(files['Beanconqueror.json'] ?? fail(`${dir}: no Beanconqueror.json`)),
+    brewNames, brewFiles: brewNames.map((n) => JSON.parse(files[n]))
+  };
+}
+
+async function tools() {
+  const src = await readBq(need(a.export, 'export'));
+  const out = resolve(need(a.out, 'out'));
+  const plan: ToolPlan = JSON.parse(readFileSync(need(a.plan, 'plan'), 'utf8'));
+  const r = convertToTools(src.main, src.brewFiles, plan);
+  console.log(JSON.stringify(r.report, null, 1));
+  if (r.report.problems.length) fail('Problems found, nothing written');
+  mkdirSync(out, { recursive: true });
+  if (readdirSync(out).length) fail(`${out} is not empty`);
+  writeFileSync(join(out, 'Beanconqueror.json'), JSON.stringify(r.main));
+  src.brewNames.forEach((n, i) => writeFileSync(join(out, n), JSON.stringify(r.brewFiles[i])));
+  writeFileSync(join(out, 'report.json'), JSON.stringify(r.report, null, 2));
+}
+
+async function verifyToolsCmd() {
+  const [o, n] = [await readBq(need(a.export, 'export')), await readBq(need(a.out, 'out'))];
+  const plan: ToolPlan = JSON.parse(readFileSync(need(a.plan, 'plan'), 'utf8'));
+  const fails = verifyTools(o.main, o.brewFiles, n.main, n.brewFiles, plan);
+  console.log(fails.length ? fails.join('\n') : 'No failures');
+  process.exit(fails.length ? 1 : 0);
+}
+
 if (positionals[0] === 'apply') await apply();
 else if (positionals[0] === 'verify') await verify();
-else fail('usage: bq-patch.ts apply|verify ...');
+else if (positionals[0] === 'tools') await tools();
+else if (positionals[0] === 'verify-tools') await verifyToolsCmd();
+else fail('usage: bq-patch.ts apply|verify|tools|verify-tools ...');
