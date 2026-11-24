@@ -115,6 +115,21 @@ describe('gearArchive', () => {
     expect([...a.grinder]).toEqual(['ZP6']);
   });
 
+  it('a filter tool is archived only when every method carrying it is archived; tools lists ticked names', () => {
+    const db = createDb(':memory:');
+    const m = db.prepare(`INSERT INTO beanconqueror_methods (id, name, preparation_style, preparation_tools, bc_archived, imported_at) VALUES (?, ?, 'POUR OVER', '', ?, '2026-10-09')`);
+    m.run('m1', 'V60 02', 1); m.run('m2', 'V60 03', 0);
+    const t = db.prepare(`INSERT INTO beanconqueror_method_tools (uuid, method_id, name, archived, bc_created_at) VALUES (?, ?, ?, ?, ?)`);
+    t.run('t1', 'm1', 'Cafec Abaca', 1, '2026-01-01'); t.run('t2', 'm2', 'Cafec Abaca', 0, '2026-02-01');
+    db.prepare(`INSERT INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES ('b1', 't1')`).run();
+    const a = gearArchive(db);
+    expect(a.filter.has('Cafec Abaca')).toBe(false);
+    expect(a.added!.get('filter\0Cafec Abaca')).toBe('2026-01-01');
+    expect([...a.tools!]).toEqual(['Cafec Abaca']);
+    db.prepare(`UPDATE beanconqueror_method_tools SET archived = 1`).run();
+    expect(gearArchive(db).filter.has('Cafec Abaca')).toBe(true);
+  });
+
   it('marks adjustable grinders on the archive and their trophies, no one else', () => {
     const db = createDb(':memory:');
     const g = db.prepare(`INSERT INTO beanconqueror_grinders (id, name, has_adjustable_speed, imported_at) VALUES (?, ?, ?, '2026-10-09')`);

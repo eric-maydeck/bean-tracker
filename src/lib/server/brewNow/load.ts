@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { processGroup, type ProcessGroup } from '#lib/processGroups.ts';
-import { parseMethod, grindValue, restDays, normalizeRoastLevel } from '../insights/facts';
+import { gearOfRow, loadToolKinds, toolColumns } from '../brewGear';
+import { grindValue, restDays, normalizeRoastLevel } from '../insights/facts';
 import { bcLocalTime, addDays } from '../insights/time';
 import { localToday } from '../localToday';
 import { getGearDetails } from '../gearDetails';
@@ -34,7 +35,7 @@ export interface CoffeeDetails {
 interface Raw {
   id: number; at: string; coffee_id: number; slug: string | null; roaster: string; coffee_name: string; origin: string | null;
   processing: string | null; roast_level: string | null; roast_date: string | null; fs: string | null; fe: string | null;
-  grinder: string | null; grind: string | null; method: string | null; tools: string | null; temp: number | null; dose: number | null;
+  grinder: string | null; grind: string | null; method: string | null; tools: string | null; ticked: string | null; mtools: string | null; temp: number | null; dose: number | null;
   water_g: number | null; water: string | null; recipe_id: number | null; recipe_name: string | null; rating: number | null;
   best: number; notes: string | null; decaf: number; grinder_archived: number | null; method_archived: number | null;
 }
@@ -46,7 +47,7 @@ export function loadBrewRows(db: DatabaseSync): BrewRow[] {
   const rows = db.prepare(
     `SELECT b.id, b.bc_created_at AS at, c.id AS coffee_id, c.slug, c.roaster, c.coffee_name, c.origin, c.processing, c.roast_level,
             c.roast_date, c.frozen_start_date AS fs, c.frozen_end_date AS fe, g.name AS grinder, b.grind_setting AS grind,
-            m.name AS method, m.preparation_tools AS tools, b.brew_temperature AS temp, b.ground_coffee_g AS dose,
+            m.name AS method, m.preparation_tools AS tools, ${toolColumns()}, b.brew_temperature AS temp, b.ground_coffee_g AS dose,
             b.water_amount_g AS water_g, COALESCE(w.name, b.water) AS water, rec.id AS recipe_id, rec.name AS recipe_name,
             b.rating, b.best_brew AS best, b.notes, c.decaf, g.bc_archived AS grinder_archived, m.bc_archived AS method_archived
      FROM beanconqueror_brews b
@@ -60,6 +61,7 @@ export function loadBrewRows(db: DatabaseSync): BrewRow[] {
      ORDER BY b.bc_created_at, b.id`
   ).all() as unknown as Raw[];
   const slugs = recipeSlugs(listRecipes(db));
+  const kinds = loadToolKinds(db);
   return rows.map((r) => {
     const localTime = bcLocalTime(r.at);
     const grind = r.grind?.trim() || null;
@@ -67,7 +69,7 @@ export function loadBrewRows(db: DatabaseSync): BrewRow[] {
       id: r.id, coffeeId: r.coffee_id, slug: r.slug ?? '', roaster: r.roaster, coffeeName: r.coffee_name, origin: r.origin,
       processGroup: processGroup(r.processing), roastLevel: normalizeRoastLevel(r.roast_level), localTime,
       restDays: restDays(r.roast_date, r.fs, r.fe, localTime.slice(0, 10)),
-      grinder: r.grinder, grind, grindNum: grindValue(grind), ...parseMethod(r.method, r.tools),
+      grinder: r.grinder, grind, grindNum: grindValue(grind), ...gearOfRow(r, kinds),
       tempC: pos(r.temp), dose: pos(r.dose), waterG: pos(r.water_g), water: r.water,
       recipeId: r.recipe_id, recipeName: r.recipe_name, recipeSlug: r.recipe_id === null ? null : slugs.get(r.recipe_id) ?? null, rating: pos(r.rating), best: r.best === 1, notes: r.notes?.trim() || null,
       decaf: r.decaf === 1, grinderArchived: r.grinder_archived === 1, methodArchived: r.method_archived === 1
