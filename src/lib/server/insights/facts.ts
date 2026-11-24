@@ -5,6 +5,7 @@ import type { BrewerType } from '#lib/insightsUrl.ts';
 import { bcLocalTime, daysBetween } from './time';
 import { localDate as toLocalDate } from '#lib/localDate.ts';
 import type { GearValues } from '#lib/gear.ts';
+import { gearOfRow, loadToolKinds, toolColumns } from '../brewGear';
 
 // Method names are "Dripper - Filter". Gabi Master A brews used Kalita,
 // xBloom or Timemore 155 filters interchangeably (user, 2026-10-09), so its
@@ -114,6 +115,8 @@ export interface BrewFact {
   rpm?: number | null; // grinder RPM (adjustable grinders only); optional so test factories compile
   dripper: string | null;
   filter: string | null;
+  filters?: string[]; // every ticked filter; `filter` is the one when exactly one (optional: test factories omit them)
+  accessories?: string[];
   grinder: string | null;
   water: string | null;
   waterProfile: WaterProfile | null;
@@ -155,7 +158,7 @@ export interface BagFact {
 
 interface BrewRow {
   id: number; bc_created_at: string; dose: number | null; rating: number | null; brew_time: string | null; bloom_time: string | null;
-  method: string | null; tools: string | null; grinder: string | null; water: string | null; water_id: string | null;
+  method: string | null; tools: string | null; ticked: string | null; mtools: string | null; grinder: string | null; water: string | null; water_id: string | null;
   calcium: number | null; magnesium: number | null; sodium: number | null; potassium: number | null; chloride: number | null; sulfate: number | null; notes: string | null;
   coffee_id: number | null; roaster: string | null; origin: string | null; producer: string | null; variety: string | null; region: string | null; processing: string | null; roast_level: string | null;
   decaf: number | null; roast_date: string | null; frozen_start_date: string | null; frozen_end_date: string | null;
@@ -176,7 +179,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
   const rows = db
     .prepare(
       `SELECT b.id, b.bc_created_at, b.ground_coffee_g AS dose, b.rating, b.brew_time, b.bloom_time, b.brew_temperature,
-              m.name AS method, m.preparation_tools AS tools, g.name AS grinder,
+              m.name AS method, m.preparation_tools AS tools, ${toolColumns()}, g.name AS grinder,
               COALESCE(w.name, b.water) AS water, w.id AS water_id,
               w.calcium, w.magnesium, w.sodium, w.potassium, w.chloride, w.sulfate,
               c.id AS coffee_id, c.roaster, c.origin, c.producer, c.variety, c.region, c.processing, c.roast_level, c.decaf, c.roast_date,
@@ -194,6 +197,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
     )
     .all() as unknown as BrewRow[];
 
+  const kinds = loadToolKinds(db);
   const brews = rows.map((r): BrewFact => {
     // bc_created_at is local wall time despite its trailing 'Z' (see bcLocalTime).
     const localTime = bcLocalTime(r.bc_created_at);
@@ -221,7 +225,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
       ratio: waterG && r.dose && r.dose > 0 ? waterG / r.dose : null,
       grind: r.grind_setting?.trim() || null,
       rpm: rpmOf(r.grind_speed_rpm, r.has_adjustable_speed === 1, r.gear_fields ? JSON.parse(r.gear_fields) : null),
-      ...parseMethod(r.method, r.tools),
+      ...gearOfRow(r, kinds),
       grinder: r.grinder,
       water: r.water,
       waterProfile: r.water_id

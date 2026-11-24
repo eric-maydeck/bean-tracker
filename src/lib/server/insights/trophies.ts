@@ -5,7 +5,8 @@ import { wallToInstant } from '#lib/localDate.ts';
 import type { GearDetail } from '#lib/server/gearDetails.ts';
 import { pooled, type Sample } from '#lib/sample.ts';
 import { gearSlugs } from '#lib/slugify.ts';
-import { MIXED_FILTER, parseMethod, type BrewFact } from './facts';
+import { MIXED_FILTER, type BrewFact } from './facts';
+import { loadToolKinds, readGear, splitTools } from '../brewGear';
 import { countsForRating } from './ratings';
 import { daysBetween, inPeriod, type Period } from './time';
 import type { Ratings } from '#lib/insightsUrl.ts';
@@ -16,7 +17,7 @@ export const RETIRED_AFTER_DAYS = 90;
 
 // Archived names per kind (Bean Conqueror's archive flag), plus `added`: `${kind}\0${name}` -> the earliest Bean Conqueror
 // created date (a wall-time 'YYYY-MM-DD...') of the gear's rows, the day we added that gear (a brew can predate it).
-export type GearArchive = Record<GearKind, Set<string>> & { added?: Map<string, string>; adjustable?: Set<string> };
+export type GearArchive = Record<GearKind, Set<string>> & { added?: Map<string, string>; adjustable?: Set<string>; tools?: Set<string> };
 // adjustable: grinder names where any row has Bean Conqueror's adjustable-speed flag.
 
 // A grinder is archived when every row of that name is; a dripper/filter when every method parsing to it is.
@@ -34,12 +35,20 @@ export function gearArchive(db: DatabaseSync): GearArchive {
     note('grinder', r.name, !!r.a, r.c);
     if (r.s && r.name) adjustable.add(r.name);
   }
-  for (const r of db.prepare(`SELECT name, preparation_tools AS tools, bc_archived AS a, bc_created_at AS c FROM beanconqueror_methods`).all() as { name: string; tools: string | null; a: number; c: string | null }[]) {
-    const { dripper, filter } = parseMethod(r.name, r.tools);
+  const kinds = loadToolKinds(db);
+  for (const r of db.prepare(`SELECT m.name, m.preparation_tools AS tools, m.bc_archived AS a, m.bc_created_at AS c, (SELECT group_concat(t.name, char(31)) FROM beanconqueror_method_tools t WHERE t.method_id = m.id) AS mtools FROM beanconqueror_methods m`).all() as { name: string; tools: string | null; a: number; c: string | null; mtools: string | null }[]) {
+    const mtools = splitTools(r.mtools);
+    const { dripper, filter } = readGear(r.name, mtools, [], kinds, r.tools);
     note('dripper', dripper, !!r.a, r.c);
     note('filter', filter, !!r.a, r.c);
   }
-  const out: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set(), added, adjustable };
+  // Filters by tool rows: archived when every row of the name is. Accessories are left out until they join GEAR_KINDS.
+  for (const r of db.prepare(`SELECT name, archived AS a, bc_created_at AS c FROM beanconqueror_method_tools`).all() as { name: string; a: number; c: string | null }[]) {
+    const name = splitTools(r.name)[0];
+    if (name && kinds.get(name) !== 'accessory') note('filter', name, !!r.a, r.c);
+  }
+  const tools = new Set(kinds.keys());
+  const out: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set(), added, adjustable, tools };
   for (const [k, v] of all) if (v) { const [kind, name] = k.split('\0'); out[kind as GearKind].add(name); }
   return out;
 }
