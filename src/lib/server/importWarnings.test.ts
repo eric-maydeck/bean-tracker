@@ -67,13 +67,14 @@ describe('importWarnings', () => {
 });
 
 describe('waterWarnings (#198)', () => {
-  it('flags a live BQ water with no minerals, GH or KH, unless it reads as distilled or RO', () => {
+  it('flags a live BQ water with no minerals (GH/KH-only gets its own reason), unless it is blank and reads as distilled or RO', () => {
     db.exec(`INSERT INTO beanconqueror_waters (id, name, note, calcium, stored_gh, bc_archived, imported_at) VALUES
       ('w1', 'Blank', null, null, null, 0, 'x'), ('w2', 'Zero tap', null, 0, 0, 0, 'x'), ('w3', 'Distilled', null, null, null, 0, 'x'),
       ('w4', 'Jug', 'RO from the store', null, null, 0, 'x'), ('w5', 'Old', null, null, null, 1, 'x'),
       ('w6', 'Lotus', null, 20, null, 0, 'x'), ('w7', 'GH only', null, null, 50, 0, 'x')`);
     expect(waterWarnings(db)).toEqual([
       { water: 'Blank', reason: 'Water added without minerals, GH or KH' },
+      { water: 'GH only', reason: 'Water has GH or KH but no minerals' },
       { water: 'Zero tap', reason: 'Water added without minerals, GH or KH' }
     ]);
   });
