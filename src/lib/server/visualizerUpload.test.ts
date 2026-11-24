@@ -61,7 +61,7 @@ describe('saveShot / uploadStatus', () => {
     const db = createDb(':memory:');
     saveShot(db, shot(1));
     expect(uploadStatus(db)).toMatchObject({ flows: 1, joined: 0, waiting: 1, brewsWithFlow: 0 });
-    const brew = { bcUuid: UUID, bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: null, preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 7, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null, hasFlowProfile: true };
+    const brew = { bcUuid: UUID, bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: null, preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, toolUuids: [], temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 7, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null, hasFlowProfile: true };
     importBeanConquerorData(db, { beans: [], beanOrigins: [], methods: [], grinders: [], brews: [brew] });
     expect(uploadStatus(db)).toMatchObject({ flows: 1, joined: 1, waiting: 0, brewsWithFlow: 1 });
   });

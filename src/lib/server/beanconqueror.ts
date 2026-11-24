@@ -242,7 +242,7 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
            bc_created_at = excluded.bc_created_at, imported_at = excluded.imported_at`
       ).run(m.id, m.preparationMethod, m.name, m.preparationStyle, m.preparationTools, m.notes, m.bcArchived ? 1 : 0, m.bcCreatedAt, now);
       db.prepare(`DELETE FROM beanconqueror_method_tools WHERE method_id = ?`).run(m.id);
-      for (const t of m.tools ?? []) {
+      for (const t of m.tools) {
         db.prepare(`INSERT OR REPLACE INTO beanconqueror_method_tools (uuid, method_id, name, archived, bc_created_at) VALUES (?, ?, ?, ?, ?)`)
           .run(t.uuid, m.id, t.name, t.archived ? 1 : 0, t.createdAt);
       }
@@ -299,7 +299,7 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
       else insertBrew.run(...brewValues(br, now));
       if (br.bcUuid) {
         db.prepare(`DELETE FROM beanconqueror_brew_tools WHERE brew_uuid = ?`).run(br.bcUuid);
-        for (const t of br.toolUuids ?? []) db.prepare(`INSERT OR IGNORE INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES (?, ?)`).run(br.bcUuid, t);
+        for (const t of br.toolUuids) db.prepare(`INSERT OR IGNORE INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES (?, ?)`).run(br.bcUuid, t);
       }
     }
 

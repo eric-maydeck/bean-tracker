@@ -265,7 +265,7 @@ describe('getLinkedBean / getLinkableCoffees', () => {
       brews: [1, 2].map((d) => ({
         bcCreatedAt: `2026-09-0${d}T08:00:00.000Z`, beanId: 'b1', preparationId: null, millId: null, grindSetting: null,
         groundCoffeeG: 15, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null,
-        preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null,
+        preparationTools: null, toolUuids: [], temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null,
         waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: null, notes: null, beverageQuantity: null,
         tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null
       }))
