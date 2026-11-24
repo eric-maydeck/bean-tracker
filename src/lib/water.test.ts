@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generalHardness, carbonateHardness, hardnessMismatch } from './water';
+import { generalHardness, carbonateHardness, hardnessMismatch, isZeroWater } from './water';
 
 // The user's Lotus profiles (spec table, 2026-10-09): mg/L in, ppm as CaCO3 out.
 const PROFILES = [
@@ -48,5 +48,18 @@ describe('hardnessMismatch', () => {
   });
   it('never flags a stored 0 or null (Bean Conqueror: not entered)', () => {
     expect(hardnessMismatch({ ...reddit, storedGh: 0, storedKh: null })).toBe(false);
+  });
+});
+
+describe('isZeroWater (#198)', () => {
+  it('reads distilled, RO and zero-mineral names or notes, case-insensitive', () => {
+    for (const n of ['Distilled', 'distilled water', 'RO', 'R.O. filtered', 'Reverse Osmosis', 'reverse-osmosis', 'ZeroWater', 'Zero Water', 'Deionized', 'DI water'])
+      expect(isZeroWater(n, null), n).toBe(true);
+    expect(isZeroWater('Tap', 'from the RO tap')).toBe(true);
+  });
+  it('ignores RO inside other words and ordinary waters', () => {
+    for (const n of ['Lotus - Mg/K 60/10', 'Roast water', 'Third Wave Classic', 'Brooklyn tap', 'Pro mix'])
+      expect(isZeroWater(n, null), n).toBe(false);
+    expect(isZeroWater(null, null)).toBe(false);
   });
 });

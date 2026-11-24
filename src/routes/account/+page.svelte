@@ -205,11 +205,17 @@
     brews and flows join up either way.
   </p>
 
-  {#if data.warnings.length}
+  {#if data.warnings.length || data.waterWarnings.length}
     <details class="warnings">
-      <summary>Data warnings ({data.warnings.length})</summary>
-      <p class="text-muted">Brews worth fixing in BQ before re-importing. Nothing here blocks or changes an import.</p>
+      <summary>Data warnings ({data.warnings.length + data.waterWarnings.length})</summary>
+      <p class="text-muted">Brews and waters worth fixing in BQ before re-importing. Nothing here blocks or changes an import.</p>
       <ul class="warn-list">
+        {#each data.waterWarnings as w, i (i)}
+          <li class="warn-row">
+            <strong>{w.water}</strong>
+            <div class="warn-what">{w.reason}</div>
+          </li>
+        {/each}
         {#each data.warnings as w, i (i)}
           <li class="warn-row">
             <strong><CoffeeName name={w.coffee ?? 'Unknown coffee'} /></strong>

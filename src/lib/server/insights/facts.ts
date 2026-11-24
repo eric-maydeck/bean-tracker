@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { processGroup, type ProcessGroup } from '#lib/processGroups.ts';
-import { generalHardness, carbonateHardness } from '#lib/water.ts';
+import { generalHardness, carbonateHardness, isZeroWater } from '#lib/water.ts';
 import type { BrewerType } from '#lib/insightsUrl.ts';
 import { bcLocalTime, daysBetween } from './time';
 import { localDate as toLocalDate } from '#lib/localDate.ts';
@@ -88,6 +88,7 @@ export function seconds(text: string | null): number | null {
 export interface WaterProfile {
   calcium: number | null; magnesium: number | null; sodium: number | null; potassium: number | null;
   chloride: number | null; sulfate: number | null; gh: number; kh: number;
+  zero?: true; // #198: a blank distilled/RO water, every figure 0 and real
 }
 export interface BrewFact {
   id: number;
@@ -157,6 +158,7 @@ interface BrewRow {
   id: number; bc_created_at: string; dose: number | null; rating: number | null; brew_time: string | null; bloom_time: string | null;
   method: string | null; tools: string | null; grinder: string | null; water: string | null; water_id: string | null;
   calcium: number | null; magnesium: number | null; sodium: number | null; potassium: number | null; chloride: number | null; sulfate: number | null; notes: string | null;
+  water_note: string | null; stored_gh: number | null; stored_kh: number | null;
   coffee_id: number | null; roaster: string | null; origin: string | null; producer: string | null; variety: string | null; region: string | null; processing: string | null; roast_level: string | null;
   decaf: number | null; roast_date: string | null; frozen_start_date: string | null; frozen_end_date: string | null;
   cost: number | null; amount_g: number | null; water_amount_g: number | null; grind_setting: string | null; style: string | null;
@@ -179,6 +181,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
               m.name AS method, m.preparation_tools AS tools, g.name AS grinder,
               COALESCE(w.name, b.water) AS water, w.id AS water_id,
               w.calcium, w.magnesium, w.sodium, w.potassium, w.chloride, w.sulfate,
+              w.note AS water_note, w.stored_gh, w.stored_kh,
               c.id AS coffee_id, c.roaster, c.origin, c.producer, c.variety, c.region, c.processing, c.roast_level, c.decaf, c.roast_date,
               c.frozen_start_date, c.frozen_end_date, c.cost, c.amount_g,
               b.water_amount_g, b.grind_setting, b.notes, m.preparation_style AS style,
@@ -224,12 +227,13 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
       ...parseMethod(r.method, r.tools),
       grinder: r.grinder,
       water: r.water,
-      waterProfile: r.water_id
-        ? {
+      waterProfile: !r.water_id ? null
+        : isZeroWater(r.water, r.water_note) && ![r.calcium, r.magnesium, r.sodium, r.potassium, r.chloride, r.sulfate, r.stored_gh, r.stored_kh].some(Boolean)
+        ? { calcium: 0, magnesium: 0, sodium: 0, potassium: 0, chloride: 0, sulfate: 0, gh: 0, kh: 0, zero: true }
+        : {
             calcium: r.calcium, magnesium: r.magnesium, sodium: r.sodium, potassium: r.potassium,
             chloride: r.chloride, sulfate: r.sulfate, gh: generalHardness(r), kh: carbonateHardness(r)
-          }
-        : null,
+          },
       restDays: restDays(r.roast_date, r.frozen_start_date, r.frozen_end_date, localDate),
       costPerBrew: costPerBrew(r.dose, r.cost, r.amount_g),
       brewTimeSeconds: seconds(r.brew_time),

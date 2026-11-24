@@ -28,6 +28,13 @@ describe('bandOf', () => {
     expect([40, 59.6, 90].map((g) => gh(g)!.label)).toEqual(['40ppm', '60ppm', '90ppm']);
     expect(gh(70)!.order).toBe(70);
   });
+  it('a distilled/RO profile (zero) counts with every figure 0; a blank one still drops out (#198)', () => {
+    const z = { calcium: 0, magnesium: 0, sodium: 0, potassium: 0, chloride: 0, sulfate: 0, gh: 0, kh: 0 };
+    expect(bandOf('gh', brew({ waterProfile: { ...z, zero: true } }))).toEqual({ label: '0ppm', order: 0 });
+    expect(mineralOf('kh', brew({ waterProfile: { ...z, zero: true } }))).toBe(0);
+    expect(mineralOf('calcium', brew({ waterProfile: { ...z, zero: true } }))).toBe(0);
+    expect(bandOf('gh', brew({ waterProfile: z }))).toBeNull();
+  });
   it('GH 0 is a real value (soft water with only sodium), not missing (#196)', () => {
     const b = bandOf('gh', brew({ waterProfile: { calcium: 0, magnesium: 0, sodium: 10, potassium: null, chloride: null, sulfate: null, gh: 0, kh: 0 } }));
     expect(b).toEqual({ label: '0ppm', order: 0 });

@@ -25,3 +25,8 @@ export function hardnessMismatch(w: WaterMinerals & { storedGh: number | null; s
   const off = (stored: number | null, derived: number) => !!stored && Math.abs(stored - derived) > MISMATCH_PPM;
   return off(w.storedGh, generalHardness(w)) || off(w.storedKh, carbonateHardness(w));
 }
+
+// #198: a water with no minerals, GH or KH is a blank form, unless its name or note says it's a
+// zero-mineral water (distilled, RO, deionized, ZeroWater); then all-zero is its real profile.
+const ZERO_WATER = /(?<![a-z])(distilled|deioni[sz]ed|di water|r\.?o\.?|reverse[\s-]*osmosis|zero\s*water)(?![a-z])/i;
+export const isZeroWater = (name: string | null, note: string | null) => ZERO_WATER.test(`${name ?? ''} ${note ?? ''}`);
