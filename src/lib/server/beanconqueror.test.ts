@@ -11,7 +11,7 @@ import { createCoffee, getBacklogCoffees } from './coffees';
 import { coffeeBeanUuid } from './bqBeanUuid';
 import { createDb } from './db';
 
-const BASE_BREW = { bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: null, preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 7, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null };
+const BASE_BREW = { bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: null, preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, toolUuids: [], temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 7, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null };
 describe('importBeanConquerorData', () => {
   it('writes grinders.has_adjustable_speed 1/0 and updates it on re-import', () => {
     const db = createDb(':memory:');
@@ -30,9 +30,9 @@ describe('importBeanConquerorData', () => {
     importBeanConquerorData(db, {
       beans: [{ id: 'b1', name: 'Bean', roaster: 'R', roastDate: '2026-06-01', roastType: 'Filter', degreeOfRoast: 2, customDegreeOfRoast: null, blend: 'Single Origin', weightG: 200, cost: 18, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: 7, bcCreatedAt: '2026-06-01T00:00:00.000Z', bcArchived: false }],
       beanOrigins: [{ beanId: 'b1', componentNumber: 1, country: 'Ethiopia', region: null, farm: null, farmer: null, elevation: null, variety: null, processing: 'Washed', certification: null, harvested: null, percentage: null }],
-      methods: [{ id: 'm1', preparationMethod: 'V60', name: 'V60', preparationStyle: null, preparationTools: null, notes: null, bcArchived: false, bcCreatedAt: null }],
+      methods: [{ id: 'm1', preparationMethod: 'V60', name: 'V60', preparationStyle: null, preparationTools: null, tools: [], notes: null, bcArchived: false, bcCreatedAt: null }],
       grinders: [{ id: 'g1', name: 'Grinder', notes: null, bcArchived: false, bcCreatedAt: null, hasAdjustableSpeed: false }],
-      brews: [{ bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: 'b1', preparationId: 'm1', millId: 'g1', grindSetting: null, groundCoffeeG: 20, brewTemperature: 91, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: 300, coffeeType: null, coffeeConcentration: null, rating: 8, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null }]
+      brews: [{ bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: 'b1', preparationId: 'm1', millId: 'g1', grindSetting: null, groundCoffeeG: 20, brewTemperature: 91, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, toolUuids: [], temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: 300, coffeeType: null, coffeeConcentration: null, rating: 8, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null }]
     });
     expect((db.prepare('SELECT COUNT(*) c FROM beanconqueror_beans').get() as { c: number }).c).toBe(1);
     expect((db.prepare('SELECT COUNT(*) c FROM beanconqueror_bean_origins').get() as { c: number }).c).toBe(1);
