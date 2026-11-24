@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { parseMethod } from './insights/facts';
+import { gearOfRow, loadToolKinds, toolColumns, type ToolKind } from './brewGear';
 import { bcLocalTime } from './insights/time';
 
 // The coffee page's "Favorite grind": per grinder used on a coffee's brews, the highest-rated brew's setting (ties: the
@@ -9,9 +9,9 @@ export type GrindBrew = { setting: string | null; rating: number; dripper: strin
 export type OtherBag = GrindBrew & { slug: string; roastDate: string | null };
 export type FavoriteGrind = { grinder: string; brews: number; best: GrindBrew | null; other: OtherBag | null };
 
-type Row = { mill: string; grinder: string | null; setting: string | null; rating: number | null; method: string | null; tools: string | null; at: string; slug: string; roastDate: string | null };
+type Row = { mill: string; grinder: string | null; setting: string | null; rating: number | null; method: string | null; tools: string | null; ticked: string | null; mtools: string | null; at: string; slug: string; roastDate: string | null };
 
-const BREWS = `SELECT b.mill_id AS mill, g.name AS grinder, b.grind_setting AS setting, b.rating, m.name AS method, m.preparation_tools AS tools,
+const BREWS = `SELECT b.mill_id AS mill, g.name AS grinder, b.grind_setting AS setting, b.rating, m.name AS method, m.preparation_tools AS tools, ${toolColumns()},
     b.bc_created_at AS at, c.slug, c.roast_date AS roastDate
   FROM beanconqueror_brews b
   JOIN beanconqueror_beans bean ON bean.id = b.bean_id
@@ -20,7 +20,10 @@ const BREWS = `SELECT b.mill_id AS mill, g.name AS grinder, b.grind_setting AS s
   LEFT JOIN beanconqueror_methods m ON m.id = b.preparation_id
   WHERE b.mill_id IS NOT NULL AND `;
 
-const brewOf = (r: Row): GrindBrew => ({ setting: r.setting, rating: r.rating!, ...parseMethod(r.method, r.tools), date: bcLocalTime(r.at).slice(0, 10) });
+const brewOf = (r: Row, kinds: Map<string, ToolKind>): GrindBrew => {
+  const { dripper, filter } = gearOfRow(r, kinds);
+  return { setting: r.setting, rating: r.rating!, dripper, filter, date: bcLocalTime(r.at).slice(0, 10) };
+};
 // Highest rating; the latest brew breaks a tie.
 const better = (a: Row, b: Row) => b.rating! > a.rating! || (b.rating === a.rating && b.at > a.at);
 const bestOf = (rows: Row[]) => rows.reduce<Row | null>((m, r) => (r.rating! > 0 && (!m || better(m, r)) ? r : m), null);
@@ -34,6 +37,7 @@ export function favoriteGrind(db: DatabaseSync, coffeeId: number): FavoriteGrind
     )
     .all(coffeeId, coffeeId, coffeeId) as Row[];
   const out: FavoriteGrind[] = [];
+  const kinds = loadToolKinds(db);
   for (const mill of new Set(mine.map((r) => r.mill))) {
     const rows = mine.filter((r) => r.mill === mill);
     const best = bestOf(rows);
@@ -42,8 +46,8 @@ export function favoriteGrind(db: DatabaseSync, coffeeId: number): FavoriteGrind
     out.push({
       grinder: rows[0].grinder ?? 'Unknown grinder',
       brews: rows.length,
-      best: best && brewOf(best),
-      other: beaten ? { ...brewOf(rival), slug: rival.slug, roastDate: rival.roastDate } : null
+      best: best && brewOf(best, kinds),
+      other: beaten ? { ...brewOf(rival, kinds), slug: rival.slug, roastDate: rival.roastDate } : null
     });
   }
   return out.sort((a, b) => a.grinder.localeCompare(b.grinder));

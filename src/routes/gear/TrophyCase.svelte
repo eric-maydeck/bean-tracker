@@ -2,7 +2,7 @@
   import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import Icon from '#lib/components/Icon.svelte';
   import SampleNote from '#lib/components/SampleNote.svelte';
-  import { GEAR_KINDS, KIND_LABEL, fieldsFor, specText, shownTrophies, type GearKind } from '#lib/gear.ts';
+  import { GEAR_KINDS, KIND_LABEL, KIND_PLURAL, fieldsFor, specText, shownTrophies, type GearKind } from '#lib/gear.ts';
   import { formatDate } from '#lib/formatDate.ts';
   import Stamp from '#lib/components/Stamp.svelte';
   import { formatGrams } from '#lib/grams.ts';
@@ -27,8 +27,9 @@
     const next = GEAR_KINDS.filter((x) => (x === k ? !open.includes(x) : open.includes(x)));
     choose({ retired: next.length ? next : undefined });
   }
+  const slug = (k: GearKind) => KIND_PLURAL[k].toLowerCase();
   let current = $derived(list.find((t) => t.key === s.card));
-  const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
+  const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6, accessory: 2 } as const;
   const kindVars = (t: Trophy) => `--kc:var(--series-${KIND_COLOR[t.kind]});--kc-ink:var(--series-${KIND_COLOR[t.kind]}-ink)`;
 
   let dlg: HTMLDialogElement | undefined = $state();
@@ -146,12 +147,12 @@
   <div data-section="gear-trophies">
     <nav class="board-jump" aria-label="Jump to a section">
       <span>Jump to</span>
-      {#each sections as { kind } (kind)}<a href="#gear-{kind}s">{KIND_LABEL[kind]}s</a>{/each}
+      {#each sections as { kind } (kind)}<a href="#gear-{slug(kind)}">{KIND_PLURAL[kind]}</a>{/each}
     </nav>
     {#each sections as { kind, active, retired } (kind)}
       {@const shelf = !!s.retired?.includes(kind)}
-      <section class="chart-panel kind-section" data-section="gear-{kind}s">
-        <HeadingAnchor id="gear-{kind}s">{KIND_LABEL[kind]}s <span class="kind-count">{active.length}</span></HeadingAnchor>
+      <section class="chart-panel kind-section" data-section="gear-{slug(kind)}">
+        <HeadingAnchor id="gear-{slug(kind)}">{KIND_PLURAL[kind]} <span class="kind-count">{active.length}</span></HeadingAnchor>
         {#if active.length}{@render grid(active, false)}{/if}
         {#if retired.length}
           <button type="button" class="retired-toggle" aria-expanded={shelf} onclick={() => toggleShelf(kind)}>
@@ -208,7 +209,7 @@
           </article>
           {/if}
             {@render usage(t)}
-          {#if !editing && links[t.key]}<a class="stats-link" href={links[t.key]}>See stats for this gear</a>{/if}
+          {#if !editing && links[t.key] && t.kind !== 'accessory'}<a class="stats-link" href={links[t.key]}>See stats for this gear</a>{/if}
         </div>
         {#if leaving}
           <!-- Inside the dialog, so in the top layer; Escape = Keep editing (window keydown above). -->

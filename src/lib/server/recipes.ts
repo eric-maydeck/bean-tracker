@@ -13,7 +13,7 @@ import {
   type RecipeDef
 } from '#lib/recipes.ts';
 import { DEFAULT_NOTE_WORDS, parseNoteWords, type NoteWord } from '#lib/agitation.ts';
-import { parseMethod } from './insights/facts';
+import { gearOfRow, loadToolKinds, toolColumns, type ToolKind } from './brewGear';
 import { bcLocalTime } from './insights/time';
 
 export class RecipeError extends Error {}
@@ -107,11 +107,12 @@ export const lockedDrippers = (db: DatabaseSync): string[] =>
 export function listDrippers(db: DatabaseSync): string[] {
   const rows = db
     .prepare(
-      `SELECT DISTINCT m.name method, m.preparation_tools tools
+      `SELECT DISTINCT m.name method, m.preparation_tools tools, ${toolColumns()}
        FROM beanconqueror_brews b JOIN beanconqueror_methods m ON m.id = b.preparation_id`
     )
-    .all() as { method: string | null; tools: string | null }[];
-  return [...new Set(rows.flatMap((r) => parseMethod(r.method, r.tools).dripper ?? []))].sort();
+    .all() as { method: string | null; tools: string | null; ticked: string | null; mtools: string | null }[];
+  const kinds = loadToolKinds(db);
+  return [...new Set(rows.flatMap((r) => gearOfRow(r, kinds).dripper ?? []))].sort();
 }
 
 /** Which recipes a structure's brews now match, with brew counts. */
@@ -138,7 +139,7 @@ export function rematchBrews(db: DatabaseSync, brewIds?: number[]): number {
   const rows = db
     .prepare(
       `SELECT b.id, b.notes, b.brew_temperature temp, r.reading, r.pour_count,
-              m.name method, m.preparation_tools tools
+              m.name method, m.preparation_tools tools, ${toolColumns()}
        FROM beanconqueror_brews b LEFT JOIN brew_pour_readings r ON r.bc_uuid = b.bc_uuid
        LEFT JOIN beanconqueror_methods m ON m.id = b.preparation_id ${where}`
     )
@@ -150,7 +151,10 @@ export function rematchBrews(db: DatabaseSync, brewIds?: number[]): number {
     pour_count: number | null;
     method: string | null;
     tools: string | null;
+    ticked: string | null;
+    mtools: string | null;
   }[];
+  const kinds = loadToolKinds(db);
   const own = !db.isTransaction;
   if (own) db.exec('BEGIN');
   try {
@@ -164,7 +168,7 @@ export function rematchBrews(db: DatabaseSync, brewIds?: number[]): number {
           notes: r.notes,
           reading: parseReading(r.reading, r.pour_count),
           tempC: r.temp && r.temp > 0 ? r.temp : null,
-          dripper: parseMethod(r.method, r.tools).dripper
+          dripper: gearOfRow(r, kinds).dripper
         },
         recipes,
         locked
@@ -202,6 +206,8 @@ interface GroupRow {
   temp: number | null;
   method: string | null;
   tools: string | null;
+  ticked: string | null;
+  mtools: string | null;
   water: string | null;
   matched: number;
 }
@@ -224,7 +230,7 @@ function groupRows(db: DatabaseSync): Map<string, GroupRow[]> {
   const rows = db
     .prepare(
       `SELECT r.structure_key key, r.reading, b.notes, b.rating, b.brew_temperature temp,
-              m.name method, m.preparation_tools tools, COALESCE(w.name, b.water) water,
+              m.name method, m.preparation_tools tools, ${toolColumns()}, COALESCE(w.name, b.water) water,
               EXISTS (SELECT 1 FROM brew_recipe_matches x WHERE x.brew_id = b.id) matched
        FROM brew_pour_readings r
        JOIN beanconqueror_brews b ON b.bc_uuid = r.bc_uuid
@@ -241,12 +247,12 @@ function groupRows(db: DatabaseSync): Map<string, GroupRow[]> {
 }
 
 /** Fields shared by at least 80% of the rows. */
-function commonOf(rows: GroupRow[]): string[] {
+function commonOf(rows: GroupRow[], kinds: Map<string, ToolKind>): string[] {
   const shared = (vals: (string | null)[]) => {
     const v = mostCommon(vals.filter((x): x is string => !!x));
     return v && vals.filter((x) => x === v).length >= rows.length * 0.8 ? v : null;
   };
-  const gear = rows.map((r) => parseMethod(r.method, r.tools));
+  const gear = rows.map((r) => gearOfRow(r, kinds));
   return [shared(gear.map((g) => g.dripper)), shared(gear.map((g) => g.filter)), shared(rows.map((r) => r.water))].filter(
     (x): x is string => x != null
   );
@@ -254,6 +260,7 @@ function commonOf(rows: GroupRow[]): string[] {
 
 export function discoverGroups(db: DatabaseSync): Group[] {
   const out: Group[] = [];
+  const kinds = loadToolKinds(db);
   for (const [key, rows] of groupRows(db)) {
     if (rows.length < MIN_GROUP || mostlyMatched(rows)) continue;
     const words = rows.flatMap((r) => {
@@ -276,7 +283,7 @@ export function discoverGroups(db: DatabaseSync): Group[] {
       tagged: words.length,
       suggestedName: mostCommon(words),
       suggestedPhrase: mostCommon(phrases),
-      common: commonOf(rows),
+      common: commonOf(rows, kinds),
       description: describeRecipe(draft),
       draft,
       timeline: recipeTimeline(draft)
@@ -343,7 +350,7 @@ export function brewsFor(db: DatabaseSync, item: Item, order: 'latest' | 'top' =
     .prepare(
       `SELECT b.bc_created_at at, COALESCE(c.coffee_name, bean.name) coffee, c.slug, b.rating,
               rec.name recipe, x.how, x.diffs, r.reading, r.pour_count,
-              m.name method, m.preparation_tools tools
+              m.name method, m.preparation_tools tools, ${toolColumns()}
        FROM beanconqueror_brews b
        LEFT JOIN brew_pour_readings r ON r.bc_uuid = b.bc_uuid
        LEFT JOIN brew_recipe_matches x ON x.brew_id = b.id
@@ -365,7 +372,10 @@ export function brewsFor(db: DatabaseSync, item: Item, order: 'latest' | 'top' =
     pour_count: number | null;
     method: string | null;
     tools: string | null;
+    ticked: string | null;
+    mtools: string | null;
   }[];
+  const kinds = loadToolKinds(db);
   const def = 'recipe' in item ? listRecipes(db).find((x) => x.id === item.recipe)?.def : undefined;
   return rows.map((r) => {
     const reading = parseReading(r.reading, r.pour_count);
@@ -381,7 +391,7 @@ export function brewsFor(db: DatabaseSync, item: Item, order: 'latest' | 'top' =
         r.how === 'logged' ? r.recipe : r.how === 'match' ? `looks like ${r.recipe}` : `looks like ${r.recipe} (modified: ${mods.join(', ')})`;
       for (const d of diffs) if (!d.modified) label += ` · ${d.text}`;
     }
-    const g = parseMethod(r.method, r.tools);
+    const g = gearOfRow(r, kinds);
     return {
       date: bcLocalTime(r.at).slice(0, 10),
       coffeeName: r.coffee,

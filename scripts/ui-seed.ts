@@ -369,6 +369,17 @@ rematchBrews(db);
 db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
   VALUES ('m12', 'CUSTOM_PREPARATION', 'Origami - Sibarist Fast', 'POUR OVER', ?)`).run(now);
 bnBrew.run(atLocal(9, 9, 30), 'bean-bn-1', 'm12', 'g2', '1.3.0', 15, 90, 250, null, 0, null, now);
+// A method of its own (no other brews) with tools: one brew ticks a catalog filter and a non-catalog tool beside it (an Accessory card, Switch base),
+// another ticks two catalog filters (the /gear two-filters line). Unrated, so rated stats stay as they were.
+db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
+  VALUES ('m20', 'CUSTOM_PREPARATION', 'Seed Wave', 'POUR OVER', ?)`).run(now);
+db.prepare(`INSERT INTO beanconqueror_method_tools (uuid, method_id, name) VALUES ('tool-abaca', 'm20', 'Abaca'), ('tool-abaca-plus', 'm20', 'Abaca+'), ('tool-base', 'm20', 'Switch base')`).run();
+bnBrew.run(atLocal(40, 9, 0), 'bean-bn-1', 'm20', 'g2', '1.3.0', 15, 90, 250, null, 0, null, now);
+bnBrew.run(atLocal(41, 9, 0), 'bean-bn-1', 'm20', 'g2', '1.3.0', 15, 90, 250, null, 0, null, now);
+const waveIds = (db.prepare(`SELECT id FROM beanconqueror_brews WHERE preparation_id = 'm20' ORDER BY id`).all() as { id: number }[]).map((r) => r.id);
+db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = 'brew-wave-1' WHERE id = ?`).run(waveIds[0]);
+db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = 'brew-wave-2' WHERE id = ?`).run(waveIds[1]);
+db.prepare(`INSERT INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES ('brew-wave-1', 'tool-abaca'), ('brew-wave-1', 'tool-base'), ('brew-wave-2', 'tool-abaca'), ('brew-wave-2', 'tool-abaca-plus')`).run();
 // A third grinder with a brew on a linked bag but no grind setting: pickable, with no grind data.
 bnBrew.run(atLocal(2, 8, 0), 'bean-bn-1', 'm4', 'g3', null, 15, 93, 250, 7, 0, null, now);
 // Brew now marks on bag 2: one linked to the first Origami brew (grind and temp changed), one pending after the last brew.

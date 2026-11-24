@@ -4,7 +4,7 @@ import { toOrigin } from '#lib/server/roasterWebsites.ts';
 import { suggest } from '#lib/server/imageSuggest/index.ts';
 import { GEAR_KINDS, type GearKind } from '#lib/gear.ts';
 
-const TERM: Record<GearKind, string> = { dripper: 'dripper', grinder: 'coffee grinder', filter: 'coffee filter' };
+const TERM: Record<GearKind, string> = { dripper: 'dripper', grinder: 'coffee grinder', filter: 'coffee filter', accessory: 'coffee accessory' };
 
 // The gear form's Suggest: the coffee one's search, worded for gear. POST, so SvelteKit's CSRF check covers it.
 export const POST: RequestHandler = async ({ request, locals }) => {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createDb } from '#lib/server/db.ts';
 import { MIXED_FILTER, type BrewFact } from './facts';
 import type { GearDetail } from '#lib/server/gearDetails.ts';
-import { gearArchive, trophyCase, type GearArchive } from './trophies';
+import { gearArchive, gearPanel, trophyCase, type GearArchive } from './trophies';
 
 let n = 0;
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -11,7 +11,7 @@ const brew = (o: Partial<BrewFact>): BrewFact => ({
   grind: null, dripper: null, filter: null, water: null, waterProfile: null, restDays: null, costPerBrew: null, brewTimeSeconds: null,
   bloomSeconds: null, grinder: null, hasNote: false, brewIndex: 0, tempC: null, ...o
 });
-const none: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set() };
+const none: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set(), accessory: new Set() };
 const T = '2026-10-22';
 const ago = (d: number) => new Date(Date.parse(T) - d * 864e5).toISOString().slice(0, 10);
 
@@ -26,6 +26,12 @@ describe('trophyCase', () => {
     expect(v60).toMatchObject({ kind: 'dripper', name: 'V60', brews: 3, grams: 31, rating: 7, best: 8, bags: 2, days: 3,
       firstUsed: '2026-10-01', lastUsed: '2026-10-21', favorite: { name: 'Abaca', brews: 2 }, retired: false });
     expect(trophyCase(xs, none, T).map((t) => t.key)).toEqual(['dripper-v60', 'filter-abaca', 'filter-sibarist', 'grinder-zp6']);
+  });
+  it('accessories get their own card; the Stats gear panel leaves them out', () => {
+    const xs = [brew({ dripper: 'Switch', filters: ['Abaca'], accessories: ['Switch base'] })];
+    const cards = trophyCase(xs, { ...none, tools: new Set(['Switch base']) }, T);
+    expect(cards.find((t) => t.kind === 'accessory')).toMatchObject({ key: 'accessory-switch-base', name: 'Switch base', brews: 1, tool: true });
+    expect(gearPanel(cards)!.map((c) => c.kind)).not.toContain('accessory');
   });
   it('gear names that slug alike still get unique keys (a duplicate key crashes the Gear tab)', () => {
     const xs = ['Cafec Abaca', 'Cafec Abaca+', 'cafec abaca', 'Cafec-Abaca'].map((filter) => brew({ dripper: 'V60', filter }));
@@ -113,6 +119,21 @@ describe('gearArchive', () => {
     expect([...a.dripper]).toEqual([]);
     expect([...a.filter]).toEqual(['Abaca']);
     expect([...a.grinder]).toEqual(['ZP6']);
+  });
+
+  it('a filter tool is archived only when every method carrying it is archived; tools lists ticked names', () => {
+    const db = createDb(':memory:');
+    const m = db.prepare(`INSERT INTO beanconqueror_methods (id, name, preparation_style, preparation_tools, bc_archived, imported_at) VALUES (?, ?, 'POUR OVER', '', ?, '2026-10-09')`);
+    m.run('m1', 'V60 02', 1); m.run('m2', 'V60 03', 0);
+    const t = db.prepare(`INSERT INTO beanconqueror_method_tools (uuid, method_id, name, archived, bc_created_at) VALUES (?, ?, ?, ?, ?)`);
+    t.run('t1', 'm1', 'Cafec Abaca', 1, '2026-01-01'); t.run('t2', 'm2', 'Cafec Abaca', 0, '2026-02-01');
+    db.prepare(`INSERT INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES ('b1', 't1')`).run();
+    const a = gearArchive(db);
+    expect(a.filter.has('Cafec Abaca')).toBe(false);
+    expect(a.added!.get('filter\0Cafec Abaca')).toBe('2026-01-01');
+    expect([...a.tools!]).toEqual(['Cafec Abaca']);
+    db.prepare(`UPDATE beanconqueror_method_tools SET archived = 1`).run();
+    expect(gearArchive(db).filter.has('Cafec Abaca')).toBe(true);
   });
 
   it('marks adjustable grinders on the archive and their trophies, no one else', () => {

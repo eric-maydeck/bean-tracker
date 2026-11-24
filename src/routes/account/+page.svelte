@@ -202,7 +202,8 @@
   {/if}
   <p class="text-muted">
     In Bean Conqueror: Settings → Export, then pick Beanconqueror.zip here. Do this before or after the flow upload;
-    brews and flows join up either way.
+    brews and flows join up either way. How to set up filters:
+    <a href="https://github.com/eric-maydeck/bean-tracker#bean-conqueror-filters" target="_blank" rel="noopener">Bean Conqueror filters</a>.
   </p>
 
   {#if data.warnings.length || data.waterWarnings.length}

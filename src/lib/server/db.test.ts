@@ -24,8 +24,10 @@ describe('createDb', () => {
       'beanconqueror_bean_origins',
       'beanconqueror_beans',
       'beanconqueror_brew_flows',
+      'beanconqueror_brew_tools',
       'beanconqueror_brews',
       'beanconqueror_grinders',
+      'beanconqueror_method_tools',
       'beanconqueror_methods',
       'beanconqueror_waters',
       'brew_now_marks',
@@ -46,6 +48,7 @@ describe('createDb', () => {
       'short_links',
       'slug_redirects',
       'subscriptions',
+      'tool_kinds',
       'user_kv'
     ]);
   });
@@ -409,6 +412,21 @@ describe('image_copies gear kind', () => {
     applySchema(db);
     db.prepare(`INSERT INTO image_copies VALUES ('g', 'gear', 'g.webp')`).run();
     expect(db.prepare(`SELECT COUNT(*) AS n FROM image_copies`).get()).toEqual({ n: 2 });
+  });
+});
+
+describe('gear_details kind CHECK removal', () => {
+  it('accepts a new kind, and rebuilds an older CHECK table keeping its rows', () => {
+    const db = createDb(':memory:');
+    const ins = `INSERT INTO gear_details (kind, name, created_at, updated_at) VALUES (?, ?, 'x', 'x')`;
+    db.prepare(ins).run('accessory', 'Scale');
+    db.exec(`DROP TABLE gear_details; CREATE TABLE gear_details (kind TEXT NOT NULL CHECK (kind IN ('dripper', 'grinder', 'filter')),
+      name TEXT NOT NULL, fields TEXT NOT NULL DEFAULT '{}', image_url TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+      PRIMARY KEY (kind, name))`);
+    db.prepare(ins).run('dripper', 'Graycano');
+    applySchema(db);
+    expect(db.prepare(`SELECT kind, name FROM gear_details`).all()).toEqual([{ kind: 'dripper', name: 'Graycano' }]);
+    db.prepare(ins).run('accessory', 'Scale');
   });
 });
 
