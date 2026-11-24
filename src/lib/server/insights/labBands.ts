@@ -1,5 +1,5 @@
 import { DOSE_BANDS } from '#lib/insightsUrl.ts';
-import { grindKey, grindValue, MIXED_FILTER, type BrewFact } from './facts';
+import { grindKey, grindValue, type BrewFact } from './facts';
 
 // Brewing lab bands (spec "Bands"): a brew's band for one variable, or null when the value isn't
 // entered (facts already turn zeros into null) or the brew is outside the variable (another grinder).
@@ -88,7 +88,7 @@ export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): B
     case 'rest': return b.restDays === null || b.restDays < 0 ? null : cut(b.restDays, [22, 31, 46, 61, 91], REST_LABELS);
     case 'water': return cat(b.water);
     case 'dripper': return cat(b.dripper);
-    case 'filter': return b.filter === MIXED_FILTER ? null : cat(b.filter);
+    case 'filter': return cat(b.filter);
     case 'gh': return exact(profileOf(b)?.gh ?? null, 1, (v) => `${v}ppm`); // W5: one band per GH value used
     case 'brewNo': return b.brewIndex < 1 ? null : { label: BREW_NO_LABELS[Math.min(b.brewIndex, 10) - 1], order: Math.min(b.brewIndex, 10) };
   }

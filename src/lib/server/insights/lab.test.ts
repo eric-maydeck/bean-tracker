@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { restZ, strengthOf } from './stats';
 import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, matchesCoffee, labFn, labOptions, matchesBrew, exceptOwn, ladder, HEAD_FIT, MAYBE_FIT, TIE_MARGIN, mightBe, thinOf, tieHead, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
-import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
+import type { BagFact, BrewFact } from './facts';
 import type { BandStat } from './lab';
 
 let n = 0;
@@ -696,13 +696,13 @@ describe('ranked', () => {
 describe('gearTab', () => {
   const rows = [1, 2, 3].flatMap((id) => [...many(10, id, 92, 8, { dripper: 'V60', filter: 'Abaca', roastLevel: 'Light' }),
     ...many(10, id, 92, 7, { dripper: 'Origami', filter: 'Abaca', roastLevel: 'Light' }),
-    ...many(2, id, 92, 7, { dripper: 'Gabi Master A', filter: '155 (mixed)', roastLevel: 'Light' })]);
+    ...many(2, id, 92, 7, { dripper: 'Gabi Master A', filter: 'Kalita', roastLevel: 'Light' })]);
   const g = gearTab(rows, [], { period: P, ratings: 'all' });
   it('drippers ranked by same-bag delta; spread = consistency', () => {
     expect(g.drippers.map((d) => d.label)).toEqual(['V60', 'Origami', 'Gabi Master A']);
     expect(g.drippers[0].spread).not.toBeNull();
   });
-  it('filters leave the mixed filter out', () => expect(g.filters.map((f) => f.label)).toEqual(['Abaca']));
+  it('filters', () => expect(g.filters.map((f) => f.label)).toEqual(['Abaca', 'Kalita']));
   it('dripper × roast level', () => expect(g.byRoast!.cols).toEqual(['V60', 'Origami', 'Gabi Master A']));
   it('filters within each dripper: same bag, same dripper; rows = drippers with rated brews on ≥ 2 filters', () => {
     expect(g.matrix).toBeNull(); // every dripper here uses one filter
@@ -856,12 +856,12 @@ describe('topBags like line', () => {
 });
 
 describe('matchesBrew', () => {
-  it('matches each set key; null and mixed never match', () => {
+  it('matches each set key; null never matches', () => {
     expect(matchesBrew({ dripper: 'V60' })(brew({ dripper: 'V60' }))).toBe(true);
     expect(matchesBrew({ dripper: 'V60' })(brew({ dripper: 'Origami' }))).toBe(false);
     const paper = matchesBrew({ filter: 'Paper' });
     expect(paper(brew({ filter: 'Paper' }))).toBe(true);
-    expect(paper(brew({ filter: MIXED_FILTER }))).toBe(false);
+    expect(paper(brew({ filter: 'Other' }))).toBe(false);
     expect(paper(brew({ filter: null }))).toBe(false);
     expect(matchesBrew({ brewDose: '18' })(brew({ dose: 18.5 }))).toBe(true);
     expect(matchesBrew({ brewDose: '18' })(brew({ dose: null }))).toBe(false);
@@ -880,14 +880,14 @@ describe('matchesBrew', () => {
 });
 
 describe('labOptions brew values', () => {
-  it('lists present values, no mixed, no null', () => {
+  it('lists present values, no null', () => {
     const o = labOptions([
       brew({ dripper: 'V60', filter: 'Paper', dose: 15, tempC: 93, water: 'A' }),
-      brew({ dripper: 'Origami', filter: MIXED_FILTER, dose: 20.5, tempC: 92.5, water: null }),
+      brew({ dripper: 'Origami', filter: 'Kalita', dose: 20.5, tempC: 92.5, water: null }),
       brew({ dripper: 'V60', filter: null, dose: null, tempC: null })
     ], []);
     expect(o.drippers).toEqual(['Origami', 'V60']);
-    expect(o.filters).toEqual(['Paper']);
+    expect(o.filters).toEqual(['Kalita', 'Paper']);
     expect(o.waters).toEqual(['A']);
     expect(o.doses).toEqual(['15', '20']);
     expect(o.temps).toEqual(['92.5', '93']);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { setBrewingZone } from '#lib/localDate.ts';
-import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, rpmOf, brewerType, grindKey, grindValue, MIXED_FILTER, waitBucket, windowState } from './facts';
+import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, rpmOf, brewerType, grindKey, grindValue, waitBucket, windowState } from './facts';
 import { createDb } from '#lib/server/db.ts';
 import { createCoffee } from '#lib/server/coffees.ts';
 import { createSubscription } from '#lib/server/subscriptions.ts';
@@ -12,7 +12,7 @@ const METHODS: [string, string, string, string][] = [
   ['Alpha Switch - Sibarist Fast', 'Sibarist Fast filters', 'Alpha Switch', 'Sibarist Fast'],
   ['Alpha Tritan - Cafec Abaca', 'Cafec Abaca filters', 'Alpha Tritan', 'Cafec Abaca'],
   ['CT62 - Cafec Abaca', 'Cafec Abaca filters', 'CT62', 'Cafec Abaca'],
-  ['Gabi Master A', 'Kalita Wave 155 filters', 'Gabi Master A', '155 (mixed)'],
+  ['Gabi Master A', 'Kalita Wave 155 filters', 'Gabi Master A', 'Kalita Wave 155'],
   ['Graycano - Cafec Abaca', 'Cafec Abaca filters', 'Graycano', 'Cafec Abaca'],
   ['Graycano - Sibarist Fast', 'Sibarist Fast filters', 'Graycano', 'Sibarist Fast'],
   ['MK PRO V - Cafec Abaca', 'Cafec Abaca filters', 'MK PRO V', 'Cafec Abaca'],
@@ -34,7 +34,6 @@ const METHODS: [string, string, string, string][] = [
 describe('parseMethod', () => {
   it('covers all 22 prod methods', () => expect(METHODS).toHaveLength(22));
   it.each(METHODS)('%s', (name, tools, dripper, filter) => expect(parseMethod(name, tools)).toEqual({ dripper, filter }));
-  it('Gabi Master A is the mixed 155 filter', () => expect(parseMethod('Gabi Master A', null).filter).toBe(MIXED_FILTER));
   it('no " - ": filter from the tools, minus " filters"', () =>
     expect(parseMethod('Kalita Wave', 'Kalita Wave 185 filters')).toEqual({ dripper: 'Kalita Wave', filter: 'Kalita Wave 185' }));
   it('no " - " and no tools: no filter', () => expect(parseMethod('Aeropress', null)).toEqual({ dripper: 'Aeropress', filter: null }));

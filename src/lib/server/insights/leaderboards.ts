@@ -2,7 +2,7 @@ import { BOARDS, LIKE_BOARDS, boardAvg, lowFirst, type Avg, type Board, type By,
 import { toParams } from '#lib/coffeeViewState.ts';
 import type { ColumnKey, Filter } from '#lib/coffeeFilters.ts';
 import type { LabFilters } from './lab';
-import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
+import { roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { autoBy, daysBetween, inPeriod, trackedBounds, type Period } from './time';
 import { bucketLabels, bucketTitles, buckets } from './consumption';
 import { ADJUSTED_K, RATINGS_SETTLED_FROM, bagSizes, countsForRating, ratedGroups } from './ratings';
@@ -45,7 +45,7 @@ export const BREW_KEY: Record<Board, (b: BrewFact) => string | null> = {
   roast: (b) => b.roastLevel,
   water: (b) => b.water,
   dripper: (b) => b.dripper,
-  filter: (b) => (b.filter === MIXED_FILTER ? null : b.filter),
+  filter: (b) => b.filter,
   grinder: (b) => b.grinder,
   varieties: (b) => b.variety?.trim() || null,
   producers: (b) => b.producer?.trim() || null,

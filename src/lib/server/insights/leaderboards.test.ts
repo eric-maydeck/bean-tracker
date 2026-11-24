@@ -114,8 +114,6 @@ describe('leaderboard', () => {
   });
   it('origins skip N/A', () =>
     expect(leaderboard(BREWS, BAGS, SEPT, 'origins', 'brews', 'all', 'raw').map((r) => r.label)).toEqual(['Kenya']));
-  it('filter board leaves out the mixed 155 filter', () =>
-    expect(leaderboard([brew({ filter: '155 (mixed)' })], [], SEPT, 'filter', 'brews', 'all', 'raw')).toEqual([]));
   it('coffees: name, roaster, link, one-bag sample', () =>
     expect(leaderboard(BREWS, BAGS, SEPT, 'coffees', 'rating', 'all', 'raw')[0]).toEqual({
       key: '1', label: 'Kiambu', sub: 'Sey', href: '/coffees/sey-kiambu', value: 8.5, bags: 1, brews: 2, sample: { bags: 1, brews: 2, small: true, one: true }

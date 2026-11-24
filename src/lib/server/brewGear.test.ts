@@ -34,8 +34,8 @@ describe('readGear', () => {
       dripper: 'ORB Long Soup', filter: null, filters: [], accessories: ['Aeropress']
     });
   });
-  it('keeps the mixed filter for Gabi Master A', () => {
-    expect(readGear('Gabi Master A', four, [], kinds(), null)).toMatchObject({ dripper: 'Gabi Master A', filter: '155 (mixed)' });
+  it('a method with no filter in its name reads the ticked filter', () => {
+    expect(readGear('Gabi Master A', four, ['Kalita Wave 155'], kinds(), null)).toMatchObject({ dripper: 'Gabi Master A', filter: 'Kalita Wave 155' });
   });
 });
 

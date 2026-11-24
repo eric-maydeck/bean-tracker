@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { isCatalogFilter } from '#lib/filterCatalog.ts';
-import { parseMethod, MIXED_FILTER } from './insights/facts';
+import { parseMethod } from './insights/facts';
 
 export type ToolKind = 'filter' | 'accessory';
 export interface BrewGear { dripper: string | null; filter: string | null; filters: string[]; accessories: string[] }
@@ -35,7 +35,6 @@ export function readGear(method: string | null, methodTools: string[], ticked: s
   if (!method) return pick(null, [], []);
   if (ticked.length) return pick(method.trim(), ticked.filter((n) => isFilter(kinds, n)), ticked.filter((n) => !isFilter(kinds, n)));
   const old = parseMethod(method, legacyTools);
-  if (old.filter === MIXED_FILTER) return { ...old, filters: [MIXED_FILTER], accessories: [] };
   if (methodTools.length >= 2) return pick(method.trim(), methodTools.filter((n) => isFilter(kinds, n)), []);
   if (old.filter && !isFilter(kinds, old.filter)) return pick(old.dripper, [], [old.filter]);
   return pick(old.dripper, old.filter ? [old.filter] : [], []);

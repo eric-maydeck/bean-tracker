@@ -110,8 +110,8 @@ describe('firsts', () => {
       .toEqual(['First brew from origin: Kenya', 'First Washed coffee', 'First Light roast', 'First brew with filter: Abaca', 'First decaf brew']);
     expect(keys(firstEvents([at('2026-02-09', { processGroup: 'Other / Unknown' })], BAGS)).some((k) => k.startsWith('first:process'))).toBe(false);
   });
-  it('N/A origin and the mixed filter are skipped', () => {
-    const ev = firstEvents([at('2026-02-09', { origin: 'N/A', filter: '155 (mixed)' })], BAGS);
+  it('N/A origin is skipped', () => {
+    const ev = firstEvents([at('2026-02-09', { origin: 'N/A', filter: null })], BAGS);
     expect(keys(ev).filter((k) => /origin|filter/.test(k))).toEqual([]);
   });
   it('nth roaster / origin ever on the bag ladder', () => {

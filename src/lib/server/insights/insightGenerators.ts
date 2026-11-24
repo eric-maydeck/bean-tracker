@@ -4,7 +4,7 @@ import { likeGap as gapText } from '#lib/components/deltaColor.ts'; // like gaps
 import { formatGrams } from '#lib/grams.ts';
 import { formatDays } from '#lib/hours.ts';
 import type { WhatIf } from '#lib/insightsWhatIf.ts';
-import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
+import { grindValue, restDays, type BagFact, type BrewFact } from './facts';
 import { bagSizes, countsForRating, fullBags } from './ratings';
 import { SETTLE_WINDOW, settleWithin } from './dialed';
 import { bagWeight, brewZ, demeaned, effN, mean, wmean, weightedMedian, MIN_BAGS, MIN_BREWS, partialR, pearson, rBand, restZ, sd, spearman, solidBar, strengthOf, type Strength } from './stats';
@@ -655,7 +655,7 @@ const gearEras: Generator = (c) => ERA_DIMS.flatMap(([dim, name]): Finding[] => 
 const TIE = 0.1, TIE_BAND = 0.25;
 const SAME_BAG = ['grinder', 'water', 'dripper', 'filter'] as const;
 const sameBagVersus: Generator = (c) => SAME_BAG.flatMap((dim) => {
-  const val = (b: BrewFact) => (b[dim] && b[dim] !== MIXED_FILTER ? b[dim] : null);
+  const val = (b: BrewFact) => (b[dim] || null);
   const [a, b] = [...groupBy(c.brews, val)].sort((x, y) => y[1].length - x[1].length || x[0].localeCompare(y[0])).map(([k]) => k);
   if (!b) return [];
   const rs = counted(c).filter((x) => x.coffeeId !== null && (val(x) === a || val(x) === b));

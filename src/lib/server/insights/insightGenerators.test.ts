@@ -2,7 +2,7 @@ import { likeGap } from '#lib/components/deltaColor.ts';
 import { describe, it, expect } from 'vitest';
 import { leaderboard } from './leaderboards';
 import { GENERATORS, monthlyMulti, insightsTab, settleGroups, settlePositions, rescueOdds, settleEvidence, POUR_FINDINGS_MAX, type Finding, type GenCtx, type Generator } from './insightGenerators';
-import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
+import type { BagFact, BrewFact } from './facts';
 import { addDays } from './time';
 import { loggedGrams } from './overview';
 import { formatGrams } from '#lib/grams.ts';
@@ -506,8 +506,6 @@ describe('same-bag versus', () => {
     expect(gen('sameBagVersus:dripper', mk(6, [7.9, 8.1], [7.9, 8.1]))).toMatchObject({ headline: 'Origami and V60 tie', z: null, strength: null }));
   it('a small gap on noisy data is too early, not a tie', () =>
     expect(gen('sameBagVersus:dripper', mk(6, [7, 9], [7.05, 9.05]))).toMatchObject({ headline: 'Origami and V60 look even', strength: 'early' }));
-  it('the mixed 155 filter is left out', () =>
-    expect(gen('sameBagVersus:filter', mk(6, [8.2, 8.4], [7.6, 7.8]).map((b) => ({ ...b, filter: b.dripper === 'V60' ? 'Abaca' : MIXED_FILTER })))).toBeNull());
   it('null under 30 brews a side', () => expect(gen('sameBagVersus:dripper', mk(2, [8.2, 8.4], [7.6, 7.8]))).toBeNull());
 });
 
