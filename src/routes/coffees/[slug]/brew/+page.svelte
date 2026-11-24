@@ -227,7 +227,7 @@
       </div>
       {@const sug = data.suggestedRecipe}
       {#if p.key === 'recipe' && sug && data.recipe && sug.slug !== data.recipe.slug}
-        <p class="pk2-hint">Suggested for this setup: <button type="button" class="pk2-link" onclick={() => go({ recipe: sug.slug })}>{sug.name}</button></p>
+        <p class="pk2-hint"><Icon name="sparkle" /><span>Suggested for this setup:</span><button type="button" class="pk2-chip pk2-sug" onclick={() => go({ recipe: sug.slug })}>{sug.name}</button></p>
       {/if}
     {/each}
     {#if data.options.doses.length}
@@ -521,8 +521,10 @@
   .rsteps li { display: contents; }
   .step-time { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
   .step-time.low { width: fit-content; text-decoration: underline dotted; }
-  .pk2-hint { margin: calc(-1 * var(--space-2)) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
-  .pk2-link { min-height: 44px; padding: 0; background: none; border: 0; font: inherit; font-size: 1rem; font-weight: 700; color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; text-align: left; } /* attention label: bigger, bold, accent (ui.md) */
+  /* A warm callout (the badge-warm tint), the name a chip like the ones above; tapping it switches. */
+  .pk2-hint { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0; padding: var(--space-1) var(--space-3); border-radius: var(--radius); background: color-mix(in srgb, var(--color-warm) 18%, var(--color-surface)); font-size: 0.9rem; }
+  .pk2-hint :global(svg) { width: 1.1rem; height: 1.1rem; flex: none; color: var(--color-warm); }
+  .pk2-sug { max-width: 100%; white-space: normal; text-align: left; font-weight: 700; }
   .rsteps li > span:last-child::first-letter { text-transform: uppercase; } /* sentences; display only, the stored text stays as written */
   .pk2-none { align-self: center; }
   #bn-open-title .line { display: block; }
