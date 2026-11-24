@@ -363,15 +363,22 @@ for (let j = 0; j < 3; j++) // Origami brews (no gear_details row, so isolated)
 // The first three of those A4Z brews carry the "seedlow" tag: logged with "Seed low agitation" (ratio 1:16.8 against their 1:16.7),
 // so Brew now's Your brews / As written switch shows for it.
 db.prepare(`UPDATE beanconqueror_brews SET notes = 'seedlow' WHERE bean_id = 'bean-bn-1' AND preparation_id = 'm4' AND mill_id = 'g2' AND notes IS NULL AND rating IS NOT NULL`).run();
-// One Origami brew ticks a catalog filter and a non-catalog tool beside it, so /gear shows an Accessory card (Switch base) and a tool-kind select.
-db.prepare(`INSERT INTO beanconqueror_method_tools (uuid, method_id, name) VALUES ('tool-abaca', 'm3', 'Abaca'), ('tool-base', 'm3', 'Switch base')`).run();
-db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = 'brew-tools' WHERE id = (SELECT MIN(id) FROM beanconqueror_brews WHERE preparation_id = 'm3' AND bean_id = 'bean-bn-1')`).run();
-db.prepare(`INSERT INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES ('brew-tools', 'tool-abaca'), ('brew-tools', 'tool-base')`).run();
 rematchBrews(db);
 // One unrated brew with a second filter on the Origami (brew-now-filter-keeps-dripper picks it: filters follow the dripper).
 db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
   VALUES ('m12', 'CUSTOM_PREPARATION', 'Origami - Sibarist Fast', 'POUR OVER', ?)`).run(now);
 bnBrew.run(atLocal(9, 9, 30), 'bean-bn-1', 'm12', 'g2', '1.3.0', 15, 90, 250, null, 0, null, now);
+// A method of its own (no other brews) with tools: one brew ticks a catalog filter and a non-catalog tool beside it (an Accessory card, Switch base),
+// another ticks two catalog filters (the /gear two-filters line). Unrated, so rated stats stay as they were.
+db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
+  VALUES ('m20', 'CUSTOM_PREPARATION', 'Seed Wave', 'POUR OVER', ?)`).run(now);
+db.prepare(`INSERT INTO beanconqueror_method_tools (uuid, method_id, name) VALUES ('tool-abaca', 'm20', 'Abaca'), ('tool-abaca-plus', 'm20', 'Abaca+'), ('tool-base', 'm20', 'Switch base')`).run();
+bnBrew.run(atLocal(40, 9, 0), 'bean-bn-1', 'm20', 'g2', '1.3.0', 15, 90, 250, null, 0, null, now);
+bnBrew.run(atLocal(41, 9, 0), 'bean-bn-1', 'm20', 'g2', '1.3.0', 15, 90, 250, null, 0, null, now);
+const waveIds = (db.prepare(`SELECT id FROM beanconqueror_brews WHERE preparation_id = 'm20' ORDER BY id`).all() as { id: number }[]).map((r) => r.id);
+db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = 'brew-wave-1' WHERE id = ?`).run(waveIds[0]);
+db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = 'brew-wave-2' WHERE id = ?`).run(waveIds[1]);
+db.prepare(`INSERT INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES ('brew-wave-1', 'tool-abaca'), ('brew-wave-1', 'tool-base'), ('brew-wave-2', 'tool-abaca'), ('brew-wave-2', 'tool-abaca-plus')`).run();
 // A third grinder with a brew on a linked bag but no grind setting: pickable, with no grind data.
 bnBrew.run(atLocal(2, 8, 0), 'bean-bn-1', 'm4', 'g3', null, 15, 93, 250, 7, 0, null, now);
 // Brew now marks on bag 2: one linked to the first Origami brew (grind and temp changed), one pending after the last brew.

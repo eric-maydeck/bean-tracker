@@ -25,7 +25,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   if (body?.toolKind !== undefined && !toolKind) return bad('Unknown tool kind');
   const db = getDb();
   saveGearDetails(db, { kind, name, values: parsed.values, imageUrl: url || null });
-  if (toolKind && toolKind !== kind) setToolKind(db, name, toolKind);
+  if (toolKind && toolKind !== kind && (kind === 'filter' || kind === 'accessory')) setToolKind(db, name, toolKind);
   void queueFillMissing(db);
   return Response.json({ ok: true });
 };

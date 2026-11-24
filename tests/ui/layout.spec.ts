@@ -11339,9 +11339,15 @@ export const STATES: State[] = [
       await page.goto('/gear?card=filter-abaca');
       await dlg.locator('.trophy-top').getByRole('button', { name: 'Edit' }).click();
       await expect(dlg.locator('form.gear-form').getByLabel('Kind', { exact: true })).toHaveValue('filter');
-      await page.goto('/gear?card=dripper-v60');
-      await dlg.locator('.trophy-top').getByRole('button', { name: 'Edit' }).click();
-      await expect(dlg.locator('form.gear-form').getByLabel('Kind', { exact: true })).toHaveCount(0);
+      for (const card of ['dripper-v60', 'grinder-zp6-special']) {
+        await page.goto(`/gear?card=${card}`);
+        await dlg.locator('.trophy-top').getByRole('button', { name: 'Edit' }).click();
+        await expect(dlg.locator('form.gear-form').getByLabel('Kind', { exact: true })).toHaveCount(0);
+      }
+      // One seed brew ticks two catalog filters: the line above the panels links to the first one's card.
+      await page.goto('/gear');
+      await expect(page.getByText('1 brew has two filters ticked')).toBeVisible();
+      await expect(page.getByRole('link', { name: "check each tool's kind" })).toHaveAttribute('href', '/gear?card=filter-abaca');
     } },
   // Each kind header on Gear links to itself; the Jump to nav still lands its heading.
   { name: 'gear-heading-links', viewports: 'two', path: () => '/gear#gear-grinders',
