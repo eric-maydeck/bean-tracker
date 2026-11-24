@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createDb } from '#lib/server/db.ts';
 import { MIXED_FILTER, type BrewFact } from './facts';
 import type { GearDetail } from '#lib/server/gearDetails.ts';
-import { gearArchive, trophyCase, type GearArchive } from './trophies';
+import { gearArchive, gearPanel, trophyCase, type GearArchive } from './trophies';
 
 let n = 0;
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -11,7 +11,7 @@ const brew = (o: Partial<BrewFact>): BrewFact => ({
   grind: null, dripper: null, filter: null, water: null, waterProfile: null, restDays: null, costPerBrew: null, brewTimeSeconds: null,
   bloomSeconds: null, grinder: null, hasNote: false, brewIndex: 0, tempC: null, ...o
 });
-const none: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set() };
+const none: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set(), accessory: new Set() };
 const T = '2026-10-22';
 const ago = (d: number) => new Date(Date.parse(T) - d * 864e5).toISOString().slice(0, 10);
 
@@ -26,6 +26,12 @@ describe('trophyCase', () => {
     expect(v60).toMatchObject({ kind: 'dripper', name: 'V60', brews: 3, grams: 31, rating: 7, best: 8, bags: 2, days: 3,
       firstUsed: '2026-10-01', lastUsed: '2026-10-21', favorite: { name: 'Abaca', brews: 2 }, retired: false });
     expect(trophyCase(xs, none, T).map((t) => t.key)).toEqual(['dripper-v60', 'filter-abaca', 'filter-sibarist', 'grinder-zp6']);
+  });
+  it('accessories get their own card; the Stats gear panel leaves them out', () => {
+    const xs = [brew({ dripper: 'Switch', filters: ['Abaca'], accessories: ['Switch base'] })];
+    const cards = trophyCase(xs, { ...none, tools: new Set(['Switch base']) }, T);
+    expect(cards.find((t) => t.kind === 'accessory')).toMatchObject({ key: 'accessory-switch-base', name: 'Switch base', brews: 1, tool: true });
+    expect(gearPanel(cards)!.map((c) => c.kind)).not.toContain('accessory');
   });
   it('gear names that slug alike still get unique keys (a duplicate key crashes the Gear tab)', () => {
     const xs = ['Cafec Abaca', 'Cafec Abaca+', 'cafec abaca', 'Cafec-Abaca'].map((filter) => brew({ dripper: 'V60', filter }));

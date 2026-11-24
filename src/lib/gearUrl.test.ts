@@ -4,9 +4,12 @@ import { gearRedirect, parseGear, serializeGear, statsLink, type GearUrlState } 
 describe('gear url state', () => {
   it('parses the two params; a legacy gear= is ignored', () => {
     expect(parseGear(new URLSearchParams('gear=grinder&retired=open&card=Grinder-ZP6-Special'))).toEqual({
-      retired: ['dripper', 'filter', 'grinder'], card: 'grinder-zp6-special'
+      retired: ['dripper', 'filter', 'grinder', 'accessory'], card: 'grinder-zp6-special'
     });
     expect(parseGear(new URLSearchParams('gear=kettle&retired=yes'))).toEqual({});
+  });
+  it('parses an accessory card and its retired shelf', () => {
+    expect(parseGear(new URLSearchParams('card=accessory-switch-base&retired=accessory'))).toEqual({ retired: ['accessory'], card: 'accessory-switch-base' });
   });
   it('reads the retired kind list in GEAR_KINDS order, dropping junk and repeats', () => {
     expect(parseGear(new URLSearchParams('retired=filter,kettle,dripper,dripper'))).toEqual({ retired: ['dripper', 'filter'] });

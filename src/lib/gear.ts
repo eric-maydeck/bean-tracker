@@ -5,9 +5,11 @@ export function isWebUrl(s: string): boolean {
   try { return /^https?:$/.test(new URL(s).protocol) && s.length <= 2000; } catch { return false; }
 }
 
-export const GEAR_KINDS = ['dripper', 'filter', 'grinder'] as const;
+export const GEAR_KINDS = ['dripper', 'filter', 'grinder', 'accessory'] as const;
 export type GearKind = (typeof GEAR_KINDS)[number];
-export const KIND_LABEL: Record<GearKind, string> = { dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder' };
+export const KIND_LABEL: Record<GearKind, string> = { dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder', accessory: 'Accessory' };
+
+export const KIND_PLURAL: Record<GearKind, string> = { dripper: 'Drippers', filter: 'Filters', grinder: 'Grinders', accessory: 'Accessories' };
 
 // The trophy cards split into active and the retired shelf.
 export function shownTrophies<T extends { retired: boolean }>(list: readonly T[]): { active: T[]; retired: T[] } {
@@ -77,6 +79,7 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     { ...text('settingFormat', 'Setting format', SETTING_FORMATS, [],
       "The shape of this grinder's grind settings. Blank: worked out from this grinder's brews. Custom: any text, never flagged. The import data warnings on Account use it to flag settings in the other shape."), type: 'select' }
   ],
+  accessory: [],
   filter: [
     text('material', 'Material', ['Paper', 'Cloth', 'Metal'], ['material', 'materials'],
       'Paper is the norm (bleached or natural/unbleached); cloth gives more body; metal lets oils and fines through.'),

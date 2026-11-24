@@ -363,6 +363,10 @@ for (let j = 0; j < 3; j++) // Origami brews (no gear_details row, so isolated)
 // The first three of those A4Z brews carry the "seedlow" tag: logged with "Seed low agitation" (ratio 1:16.8 against their 1:16.7),
 // so Brew now's Your brews / As written switch shows for it.
 db.prepare(`UPDATE beanconqueror_brews SET notes = 'seedlow' WHERE bean_id = 'bean-bn-1' AND preparation_id = 'm4' AND mill_id = 'g2' AND notes IS NULL AND rating IS NOT NULL`).run();
+// One Origami brew ticks a catalog filter and a non-catalog tool beside it, so /gear shows an Accessory card (Switch base) and a tool-kind select.
+db.prepare(`INSERT INTO beanconqueror_method_tools (uuid, method_id, name) VALUES ('tool-abaca', 'm3', 'Abaca'), ('tool-base', 'm3', 'Switch base')`).run();
+db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = 'brew-tools' WHERE id = (SELECT MIN(id) FROM beanconqueror_brews WHERE preparation_id = 'm3' AND bean_id = 'bean-bn-1')`).run();
+db.prepare(`INSERT INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES ('brew-tools', 'tool-abaca'), ('brew-tools', 'tool-base')`).run();
 rematchBrews(db);
 // One unrated brew with a second filter on the Origami (brew-now-filter-keeps-dripper picks it: filters follow the dripper).
 db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)

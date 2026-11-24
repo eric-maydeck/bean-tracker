@@ -13,5 +13,9 @@ export const load: PageServerLoad = () => {
   const db = getDb();
   const { brews: everyBrew, bags } = loadFacts(db);
   const trophies = trophyCase(everyBrew, gearArchive(db), localToday(), { ratings: 'current', scored: onceDialed(everyBrew, dialInIds(everyBrew)) }, getGearDetails(db));
-  return { trophies, statsLinks: statsLinks(trophies, labOptions(everyBrew, bags)) };
+  // Brews with two or more filters ticked: one is probably an accessory, so the page links to the first such brew's first filter.
+  const two = everyBrew.filter((b) => (b.filters?.length ?? 0) >= 2);
+  const first = trophies.find((t) => t.kind === 'filter' && t.name === two[0]?.filters?.[0]);
+  const doubleFilter = two.length && first ? { brews: two.length, firstKey: first.key } : null;
+  return { trophies, doubleFilter, statsLinks: statsLinks(trophies, labOptions(everyBrew, bags)) };
 };

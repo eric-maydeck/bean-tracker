@@ -11317,13 +11317,31 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/\/gear\?retired=dripper$/);
       // One section per kind in order, each with a count; its jump button scrolls to it.
       const panels = page.locator('section.chart-panel.kind-section');
-      await expect(panels).toHaveCount(3); // one panel per kind, the Jump to nav outside them all
+      await expect(panels).toHaveCount(4); // one panel per kind, the Jump to nav outside them all
       await expect(page.locator('.chart-panel nav.board-jump')).toHaveCount(0);
       const heads = await panels.locator('> h2').allTextContents();
-      expect(heads.map((h) => h.replace(/\s*\d+$/, ''))).toEqual(['Drippers', 'Filters', 'Grinders']);
+      expect(heads.map((h) => h.replace(/\s*\d+$/, ''))).toEqual(['Drippers', 'Filters', 'Grinders', 'Accessories']);
       await page.getByRole('navigation', { name: 'Jump to a section' }).getByRole('link', { name: 'Grinders' }).click();
       await expect(page).toHaveURL(/#gear-grinders$/);
       await expect(page.locator('#gear-grinders')).toBeInViewport();
+    } },
+  // A ticked tool beside a catalog filter is an Accessory: its card opens, and the edit form has a Kind select (also on a ticked filter, never on a dripper).
+  { name: 'gear-accessory-kind', viewports: 'two', path: () => '/gear?card=accessory-switch-base',
+    act: async (page) => {
+      await expect(page.locator('[data-section="gear-accessories"]')).toBeVisible();
+      const dlg = page.locator('dialog.trophy-dialog');
+      await expect(dlg.getByRole('heading', { name: 'Switch base' })).toBeVisible();
+      await expect(dlg.getByRole('link', { name: 'See stats for this gear' })).toHaveCount(0);
+      await dlg.locator('.trophy-top').getByRole('button', { name: 'Edit' }).click();
+      const kind = dlg.locator('form.gear-form').getByLabel('Kind', { exact: true });
+      await expect(kind).toHaveValue('accessory');
+      await expect(kind.locator('option')).toHaveText(['Filter', 'Accessory']);
+      await page.goto('/gear?card=filter-abaca');
+      await dlg.locator('.trophy-top').getByRole('button', { name: 'Edit' }).click();
+      await expect(dlg.locator('form.gear-form').getByLabel('Kind', { exact: true })).toHaveValue('filter');
+      await page.goto('/gear?card=dripper-v60');
+      await dlg.locator('.trophy-top').getByRole('button', { name: 'Edit' }).click();
+      await expect(dlg.locator('form.gear-form').getByLabel('Kind', { exact: true })).toHaveCount(0);
     } },
   // Each kind header on Gear links to itself; the Jump to nav still lands its heading.
   { name: 'gear-heading-links', viewports: 'two', path: () => '/gear#gear-grinders',
