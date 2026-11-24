@@ -649,3 +649,22 @@ describe('importBeanConquerorData changes', () => {
     expect(countUnmatchedBeanConquerorBeans(db)).toBe(1);
   });
 });
+
+describe('importBeanConquerorData: method tools and brew ticks', () => {
+  const method = (tools: { uuid: string; name: string }[]) => ({
+    id: 'm1', preparationMethod: null, name: 'M', preparationStyle: null, preparationTools: null, notes: null,
+    bcArchived: false, bcCreatedAt: null, tools: tools.map((t) => ({ ...t, archived: false, createdAt: null }))
+  });
+  const rows = (db: ReturnType<typeof createDb>, sql: string) => db.prepare(sql).all();
+
+  it('replaces tools per method and ticks per brew on re-import', () => {
+    const db = createDb(':memory:');
+    const brew = { ...BASE_BREW, bcUuid: 'u1', preparationId: 'm1' };
+    importBeanConquerorData(db, { ...NOTHING, methods: [method([{ uuid: 't1', name: 'Paper' }, { uuid: 't2', name: 'Mesh' }])], brews: [{ ...brew, toolUuids: ['t1'] }] });
+    importBeanConquerorData(db, { ...NOTHING, methods: [method([{ uuid: 't1', name: 'Paper B' }, { uuid: 't2', name: 'Mesh' }])], brews: [{ ...brew, toolUuids: ['t2'] }] });
+    expect(rows(db, `SELECT uuid, name FROM beanconqueror_method_tools ORDER BY uuid`)).toEqual([
+      { uuid: 't1', name: 'Paper B' }, { uuid: 't2', name: 'Mesh' }
+    ]);
+    expect(rows(db, `SELECT brew_uuid, tool_uuid FROM beanconqueror_brew_tools`)).toEqual([{ brew_uuid: 'u1', tool_uuid: 't2' }]);
+  });
+});

@@ -124,6 +124,14 @@ export function applySchema(db: DatabaseSync): void {
         file TEXT NOT NULL, PRIMARY KEY (url, kind));
       INSERT INTO image_copies SELECT url, kind, file FROM image_copies_old; DROP TABLE image_copies_old; COMMIT;`);
   }
+  // gear_details lost its kind CHECK (tools add kinds like 'accessory'): rebuild an older table once.
+  if ((db.prepare(`SELECT sql FROM sqlite_master WHERE name = 'gear_details'`).get() as { sql: string }).sql.includes('CHECK')) {
+    db.exec(`BEGIN; ALTER TABLE gear_details RENAME TO gear_details_old;
+      CREATE TABLE gear_details (kind TEXT NOT NULL, name TEXT NOT NULL, fields TEXT NOT NULL DEFAULT '{}', image_url TEXT,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (kind, name));
+      INSERT INTO gear_details SELECT kind, name, fields, image_url, created_at, updated_at FROM gear_details_old;
+      DROP TABLE gear_details_old; COMMIT;`);
+  }
   dropColumnIfExists(db, 'subscriptions', 'purchased');
   // Bean Conqueror's default rating is 0, which it shows as "no rating";
   // imports now store it as NULL. Idempotent, so it just runs every boot.

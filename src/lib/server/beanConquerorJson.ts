@@ -88,6 +88,7 @@ export function parseBeanConquerorJson(files: BeanConquerorJsonFiles): ParsedBea
   }
 
   const toolNames = new Map<string, string>();
+  const methodTools = new Map<string, Set<string>>(); // method id → its tool uuids
   const methods: ParsedMethod[] = list(main.PREPARATION).flatMap((m) => {
     const id = uuid(m);
     if (!id) return [];
@@ -95,11 +96,13 @@ export function parseBeanConquerorJson(files: BeanConquerorJsonFiles): ParsedBea
       const name = text(t.name);
       const toolId = uuid(t);
       if (name && toolId) toolNames.set(toolId, name);
-      return name ? [name] : [];
+      return name ? [{ uuid: toolId, name, archived: t.archived === true, createdAt: created(t) }] : [];
     });
+    methodTools.set(id, new Set(tools.flatMap((t) => (t.uuid ? [t.uuid] : []))));
     return [{
       id, preparationMethod: text(m.type), name: text(m.name), preparationStyle: text(m.style_type),
-      preparationTools: tools.join(', ') || null, notes: text(m.note), bcArchived: m.finished === true,
+      preparationTools: tools.map((t) => t.name).join(', ') || null,
+      tools: tools.flatMap((t) => (t.uuid ? [{ ...t, uuid: t.uuid }] : [])), notes: text(m.note), bcArchived: m.finished === true,
       bcCreatedAt: created(m)
     }];
   });
@@ -142,12 +145,15 @@ export function parseBeanConquerorJson(files: BeanConquerorJsonFiles): ParsedBea
     const waterId = text(br.water);
     const knownWater = waterId && waterName.has(waterId) ? waterId : null;
     const toolIds = Array.isArray(br.method_of_preparation_tools) ? br.method_of_preparation_tools : [];
+    const preparationId = known(methodIds, br.method_of_preparation);
+    const own = preparationId ? methodTools.get(preparationId) : undefined;
     return [{
-      bcUuid, bcCreatedAt, beanId, preparationId: known(methodIds, br.method_of_preparation), millId: known(millIds, br.mill),
+      bcUuid, bcCreatedAt, beanId, preparationId, millId: known(millIds, br.mill),
       grindSetting: text(br.grind_size), groundCoffeeG: dose, brewTemperature: num(br.brew_temperature),
       beanType: bean?.name ?? null, grindSpeedRpm: num(br.mill_speed), grindTime: text(br.mill_timer),
       profile: text(br.pressure_profile),
       preparationTools: toolIds.flatMap((t) => toolNames.get(String(t)) ?? []).join(', ') || null,
+      toolUuids: toolIds.map(String).filter((t) => own?.has(t)),
       temperatureTime: text(br.brew_temperature_time), brewTime: text(br.brew_time),
       bloomTime: text(br.coffee_blooming_time), firstDripTime: text(br.coffee_first_drip_time),
       waterAmountG: waterAmount, coffeeType: text(br.coffee_type), coffeeConcentration: text(br.coffee_concentration),

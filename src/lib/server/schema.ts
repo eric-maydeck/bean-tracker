@@ -199,6 +199,29 @@ CREATE TABLE IF NOT EXISTS beanconqueror_methods (
   imported_at TEXT NOT NULL
 );
 
+-- BQ's per-method tools, one row each (the joined names stay in beanconqueror_methods/brews.preparation_tools).
+CREATE TABLE IF NOT EXISTS beanconqueror_method_tools (
+  uuid TEXT PRIMARY KEY,
+  method_id TEXT NOT NULL REFERENCES beanconqueror_methods(id),
+  name TEXT NOT NULL,
+  archived INTEGER NOT NULL DEFAULT 0,
+  bc_created_at TEXT
+);
+
+-- The tools a brew ticked; brew_uuid joins beanconqueror_brews.bc_uuid.
+CREATE TABLE IF NOT EXISTS beanconqueror_brew_tools (
+  brew_uuid TEXT NOT NULL,
+  tool_uuid TEXT NOT NULL,
+  PRIMARY KEY (brew_uuid, tool_uuid)
+);
+
+-- Gear kind of a tool name as read (suffix stripped, trimmed).
+CREATE TABLE IF NOT EXISTS tool_kinds (
+  name TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS beanconqueror_grinders (
   id TEXT PRIMARY KEY,
   name TEXT,
@@ -286,7 +309,7 @@ CREATE INDEX IF NOT EXISTS idx_short_links_last_used ON short_links(last_used_at
 -- fields (JSON, keys from lib/gear.ts), so a new field is a one-line change there. image_url joins image_fills and
 -- image_copies (kind 'gear') like a coffee's image does.
 CREATE TABLE IF NOT EXISTS gear_details (
-  kind TEXT NOT NULL CHECK (kind IN ('dripper', 'grinder', 'filter')),
+  kind TEXT NOT NULL,
   name TEXT NOT NULL,
   fields TEXT NOT NULL DEFAULT '{}',
   image_url TEXT,

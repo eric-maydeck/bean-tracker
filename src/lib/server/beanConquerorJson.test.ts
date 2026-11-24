@@ -67,7 +67,8 @@ describe('parseBeanConquerorJson', () => {
   it('maps a preparation, a mill and a water', () => {
     expect(parsed.methods.find((m) => m.id === '94687711-12cc-449f-afe3-0117459f8177')).toEqual({
       id: '94687711-12cc-449f-afe3-0117459f8177', preparationMethod: 'V60', name: 'Cone Dripper - Paper A',
-      preparationStyle: 'POUR OVER', preparationTools: 'Paper A', notes: null, bcArchived: false,
+      preparationStyle: 'POUR OVER', preparationTools: 'Paper A',
+      tools: [{ uuid: '7733e44d-da0f-4cef-a877-b8e489a81025', name: 'Paper A', archived: false, createdAt: bcTimestamp(1723527948) }], notes: null, bcArchived: false,
       bcCreatedAt: '2024-08-12T23:50:00.000Z'
     });
     expect(parsed.grinders.find((g) => g.id === '61c23d36-8129-4642-adb7-a94757da0d57')).toEqual({
@@ -95,7 +96,7 @@ describe('parseBeanConquerorJson', () => {
       beanId: '6f81941d-d82c-468a-a84b-aac2ace069c0', preparationId: '94687711-12cc-449f-afe3-0117459f8177',
       millId: '61c23d36-8129-4642-adb7-a94757da0d57', grindSetting: '1.5.5', groundCoffeeG: 15,
       brewTemperature: 90, beanType: 'Mirador Sample Lot', grindSpeedRpm: 0, grindTime: '0', profile: null,
-      preparationTools: null, temperatureTime: '0', brewTime: '150', bloomTime: '45', firstDripTime: '0',
+      preparationTools: null, toolUuids: [], temperatureTime: '0', brewTime: '150', bloomTime: '45', firstDripTime: '0',
       waterAmountG: 240, coffeeType: null, coffeeConcentration: null, rating: 6, notes: null,
       beverageQuantity: 0, tdsPercent: 0, extractionYieldPercent: 0, brewRatio: '1 / 16.00', beanAgeDays: 21,
       bcArchived: true, water: 'Packet Profile - third strength',
@@ -128,6 +129,23 @@ describe('parseBeanConquerorJson', () => {
     main(files).BREWS[0].water = 'not-a-water';
     expect(parseBeanConquerorJson(files).brews.find((b) => b.bcUuid === main(files).BREWS[0].config.uuid))
       .toMatchObject({ waterId: null, water: null });
+  });
+
+  it('reads every tool of a method and a brew keeps only the ticks of its own method', () => {
+    const files = fixtureFiles();
+    const m = main(files);
+    const [a, b] = m.PREPARATION;
+    const own = a.tools[0];
+    const second = { name: 'Mesh', archived: true, config: { uuid: 'tool-2', unix_timestamp: 1723527948 } };
+    a.tools.push(second);
+    m.BREWS[0].method_of_preparation = a.config.uuid;
+    m.BREWS[0].method_of_preparation_tools = [own.config.uuid, b.tools[0].config.uuid];
+    const parsedTools = parseBeanConquerorJson(files);
+    expect(parsedTools.methods.find((x) => x.id === a.config.uuid)!.tools).toEqual([
+      { uuid: own.config.uuid, name: 'Paper A', archived: false, createdAt: bcTimestamp(1723527948) },
+      { uuid: 'tool-2', name: 'Mesh', archived: true, createdAt: bcTimestamp(1723527948) }
+    ]);
+    expect(parsedTools.brews.find((x) => x.bcUuid === m.BREWS[0].config.uuid)!.toolUuids).toEqual([own.config.uuid]);
   });
 
   it('nulls bean, preparation and mill links that were not parsed, and imports without an FK error', () => {
