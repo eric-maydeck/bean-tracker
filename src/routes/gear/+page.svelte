@@ -33,7 +33,7 @@
 <p><a href="/stats?tab=gear">Charts and ratings for your gear on Stats →</a></p>
 
 {#if data.doubleFilter}
-  <p class="text-muted">{data.doubleFilter.brews} {data.doubleFilter.brews === 1 ? 'brew has' : 'brews have'} two filters ticked: <a href="/gear?card={data.doubleFilter.firstKey}">check each tool's kind</a></p>
+  <p class="text-muted">{data.doubleFilter.brews} {data.doubleFilter.brews === 1 ? 'brew has' : 'brews have'} two filters ticked{#if data.doubleFilter.firstKey}: <a href="/gear?card={data.doubleFilter.firstKey}">check each tool's kind</a>{/if}</p>
 {/if}
 
 {#if data.trophies.length}

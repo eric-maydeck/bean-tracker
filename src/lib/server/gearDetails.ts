@@ -36,8 +36,15 @@ export function saveGearDetails(
 // new kind, replacing any row already there. A rerun changes nothing.
 export function setToolKind(db: DatabaseSync, name: string, kind: ToolKind, now = new Date()): void {
   const other = kind === 'filter' ? 'accessory' : 'filter';
-  db.prepare(`INSERT INTO tool_kinds (name, kind, updated_at) VALUES (?, ?, ?)
-              ON CONFLICT(name) DO UPDATE SET kind = excluded.kind, updated_at = excluded.updated_at`).run(name, kind, now.toISOString());
-  db.prepare(`DELETE FROM gear_details WHERE kind = ? AND name = ? AND EXISTS (SELECT 1 FROM gear_details WHERE kind = ? AND name = ?)`).run(kind, name, other, name);
-  db.prepare(`UPDATE gear_details SET kind = ? WHERE kind = ? AND name = ?`).run(kind, other, name);
+  db.exec('BEGIN');
+  try {
+    db.prepare(`INSERT INTO tool_kinds (name, kind, updated_at) VALUES (?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET kind = excluded.kind, updated_at = excluded.updated_at`).run(name, kind, now.toISOString());
+    db.prepare(`DELETE FROM gear_details WHERE kind = ? AND name = ? AND EXISTS (SELECT 1 FROM gear_details WHERE kind = ? AND name = ?)`).run(kind, name, other, name);
+    db.prepare(`UPDATE gear_details SET kind = ? WHERE kind = ? AND name = ?`).run(kind, other, name);
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
 }

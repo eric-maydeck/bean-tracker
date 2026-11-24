@@ -57,4 +57,15 @@ describe('/gear load', () => {
     db.exec(`INSERT INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES ('bw1', 'ta'), ('bw1', 'tb'), ('bw2', 'ta')`);
     expect(run().doubleFilter).toEqual({ brews: 1, firstKey: 'filter-abaca' });
   });
+
+  it('doubleFilter has no link when none of the two-filter brews\' filters has a card', () => {
+    const db = getDb();
+    db.exec(`DELETE FROM beanconqueror_brew_tools WHERE brew_uuid IN ('bw1', 'bw2')`);
+    const today = localToday();
+    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m31', 'Kalita', '${today}')`);
+    db.exec(`INSERT INTO beanconqueror_method_tools (uuid, method_id, name) VALUES ('tc', 'm31', 'Zeta'), ('td', 'm31', 'Zeta+')`);
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_uuid, bc_created_at, ground_coffee_g, preparation_id, imported_at) VALUES ('bw3', ?, 15, 'm31', ?)`).run(`${today}T12:00:00.000Z`, today);
+    db.exec(`INSERT INTO beanconqueror_brew_tools (brew_uuid, tool_uuid) VALUES ('bw3', 'tc'), ('bw3', 'td')`);
+    expect(run().doubleFilter).toEqual({ brews: 1, firstKey: null });
+  });
 });
