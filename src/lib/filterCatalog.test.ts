@@ -17,7 +17,21 @@ describe("filterCatalog", () => {
 		"T90",
 	])("recognises %s", (n) => expect(isCatalogFilter(n)).toBe(true));
 
-	it.each(["Switch base", "155", "Neo", "Scale"])("rejects %s", (n) =>
+	it.each(["Wave 185", "Kalita Wave 185", "KW185"])("recognises %s", (n) =>
+		expect(isCatalogFilter(n)).toBe(true),
+	);
+
+	it.each([
+		"Switch base",
+		"155",
+		"Neo",
+		"Scale",
+		"Prismo",
+		"Pulsar",
+		"Woodneck",
+		"Kalita 102",
+		"Filter",
+	])("rejects %s", (n) =>
 		expect(isCatalogFilter(n)).toBe(false),
 	);
 

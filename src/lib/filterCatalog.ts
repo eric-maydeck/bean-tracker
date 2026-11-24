@@ -6,6 +6,7 @@ export interface CatalogFilter {
 	sizes: readonly string[];
 }
 
+// Names are matched against BQ tool names, so a brewer name is only kept where the tool would be its paper.
 export const FILTER_CATALOG: readonly CatalogFilter[] = [
 	{ brand: "Cafec", name: "Abaca", aliases: ["Abaca","Cafec Abaca","Abaca red"], sizes: ["1 cup","2 cup","4 cup"] },
 	{ brand: "Cafec", name: "Abaca+", aliases: ["Abaca+","Abaca Plus","Abaca Plus black"], sizes: ["1 cup","2 cup","4 cup"] },
@@ -24,7 +25,7 @@ export const FILTER_CATALOG: readonly CatalogFilter[] = [
 	{ brand: "Hario", name: "V60 Meteor (PLA)", aliases: ["V60 Meteor","VCF-50-MT"], sizes: ["02"] },
 	{ brand: "Hario", name: "V60 Pegasus paper", aliases: [], sizes: ["02","03"] },
 	{ brand: "Hario", name: "Syphon cloth filter", aliases: ["Hario cloth"], sizes: ["pack of 5"] },
-	{ brand: "Hario", name: "Woodneck cloth", aliases: ["Woodneck"], sizes: [] },
+	{ brand: "Hario", name: "Woodneck cloth", aliases: [], sizes: [] },
 	{ brand: "Sibarist", name: "Fast Cone", aliases: ["Sibarist Fast","Fast Cone S/M"], sizes: ["S (01)","M (02)"] },
 	{ brand: "Sibarist", name: "Fast Flat", aliases: ["Fast Flat S","Fast Flat M"], sizes: ["S (155)","M (185)"] },
 	{ brand: "Sibarist", name: "Fast Disc 63", aliases: ["Fast Disc"], sizes: ["63mm"] },
@@ -35,9 +36,9 @@ export const FILTER_CATALOG: readonly CatalogFilter[] = [
 	{ brand: "Sibarist", name: "Orea B3 Cone Wide", aliases: ["Orea V4 Wide cone"], sizes: ["V4 Wide"] },
 	{ brand: "Kalita", name: "Wave 155", aliases: ["Kalita Wave 155","Wave 155","Kalita 155"], sizes: ["155"] },
 	{ brand: "Kalita", name: "Wave 185", aliases: ["Kalita Wave 185","Wave 185","KW185","Kalita 185"], sizes: ["185"] },
-	{ brand: "Kalita", name: "102 / 103 cone", aliases: ["Kalita 102","Kalita 103"], sizes: ["102","103"] },
+	{ brand: "Kalita", name: "102 / 103 cone", aliases: [], sizes: ["102","103"] },
 	{ brand: "xBloom", name: "Premium wave paper 155", aliases: ["xBloom 155","xBloom filter"], sizes: ["155"] },
-	{ brand: "Timemore", name: "Paper filter V02", aliases: ["Timemore 155","Timemore V60","Timemore filter"], sizes: ["V02"] },
+	{ brand: "Timemore", name: "Paper filter V02", aliases: ["Timemore 155","Timemore filter"], sizes: ["V02"] },
 	{ brand: "Timemore", name: "Wave 155", aliases: ["Timemore 155"], sizes: ["155"] },
 	{ brand: "Orea", name: "Wave filter paper", aliases: ["Orea wave"], sizes: ["V3/V4"] },
 	{ brand: "Orea", name: "Flat filter paper", aliases: ["Orea flat"], sizes: [] },
@@ -60,13 +61,12 @@ export const FILTER_CATALOG: readonly CatalogFilter[] = [
 	{ brand: "AeroPress", name: "Paper micro-filters", aliases: ["Aeropress","Aeropress paper","microfilter"], sizes: ["standard","Go"] },
 	{ brand: "Able", name: "Disk (Standard / Fine)", aliases: ["Able Disk","Able Disc"], sizes: ["standard","fine (152 micron)"] },
 	{ brand: "Able", name: "Kone", aliases: ["Able Kone"], sizes: [] },
-	{ brand: "Fellow", name: "Prismo", aliases: ["Prismo"], sizes: [] },
 	{ brand: "Fellow", name: "Stagg paper", aliases: ["Stagg filter"], sizes: [] },
-	{ brand: "Espro", name: "Bloom paper filter", aliases: ["Espro Bloom"], sizes: ["50","100 pack"] },
-	{ brand: "NextLevel", name: "Pulsar paper filter", aliases: ["Pulsar","Scott Rao Pulsar"], sizes: ["80mm"] },
-	{ brand: "Tricolate", name: "Filter", aliases: ["Tricolate"], sizes: ["88mm"] },
+	{ brand: "Espro", name: "Bloom paper filter", aliases: [], sizes: ["50","100 pack"] },
+	{ brand: "NextLevel", name: "Pulsar paper filter", aliases: [], sizes: ["80mm"] },
+	{ brand: "Tricolate", name: "Tricolate paper filter", aliases: [], sizes: ["88mm"] },
 	{ brand: "Clever", name: "Clever Dripper paper", aliases: ["Clever filter"], sizes: [] },
-	{ brand: "Bee House", name: "Bee House paper", aliases: ["Beehouse"], sizes: [] },
+	{ brand: "Bee House", name: "Bee House paper", aliases: [], sizes: [] },
 	{ brand: "Walkure", name: "Walkure filter", aliases: ["Walkure"], sizes: [] },
 ];
 
