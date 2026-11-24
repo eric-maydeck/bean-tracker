@@ -28,6 +28,10 @@ describe('bandOf', () => {
     expect([40, 59.6, 90].map((g) => gh(g)!.label)).toEqual(['40ppm', '60ppm', '90ppm']);
     expect(gh(70)!.order).toBe(70);
   });
+  it('GH 0 is a real value (soft water with only sodium), not missing (#196)', () => {
+    const b = bandOf('gh', brew({ waterProfile: { calcium: 0, magnesium: 0, sodium: 10, potassium: null, chloride: null, sulfate: null, gh: 0, kh: 0 } }));
+    expect(b).toEqual({ label: '0ppm', order: 0 });
+  });
   it('exact ratio and dose: nearest 0.5; exact time: nearest 5s', () => {
     expect([15.2, 15.3, 16, 16.74].map((r) => label('ratioExact', { ratio: r }))).toEqual(['1:15', '1:15.5', '1:16', '1:16.5']);
     expect(bandOf('ratioExact', brew({ ratio: 15.3 }))!.order).toBe(15.5);
