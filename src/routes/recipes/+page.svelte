@@ -480,6 +480,7 @@
       {#if askError}<p role="alert" class="badge badge-urgent">{askError}</p>{/if}
       <div class="action-buttons">
         <button class="button" type="button" disabled={asking} onclick={openAndBrew}>Open and brew</button>
+        <a class="button button-secondary" href="/coffees/{ask.c.slug}/brew?recipe={data.brewNow?.slug}" onclick={() => (ask = null)}>Preview without opening</a>
         <button class="button button-secondary" type="button" onclick={cancelAsk}>Cancel</button>
       </div>
     </div>
@@ -504,7 +505,8 @@
   .picker-clear :global(svg) { width: 1.1rem; height: 1.1rem; }
   .picker-clear:hover, .picker-clear:focus-visible { color: var(--color-text); }
   .bn-confirm { max-width: 18rem; }
-  .bn-confirm :global(.action-buttons) { margin-top: var(--space-5); }
+  .bn-confirm :global(.action-buttons) { margin-top: var(--space-5); flex-direction: column; align-items: stretch; } /* three actions: one column, one width */
+  .bn-confirm :global(.action-buttons .button) { margin: 0; }
   .bn-confirm .line { display: block; }
   .bn-confirm .line + .line { margin-top: 1.25rem; }
   /* Image-led grid: 2 columns on a phone, 3 at the modal's desktop width; the thumbnail is the global .card-thumb. */

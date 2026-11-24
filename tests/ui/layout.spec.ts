@@ -4036,14 +4036,27 @@ export const STATES: State[] = [
             const posts: string[] = [];
             await page.route('**/api/coffees/commit-batch', (r) => { posts.push(r.request().postData() ?? ''); return r.fulfill({ json: { success: true, before: [], after: [] } }); });
             await page.route('**/api/coffees/restore-state', (r) => { posts.push('restore'); return r.fulfill({ json: { success: true } }); });
-            const href = await picks.first().getAttribute('href');
+            let href = await picks.first().getAttribute('href');
             await picks.first().click();
             const ask = page.getByRole('dialog', { name: /isn't open yet/ });
             await expect(ask).toBeVisible();
+            const btns = await ask.locator('.action-buttons .button').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { t: e.textContent!.trim(), h: Math.round(r.height), w: Math.round(r.width), right: Math.round(r.right) } }));
+            expect(btns.map((b) => b.t)).toEqual(['Open and brew', 'Preview without opening', 'Cancel']);
+            expect(new Set(btns.map((b) => b.h)).size, `button heights ${btns.map((b) => b.h)}`).toBe(1); // same size
+            if (page.viewportSize()!.width <= 640) for (const b of btns) expect(b.h, b.t).toBeGreaterThanOrEqual(44);
+            expect(Math.max(...btns.map((b) => b.right)) <= page.viewportSize()!.width).toBe(true);
             await ask.getByRole('button', { name: 'Cancel' }).click();
             await expect(ask).toBeHidden();
             await expect(dlg).toBeVisible();
             expect(posts).toEqual([]);
+            await picks.first().click(); // Preview without opening: a plain link to the brew page, nothing posted
+            const preview = ask.getByRole('link', { name: 'Preview without opening' });
+            await expect(preview).toHaveAttribute('href', href!);
+            await preview.click();
+            await expect(page).toHaveURL(new RegExp(`${href!.replace(/[?]/g, '\\?')}$`));
+            expect(posts).toEqual([]);
+            await gotoReady(page, `/recipes?brews=r${s.recipes.recipeId}&brewnow=seed-equal-pours&bnstatus=backlog`);
+            href = await picks.first().getAttribute('href'); // the bare URL sorts by Urgency again
             await picks.first().click();
             await ask.getByRole('button', { name: 'Open and brew' }).click();
             await expect(page).toHaveURL(new RegExp(`${href!.replace(/[?]/g, '\\?')}$`));
