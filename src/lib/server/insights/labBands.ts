@@ -89,7 +89,7 @@ export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): B
     case 'water': return cat(b.water);
     case 'dripper': return cat(b.dripper);
     case 'filter': return b.filter === MIXED_FILTER ? null : cat(b.filter);
-    case 'gh': return exact(profileOf(b)?.gh || null, 1, (v) => `${v}ppm`); // W5: one band per GH value used
+    case 'gh': return exact(profileOf(b)?.gh ?? null, 1, (v) => `${v}ppm`); // W5: one band per GH value used
     case 'brewNo': return b.brewIndex < 1 ? null : { label: BREW_NO_LABELS[Math.min(b.brewIndex, 10) - 1], order: Math.min(b.brewIndex, 10) };
   }
 }
