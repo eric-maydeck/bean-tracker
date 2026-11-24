@@ -522,7 +522,7 @@
   .step-time { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
   .step-time.low { width: fit-content; text-decoration: underline dotted; }
   .pk2-hint { margin: calc(-1 * var(--space-2)) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
-  .pk2-link { min-height: 44px; padding: 0; background: none; border: 0; font: inherit; color: var(--color-accent); text-decoration: underline; text-align: left; }
+  .pk2-link { min-height: 44px; padding: 0; background: none; border: 0; font: inherit; font-size: 1rem; font-weight: 700; color: var(--color-accent); text-decoration: underline; text-underline-offset: 3px; text-align: left; } /* attention label: bigger, bold, accent (ui.md) */
   .rsteps li > span:last-child::first-letter { text-transform: uppercase; } /* sentences; display only, the stored text stays as written */
   .pk2-none { align-self: center; }
   #bn-open-title .line { display: block; }

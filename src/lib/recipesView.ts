@@ -7,7 +7,15 @@ export interface RecipesView {
   order?: 'top';
   view?: 'hidden';
   brewnow?: string; // a saved recipe slug; the server checks it exists
+  // The Brew now picker's own state; only meaningful (parsed, written) while brewnow is set.
+  bnq?: string; // search text
+  bnsort?: BnSort; // absent = brews
+  bndir?: 'asc' | 'desc'; // absent = desc
+  bnstatus?: 'backlog'; // absent = open coffees
 }
+
+export const BN_SORTS = ['brews', 'rating', 'name', 'roaster', 'grams'] as const;
+export type BnSort = (typeof BN_SORTS)[number];
 
 // Wider than 12 pours / 2-digit ratio: detector keys are not capped (controller ruling 2).
 const KEY = /^\d+b-[fs]{1,40}-(\d{1,3}|x)$/;
@@ -22,7 +30,17 @@ export function parseRecipesView(p: URLSearchParams): RecipesView {
   const view = pickOne(p, 'view', ['hidden'] as const);
   if (view) out.view = view;
   const bn = p.get('brewnow')?.toLowerCase() ?? '';
-  if (/^[a-z0-9-]{1,80}$/.test(bn)) out.brewnow = bn;
+  if (/^[a-z0-9-]{1,80}$/.test(bn)) {
+    out.brewnow = bn;
+    const q = p.get('bnq')?.trim().slice(0, 100);
+    if (q) out.bnq = q;
+    const sort = pickOne(p, 'bnsort', BN_SORTS);
+    if (sort) out.bnsort = sort;
+    const dir = pickOne(p, 'bndir', ['asc', 'desc'] as const);
+    if (dir) out.bndir = dir;
+    const status = pickOne(p, 'bnstatus', ['backlog'] as const);
+    if (status) out.bnstatus = status;
+  }
   return out;
 }
 
@@ -35,6 +53,12 @@ export function recipesParams(v: RecipesView): URLSearchParams {
   if (v.brews) p.set('brews', itemParam(v.brews));
   if (v.order && v.brews) p.set('order', v.order);
   if (v.view) p.set('view', v.view);
-  if (v.brewnow) p.set('brewnow', v.brewnow);
+  if (v.brewnow) {
+    p.set('brewnow', v.brewnow);
+    if (v.bnstatus) p.set('bnstatus', v.bnstatus);
+    if (v.bnq) p.set('bnq', v.bnq);
+    if (v.bnsort) p.set('bnsort', v.bnsort);
+    if (v.bndir) p.set('bndir', v.bndir);
+  }
   return p;
 }

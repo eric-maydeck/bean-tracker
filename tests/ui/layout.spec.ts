@@ -3964,7 +3964,7 @@ export const STATES: State[] = [
         act: async (page: Page, s: Seed) => {
           const card = panel(page, 'Your recipes').locator('li.item').filter({ hasText: 'Seed equal pours' });
           await card.getByRole('link', { name: 'Brew now' }).click();
-          const dlg = page.getByRole('dialog', { name: 'Brew Seed equal pours with' });
+          const dlg = page.getByRole('dialog', { name: 'Brew with Seed equal pours: Select a coffee' });
           await expect(dlg).toBeVisible();
           await expect(dlg.locator('svg[role="img"]')).toBeVisible();
           expect(new URL(page.url()).searchParams.get('brewnow')).toBe('seed-equal-pours');
@@ -3980,9 +3980,46 @@ export const STATES: State[] = [
           expect(await picks.evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth).length)).toBe(0);
           const pad = await picks.first().evaluate((e) => { const a = e.getBoundingClientRect(), t = e.querySelector('img.card-thumb')?.getBoundingClientRect(); return t ? [t.left - a.left, t.top - a.top, a.right - t.right].map(Math.round) : null; });
           if (pad) expect(new Set(pad.map((x) => x - 1)).size, `thumbnail padding ${pad}`).toBe(1); // 1px border + equal padding
+          // Search + sort row: search left with Sort by and the direction button on its line (desktop), under it on a phone; never focused at open.
+          const search = dlg.getByRole('searchbox', { name: 'Search coffees' }), sort = dlg.locator('#picker-sort'), dirBtn = dlg.locator('.sort-dir');
+          await expect(search).not.toBeFocused();
+          const sb = (await search.boundingBox())!, ob = (await sort.boundingBox())!, db = (await dirBtn.boundingBox())!;
+          if (page.viewportSize()!.width > 640) { expect(sb.x).toBeLessThan(ob.x); expect(Math.abs(sb.y + sb.height / 2 - (ob.y + ob.height / 2))).toBeLessThan(sb.height / 2); }
+          else { expect(ob.y).toBeGreaterThanOrEqual(sb.y + sb.height); expect(ob.height).toBeGreaterThanOrEqual(44); expect(db.height).toBeGreaterThanOrEqual(44); }
+          const boxes = () => dlg.locator('.tab-group, .picker-controls input, #picker-sort, .sort-dir').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(Math.round); }));
+          const still = await boxes();
+          await dirBtn.click();
+          await expect(page).toHaveURL(/bndir=asc/);
+          await sort.selectOption('name');
+          await expect(page).toHaveURL(/bnsort=name/);
+          expect(await boxes()).toEqual(still); // flipping sort or direction moves no control
+          const names = await picks.locator('.pick-name').allInnerTexts();
+          expect(names.map((x) => x.toLowerCase())).toEqual([...names.map((x) => x.toLowerCase())].sort());
+          // Typing narrows the cards in real time (name or roaster, any case) and lands in the URL; no match shows a muted message.
+          const roaster = (await picks.first().locator('.pick-line').innerText()).slice(0, 4).toUpperCase();
+          await search.fill(roaster);
+          await expect(page).toHaveURL(new RegExp(`bnq=${roaster}`, 'i'));
+          for (const l of await picks.locator('.pick-line').allInnerTexts()) expect(l.toUpperCase()).toContain(roaster);
+          await search.fill('zzzqqq');
+          await expect(dlg.getByText('No coffees match')).toBeVisible();
+          await expect(picks).toHaveCount(0);
+          expect(await boxes()).toEqual(still); // an empty result leaves the controls where they were
+          await search.fill('');
+          await expect(picks.first()).toBeVisible();
+          await expect(page).not.toHaveURL(/bnq=/);
+          // Backlog switch: same cards with a Backlog badge, or the empty message; Open brings the open ones back.
+          await dlg.getByRole('button', { name: 'Backlog' }).click();
+          await expect(page).toHaveURL(/bnstatus=backlog/);
+          await expect(dlg.getByRole('button', { name: 'Backlog' })).toHaveAttribute('aria-pressed', 'true');
+          if (await picks.count()) for (const b of await picks.locator('.badge').first().allInnerTexts()) expect(b).toBe('Backlog');
+          else await expect(dlg.getByText('No backlog coffees.')).toBeVisible();
+          expect(await boxes()).toEqual(still);
+          await dlg.getByRole('button', { name: 'Open', exact: true }).click();
+          await expect(page).not.toHaveURL(/bnstatus=/);
+          await expect(picks.first()).toBeVisible();
           await page.keyboard.press('Escape');
           await expect(dlg).toBeHidden();
-          expect(new URL(page.url()).search).toBe(`?brews=r${s.recipes.recipeId}`);
+          expect(new URL(page.url()).search).toBe(`?brews=r${s.recipes.recipeId}`); // the picker's own params go with it
           await page.goto('/recipes?brewnow=seed-equal-pours');
           await expect(dlg).toBeVisible();
           await dlg.getByRole('link', { name: 'Close' }).click();

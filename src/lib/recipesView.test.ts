@@ -37,4 +37,12 @@ describe('parseRecipesView', () => {
     expect(recipesParams({ brewnow: 'bbs' }).toString()).toBe('brewnow=bbs');
     expect(recipesParams(parse('brews=r3&view=hidden&brewnow=bbs')).toString()).toBe('brews=r3&view=hidden&brewnow=bbs');
   });
+  it('reads the picker params (case-insensitive) only with brewnow, and round-trips them', () => {
+    expect(parse('brewnow=bbs&bnq=%20Sey%20&bnsort=RATING&bndir=ASC&bnstatus=Backlog')).toEqual({ brewnow: 'bbs', bnq: 'Sey', bnsort: 'rating', bndir: 'asc', bnstatus: 'backlog' });
+    expect(parse('bnq=sey&bnsort=name&bndir=asc&bnstatus=backlog')).toEqual({}); // no picker open: ignored
+    expect(parse('brewnow=bbs&bnsort=nope&bndir=up&bnstatus=open&bnq=')).toEqual({ brewnow: 'bbs' });
+    expect(recipesParams(parse('brewnow=bbs&bnstatus=backlog&bnq=sey&bnsort=grams&bndir=desc')).toString()).toBe('brewnow=bbs&bnstatus=backlog&bnq=sey&bnsort=grams&bndir=desc');
+    expect(recipesParams({ bnq: 'x', bndir: 'asc' }).toString()).toBe(''); // dropped when the picker closes
+    expect(parse(`brewnow=bbs&bnq=${'a'.repeat(300)}`).bnq).toHaveLength(100);
+  });
 });

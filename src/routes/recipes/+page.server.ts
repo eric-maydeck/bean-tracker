@@ -12,7 +12,7 @@ import { describeReading, type PourReading } from '#lib/pours.ts';
 import { parseNoteWords } from '#lib/agitation.ts';
 import { parseRecipesView } from '#lib/recipesView.ts';
 import { recipeIdBySlug, recipeSlugs } from '#lib/recipeSlug.ts';
-import { getOpenCoffees } from '#lib/server/coffees.ts';
+import { getBacklogCoffees, getOpenCoffees } from '#lib/server/coffees.ts';
 import { loadBrewRows } from '#lib/server/brewNow/load.ts';
 import { coffeeImage } from '#lib/coffeeImage.ts';
 
@@ -131,7 +131,7 @@ export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, 
       m.best ||= b.best;
       mine.set(key(b.roaster, b.coffeeName), m);
     }
-    const coffees = getOpenCoffees(db).map((c) => {
+    const coffees = (view.bnstatus === 'backlog' ? getBacklogCoffees(db) : getOpenCoffees(db)).map((c) => {
       const m = mine.get(key(c.roaster, c.coffee_name));
       return {
         slug: c.slug, name: c.coffee_name, roaster: c.roaster, image: coffeeImage(c, ''), brews: m?.n ?? 0,

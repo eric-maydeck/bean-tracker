@@ -20,7 +20,8 @@
   import { stepsText } from '#lib/recipeSteps.ts';
   import { formatGrams } from '#lib/grams.ts';
   import { labelTip } from '#lib/components/labelTip.ts';
-  import { recipesParams, type RecipesItem } from '#lib/recipesView.ts';
+  import { recipesParams, BN_SORTS, type BnSort, type RecipesItem, type RecipesView } from '#lib/recipesView.ts';
+  import { writeUrlParams } from '#lib/urlState.ts';
   import type { Timeline } from '#lib/pours.ts';
   let { data, form } = $props();
   const isAdmin = $derived(!!page.data.isAdmin);
@@ -91,6 +92,27 @@
     const opener = document.activeElement as HTMLElement | null;
     pickerEl.focus(); // the dialog, never a field
     return () => { if (opener?.isConnected) opener.focus(); };
+  });
+  // The picker's search / sort: local while typing (mirrored into the URL without a navigation), reseeded from the URL after any load.
+  const BN_LABELS: Record<BnSort, string> = { brews: 'Brews', rating: 'Average rating', name: 'Name', roaster: 'Roaster', grams: 'Grams left' };
+  type Bn = Pick<RecipesView, 'bnq' | 'bnsort' | 'bndir'>; // only what the user set; defaults stay out of the URL
+  let bnLocal = $state<Bn | null>(null);
+  $effect(() => { void data.view; bnLocal = null; });
+  const bnExplicit = $derived<Bn>(bnLocal ?? { bnq: data.view.bnq, bnsort: data.view.bnsort, bndir: data.view.bndir });
+  const bnView = $derived({ q: bnExplicit.bnq ?? '', sort: bnExplicit.bnsort ?? 'brews', dir: bnExplicit.bndir ?? 'desc' });
+  const bnSet = (patch: Bn) => {
+    bnLocal = { ...bnExplicit, ...patch };
+    writeUrlParams(recipesParams({ ...data.view, ...bnLocal }));
+  };
+  const bnBacklog = $derived(data.view.bnstatus === 'backlog');
+  const bnShow = (backlog: boolean) => goto(`?${recipesParams({ ...data.view, ...bnExplicit, bnstatus: backlog ? 'backlog' : undefined })}`, { replace: true, reset: false });
+  type PickCoffee = { slug: string; name: string; roaster: string; brews: number; avg: number | null; gramsLeft: number | null };
+  const bnKey = (c: PickCoffee, k: BnSort): string | number => k === 'brews' ? c.brews : k === 'rating' ? c.avg ?? -1 : k === 'grams' ? c.gramsLeft ?? -1 : k === 'name' ? c.name.toLowerCase() : c.roaster.toLowerCase();
+  const bnShown = $derived.by(() => {
+    const q = bnView.q.trim().toLowerCase(), sign = bnView.dir === 'asc' ? 1 : -1;
+    return (data.brewNow?.coffees ?? [])
+      .filter((c: PickCoffee) => !q || `${c.name} ${c.roaster}`.toLowerCase().includes(q))
+      .sort((a: PickCoffee, b: PickCoffee) => { const x = bnKey(a, bnView.sort), y = bnKey(b, bnView.sort); return (x < y ? -1 : x > y ? 1 : 0) * sign || a.name.localeCompare(b.name); });
   });
   const closePicker = () => document.getElementById('picker-close')?.click(); // the Close link keeps the scroll position
   const n = (c: number, one: string, many: string) => `${c} ${c === 1 ? one : many}`;
@@ -372,14 +394,34 @@
   <div class="modal-backdrop" onclick={(e) => { if (e.target === e.currentTarget) closePicker(); }}>
     <div class="modal picker" role="dialog" aria-modal="true" aria-labelledby="picker-title" tabindex="-1" bind:this={pickerEl}>
       <div class="picker-head">
-        <h2 id="picker-title">Brew {bn.name} with</h2>
+        <h2 id="picker-title">Brew with {bn.name}: Select a coffee</h2>
         <a id="picker-close" class="button button-secondary" href={brewNowHref()} data-sveltekit-replacestate data-sveltekit-reset="false">Close</a>
       </div>
       <PourTimeline timeline={bn.timeline} label={bn.description} />
       <p class="text-muted">{bn.description}</p>
-      {#if bn.coffees.length}
+      <div class="tab-group" role="group" aria-label="Show coffees">
+        <button type="button" aria-pressed={!bnBacklog} onclick={() => bnShow(false)}>Open</button>
+        <button type="button" aria-pressed={bnBacklog} onclick={() => bnShow(true)}>Backlog</button>
+      </div>
+      <div class="search-row picker-controls">
+        <input class="search-input" type="search" aria-label="Search coffees" placeholder="Search coffee or roaster…" value={bnView.q} oninput={(e) => bnSet({ bnq: e.currentTarget.value })} />
+        <div class="form-field group-field sort-field">
+          <label for="picker-sort">Sort by</label>
+          <div class="sort-controls">
+            <select id="picker-sort" class="ctl-select" value={bnView.sort} onchange={(e) => bnSet({ bnsort: e.currentTarget.value as BnSort })}>
+              {#each BN_SORTS as k (k)}<option value={k}>{BN_LABELS[k]}</option>{/each}
+            </select>
+            <button type="button" class="icon-button sort-dir" aria-label="Sort {bnView.dir === 'asc' ? 'ascending' : 'descending'}"
+              use:labelTip={`${bnView.dir === 'asc' ? 'Ascending' : 'Descending'}: tap for ${bnView.dir === 'asc' ? 'descending' : 'ascending'}`}
+              onclick={() => bnSet({ bndir: bnView.dir === 'asc' ? 'desc' : 'asc' })}>
+              <Icon name={bnView.dir === 'asc' ? 'sort-ascending' : 'sort-descending'} />
+            </button>
+          </div>
+        </div>
+      </div>
+      {#if bnShown.length}
         <ul class="picks">
-          {#each bn.coffees as c (c.slug)}
+          {#each bnShown as c (c.slug)}
             <li>
               <a class="pick" class:untried={!c.brews} href="/coffees/{c.slug}/brew?recipe={bn.slug}">
                 {#if c.image}<img class="card-thumb" src={c.image.src} alt={c.image.alt} style:background-color={c.image.fill} />{/if}
@@ -403,18 +445,23 @@
           {/each}
         </ul>
       {:else}
-        <p>No open coffees. <a href="/coffees">Open one on Coffees</a> first.</p>
+        <p class="text-muted">
+          {#if bnView.q.trim()}No coffees match "{bnView.q.trim()}".{:else if bnBacklog}No backlog coffees.{:else}No open coffees. <a href="/coffees">Open one on Coffees</a> first.{/if}
+        </p>
       {/if}
     </div>
   </div>
 {/if}
 
 <style>
-  .picker { max-width: 720px; display: grid; gap: var(--space-3); align-content: start; }
+  .picker { max-width: 720px; display: grid; gap: var(--space-3); align-content: start; align-self: flex-start; } /* top-anchored: a search or tab that shortens the list must not re-centre the controls */
   .picker:focus { outline: none; }
   .picker h2, .picker p { margin: 0; }
   .picker-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
   .picker-head .button { margin: 0; flex: none; }
+  .picker-controls { margin: 0; }
+  .picker .tab-group { justify-self: start; }
+  @media (max-width: 640px) { .picker :global(.sort-dir) { width: 44px; height: 44px; } } /* tap target; /coffees keeps 2.25rem */
   /* Image-led grid: 2 columns on a phone, 3 at the modal's desktop width; the thumbnail is the global .card-thumb. */
   .picks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
   @media (min-width: 641px) { .picks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
