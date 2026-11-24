@@ -1,3 +1,49 @@
+# [2.7.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.6.1...v2.7.0) (2026-11-24)
+
+
+### Bug Fixes
+
+* a chosen recipe's row no longer lowers brew now confidence ([4b30b88](https://github.com/eric-maydeck/bean-tracker/commit/4b30b88924bbbdf0dd2ccb9bf125d8c8c3bc747d))
+* add tools and toolUuids to test fixtures, drop fallbacks ([a666ffe](https://github.com/eric-maydeck/bean-tracker/commit/a666ffe9da1ad57be88732010f0580a1cd085f8c))
+* brew now recipe picker keyed by slug, empty text only when no options, tests ([cc0b280](https://github.com/eric-maydeck/bean-tracker/commit/cc0b280fde940f122691627d80a1cdb4dffb83fa))
+* brew now regions keep their names, drop dead heading css ([6046de5](https://github.com/eric-maydeck/bean-tracker/commit/6046de55a1556cfb1d92be017b82031e320668d3))
+* drop brewer-named aliases from filter catalog ([5a40063](https://github.com/eric-maydeck/bean-tracker/commit/5a40063efac2fc7431b203c5f12c00019f0270c3))
+* final review wave for filters-as-bq-tools (filters, gear line, tool kind) ([07d2ed9](https://github.com/eric-maydeck/bean-tracker/commit/07d2ed998ded631e96319658bd2741c4b10cfb07))
+* gear review round 1 (tests, toolKind guard, plural, seed method) ([852929e](https://github.com/eric-maydeck/bean-tracker/commit/852929ee11ecc01cc7697b4513a63b6062f33f74))
+* keep a gh of 0 on the gh vs rating board ([249584a](https://github.com/eric-maydeck/bean-tracker/commit/249584a984dcf8d742f18fb86e7b44155e36f216))
+* narrow suggested recipe in the hint for svelte-check ([076f7d8](https://github.com/eric-maydeck/bean-tracker/commit/076f7d8bc0a0c5853716133aaaf8e7fe6916b398))
+* sort icons point the way they sort, ascending up and descending down ([00c74a4](https://github.com/eric-maydeck/bean-tracker/commit/00c74a4349c92df3e5a55d458647dde4402d5961))
+* subscriptions add heading stays unlinked ([77df439](https://github.com/eric-maydeck/bean-tracker/commit/77df43992df00a45c5b6df7fae11aa9384cfb74c))
+* unticked multi-tool method reads its one filter-kind tool ([b20959f](https://github.com/eric-maydeck/bean-tracker/commit/b20959f39dcd9466be4e84f236ccb87d0bdae510))
+* use pcf shadow map, three 0.187 removed the soft variant ([0c3fbdf](https://github.com/eric-maydeck/bean-tracker/commit/0c3fbdfdf15c9ba9e93a70369dcbe1dca625b5b6))
+* warn on a water with gh or kh but no minerals ([9710ff3](https://github.com/eric-maydeck/bean-tracker/commit/9710ff38561337465c4410a93b0db497ddcc66cc))
+* your gear heading keeps its style and stats gear tests allow its link ([234b9a0](https://github.com/eric-maydeck/bean-tracker/commit/234b9a09202c6cffbe606e7457cc057a1827e0b5))
+
+
+### Features
+
+* accessories panel and a kind select for tool cards on gear ([57778b9](https://github.com/eric-maydeck/bean-tracker/commit/57778b9d6ea1e1a096079f8bd4057ad9ff2eb389))
+* brew now button and open-coffee picker on recipes ([4482d94](https://github.com/eric-maydeck/bean-tracker/commit/4482d947d25d4d0888be7f7811da6dae3a88f8e3))
+* brew now picker search, sort and backlog switch; bolder suggestion hint ([0f63b9c](https://github.com/eric-maydeck/bean-tracker/commit/0f63b9c62bedd4fceba643f4fdb722f285195b0e))
+* brew now picker urgency sort, clear button and open prompt for backlog coffees ([8c16e3a](https://github.com/eric-maydeck/bean-tracker/commit/8c16e3acdd8cfcb99ff04a87b71621f8408cf7f6))
+* brew now recipe seam and step water amounts ([4337b22](https://github.com/eric-maydeck/bean-tracker/commit/4337b22075887ceb48761b6f98a1e33c5c487a44))
+* brew now suggestion hint as a warm callout with a recipe chip ([59e9f72](https://github.com/eric-maydeck/bean-tracker/commit/59e9f720f048d40920a60e1d3b5f32199ab41262))
+* brew now suggestions weigh the chosen recipe ([90e61bc](https://github.com/eric-maydeck/bean-tracker/commit/90e61bcc68932cebbf7742b7c07d5f96e87661fa))
+* count a distilled or ro water as a zero profile and warn on a blank one ([868c9d2](https://github.com/eric-maydeck/bean-tracker/commit/868c9d230d15ddb56c42e3180a7ca09546ce491f))
+* filter catalog for recognising filter tool names ([454c5d3](https://github.com/eric-maydeck/bean-tracker/commit/454c5d3483603bee3121ffc1ad0979bbd520b528))
+* image-led brew now picker with status badge and grams left ([4aa2e57](https://github.com/eric-maydeck/bean-tracker/commit/4aa2e57ec127efeda1df07943bde93d5d8ef0a16))
+* import warnings for missing, double and misspelled filters ([1d5ef16](https://github.com/eric-maydeck/bean-tracker/commit/1d5ef165c531390d9f334eb9758e12d9529886b8))
+* linkable section headers on account and gear ([0a8a0c9](https://github.com/eric-maydeck/bean-tracker/commit/0a8a0c982d5e72eed07730ccc46213e89edd6310))
+* linkable section headers on coffee detail and brew now ([f9aebf3](https://github.com/eric-maydeck/bean-tracker/commit/f9aebf34b54f6827107c2cd5283f3faa35978ffc))
+* linkable section headers on recipes, water, on deck and subscriptions ([86bb477](https://github.com/eric-maydeck/bean-tracker/commit/86bb4774f168819681d0eac1fc2de45e90cc8216))
+* preview without opening on the backlog prompt ([304f773](https://github.com/eric-maydeck/bean-tracker/commit/304f7739a9fb1d5dc2dce9c0d28e590a2b725b8d))
+* read a brew's filter from its ticked tools ([0b951f8](https://github.com/eric-maydeck/bean-tracker/commit/0b951f8a379f77b45872f38930cdc3ea0a4b3180))
+* recipe picker, source switch and steps on brew now ([40e0844](https://github.com/eric-maydeck/bean-tracker/commit/40e084498fd3748d50690ace16a7a6e20c51aeb2))
+* recipe url params for brew now and recipes ([23bad15](https://github.com/eric-maydeck/bean-tracker/commit/23bad156d416bd52661c4d575cc74ee76b91b38d))
+* shared sort direction captions and see recipe without opening prompt link ([7a3b628](https://github.com/eric-maydeck/bean-tracker/commit/7a3b6283fea7ca6f9ac846907f1048373fd86e7a))
+* sticky explicit recipe, suggestion hint and sentence-case steps on brew now ([89bc90f](https://github.com/eric-maydeck/bean-tracker/commit/89bc90f9e0ad7508ff633c3d19b01644fae43c30))
+* store bq method tools and brew ticks one by one ([ff4b7ca](https://github.com/eric-maydeck/bean-tracker/commit/ff4b7cab748f525de10e38f2ff58a195229daf65))
+
 ## [2.6.1](https://github.com/eric-maydeck/bean-tracker/compare/v2.6.0...v2.6.1) (2026-11-23)
 
 
