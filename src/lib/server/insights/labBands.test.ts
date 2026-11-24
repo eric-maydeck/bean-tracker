@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { bandOf, doseBand, bloomRound, grindSteps, mineralOf, REST_LABELS, type LabVar } from './labBands';
-import { MIXED_FILTER, type BrewFact } from './facts';
+import type { BrewFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: null, rating: null, roaster: null, origin: null,
@@ -109,10 +109,10 @@ describe('bandOf', () => {
     expect(bandOf('grindExact', brew({ grinder: 'A4Z', grind: '1.4.0' }), 'A4Z')!.order).toBeLessThan(
       bandOf('grindExact', brew({ grinder: 'A4Z', grind: '1.4.5' }), 'A4Z')!.order);
   });
-  it('categorical: water, dripper, filter; the mixed filter is excluded', () => {
+  it('categorical: water, dripper, filter', () => {
     expect(label('water', { water: 'Lotus' })).toBe('Lotus');
     expect(label('dripper', { dripper: 'V60' })).toBe('V60');
-    expect(label('filter', { filter: MIXED_FILTER })).toBeNull();
+    expect(label('filter', { filter: 'Abaca' })).toBe('Abaca');
   });
 });
 

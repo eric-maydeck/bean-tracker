@@ -5,7 +5,7 @@ import { wallToInstant } from '#lib/localDate.ts';
 import type { GearDetail } from '#lib/server/gearDetails.ts';
 import { pooled, type Sample } from '#lib/sample.ts';
 import { gearSlugs } from '#lib/slugify.ts';
-import { MIXED_FILTER, type BrewFact } from './facts';
+import type { BrewFact } from './facts';
 import { loadToolKinds, readGear, splitTools } from '../brewGear';
 import { countsForRating } from './ratings';
 import { daysBetween, inPeriod, type Period } from './time';
@@ -95,7 +95,7 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
   for (const b of brews)
     for (const kind of GEAR_KINDS) {
       for (const name of kind === 'accessory' ? b.accessories ?? [] : [b[kind]]) {
-        if (!name || name === MIXED_FILTER) continue;
+        if (!name) continue;
         const k = `${kind}\0${name}`;
         if (!groups.has(k)) groups.set(k, { kind, name, all: [], xs: [] });
         const g = groups.get(k)!;
@@ -113,13 +113,13 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
     const partners = new Map<string, number[]>();
     for (const b of xs) {
       const p = b[withKind(kind)];
-      if (!p || p === MIXED_FILTER) continue;
+      if (!p) continue;
       if (!partners.has(p)) partners.set(p, []);
       const r = ratingOf(b);
       if (r !== null) partners.get(p)!.push(r);
     }
     const count = new Map<string, number>();
-    for (const b of xs) { const p = b[withKind(kind)]; if (p && p !== MIXED_FILTER) count.set(p, (count.get(p) ?? 0) + 1); }
+    for (const b of xs) { const p = b[withKind(kind)]; if (p) count.set(p, (count.get(p) ?? 0) + 1); }
     const fav = [...count].sort(([an, ac], [bn, bc]) =>
       bc - ac || (mean(partners.get(bn)!) ?? -1) - (mean(partners.get(an)!) ?? -1) || an.localeCompare(bn))[0];
     const archived = archive[kind].has(name), lastUsed = life.at(-1)!;

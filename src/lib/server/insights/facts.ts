@@ -7,15 +7,10 @@ import { localDate as toLocalDate } from '#lib/localDate.ts';
 import type { GearValues } from '#lib/gear.ts';
 import { gearOfRow, loadToolKinds, toolColumns } from '../brewGear';
 
-// Method names are "Dripper - Filter". Gabi Master A brews used Kalita,
-// xBloom or Timemore 155 filters interchangeably (user, 2026-10-09), so its
-// filter is MIXED_FILTER and filter comparisons leave it out.
-export const MIXED_FILTER = '155 (mixed)';
-const MIXED_FILTER_DRIPPERS = new Set(['Gabi Master A']);
+// Method names are "Dripper - Filter".
 
 export function parseMethod(name: string | null, tools: string | null): { dripper: string | null; filter: string | null } {
   if (!name) return { dripper: null, filter: null };
-  if (MIXED_FILTER_DRIPPERS.has(name)) return { dripper: name, filter: MIXED_FILTER };
   const i = name.indexOf(' - ');
   if (i >= 0) return { dripper: name.slice(0, i).trim(), filter: name.slice(i + 3).trim() || null };
   return { dripper: name.trim(), filter: tools?.replace(/ filters$/i, '').trim() || null };

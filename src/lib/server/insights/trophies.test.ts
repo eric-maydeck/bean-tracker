@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from '#lib/server/db.ts';
-import { MIXED_FILTER, type BrewFact } from './facts';
+import type { BrewFact } from './facts';
 import type { GearDetail } from '#lib/server/gearDetails.ts';
 import { gearArchive, gearPanel, trophyCase, type GearArchive } from './trophies';
 
@@ -44,12 +44,6 @@ describe('trophyCase', () => {
     const t = trophyCase([brew({ dripper: 'V60', rating: null }), brew({ dripper: 'V60', rating: 0 })], none, T)[0];
     expect(t).toMatchObject({ rating: null, best: null });
     expect(t.sample).toMatchObject({ brews: 0, small: false }); // pooled(): no rated brews is no data, not low confidence
-  });
-  it('mixed filter gets no card and is never a favorite', () => {
-    const xs = [brew({ dripper: 'Gabi', filter: MIXED_FILTER, localDate: '2026-10-20' }), brew({ dripper: 'Gabi', filter: MIXED_FILTER, localDate: '2026-10-21' })];
-    const ts = trophyCase(xs, none, T);
-    expect(ts.map((t) => t.key)).toEqual(['dripper-gabi']);
-    expect(ts[0].favorite).toBeNull();
   });
   it('retired: archived, or last brew more than 90 days ago', () => {
     const at = (d: number, grinder = 'G') => trophyCase([brew({ grinder, localDate: ago(d) })], none, T)[0];
