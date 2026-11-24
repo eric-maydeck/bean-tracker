@@ -40,6 +40,19 @@ separate "Manage" destination.
   delete, and inline "+ Add" controls appear in place. No page or route is
   network-gated; authentication is entirely owned by the app itself.
 
+## Bean Conqueror filters
+
+The site reads each brew's filter from the tools you tick in Bean Conqueror:
+
+- Use one BQ method per brewer. Add each filter you use as a tool on it, named the way you want the card to
+  read, and spelled the same on every method.
+- Tick the filter on each brew. The site recognises common filter names; anything else you tick (a Switch
+  base, say) is guessed from what it is ticked with, and you can set its Kind on its `/gear` card.
+- Older data still reads: "Brewer - Filter" method names, or a method with one tool. The upload's warnings
+  list brews with no filter, two filters ticked, or two spellings of one tool.
+- If your data uses its own scheme, ask the site owner: a conversion script can move it to this shape, or a
+  per-account option can be looked at.
+
 ## Requirements to deploy
 
 Environment variables (secrets and the data path; never commit real values):
