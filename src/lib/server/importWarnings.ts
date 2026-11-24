@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { SETTING_FORMATS } from '#lib/gear.ts';
 import { getGearDetails } from './gearDetails';
 import { bcLocalTime } from './insights/time';
+import { isZeroWater } from '#lib/water.ts';
 
 // The Account page's "Data warnings": BQ brews worth fixing in BQ before re-importing. Computed from the stored
 // brews on each load; never blocks or changes an import.
@@ -53,4 +54,16 @@ export function importWarnings(db: DatabaseSync): ImportWarning[] {
     if (!r.water && !r.beverage) warn(r.water == null && r.beverage == null ? 'blank' : '0g', 'No water');
   }
   return out;
+}
+
+// #198: a live BQ water with no minerals, GH or KH counts in no Stats water chart; a distilled/RO
+// name or note means all-zero is real, so no warning.
+export function waterWarnings(db: DatabaseSync): { water: string; reason: string }[] {
+  const rows = db.prepare(
+    `SELECT name, note FROM beanconqueror_waters
+     WHERE bc_archived = 0 AND NOT (COALESCE(calcium, 0) OR COALESCE(magnesium, 0) OR COALESCE(sodium, 0) OR COALESCE(potassium, 0)
+       OR COALESCE(chloride, 0) OR COALESCE(sulfate, 0) OR COALESCE(stored_gh, 0) OR COALESCE(stored_kh, 0))
+     ORDER BY name COLLATE NOCASE`
+  ).all() as { name: string; note: string | null }[];
+  return rows.filter((w) => !isZeroWater(w.name, w.note)).map((w) => ({ water: w.name, reason: 'Water added without minerals, GH or KH' }));
 }

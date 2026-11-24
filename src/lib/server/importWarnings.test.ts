@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
 import { saveGearDetails } from './gearDetails';
-import { importWarnings } from './importWarnings';
+import { importWarnings, waterWarnings } from './importWarnings';
 
 const db = createDb(':memory:');
 db.exec(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('gz', 'ZP6', 'x'), ('ga', 'A4Z', 'x');
@@ -63,5 +63,18 @@ describe('importWarnings', () => {
     brew('gz', 'fine-ish'); brew('gz', '1.4.2'); brew('gz', '');
     saveGearDetails(db, { kind: 'grinder', name: 'ZP6', values: { settingFormat: 'Custom (any text)' }, imageUrl: null });
     expect(reasons()).toEqual(['No grind setting']);
+  });
+});
+
+describe('waterWarnings (#198)', () => {
+  it('flags a live BQ water with no minerals, GH or KH, unless it reads as distilled or RO', () => {
+    db.exec(`INSERT INTO beanconqueror_waters (id, name, note, calcium, stored_gh, bc_archived, imported_at) VALUES
+      ('w1', 'Blank', null, null, null, 0, 'x'), ('w2', 'Zero tap', null, 0, 0, 0, 'x'), ('w3', 'Distilled', null, null, null, 0, 'x'),
+      ('w4', 'Jug', 'RO from the store', null, null, 0, 'x'), ('w5', 'Old', null, null, null, 1, 'x'),
+      ('w6', 'Lotus', null, 20, null, 0, 'x'), ('w7', 'GH only', null, null, 50, 0, 'x')`);
+    expect(waterWarnings(db)).toEqual([
+      { water: 'Blank', reason: 'Water added without minerals, GH or KH' },
+      { water: 'Zero tap', reason: 'Water added without minerals, GH or KH' }
+    ]);
   });
 });

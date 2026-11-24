@@ -97,9 +97,9 @@ export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): B
 // Water tab "Recipe mineral map" and GH: a recipe profile's amounts. A mineral's 0 is
 // a real recipe value (no potassium), unlike brew fields; null = not entered or no water profile.
 // A profile whose six minerals are all 0 or empty was never filled in (user, 2026-10-12): its brews
-// count in no mineral, GH, KH or ratio chart.
+// count in no mineral, GH, KH or ratio chart, unless it's a distilled/RO water (`zero`, #198).
 const SIX = ['calcium', 'magnesium', 'potassium', 'sodium', 'chloride', 'sulfate'] as const;
-const profileOf = (b: BrewFact) => (b.waterProfile && SIX.some((k) => b.waterProfile![k]) ? b.waterProfile : null);
+const profileOf = (b: BrewFact) => (b.waterProfile && (b.waterProfile.zero || SIX.some((k) => b.waterProfile![k])) ? b.waterProfile : null);
 export const MINERALS = [
   ['calcium', 'Ca'], ['magnesium', 'Mg'], ['potassium', 'K'], ['sodium', 'Na'], ['chloride', 'Chloride'], ['sulfate', 'Sulfate'],
   ['gh', 'GH'], ['kh', 'KH'], ['mgca', 'Mg:Ca'], ['mgk', 'Mg:K']
