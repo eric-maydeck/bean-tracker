@@ -19,6 +19,7 @@
   import { fmtRange } from '#lib/recipes.ts';
   import { stepsText } from '#lib/recipeSteps.ts';
   import { formatGrams } from '#lib/grams.ts';
+  import { sortDirLabel, sortDirTip } from '#lib/sortDirLabels.ts';
   import { labelTip } from '#lib/components/labelTip.ts';
   import { recipesParams, BN_SORTS, BN_DEFAULT_DIR, type BnSort, type RecipesItem, type RecipesView } from '#lib/recipesView.ts';
   import { writeUrlParams, refreshTracked } from '#lib/urlState.ts';
@@ -431,8 +432,8 @@
             <select id="picker-sort" class="ctl-select" value={bnView.sort} onchange={(e) => bnSet({ bnsort: e.currentTarget.value as BnSort, bndir: undefined })}>
               {#each BN_SORTS as k (k)}<option value={k}>{BN_LABELS[k]}</option>{/each}
             </select>
-            <button type="button" class="icon-button sort-dir" aria-label="Sort {bnView.dir === 'asc' ? 'ascending' : 'descending'}"
-              use:labelTip={`${bnView.dir === 'asc' ? 'Ascending' : 'Descending'}: tap for ${bnView.dir === 'asc' ? 'descending' : 'ascending'}`}
+            <button type="button" class="icon-button sort-dir" aria-label={sortDirLabel(bnView.dir)}
+              use:labelTip={sortDirTip(bnView.dir)}
               onclick={() => bnSet({ bndir: bnView.dir === 'asc' ? 'desc' : 'asc' })}>
               <Icon name={bnView.dir === 'asc' ? 'sort-ascending' : 'sort-descending'} />
             </button>
@@ -480,7 +481,7 @@
       {#if askError}<p role="alert" class="badge badge-urgent">{askError}</p>{/if}
       <div class="action-buttons">
         <button class="button" type="button" disabled={asking} onclick={openAndBrew}>Open and brew</button>
-        <a class="button button-secondary" href="/coffees/{ask.c.slug}/brew?recipe={data.brewNow?.slug}" onclick={() => (ask = null)}>Preview without opening</a>
+        <a class="button button-secondary" href="/coffees/{ask.c.slug}/brew?recipe={data.brewNow?.slug}" onclick={() => (ask = null)}>See recipe without opening</a>
         <button class="button button-secondary" type="button" onclick={cancelAsk}>Cancel</button>
       </div>
     </div>

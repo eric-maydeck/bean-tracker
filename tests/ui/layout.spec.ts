@@ -4041,7 +4041,7 @@ export const STATES: State[] = [
             const ask = page.getByRole('dialog', { name: /isn't open yet/ });
             await expect(ask).toBeVisible();
             const btns = await ask.locator('.action-buttons .button').evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return { t: e.textContent!.trim(), h: Math.round(r.height), w: Math.round(r.width), right: Math.round(r.right) } }));
-            expect(btns.map((b) => b.t)).toEqual(['Open and brew', 'Preview without opening', 'Cancel']);
+            expect(btns.map((b) => b.t)).toEqual(['Open and brew', 'See recipe without opening', 'Cancel']);
             expect(new Set(btns.map((b) => b.h)).size, `button heights ${btns.map((b) => b.h)}`).toBe(1); // same size
             if (page.viewportSize()!.width <= 640) for (const b of btns) expect(b.h, b.t).toBeGreaterThanOrEqual(44);
             expect(Math.max(...btns.map((b) => b.right)) <= page.viewportSize()!.width).toBe(true);
@@ -4049,8 +4049,8 @@ export const STATES: State[] = [
             await expect(ask).toBeHidden();
             await expect(dlg).toBeVisible();
             expect(posts).toEqual([]);
-            await picks.first().click(); // Preview without opening: a plain link to the brew page, nothing posted
-            const preview = ask.getByRole('link', { name: 'Preview without opening' });
+            await picks.first().click(); // See recipe without opening: a plain link to the brew page, nothing posted
+            const preview = ask.getByRole('link', { name: 'See recipe without opening' });
             await expect(preview).toHaveAttribute('href', href!);
             await preview.click();
             await expect(page).toHaveURL(new RegExp(`${href!.replace(/[?]/g, '\\?')}$`));
@@ -8582,6 +8582,9 @@ export const STATES: State[] = [
       });
       await expect(page.locator('[data-board="varieties"] .low-switch')).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('[data-board="producers"] .low-switch')).toHaveAttribute('aria-pressed', 'false');
+      // Same captions as the /coffees and picker direction buttons, and they differ per direction.
+      await expect(page.locator('[data-board="varieties"] .low-switch')).toHaveAttribute('aria-label', 'Sort ascending');
+      await expect(page.locator('[data-board="producers"] .low-switch')).toHaveAttribute('aria-label', 'Sort descending');
       const pressed = await box('varieties'), idle = await box('producers');
       for (let i = 0; i < 4; i++) expect(Math.abs(pressed[i] - idle[i]), `box ${i}: ${pressed} vs ${idle}`).toBeLessThanOrEqual(1);
       // Lowest first: ascending values (Varieties' first row is at most its last).
