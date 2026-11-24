@@ -4053,13 +4053,13 @@ export const STATES: State[] = [
             const preview = ask.getByRole('link', { name: 'See recipe without opening' });
             await expect(preview).toHaveAttribute('href', href!);
             await preview.click();
-            await expect(page).toHaveURL(new RegExp(`${href!.replace(/[?]/g, '\\?')}$`));
+            await expect(page).toHaveURL((u) => u.href.endsWith(href!));
             expect(posts).toEqual([]);
             await gotoReady(page, `/recipes?brews=r${s.recipes.recipeId}&brewnow=seed-equal-pours&bnstatus=backlog`);
             href = await picks.first().getAttribute('href'); // the bare URL sorts by Urgency again
             await picks.first().click();
             await ask.getByRole('button', { name: 'Open and brew' }).click();
-            await expect(page).toHaveURL(new RegExp(`${href!.replace(/[?]/g, '\\?')}$`));
+            await expect(page).toHaveURL((u) => u.href.endsWith(href!));
             expect(JSON.parse(posts[0]).changes[0]).toMatchObject({ statusAction: 'open' });
             const toast = page.locator('.toast', { hasText: 'marked as open' });
             await expect(toast).toBeVisible();
