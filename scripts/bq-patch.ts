@@ -118,32 +118,37 @@ async function apply() {
     if (warnings.length) fail(`${warnings.length} own image file(s) missing (listed above); rsync the images first`);
   }
 
-  execFileSync('cp', ['-c', '-R', `${src}/.`, out]); // APFS clone; copies flow files and photos too
+  cloneExport(src, out);
   for (const b of plan.beans) {
     if (b.photo && photoed.has(b.uuid)) await sharp(b.photo).jpeg({ quality: 90 }).toFile(join(out, photoNames[b.uuid]));
   }
   for (const [u, p] of newPhotos) await sharp(p).jpeg({ quality: 90 }).toFile(join(out, photoNames[u]));
 
+  await finishExport(out, zip, new Map([['Beanconqueror.json', patched], ...brewFiles]), { summary, ...extra, changes });
+  console.log(`${changes.length} changes, ${plan.newBeans.length} new beans -> ${out}`);
+}
+
+function cloneExport(src: string, out: string) {
+  execFileSync('cp', ['-c', '-R', `${src}/.`, out]); // APFS clone; copies flow files and photos too
+}
+
+// Rebuilds Beanconqueror.zip with `replaced` JSON entries (name -> value), writes report.json and bq-patched.zip.
+async function finishExport(out: string, zip: JSZip, replaced: Map<string, unknown>, report: unknown) {
   const next = new JSZip();
-  for (const n of names) {
+  for (const n of Object.keys(zip.files)) {
     const f = zip.files[n];
     if (f.dir) next.folder(n);
-    else {
-      const bytes = n === 'Beanconqueror.json' ? JSON.stringify(patched)
-        : brewFiles.has(n) ? JSON.stringify(brewFiles.get(n)) : await f.async('uint8array');
-      next.file(n, bytes, { date: f.date });
-    }
+    else next.file(n, replaced.has(n) ? JSON.stringify(replaced.get(n)) : await f.async('uint8array'), { date: f.date });
   }
   writeFileSync(
     join(out, 'Beanconqueror.zip'),
     await next.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
   );
-  writeFileSync(join(out, 'report.json'), JSON.stringify({ summary, ...extra, changes }, null, 2));
+  writeFileSync(join(out, 'report.json'), JSON.stringify(report, null, 2));
 
   const tmp = `${out}.tmp.zip`; // outside out so the archive does not contain itself
   execFileSync('ditto', ['-c', '-k', out, tmp]);
   renameSync(tmp, join(out, 'bq-patched.zip'));
-  console.log(`${changes.length} changes, ${plan.newBeans.length} new beans -> ${out}`);
 }
 
 async function planFromSite(main: Record<string, unknown>) {
@@ -208,36 +213,32 @@ async function verify() {
   process.exit(diffs.length ? 1 : 0);
 }
 
-// Beanconqueror.json plus Beanconqueror_Brews_N.json (in N order), from an export's zip or a converted output's folder.
+// Beanconqueror.json plus Beanconqueror_Brews_N.json (in N order) from the Beanconqueror.zip in an export folder.
 async function readBq(dir: string) {
-  const zipPath = join(dir, 'Beanconqueror.zip');
-  const files: Record<string, string> = {};
-  if (existsSync(zipPath)) {
-    const zip = await JSZip.loadAsync(readFileSync(zipPath));
-    for (const n of Object.keys(zip.files)) if (/^Beanconqueror(_Brews_\d+)?\.json$/.test(n)) files[n] = await zip.files[n].async('string');
-  } else {
-    for (const n of readdirSync(dir)) if (/^Beanconqueror(_Brews_\d+)?\.json$/.test(n)) files[n] = readFileSync(join(dir, n), 'utf8');
-  }
-  const brewNames = Object.keys(files).filter((n) => n !== 'Beanconqueror.json')
+  const zip = await JSZip.loadAsync(readFileSync(join(dir, 'Beanconqueror.zip')));
+  const brewNames = Object.keys(zip.files).filter((n) => /^Beanconqueror_Brews_\d+\.json$/.test(n))
     .sort((x, y) => parseInt(x.replace(/\D/g, '')) - parseInt(y.replace(/\D/g, '')));
+  const read = async (n: string) => JSON.parse(await zip.files[n].async('string'));
   return {
-    main: JSON.parse(files['Beanconqueror.json'] ?? fail(`${dir}: no Beanconqueror.json`)),
-    brewNames, brewFiles: brewNames.map((n) => JSON.parse(files[n]))
+    zip, main: await read('Beanconqueror.json'),
+    brewNames, brewFiles: await Promise.all(brewNames.map(read))
   };
 }
 
 async function tools() {
-  const src = await readBq(need(a.export, 'export'));
+  const srcDir = need(a.export, 'export');
+  const src = await readBq(srcDir);
   const out = resolve(need(a.out, 'out'));
   const plan: ToolPlan = JSON.parse(readFileSync(need(a.plan, 'plan'), 'utf8'));
   const r = convertToTools(src.main, src.brewFiles, plan);
   console.log(JSON.stringify(r.report, null, 1));
   if (r.report.problems.length) fail('Problems found, nothing written');
+  if (existsSync(out) && readdirSync(out).length) fail(`${out} is not empty`);
   mkdirSync(out, { recursive: true });
-  if (readdirSync(out).length) fail(`${out} is not empty`);
-  writeFileSync(join(out, 'Beanconqueror.json'), JSON.stringify(r.main));
-  src.brewNames.forEach((n, i) => writeFileSync(join(out, n), JSON.stringify(r.brewFiles[i])));
-  writeFileSync(join(out, 'report.json'), JSON.stringify(r.report, null, 2));
+  cloneExport(srcDir, out);
+  const replaced = new Map<string, unknown>([['Beanconqueror.json', r.main]]);
+  src.brewNames.forEach((n, i) => replaced.set(n, r.brewFiles[i]));
+  await finishExport(out, src.zip, replaced, r.report);
 }
 
 async function verifyToolsCmd() {

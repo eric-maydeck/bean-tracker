@@ -379,6 +379,12 @@ export function convertToTools(
   for (const n of new Set([...Object.values(plan.drippers), ...Object.keys(plan.assign ?? {})])) {
     if (byName(n).length !== 1) problems.push(`method "${n}": ${byName(n).length} found, need exactly 1`);
   }
+  const brewIds = new Set(brews.map(uuidOf));
+  for (const u of Object.keys(plan.overrides ?? {})) if (!brewIds.has(u)) problems.push(`override ${u}: no such brew`);
+  for (const [n, e] of Object.entries(plan.assign ?? {})) {
+    const bs = e.byDate?.map((d) => d.before) ?? [];
+    if (bs.some((x, i) => i && x <= bs[i - 1])) problems.push(`assign "${n}": byDate must be in ascending order`);
+  }
 
   const changed = new Set<unknown>();
   let untouched = 0;

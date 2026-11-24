@@ -364,6 +364,24 @@ describe('convertToTools', () => {
     expect(convertToTools(m, files(), plan()).report.problems.join()).toMatch(/2 found/);
   });
 
+  it('plan typos are problems: unknown override brew, unknown assign method, unordered byDate', () => {
+    const run = (p: ToolPlan) => convertToTools(main(), files(), p).report.problems.join();
+    expect(run({ ...plan(), overrides: { nope: 'Kalita 155' } })).toMatch(/override nope: no such brew/);
+    expect(run({ ...plan(), assign: { 'Gabi Master B': { tool: 'Timemore 155' } } })).toMatch(/"Gabi Master B": 0 found/);
+    const byDate = [{ before: '2026-03-02T10:00', tool: 'Kalita 155' }, { before: '2026-03-01T10:00', tool: 'Kalita 155' }];
+    expect(run({ ...plan(), assign: { 'Gabi Master A': { tool: 'Timemore 155', byDate } } })).toMatch(/ascending/);
+  });
+
+  it('verifyTools catches a changed top-level key and a missing brew', () => {
+    const r = convertToTools(main(), files(), plan());
+    const key = structuredClone(r);
+    key.main.SETTINGS = { default_method: 'other' };
+    expect(verifyTools(main(), files(), key.main, key.brewFiles, plan()).join()).toMatch(/key SETTINGS: differs/);
+    const gone = structuredClone(r);
+    (gone.main.BREWS as Rec[]).pop();
+    expect(verifyTools(main(), files(), gone.main, gone.brewFiles, plan()).join()).toMatch(/brews: 7 expected, 6 actual/);
+  });
+
   it('a dropped uuid referenced elsewhere is a problem', () => {
     const m = main();
     m.SETTINGS = { default_method: 'old-abaca' };
