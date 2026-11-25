@@ -625,7 +625,7 @@
   .game-row { margin-bottom: var(--space-2); }
   /* the callout look (a tinted panel); the button sits right of the text and wraps below it on a narrow screen */
   .shared-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0; padding: 0 0 0 var(--space-3); min-width: 0; border: 1px solid var(--color-warm); border-radius: var(--radius); background: color-mix(in srgb, var(--color-warm) 12%, transparent); }
-  .shared-note.plain { padding: var(--space-2) var(--space-3); min-height: 36px; }
+  .shared-note.plain { padding: 0 var(--space-3); box-sizing: border-box; min-height: 36px; display: flex; align-items: center; } /* 36px like the Game row: the note adds no height to it */
   .shared-note .button { margin: 0; padding: 0 0.75rem; min-height: 36px; }
   @media (max-width: 640px) { .shared-note { flex: 1 1 100%; padding: 0 0 0 var(--space-3); } .shared-note .button { min-height: 44px; } }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }

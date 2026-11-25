@@ -41,6 +41,9 @@ async function expectDenseCardFits(card: Locator, what: string, grows = false) {
   expect(m.slack, `${what}: the last row ends at least 4px above the buttons`).toBeGreaterThanOrEqual(4);
 }
 
+// Pick puts the card beside the game only where its container is wide enough (PickForMe's 1226px container query), so a window's width alone doesn't say: the sidebar takes some.
+const besideGame = (page: import('@playwright/test').Page) => page.locator('.stage-box').evaluate((e) => e.clientWidth >= 1226);
+
 async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
   const b = (await page.locator('.out-row').boundingBox())!;
   const vh = page.viewportSize()!.height;
@@ -6454,7 +6457,7 @@ export const STATES: State[] = [
       expect((await page.locator('.wheel').boundingBox())!.width).toBeLessThanOrEqual(561);
       if ((page.viewportSize()?.width ?? 0) > 640) {
         const [w, r] = [(await page.locator('.wheel').boundingBox())!, (await page.locator('.result').boundingBox())!];
-        if ((page.viewportSize()?.width ?? 0) >= 1280) expect(r.x, 'wide desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
+        if (await besideGame(page)) expect(r.x, 'wide desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
         else expect(r.y, 'narrower desktop: the card sits under the game').toBeGreaterThan(w.y + w.height - 1);
       } else await expect(page.locator('.result')).toBeHidden(); // phone: no placeholder, results show in the overlay
       await expectGroupsLabelled(page);
@@ -6463,7 +6466,7 @@ export const STATES: State[] = [
       const [gb, rb] = [(await page.getByRole('group', { name: 'Game' }).getByRole('button', { name: 'Wheel' }).boundingBox())!, (await rules.boundingBox())!];
       expect(Math.abs(gb.y - rb.y), 'Rules on the Game row').toBeLessThanOrEqual(3);
       expect(Math.abs(gb.height - rb.height), 'same height').toBeLessThanOrEqual(3);
-      if ((page.viewportSize()?.width ?? 0) > 640) await expectOutRowOnScreen(page); // no scrolling to reach it
+      if ((page.viewportSize()?.width ?? 0) > 640 && await besideGame(page)) await expectOutRowOnScreen(page); // no scrolling to reach it
       await rules.click();
       await expect(page.getByRole('group', { name: 'Pool' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Reset to defaults' })).toBeVisible();
@@ -6613,7 +6616,7 @@ export const STATES: State[] = [
       const [hb, sb] = [(await hint.boundingBox())!, (await page.locator('.d20 .stage').boundingBox())!];
       expect(hb.y >= sb.y && hb.y + hb.height <= sb.y + sb.height, 'the note is inside the tray').toBe(true);
       await expect(page.getByRole('button', { name: 'Roll', exact: true })).toBeDisabled();
-      if ((page.viewportSize()?.width ?? 0) >= 1280) await expectOutRowOnScreen(page);
+      if (await besideGame(page)) await expectOutRowOnScreen(page);
       await page.getByLabel('Number someone rolled').fill('7');
       await page.getByRole('button', { name: 'Show', exact: true }).click();
       await expect(page.locator('.pick-modal .rolled b')).toHaveText('7');
@@ -6653,18 +6656,18 @@ export const STATES: State[] = [
       await expect(page.locator('.side .last h3'), 'the inline card has its heading and the rolled number').toHaveText('Your last roll · 7');
       const [hb, cb0, gr] = [(await page.locator('.side .last h3').boundingBox())!, (await page.locator('.result').boundingBox())!, (await page.locator('.game-row').boundingBox())!];
       expect(hb.y + hb.height - 1, 'heading above the card').toBeLessThanOrEqual(cb0.y);
-      if ((page.viewportSize()?.width ?? 0) >= 1280) {
+      if (await besideGame(page)) {
         expect(hb.y, 'beside the game: the heading sits in the Game row band, not off the page').toBeGreaterThanOrEqual(gr.y - 2);
         const rb = (await page.getByRole('button', { name: 'Rules', exact: true }).boundingBox())!;
         expect(hb.x >= rb.x + rb.width || hb.y >= rb.y + rb.height || hb.x + hb.width <= rb.x || hb.y + hb.height <= rb.y, 'the heading does not overlap the Rules button').toBe(true);
       }
       if ((page.viewportSize()?.width ?? 0) > 900) {
         expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
-        await expectOutRowOnScreen(page);
-        expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the D20').toBeGreaterThan((await page.locator('.d20 .stage').boundingBox())!.x + (await page.locator('.d20 .stage').boundingBox())!.width);
-        expect(Math.abs((await page.locator('.result').boundingBox())!.y - (await page.locator('.d20 .stage').boundingBox())!.y), 'card top level with the tray top (the heading does not push it)').toBeLessThanOrEqual(2);
+        if (await besideGame(page)) await expectOutRowOnScreen(page);
+        if (await besideGame(page)) expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the D20').toBeGreaterThan((await page.locator('.d20 .stage').boundingBox())!.x + (await page.locator('.d20 .stage').boundingBox())!.width);
+        if (await besideGame(page)) expect(Math.abs((await page.locator('.result').boundingBox())!.y - (await page.locator('.d20 .stage').boundingBox())!.y), 'card top level with the tray top (the heading does not push it)').toBeLessThanOrEqual(2);
         // The card is as tall as the D20 tray (an image card; one without is as tall as its content).
-        if (await page.locator('.result img').count()) expect(Math.abs((await page.locator('.result').boundingBox())!.height - (await page.locator('.d20 .stage').boundingBox())!.height), 'card as tall as the tray').toBeLessThanOrEqual(2);
+        if (await besideGame(page) && await page.locator('.result img').count()) expect(Math.abs((await page.locator('.result').boundingBox())!.height - (await page.locator('.d20 .stage').boundingBox())!.height), 'card as tall as the tray').toBeLessThanOrEqual(2);
       } else {
         expect(Math.abs(t2.x - t1.x), 'one column').toBeLessThanOrEqual(1); // stacked: one table, 1 to 20
         expect(t2.y, 'second half under the first').toBeGreaterThan(t1.y + t1.height - 1);
@@ -6678,7 +6681,7 @@ export const STATES: State[] = [
         expect(ob.y, 'Out for today below the card on a phone').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
         expect(await page.evaluate(() => !!(document.querySelector('.side')!.compareDocumentPosition(document.querySelector('.out-row')!) & Node.DOCUMENT_POSITION_FOLLOWING)), 'DOM order = visual order: the card, then Out for today').toBe(true);
       }
-      if ((page.viewportSize()?.width ?? 0) >= 1280) { // #136: the desktop pop-up with an image (the seed's one, wherever the board puts it)
+      if (await besideGame(page)) { // #136: the desktop pop-up with an image (the seed's one, wherever the board puts it)
         const n = await page.locator('table.board tr').filter({ hasText: 'Rwanda Gitega Natural' }).locator('td.n').first().textContent();
         await page.getByLabel('Number someone rolled').fill(n!);
         await page.getByRole('button', { name: 'Show', exact: true }).click();
@@ -6751,7 +6754,7 @@ export const STATES: State[] = [
       if ((page.viewportSize()?.width ?? 0) <= 640) return;
       await expect(page.locator('.side .last h3'), 'the wheel result has its heading').toContainText('Your last spin');
       const card = page.locator('.result');
-      if ((page.viewportSize()?.width ?? 0) >= 1280) expect(Math.abs((await card.boundingBox())!.y - (await page.locator('.game').boundingBox())!.y), 'card top level with the game top').toBeLessThanOrEqual(2);
+      if (await besideGame(page)) expect(Math.abs((await card.boundingBox())!.y - (await page.locator('.game').boundingBox())!.y), 'card top level with the game top').toBeLessThanOrEqual(2);
       await expect(card.locator('.pick-card')).toBeVisible();
       expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(735);
       await expect(card.getByRole('button', { name: 'Close' })).toHaveCount(0);
@@ -6768,11 +6771,11 @@ export const STATES: State[] = [
         expect(await card.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the detail fits its height').toBe(true);
         await expectDenseCardFits(card, 'inline card');
       }
-      await expectOutRowOnScreen(page);
+      if (await besideGame(page)) await expectOutRowOnScreen(page);
       // The /coffees card's rows: roaster, origin, roast level, cost.
       await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
       // Every desktop width: the card beside the game or under it, never squeezed (no sideways scroll, no clipped button text, as tall as its thumbnail when horizontal).
-      for (const width of [800, 960, 1100, 1240, 1250, 1263, 1280, 1416]) {
+      for (const width of [800, 960, 1100, 1280, 1416, 1500, 1540, 1600]) {
         await page.setViewportSize({ width, height: 900 });
         await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toBeVisible();
         const m = await page.evaluate(() => ({
@@ -6788,7 +6791,7 @@ export const STATES: State[] = [
         expect(m.scroll, `no sideways scroll at ${width}`).toBeLessThanOrEqual(0);
         expect(m.clipped, `no clipped button text at ${width}`).toBe(0);
         expect(m.cardW, `card not squeezed at ${width}`).toBeGreaterThan(400);
-        if (width >= 1263) expect(m.beside, `the card sits beside the game at ${width} (1280 with a 15px scrollbar is still beside)`).toBe(true);
+        if (width >= 1540) expect(m.beside, `the card sits beside the game at ${width} (the 248px sidebar, 32px of padding and a 15px scrollbar leave the 1226px it needs)`).toBe(true);
         else expect(m.beside, `the card sits under the game at ${width}`).toBe(false);
         if (!m.beside) expect(m.outAfterCard, `stacked: Out for today after the card, as in the DOM (tab order = visual order) at ${width}`).toBe(true);
         if (m.beside) expect(m.horizontal, `beside the game means the horizontal card at ${width}`).toBe(true);
@@ -6808,7 +6811,7 @@ export const STATES: State[] = [
       const modal = page.getByRole('dialog', { name: 'Pick result' });
       await expect(modal).toBeVisible();
       // Horizontal card where the layout is wide, vertical on a phone; its detail fits (no clipping), and Tab stays inside the pop-up.
-      const wide = (page.viewportSize()?.width ?? 0) >= 1280;
+      const wide = await besideGame(page);
       const img = await modal.locator('.card-thumb').count(); // a coffee without a picture is content-height, not a grid
       expect(await modal.locator('.pick-card').evaluate((e) => e.classList.contains('wide')), wide ? 'horizontal pop-up card' : 'vertical pop-up card').toBe(wide);
       if (wide && img) expect(await modal.locator('.pick-card').evaluate((e) => getComputedStyle(e).display), 'the horizontal card is a grid').toBe('grid');
@@ -13948,6 +13951,21 @@ for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   });
 }
 
+// The beside-the-game layout needs a 1226px container, so a 1280 window with the sidebar never gets it: these two states run again in a window that does.
+for (const name of ['pick-wheel', 'pick-d20']) {
+  test(`${name}-wide-window @on-deck`, async ({ page }, info) => {
+    test.skip(info.project.name !== 'w1280', 'desktop only');
+    await page.setViewportSize({ width: 1600, height: 800 });
+    const state = STATES.find((s) => s.name === name)!;
+    const s = seed();
+    await stubPickApi(page);
+    await gotoReady(page, state.path(s));
+    expect(await besideGame(page), 'the card beside the game').toBe(true);
+    await state.act!(page, s);
+    await checkLayout(page);
+  });
+}
+
 // A non-UTC browser zone: "browser time" renders UTC on the first visit (server), then Tokyo after mount, and stays Tokyo
 // across a client-side navigation (no UTC flash from a Stamp created later).
 test.describe('browser in Tokyo', () => {
@@ -14037,7 +14055,7 @@ test.describe('signed out', () => {
     await expect(rules).toBeHidden();
     expect(await page.evaluate(() => localStorage.getItem('pick.rules.last')), 'nothing saved over the visitor\'s own rules').toBeNull();
     await expect(note, 'the note stays (still the shared link)').toContainText('Shared Rules');
-    if ((page.viewportSize()?.width ?? 0) >= 1280) await expectOutRowOnScreen(page); // the note adds no height beside the game
+    if (await besideGame(page)) await expectOutRowOnScreen(page); // the note adds no height beside the game
     await checkLayout(page);
     // A link to another profile followed in the app plays that profile's rules.
     await page.evaluate(() => { const a = document.createElement('a'); a.id = 'to-other'; a.href = '/on-deck?view=pick&game=d20&profile=Other+Rules'; a.textContent = 'other'; document.body.prepend(a); });
