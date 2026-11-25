@@ -521,6 +521,7 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
       await checkLayout(page);
     }
     // The same notice is in the bell's inbox (a link to the recap) and counts as unread; banner and alert are independent.
+    await page.setViewportSize({ width: 1280, height: 800 }); // the bell sits in the sidebar; phone has it only in the drawer
     const bell = page.getByRole('button', { name: /^Alerts/ }).first();
     await expect(bell).toHaveAccessibleName(/unread/);
     const inbox = async () => { await bell.click(); return page.locator('.alert-list-item').filter({ hasText: `Your ${Y} recap is ready` }); };
