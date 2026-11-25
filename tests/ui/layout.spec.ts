@@ -1274,7 +1274,8 @@ export const STATES: State[] = [
       await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
       await expect(page.locator('.recap-tile .badge')).toHaveText(['Preview']);
       await expectNoMidWord(page, '.recap-tile b', '.recap-tile b .fit', LONG_NAMES);
-      await expect(page.locator('dialog.tab-drawer a').last()).toHaveText('Recaps');
+      const scope = (await page.locator('nav.phone-bar').isVisible()) ? 'dialog.nav-drawer' : 'nav.site-sidebar'; // the menu lists Recaps last
+      await expect(page.locator(`${scope} .nav-panel[data-panel="stats"] a.nav-row`).last()).toHaveText('Recaps');
     } },
   // The Period picks the years: one year, and a range with none (an empty line naming it, not a blank panel).
   { name: 'insights-recaps-period', path: () => `/stats?tab=recaps&range=${recapYear() - 1}`,
@@ -9169,23 +9170,17 @@ export const STATES: State[] = [
       await page.evaluate(() => document.getElementById('frac')!.remove());
     }
   },
-  // Sections: "☰ View: X" under the title opens the drawer; a link switches the tab, keeps the other params, marks
-  // itself current and closes the drawer. Previous / Next end every tab in drawer order. Scrolled, desktop keeps the
-  // row pinned with the controls right under it; a phone's short row leads with a ☰ that opens the same drawer.
+  // Sections: the site nav's Stats panel switches the tab (keeping the other params) and the subtitle names it at once;
+  // Previous / Next end every tab in menu order. Scrolled, desktop pins only the controls (the title scrolls away).
   {
     name: 'insights-sections',
     path: () => '/stats?range=all&tab=habits',
     act: async (page) => {
-      const row = page.locator('.section-row'), drawer = page.locator('dialog.tab-drawer');
-      await expect(row).toHaveText('View: Habits');
-      await row.click();
-      await expect(drawer).toBeVisible();
-      await expect(drawer.locator('[aria-current="page"]')).toHaveText('Habits');
-      await expect(drawer.getByRole('group', { name: 'Lab' }).getByRole('link')).toHaveText(['Sweet spots', 'Brewing', 'Pours', 'Water', 'Gear']);
-      await drawer.getByRole('link', { name: 'Records', exact: true }).click();
-      await expect(drawer).toBeHidden();
-      await expect(row).toHaveText('View: Records');
-      // The row switches on tap (#206); the URL follows once the data arrives.
+      const sub = page.locator('.page-subtitle');
+      await expect(sub).toHaveText('Habits');
+      await pickTab(page, 'records');
+      await expect(sub).toHaveText('Records');
+      // The subtitle switches on tap (#206); the URL follows once the data arrives.
       await expect(page).toHaveURL(/[?&]tab=records(&|$)/);
       const u = new URL(page.url());
       expect([u.searchParams.get('tab'), u.searchParams.get('range')]).toEqual(['records', 'all']);
@@ -9194,23 +9189,17 @@ export const STATES: State[] = [
       await pager.locator('.next').scrollIntoViewIfNeeded();
       await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
       await pager.locator('.next').click();
-      await expect(row).toHaveText('View: Milestones');
+      await expect(sub).toHaveText('Milestones');
       await expect(page).toHaveURL(/[?&]tab=milestones(&|$)/);
       await expect.poll(() => page.evaluate(() => scrollY), 'Next opens the new tab at its top').toBe(0);
       await expect(pager.locator('.prev')).toContainText('Records');
       await gotoReady(page, '/stats?range=all');
       await expect(pager.locator('.prev')).toHaveCount(0);
-      await scrollPastBar(page);
-      if (isPhone(page)) await page.locator('.mini-menu').click();
-      else {
-        const [r, bar] = [(await page.locator('.section-bar').boundingBox())!, (await page.locator('.filter-bar').boundingBox())!];
-        expect(Math.abs(r.y), 'row pinned at the top').toBeLessThanOrEqual(1);
-        expect(Math.abs(bar.y - (r.y + r.height)), 'controls right under it').toBeLessThanOrEqual(1);
-        await row.click();
+      await expect(sub).toHaveText('Overview');
+      if (!isPhone(page)) {
+        await scrollPastBar(page);
+        expect(Math.abs((await page.locator('.filter-bar').boundingBox())!.y), 'controls pinned at the top').toBeLessThanOrEqual(1);
       }
-      await expect(drawer).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(drawer).toBeHidden();
     }
   },
   // A feed shorter than the full side ruler caps it to the feed: it never sticks out below (M10). A window
@@ -13517,7 +13506,7 @@ export const STATES: State[] = [
       await scrollPastBar(page);
       const barH = () => page.locator('.timeline').evaluate((el) => parseFloat(el.style.getPropertyValue('--bar-h')));
       if (!isPhone(page)) {
-        const b = (await page.locator('.filter-bar').boundingBox())!; // the "View: …" row and the controls
+        const b = (await page.locator('.filter-bar').boundingBox())!; // the controls
         expect(Math.abs((await barH()) - (b.y + b.height))).toBeLessThanOrEqual(1);
         return;
       }
@@ -14237,7 +14226,7 @@ for (const tab of ['overview', 'records', 'water', 'leaderboards', 'habits', 'co
   });
 }
 
-// A slow tab switch (#206): the progress bar appears after a beat, the tapped tab reads active at once, nothing shifts, and the bar goes on arrival.
+// A slow tab switch (#206): the progress bar appears after a beat, the subtitle names the tapped view at once, nothing shifts, and the bar goes on arrival.
 test('nav-progress-slow-tab', { tag: ['@stats', '@two'] }, async ({ page }) => {
   await gotoReady(page, '/stats?range=all&tab=habits');
   await page.route('**/stats/__data.json*tab=records*', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
@@ -14245,11 +14234,37 @@ test('nav-progress-slow-tab', { tag: ['@stats', '@two'] }, async ({ page }) => {
   const before = await h1.boundingBox();
   await pickTab(page, 'records');
   await expect(bar).toBeVisible();
-  await expect(page.locator('.section-row')).toHaveText('View: Records'); // before the data arrives
-  expect(await h1.boundingBox(), 'the title does not move').toEqual(before);
+  await expect(page.locator('.page-subtitle')).toHaveText('Records'); // before the data arrives
+  const after = (await h1.boundingBox())!; // the box's width follows the subtitle's, so compare where it sits
+  expect([after.x, after.y, after.height], 'the title does not move').toEqual([before!.x, before!.y, before!.height]);
   expect((await bar.boundingBox())!.height).toBe(3);
   await expect(bar).toBeHidden({ timeout: 5000 });
-  await expect(page.locator('.section-row')).toHaveText('View: Records');
+  await expect(page.locator('.page-subtitle')).toHaveText('Records');
+});
+
+// The Stats view subtitle (#207): under the h1, follows the view, leaves the title and Share where they were.
+const SHARE_LEFT: Record<number, number> = { 1280: 1160.33, 480: 360.33 }; // pinned from the page before the subtitle
+test('stats-view-subtitle', { tag: ['@stats', '@two'] }, async ({ page }) => {
+  const w = page.viewportSize()!.width;
+  await gotoReady(page, '/coffees');
+  const coffeesH1 = (await page.locator('h1').first().boundingBox())!;
+  await gotoReady(page, '/stats?tab=leaderboards');
+  const sub = page.locator('.page-subtitle');
+  await expect(sub).toHaveText('Leaderboards');
+  expect(await page.title()).toMatch(/^Leaderboards · Stats/);
+  const h1 = (await page.locator('h1').first().boundingBox())!;
+  expect([h1.x, h1.y], "the title sits where /coffees's does").toEqual([coffeesH1.x, coffeesH1.y]);
+  const s = (await sub.boundingBox())!;
+  expect(s.y, 'subtitle directly under the h1').toBeGreaterThanOrEqual(h1.y + h1.height - 1);
+  expect(s.x).toBe(h1.x);
+  const share = (await page.locator('.toolbar').getByRole('button', { name: 'Share' }).boundingBox())!;
+  expect(Math.abs(share.x - SHARE_LEFT[w]), 'Share keeps its left edge').toBeLessThanOrEqual(1);
+  await gotoReady(page, '/stats?range=all'); // no tab in the URL
+  await expect(sub).toHaveText('Overview');
+  expect(await page.title()).toMatch(/^Overview · Stats/);
+  await page.route('**/stats/__data.json*tab=records*', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
+  await pickTab(page, 'records');
+  await expect(sub).toHaveText('Records'); // before the data arrives
 });
 
 // The one drill-in site nav (#207): a sidebar on desktop, a bottom bar plus the same panel as a drawer on phones.
