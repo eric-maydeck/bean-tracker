@@ -533,8 +533,7 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     await link.click();
     await expect(page).toHaveURL(new RegExp(`/recaps/${Y}$`));
     await expect(page.locator('.alert-list'), 'following the link closes the inbox').toHaveCount(0);
-    await page.goBack();
-    await waitReady(page);
+    await gotoReady(page, '/coffees'); // not goBack: its restore raced waitReady on CI
     await page.getByRole('button', { name: 'Dismiss' }).first().click(); // the banner's
     await expect(banner).toHaveCount(0);
     item = await inbox();

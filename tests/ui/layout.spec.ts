@@ -14018,13 +14018,14 @@ for (const width of [1280, 1440]) {
     await expect(page.getByRole('dialog', { name: 'Pick result' }).getByRole('button', { name: 'Close' })).toBeVisible();
     await dismissPickOverlay(page);
     await expect(page.locator('.result .pick-card')).toBeVisible();
-    await page.locator('.result .pick-card').evaluate((el) => { // the seed has no pictures: give the card one the way the template does
+    await page.locator('.result .pick-card').evaluate((el) => { // most seed coffees have no picture: give the card one the way the template does
+      if (el.querySelector('img')) return;
       el.classList.remove('noimg');
       const img = document.createElement('img'); img.className = 'card-thumb ' + [...el.classList].find((c) => c.startsWith('svelte-')); img.alt = '';
       img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="%23885"/></svg>';
       el.prepend(img);
     });
-    await expect(page.locator('.result img')).toBeVisible();
+    await expect(page.locator('.result img').first()).toBeVisible();
     // With a picture (the 360px card): beside the game, as tall as the tray, its detail inside, Out for today and the Game row inside their columns.
     const [card, game, out] = await Promise.all(['.result', '.game', '.out-row'].map((q) => page.locator(q).boundingBox().then((b) => b!)));
     expect(card.x, 'the card beside the game').toBeGreaterThan(game.x + game.width);
