@@ -475,7 +475,7 @@ function build(cfg: { brews: number; beans: number; days: number; cap: number },
     const form = pf < profileForms.length ? profileForms[pf++] : chance(0.9) ? 'dominant' : pick(['4letter', 'bare', '6letter', 'hyphen', 'comma', 'plus']);
     switch (form) {
       case '4letter': return 'Flat';
-      case 'bare': return pf <= 3 && N > 1000 ? '121' : String(pick([9, 8, 6, 10]));
+      case 'bare': return pf <= 3 && N > 1000 ? '137' : String(pick([9, 8, 6, 10]));
       case '6letter': return 'Smooth';
       case 'hyphen': return 'pre 3bar - ramp, 9bar';
       case 'comma': return 'soft start, hold, fade';
