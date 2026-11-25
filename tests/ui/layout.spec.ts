@@ -3647,6 +3647,7 @@ export const STATES: State[] = [
       const n = Number((await summary.textContent())!.match(/\d+/)![0]);
       await page.getByRole('button', { name: 'Accept' }).first().click();
       await expect(summary).toHaveText(`Data warnings (${n - 1})`);
+      await expect(page.locator('.toast', { hasText: 'Accepted "Unfilled water"' })).toBeVisible();
       const acc = page.locator('.accepted');
       await expect(acc.locator('summary')).toHaveText('Accepted (1)');
       await acc.locator('summary').click();

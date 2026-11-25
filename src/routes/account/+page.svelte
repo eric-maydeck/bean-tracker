@@ -26,6 +26,14 @@
       });
     };
   };
+  // A water warning's Accept or Undo toasts with Undo (the opposite action on the same water).
+  const waterToast = (name: string, say: string, reverse: string): import('$app/forms').SubmitFunction => ({ formData }) => {
+    const id = String(formData.get('id'));
+    return async ({ result, update }) => {
+      await update({ navigate: false });
+      if (result.type === 'success') showToast(`${say} "${name}".`, { undo: () => postAction(`?/${reverse}`, { id }) });
+    };
+  };
   // Time and Stats settings: a select saves on change, toasts with Undo (the previous value posted back), and a bad value
   // shows its error in the panel. `settings` holds what is saved; the select follows it after each save.
   type SettingName = 'brewingZone' | 'displayZone' | 'dateFormat' | 'defaultCaffeine';
@@ -217,7 +225,7 @@
           <li class="warn-row">
             <strong>{w.water}</strong>
             <div class="warn-what">{w.reason}</div>
-            <form method="POST" action="?/acceptWaterWarning" use:enhance>
+            <form method="POST" action="?/acceptWaterWarning" use:enhance={waterToast(w.water, 'Accepted', 'unacceptWaterWarning')}>
               <input type="hidden" name="id" value={w.id} />
               <button class="button button-secondary" type="submit">Accept</button>
             </form>
@@ -239,7 +247,7 @@
               <li class="warn-row">
                 <strong>{w.water}</strong>
                 <div class="text-muted">{w.reason}</div>
-                <form method="POST" action="?/unacceptWaterWarning" use:enhance>
+                <form method="POST" action="?/unacceptWaterWarning" use:enhance={waterToast(w.water, 'Moved back', 'acceptWaterWarning')}>
                   <input type="hidden" name="id" value={w.id} />
                   <button class="button button-secondary" type="submit">Undo</button>
                 </form>
