@@ -6129,9 +6129,12 @@ export const STATES: State[] = [
       // A Best item stays on one line (its "(n brews)" never splits); wide screens fit all of a row's items on one line.
       const lines = await items.locator('.best > span').evaluateAll((es) => es.map((e) => e.getClientRects().length));
       expect(lines.every((n) => n === 1), 'a Best item wraps inside itself').toBe(true);
-      if ((page.viewportSize()?.width ?? 0) >= 1280) {
+      const wideSize = page.viewportSize()!;
+      if (wideSize.width >= 1280) { // the page is the window less the sidebar: "wide" is 1560 now
+        await page.setViewportSize({ width: 1560, height: wideSize.height });
         const tops = await items.locator('.best').evaluateAll((bs) => bs.map((b) => new Set([...b.querySelectorAll(':scope > span')].map((e) => Math.round(e.getBoundingClientRect().top))).size));
-        expect(tops.every((n) => n === 1), 'Best items on one line at 1280').toBe(true);
+        expect(tops.every((n) => n === 1), 'Best items on one line at 1560').toBe(true);
+        await page.setViewportSize(wideSize);
       }
       await expect(page.locator('nav.board-jump')).toBeVisible();
       expect(await page.locator('main .bar.small-sample-mark').count()).toBeGreaterThan(0);
