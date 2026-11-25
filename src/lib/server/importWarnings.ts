@@ -77,14 +77,21 @@ export function importWarnings(db: DatabaseSync): ImportWarning[] {
 
 // #198: a live BQ water with no minerals counts in no Stats water chart (GH/KH come from the minerals,
 // a stored GH/KH alone doesn't count); a blank distilled/RO name or note means all-zero is real, so no warning.
-export function waterWarnings(db: DatabaseSync): { water: string; reason: string }[] {
+// An accepted warning stays quiet only while the snapshot taken at accept time still equals the current values.
+const WATER_SNAPSHOT = `json_array(calcium, magnesium, sodium, potassium, chloride, sulfate, stored_gh, stored_kh)`;
+export const acceptWaterWarning = (db: DatabaseSync, id: string) =>
+  db.prepare(`UPDATE beanconqueror_waters SET warning_accepted = ${WATER_SNAPSHOT} WHERE id = ?`).run(id);
+export const unacceptWaterWarning = (db: DatabaseSync, id: string) =>
+  db.prepare(`UPDATE beanconqueror_waters SET warning_accepted = NULL WHERE id = ?`).run(id);
+
+export function waterWarnings(db: DatabaseSync): { id: string; water: string; reason: string; accepted: boolean }[] {
   const rows = db.prepare(
-    `SELECT name, note, COALESCE(stored_gh, 0) OR COALESCE(stored_kh, 0) AS hardness FROM beanconqueror_waters
+    `SELECT id, name, note, warning_accepted IS ${WATER_SNAPSHOT} AS accepted, COALESCE(stored_gh, 0) OR COALESCE(stored_kh, 0) AS hardness FROM beanconqueror_waters
      WHERE bc_archived = 0 AND NOT (COALESCE(calcium, 0) OR COALESCE(magnesium, 0) OR COALESCE(sodium, 0) OR COALESCE(potassium, 0)
        OR COALESCE(chloride, 0) OR COALESCE(sulfate, 0))
      ORDER BY name COLLATE NOCASE`
-  ).all() as { name: string; note: string | null; hardness: number }[];
+  ).all() as { id: string; name: string; accepted: number; note: string | null; hardness: number }[];
   return rows.filter((w) => w.hardness || !isZeroWater(w.name, w.note)).map((w) => ({
-    water: w.name, reason: w.hardness ? 'Water has GH or KH but no minerals' : 'Water added without minerals, GH or KH'
+    id: w.id, water: w.name, accepted: !!w.accepted, reason: w.hardness ? 'Water has GH or KH but no minerals' : 'Water added without minerals, GH or KH'
   }));
 }

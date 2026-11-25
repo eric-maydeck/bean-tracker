@@ -253,7 +253,8 @@ CREATE TABLE IF NOT EXISTS beanconqueror_waters (
   type TEXT,
   note TEXT,
   bc_archived INTEGER NOT NULL DEFAULT 0,
-  imported_at TEXT NOT NULL
+  imported_at TEXT NOT NULL,
+  warning_accepted TEXT  -- #204: JSON snapshot of the minerals + stored GH/KH when the no-minerals warning was accepted
 );
 
 CREATE TABLE IF NOT EXISTS beanconqueror_brews (

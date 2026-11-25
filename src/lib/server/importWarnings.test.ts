@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
+import { importBeanConquerorData } from './beanconqueror';
 import { saveGearDetails } from './gearDetails';
-import { importWarnings, waterWarnings } from './importWarnings';
+import { acceptWaterWarning, importWarnings, unacceptWaterWarning, waterWarnings } from './importWarnings';
 
 const db = createDb(':memory:');
 db.exec(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('gz', 'ZP6', 'x'), ('ga', 'A4Z', 'x');
@@ -121,9 +122,33 @@ describe('waterWarnings (#198)', () => {
       ('w4', 'Jug', 'RO from the store', null, null, 0, 'x'), ('w5', 'Old', null, null, null, 1, 'x'),
       ('w6', 'Lotus', null, 20, null, 0, 'x'), ('w7', 'GH only', null, null, 50, 0, 'x')`);
     expect(waterWarnings(db)).toEqual([
-      { water: 'Blank', reason: 'Water added without minerals, GH or KH' },
-      { water: 'GH only', reason: 'Water has GH or KH but no minerals' },
-      { water: 'Zero tap', reason: 'Water added without minerals, GH or KH' }
+      { id: 'w1', water: 'Blank', reason: 'Water added without minerals, GH or KH', accepted: false },
+      { id: 'w7', water: 'GH only', reason: 'Water has GH or KH but no minerals', accepted: false },
+      { id: 'w2', water: 'Zero tap', reason: 'Water added without minerals, GH or KH', accepted: false }
     ]);
+  });
+
+  it('accept hides a warning until its minerals, GH or KH change; undo restores it (#204)', () => {
+    const accepted = (id: string) => waterWarnings(db).find((w) => w.id === id)?.accepted;
+    acceptWaterWarning(db, 'w7');
+    expect(accepted('w7')).toBe(true);
+    db.exec(`UPDATE beanconqueror_waters SET stored_kh = 20 WHERE id = 'w7'`);
+    expect(accepted('w7')).toBe(false);
+    acceptWaterWarning(db, 'w7');
+    db.exec(`UPDATE beanconqueror_waters SET stored_kh = 20, stored_gh = 51 WHERE id = 'w7'`);
+    expect(accepted('w7')).toBe(false);
+    acceptWaterWarning(db, 'w7');
+    unacceptWaterWarning(db, 'w7');
+    expect(accepted('w7')).toBe(false);
+    acceptWaterWarning(db, 'w1');
+    db.exec(`UPDATE beanconqueror_waters SET calcium = 5 WHERE id = 'w1'`);
+    expect(waterWarnings(db).some((w) => w.id === 'w1')).toBe(false); // minerals now: no warning at all
+  });
+
+  it('a BQ re-import upsert keeps the accepted snapshot (#204)', () => {
+    acceptWaterWarning(db, 'w2');
+    importBeanConquerorData(db, { beans: [], beanOrigins: [], methods: [], grinders: [], brews: [], waters: [{ id: 'w2', name: 'Zero tap', calcium: 0, magnesium: null, sodium: null, potassium: null, chloride: null, sulfate: null, tds: null,
+      storedGh: 0, storedGhType: null, storedKh: null, storedKhType: null, type: null, note: null, bcArchived: false }] } as never);
+    expect(waterWarnings(db).find((w) => w.id === 'w2')?.accepted).toBe(true);
   });
 });

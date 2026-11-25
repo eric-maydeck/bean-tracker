@@ -177,6 +177,22 @@ describe('not yet tracked: actions', () => {
   });
 });
 
+describe('water warning actions (#204)', () => {
+  it('accept then undo flips the warning; 401 signed out, 400 without an id', async () => {
+    getDb().prepare(`INSERT INTO beanconqueror_waters (id, name, bc_archived, imported_at) VALUES ('wa', 'Mystery', 0, 'x')`).run();
+    const w = () => (load(event(true)) as { waterWarnings: { id: string; accepted: boolean }[] }).waterWarnings.find((x) => x.id === 'wa');
+    expect(w()?.accepted).toBe(false);
+    expect(await actions.acceptWaterWarning(post({ id: 'wa' }))).toEqual({ success: true });
+    expect(w()?.accepted).toBe(true);
+    expect(await actions.unacceptWaterWarning(post({ id: 'wa' }))).toEqual({ success: true });
+    expect(w()?.accepted).toBe(false);
+    for (const name of ['acceptWaterWarning', 'unacceptWaterWarning'] as const) {
+      await expect(actions[name](post({}, false))).rejects.toMatchObject({ status: 401 });
+      expect(failure(await actions[name](post({})))?.status).toBe(400);
+    }
+  });
+});
+
 describe('?/updateHouseholdSize', () => {
   it('load returns the size; a signed-out request is 401', async () => {
     expect((load(event(true)) as { householdSize: number }).householdSize).toBe(2);

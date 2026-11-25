@@ -3635,7 +3635,7 @@ export const STATES: State[] = [
     // Data warnings: collapsed above the triage list in the Bean Conqueror panel; opening lists the suspect brews (the seed's grinder brews have no setting).
     name: 'account-data-warnings', viewports: 'two', path: () => '/account',
     act: async (page) => {
-      const summary = page.locator('.warnings summary');
+      const summary = page.locator('.warnings > summary');
       await expect(summary).toHaveText(/^Data warnings \(\d+\)$/);
       await expect(page.locator('.warn-row').first()).toBeHidden();
       await summary.click();
@@ -3643,6 +3643,17 @@ export const STATES: State[] = [
       await expect(page.locator('.warn-row').first()).toContainText('Unfilled water');
       await expect(page.locator('.warn-row').first()).toContainText('Water added without minerals, GH or KH');
       await checkLayout(page);
+      // #204: Accept moves the water under a collapsed "Accepted (1)" line and drops it from the count; Undo brings it back.
+      const n = Number((await summary.textContent())!.match(/\d+/)![0]);
+      await page.getByRole('button', { name: 'Accept' }).first().click();
+      await expect(summary).toHaveText(`Data warnings (${n - 1})`);
+      await expect(page.locator('.toast', { hasText: 'Accepted "Unfilled water"' })).toBeVisible();
+      const acc = page.locator('.accepted');
+      await expect(acc.locator('summary')).toHaveText('Accepted (1)');
+      await acc.locator('summary').click();
+      await checkLayout(page);
+      await acc.getByRole('button', { name: 'Undo' }).click();
+      await expect(summary).toHaveText(`Data warnings (${n})`);
     }
   },
   {
