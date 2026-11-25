@@ -202,7 +202,7 @@
   }
   @media (max-width: 640px) {
     .cbar.overlay {
-      max-height: calc(100dvh - 64px - 44px - env(safe-area-inset-bottom, 0px)); /* the phone tab bar (about 60px tall, plus its safe-area padding), the pull tab */
+      max-height: calc(100dvh - var(--bar-h) - 44px); /* the phone bar (--bar-h, safe area included), the pull tab */
     }
   }
   /* Back to top (35) stays tappable while the bar is expanded, but behind the overlay and its pull tab where they meet. */

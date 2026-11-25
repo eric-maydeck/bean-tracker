@@ -47,8 +47,12 @@
       measure();
       addEventListener('scroll', measure, { passive: true });
       addEventListener('resize', measure);
+      // The site sidebar collapsing or expanding moves this bar's left edge.
+      const side = document.querySelector('nav.site-sidebar');
+      const ro = side && new ResizeObserver(measure);
+      if (side) ro!.observe(side);
       tick().then(() => closeEl?.focus());
-      return () => (removeEventListener('scroll', measure), removeEventListener('resize', measure));
+      return () => (removeEventListener('scroll', measure), removeEventListener('resize', measure), ro?.disconnect());
     } else if (wasOpen) {
       wasOpen = false;
       if (byOutside) byOutside = false; // a click outside leaves focus on what was clicked

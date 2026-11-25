@@ -101,8 +101,7 @@ export const TAB_GROUPS: readonly { label: string; tabs: readonly Tab[] }[] = [
 export const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', onhand: 'On hand', spend: 'Spend', sweetspots: 'Sweet spots', brewing: 'Brewing', pours: 'Pours', water: 'Water', gear: 'Gear', recaps: 'Recaps' };
 // A section link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
 export function statsTabHref(explicit: InsightsUrlState, tab: Tab): string {
-  const qs = insightsParams({ ...explicit, tab }).toString();
-  return qs ? `/stats?${qs}` : '/stats';
+  return `/stats?${insightsParams({ ...explicit, tab })}`; // the tab is always in it
 }
 // Habits: one Measure for every chart. Consumption: grams or bags, bucketed by day/week/month
 // (absent = auto from the tracked span, time.ts autoBy).

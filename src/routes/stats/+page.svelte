@@ -987,7 +987,7 @@
 </div>
 
 <style>
-  /* The content's width breakpoints are container queries on `insights` (viewport width - 2rem main padding). */
+  /* The content's width breakpoints are container queries on `insights` (the content column: the viewport minus the sidebar, minus 2rem main padding). */
   .rail-main {
     container: insights / inline-size;
   }
