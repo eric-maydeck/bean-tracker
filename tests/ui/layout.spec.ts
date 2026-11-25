@@ -14452,3 +14452,25 @@ test('nav-drawer-closes', { tag: ['@nav', '@two'] }, async ({ page }) => {
   await expect(page).toHaveURL(/\/coffees/);
   await expect(drawer).toBeHidden();
 });
+
+// The sidebar is pinned: it fills the viewport height and stays put while the page scrolls, on a long page and a short one, expanded and collapsed.
+test('nav-sidebar-pinned', { tag: ['@nav', '@two'] }, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const side = page.locator(SIDEBAR);
+  const expectPinned = async (what: string) => {
+    const b = await page.evaluate(() => { const r = document.querySelector('nav.site-sidebar')!.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, ih: innerHeight }; });
+    expect(Math.abs(b.top), `${what}: top`).toBeLessThanOrEqual(1);
+    expect(Math.abs(b.bottom - b.ih), `${what}: bottom at the viewport bottom`).toBeLessThanOrEqual(1);
+  };
+  for (const url of ['/stats?tab=sweetspots', '/gear']) {
+    await gotoReady(page, url);
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    if (url.startsWith('/stats')) expect(await page.evaluate(() => scrollY), 'the page scrolled').toBeGreaterThan(300);
+    await expectPinned(`${url} expanded`);
+    await side.getByRole('button', { name: 'Collapse sidebar' }).click();
+    await expectPinned(`${url} collapsed`);
+    await page.evaluate(() => scrollTo(0, 0));
+    await side.getByRole('button', { name: 'Expand sidebar' }).click();
+  }
+  await page.context().clearCookies({ name: 'nav' });
+});
