@@ -1,7 +1,7 @@
 <script lang="ts">
   import { navigating, page } from '$app/state';
   import { enhance } from '$app/forms';
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import Icon from '#lib/components/Icon.svelte';
   import { MAIN_ROWS, PHONE_BAR, isCurrent, panelFor, statsGroups, statsViewHref, icon } from '#lib/nav.ts';
   import { TAB_LABEL, TABS, statsTabHref, type Tab } from '#lib/insightsUrl.ts';
@@ -30,6 +30,7 @@
   const pendingTab = $derived(navigating.to?.url.pathname === '/stats' ? tabOf(navigating.to.url) : null);
   const shownTab = $derived(valid(pendingTab) ? pendingTab : onStats && valid(tabOf(page.url)) ? (tabOf(page.url) as Tab) : onStats ? 'overview' : null);
   const groups = $derived(statsGroups(recapsTab || shownTab === 'recaps'));
+  const onLogin = $derived(pathname === '/login');
   const onAccount = $derived(isCurrent('/account', pathname));
   const viewHref = (t: Tab) => (onStats && page.data.explicit ? statsTabHref(page.data.explicit, t) : statsViewHref(t, null));
   const here = (r: { href: string }) => isCurrent(r.href, pathname);
@@ -89,6 +90,8 @@
     setTimeout(() => { dlg?.close(); document.body.style.overflow = ''; }, now || reduced() ? 0 : 240);
   }
   const nav = () => closeDrawer();
+  // Any page change (browser back, a redirect) closes an open drawer too.
+  $effect(() => { void pathname; untrack(() => closeDrawer()); });
 
   onMount(() => {
     const auto = matchMedia('(min-width: 641px) and (max-width: 1100px)');
@@ -152,7 +155,7 @@
       <a class="nav-row" class:on={onAccount} href="/account" data-tip="Account" aria-current={onAccount ? 'page' : undefined} onclick={nav}>
         <Icon name={onAccount ? 'user-circle-fill' : 'user-circle'} /><span class="lbl">Account</span>
       </a>
-      <form method="POST" action="/login?/logout" use:enhance>
+      <form method="POST" action="/login?/logout" use:enhance onsubmit={nav}>
         <button class="nav-row" type="submit" data-tip="Sign out"><Icon name="sign-out" /><span class="lbl">Sign out</span></button>
       </form>
       <button class="nav-row" type="button" data-tip="Alerts" onclick={() => { nav(); onAlerts(); }}
@@ -160,7 +163,7 @@
         <span class="bellwrap"><Icon name="bell" />{#if unread > 0}<span class="unread">{unread}</span>{/if}</span><span class="lbl">Alerts</span>
       </button>
     {:else}
-      <a class="nav-row" href="/login" data-tip="Sign in" onclick={signInHere}><Icon name="sign-in" /><span class="lbl">Sign in</span></a>
+      <a class="nav-row" href="/login" data-tip="Sign in" aria-current={onLogin ? 'page' : undefined} onclick={signInHere}><Icon name="sign-in" /><span class="lbl">Sign in</span></a>
     {/if}
     <button class="nav-row" type="button" onclick={onTheme} data-tip={theme === 'light' ? 'Dark mode' : 'Light mode'}
       aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
@@ -185,7 +188,7 @@
       <Icon name={onAccount ? 'user-circle-fill' : 'user-circle'} /><span>Account</span>
     </a>
   {:else}
-    <a href="/login" onclick={signInHere}><Icon name="sign-in" /><span>Sign in</span></a>
+    <a href="/login" aria-current={onLogin ? 'page' : undefined} onclick={signInHere}><Icon name="sign-in" /><span>Sign in</span></a>
   {/if}
   <button class="phone-menu" class:on={drawerOpen} type="button" aria-haspopup="dialog" aria-expanded={drawerOpen} onclick={openDrawer}>
     <Icon name="list" /><span>Menu</span>

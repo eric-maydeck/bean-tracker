@@ -14418,3 +14418,22 @@ test('nav-recap-no-chrome', { tag: ['@nav', '@two'] }, async ({ page }) => {
   await expect(page.locator(SIDEBAR)).toHaveCount(0);
   await expect(page.locator('nav.phone-bar')).toHaveCount(0);
 });
+
+// The drawer never lingers over another page: Sign out (the redirect lands on the same path) and browser back both close it.
+test('nav-drawer-closes', { tag: ['@nav', '@two'] }, async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 909 });
+  const drawer = page.locator('dialog.nav-drawer'), menu = page.locator('button.phone-menu');
+  await gotoReady(page, '/coffees');
+  await page.route('**/login?/logout', (route) => route.fulfill({ json: { type: 'redirect', status: 303, location: '/coffees' } })); // never really signs out
+  await menu.click();
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole('button', { name: 'Sign out' }).click();
+  await expect(drawer).toBeHidden();
+  await page.locator('nav.phone-bar').getByRole('link', { name: 'On Deck' }).click();
+  await expect(page).toHaveURL(/\/on-deck/);
+  await menu.click();
+  await expect(drawer).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/coffees/);
+  await expect(drawer).toBeHidden();
+});
