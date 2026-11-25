@@ -940,7 +940,7 @@ test('pick: the selected profile is remembered', { tag: '@on-deck' }, async ({ p
   await panel.getByRole('button', { name: 'Close', exact: true }).click(); // the header Close keeps the selection
   await expect(panel).toBeHidden();
   await page.evaluate(() => { (window as unknown as { __s: string[] }).__s = []; navigator.share = async (d) => { (window as unknown as { __s: string[] }).__s.push(d!.url!); }; });
-  await page.getByRole('button', { name: 'Share', exact: true }).click();
+  await page.getByRole('button', { name: 'Share', exact: true }).first().click(); // the page's; the last spin's card has its own beside the game
   expect(await page.evaluate(() => (window as unknown as { __s: string[] }).__s.at(-1)), 'Close keeps the profile in the link').toMatch(/profile=Shared\+Rules$/);
   await reloadReady(page);
   await opener.click();
