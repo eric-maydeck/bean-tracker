@@ -1,3 +1,30 @@
+# [2.9.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.8.0...v2.9.0) (2026-11-25)
+
+
+### Bug Fixes
+
+* ignore unknown tab values while a stats tab loads ([0c57063](https://github.com/eric-maydeck/bean-tracker/commit/0c57063d2b09ebfaa9f42d50886b035be2c28df5))
+* invent the absurd profile value in the espresso mock ([#185](https://github.com/eric-maydeck/bean-tracker/issues/185)) ([ea31886](https://github.com/eric-maydeck/bean-tracker/commit/ea31886f5f190d2a61b9623ce6ab1fe988a54ad4))
+* key records contexts on the window dates ([8621313](https://github.com/eric-maydeck/bean-tracker/commit/86213136289076159c39813cb52f8363acc545e8))
+* let link-preview bots read share links in robots.txt ([538804e](https://github.com/eric-maydeck/bean-tracker/commit/538804ef2fc591eed9e501c7b4d2f012fa91f16b))
+
+
+### Features
+
+* accept a water warning on /account ([#204](https://github.com/eric-maydeck/bean-tracker/issues/204)) ([07e0b91](https://github.com/eric-maydeck/bean-tracker/commit/07e0b9151967c3f2ec7634e5c3f98e429c97b4f1))
+* add server-timing header to every response ([1d22d58](https://github.com/eric-maydeck/bean-tracker/commit/1d22d58f8d493ad76cf60e3fce3ad65988b0624f))
+* espresso and soup brews in the ui seed ([#185](https://github.com/eric-maydeck/bean-tracker/issues/185)) ([6b5cfc3](https://github.com/eric-maydeck/bean-tracker/commit/6b5cfc3b3ab2ace6493d6ca4dcbc7022127c11ff))
+* mock espresso bq export generator ([#185](https://github.com/eric-maydeck/bean-tracker/issues/185)) ([8e6ae78](https://github.com/eric-maydeck/bean-tracker/commit/8e6ae7832046f422f455598bc05ab220937c1394))
+* mock espresso cli and preview --mock ([#185](https://github.com/eric-maydeck/bean-tracker/issues/185)) ([cd46a2f](https://github.com/eric-maydeck/bean-tracker/commit/cd46a2f0668a6d119506349c6ae5d0c4ef8d599c))
+* serve robots.txt blocking query urls and api ([36d22c6](https://github.com/eric-maydeck/bean-tracker/commit/36d22c6bc896cd4ac5ac63df5b54ed45f5b8c4ee))
+* show a progress bar and the tapped tab while a page loads ([b9fa9d8](https://github.com/eric-maydeck/bean-tracker/commit/b9fa9d897f5d31fbed09a4da82375055c0dd6b7a))
+* toast with undo when accepting or restoring a water warning ([#204](https://github.com/eric-maydeck/bean-tracker/issues/204)) ([e27aa70](https://github.com/eric-maydeck/bean-tracker/commit/e27aa701e5598fb8683a5440f6a404378671d02d))
+
+
+### Performance Improvements
+
+* compute shared records work once per window ([ca7efc3](https://github.com/eric-maydeck/bean-tracker/commit/ca7efc315c74de2ad70150334a458d032773cea3))
+
 # [2.8.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.7.0...v2.8.0) (2026-11-24)
 
 
