@@ -40,9 +40,12 @@
   let vertical = $derived(innerW >= 700);
   // What the page pins at the top: the phone short row (also while the bar is expanded), or the desktop filter bar.
   let barH = $derived(pinnedBar.h);
-  // The side bar's full height: the viewport under the filter bar, less its 0.75rem margins.
+  // The side bar's full height: the viewport under the filter bar and above the phone bar (landscape phones), less its
+  // 0.75rem margins. The phone bar shows by a media query, so it is re-read whenever the viewport changes.
   let innerH = $state(0);
-  let fullH = $derived(innerH - barH - 24);
+  let tabsH = $derived((void innerW, innerH && (document.querySelector('.phone-bar')?.getBoundingClientRect().height ?? 0)));
+  let bandH = $derived(innerH - tabsH);
+  let fullH = $derived(bandH - barH - 24);
   // Labels are thinned for the full length (a short feed's capped ruler keeps them).
   let ticks = $derived(rulerTicks(m.months.map((g) => g.month), vertical ? fullH : tw, vertical ? 22 : 72));
   let feed: HTMLElement | undefined = $state();
@@ -79,7 +82,7 @@
   // the screen's bottom, so the feed's distance below that header is scaled by k (0: the panel fits).
   function scale(secs: Section[], top: number) {
     const full = secs[secs.length - 1].bottom - secs[0].top;
-    const span = feed!.closest('section')!.getBoundingClientRect().bottom - innerH - (secs[0].top - top);
+    const span = feed!.closest('section')!.getBoundingClientRect().bottom - bandH - (secs[0].top - top);
     return full > 0 ? Math.max(0, span) / full : 0;
   }
   // The ruler's height, never on scroll: the full height, capped to where the feed's content ends below
@@ -227,7 +230,7 @@
     <p class="hl-empty">{emptyLine('No milestones in this period.')}</p>
   {/if}
   {#if m.months.length}
-    <div class="timeline" class:no-ruler={hideRuler} style:--bar-h="{barH}px">
+    <div class="timeline" class:no-ruler={hideRuler} style:--top-h="{barH}px">
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <nav
         class="ruler"
@@ -353,7 +356,7 @@
      viewport's height under the filter bar. Ticks sit at --p (0..1) along the track. */
   .ruler {
     position: sticky;
-    top: var(--bar-h);
+    top: var(--top-h);
     z-index: 2;
     margin: var(--space-3) calc(-1 * var(--space-4)) 0;
     padding: var(--space-1) 2.5rem 0;
@@ -465,10 +468,10 @@
       display: none;
     }
     .ruler {
-      top: calc(var(--bar-h) + var(--space-3));
+      top: calc(var(--top-h) + var(--space-3));
       align-self: start;
       box-sizing: border-box;
-      height: calc(100vh - var(--bar-h) - 2 * var(--space-3));
+      height: calc(100vh - var(--top-h) - var(--bar-h, 0px) - 2 * var(--space-3)); /* --bar-h: the phone bar (app.css) */
       margin: var(--space-4) 0 0;
       padding: var(--space-3) 0;
       overflow: visible;
