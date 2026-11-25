@@ -398,6 +398,26 @@ db.prepare(`INSERT INTO roaster_recipes (roaster, url, title, snippet, searched_
   'Nobody Brewed Roasters', 'https://example.com/brew-guide', 'Brew guide: ' + 'Pour-over-recipe-with-a-very-long-title-'.repeat(3),
   '15 g coffee to 250 g water at 93 C. ' + 'Pour in three stages, then swirl and let it drain. '.repeat(5).slice(0, 240), now);
 
+// Espresso (#185): a portafilter method on its own grinder (decimal dial, so no grind warnings), six shots on the unlinked decaf bag
+// (no coffee page's brew count moves) with dose / yield / grind, some with time, first drip and temperature, one with a weight curve;
+// plus one brew on the soup brewer (m2, full immersion styled ESPRESSO). No pressure curve: the DB has no place for one yet.
+db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at) VALUES ('m30', 'PORTAFILTER', 'Harbor Twin', 'ESPRESSO', ?)`).run(now);
+db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g4', 'Corvid 55', ?)`).run(now);
+const espBrew = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, ground_coffee_g, brew_temperature,
+  brew_time, first_drip_time, beverage_quantity, coffee_type, bc_uuid, has_flow_profile, imported_at) VALUES (?, 'bean-decaf', 'm30', 'g4', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+[[3.2, 18, 99, 28, 6, 54, 'espresso'], [3.4, 18.5, 99, 25, 5, 51.2, 'espresso'], [3, 19, null, null, null, 57, null], [3.2, 18, null, null, null, 36, null],
+  [3.6, 18.5, 96, 32, 7, 55, null], [3.2, 18, 99, 27, 6, 52.5, 'espresso']].forEach(([grind, dose, temp, time, drip, out, type], j) => {
+  const hasFlow = j === 0;
+  espBrew.run(atLocal(4 + j * 2, 7, 30), String(grind), dose, temp, time == null ? null : String(time), drip == null ? null : String(drip), out, type,
+    hasFlow ? 'bbbbbbbb-0000-4000-8000-0000000000e1' : null, hasFlow ? 1 : 0, now);
+});
+// The weight curve: nothing for 6 s, then 54 g by 28 s (a 1:3 shot), four samples a second, in BQ's "<second>.<index>" labels.
+const espFlow = compactFlow({ weight: Array.from({ length: 29 * 4 }, (_, k) => ({
+  brew_time: `${Math.floor(k / 4)}.${k % 4}`, actual_smoothed_weight: Math.round(Math.max(0, (k / 4 - 6) / 22) ** 1.1 * 540) / 10 })) })!;
+flow.run('bbbbbbbb-0000-4000-8000-0000000000e1', espFlow.w.length, JSON.stringify(espFlow.w), now);
+db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, ground_coffee_g, water_amount_g, rating, imported_at)
+  VALUES (?, 'bean-decaf', 'm2', 'g4', '3.0', 18, 120, NULL, ?)`).run(atLocal(5, 16, 40), now);
+
 // Every open recap year counts as seen and alerted, so the admin "recap is ready" banner and inbox alert stay out of the layout states
 // (save.spec.ts deletes the keys to test them).
 for (const { y } of db.prepare(`SELECT DISTINCT substr(bc_created_at, 1, 4) AS y FROM beanconqueror_brews WHERE bc_created_at IS NOT NULL`).all() as { y: string }[])
