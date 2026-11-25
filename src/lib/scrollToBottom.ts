@@ -10,7 +10,7 @@ export async function bottomInView(list: Element | null | undefined, change: () 
   await tick();
   if (!list?.isConnected) return;
   const target = [...list.querySelectorAll('button')].at(-1) ?? list; // the button itself, not its footer's padding
-  const tabs = document.querySelector('.bottom-tabs');
+  const tabs = document.querySelector('.phone-bar');
   const lift = tabs && getComputedStyle(tabs).display !== 'none' ? tabs.getBoundingClientRect().height : 0;
   let dy = target.getBoundingClientRect().bottom - (innerHeight - lift);
   // Back to top (layout.svelte: shown past one screen of scroll, 44px, 12px off the bottom) must not cover the button: land

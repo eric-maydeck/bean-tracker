@@ -1,5 +1,5 @@
 :root {
-  --container-max: 1416px; /* every page + the nav: 1240px content + the stats page's 176px rail and gap, so widths match */
+  --container-max: 1416px; /* every page's max content width, centred in the space right of the sidebar */
   --color-bg: #faf7f2;
   --color-surface: #ffffff;
   --color-text: #2b211b;
@@ -355,6 +355,16 @@ html {
   * {
     transition: none !important;
   }
+}
+
+/* Sidebar column plus content (SiteNav); on a phone the sidebar is gone and the content is the whole width. */
+.site-shell {
+  display: flex;
+  align-items: flex-start;
+}
+.site-content {
+  flex: 1;
+  min-width: 0;
 }
 
 body {
@@ -1038,54 +1048,6 @@ table.data-table.coffees-list td.row-form-cell {
   display: inline-block;
   width: 0.8em;
   color: var(--color-accent);
-}
-
-nav.site-nav {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  /* Aligned with main.container's content box . */
-  padding: var(--space-4) max(var(--space-4), calc((100% - var(--container-max)) / 2 + var(--space-4)));
-  border-bottom: 1px solid var(--color-border);
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-nav.site-nav .nav-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  flex: 1;
-}
-
-/* Underline drawn as a background so it can grow from the center on hover;
-   the current page shows it in full. */
-nav.site-nav a,
-nav.site-nav .nav-link-button {
-  text-decoration: none;
-  padding-bottom: 0.2rem;
-  background: linear-gradient(currentColor, currentColor) center bottom / 0 2px no-repeat;
-  transition: background-size 0.2s ease;
-}
-
-@media (hover: hover) {
-  nav.site-nav a:hover,
-  nav.site-nav .nav-link-button:hover {
-    background-size: 100% 2px;
-  }
-}
-
-nav.site-nav a:focus-visible,
-nav.site-nav .nav-link-button:focus-visible,
-nav.site-nav a[aria-current='page'] {
-  background-size: 100% 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  nav.site-nav a,
-  nav.site-nav .nav-link-button {
-    transition: none;
-  }
 }
 
 .toolbar {
@@ -1909,16 +1871,7 @@ div.compact-row .compact-row-sub {
   font-size: 0.7rem;
 }
 
-.bottom-tabs {
-  display: none;
-}
-
-.bottom-tabs-more-panel {
-  display: none;
-}
-
-/* Back to top: bottom right on every page, once scrolled a screen; above the phone tab bar there. Under the tab bar,
-   the More panel and modals in z-order. */
+/* Back to top: bottom right on every page, once scrolled a screen; above the phone bar there. Under the bar and modals in z-order. */
 .back-to-top {
   position: fixed;
   right: var(--space-3);
@@ -1948,77 +1901,24 @@ div.compact-row .compact-row-sub {
   }
 }
 
-@media (max-width: 640px) {
-  nav.site-nav {
-    display: none;
+/* The phone bar (SiteNav) is 60px tall (44px in landscape) plus the safe area; page padding, back-to-top and sheets clear it. */
+@media (max-width: 640px), (max-height: 450px) {
+  :root {
+    --bar-h: calc(60px + env(safe-area-inset-bottom, 0px));
   }
 
   main.container {
-    padding-bottom: calc(56px + var(--space-4) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--bar-h) + var(--space-4));
   }
 
   .back-to-top {
-    bottom: calc(56px + var(--space-3) + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--bar-h) + var(--space-3));
   }
+}
 
-  .bottom-tabs {
-    display: flex;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 40;
-    background: var(--color-surface);
-    border-top: 1px solid var(--color-border);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
-  .bottom-tabs a,
-  .bottom-tabs-more {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.15rem;
-    min-height: 56px;
-    padding: var(--space-2) var(--space-1);
-    color: var(--color-text-muted);
-    text-decoration: none;
-    font-size: 0.7rem;
-    border: none;
-    background: none;
-    font-family: inherit;
-    cursor: pointer;
-  }
-
-  .bottom-tabs a[aria-current='page'] {
-    color: var(--color-accent);
-  }
-
-  .bottom-tabs-icon {
-    line-height: 0;
-  }
-
-  .bottom-tabs-icon .icon {
-    width: 1.5rem;
-    height: 1.5rem;
-  }
-
-  .bottom-tabs-more-panel {
-    display: flex;
-    position: fixed;
-    right: var(--space-3);
-    bottom: calc(56px + var(--space-2) + env(safe-area-inset-bottom, 0px));
-    z-index: 41;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: var(--space-3);
-    flex-direction: column;
-    gap: var(--space-3);
-    min-width: 160px;
+@media (max-height: 450px) {
+  :root {
+    --bar-h: calc(44px + env(safe-area-inset-bottom, 0px));
   }
 }
 

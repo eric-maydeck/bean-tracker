@@ -99,7 +99,7 @@ export async function expectPullTab(page: Page) {
     const overlay = document.querySelector('.cbar.overlay')!, pull = document.querySelector('.cbar-pull')!;
     const [o, p] = [overlay.getBoundingClientRect(), pull.getBoundingClientRect()];
     const vw = document.documentElement.clientWidth;
-    const tabs = document.querySelector('.bottom-tabs')?.getBoundingClientRect();
+    const tabs = document.querySelector('.phone-bar')?.getBoundingClientRect();
     const bottom = tabs && tabs.height ? tabs.top : innerHeight;
     if (Math.abs(p.top - o.bottom) > 1) out.push(`top ${p.top} vs overlay bottom ${o.bottom}`);
     if (Math.abs(p.right - (vw - 16)) > 1) out.push(`right ${p.right} vs ${vw - 16}`);

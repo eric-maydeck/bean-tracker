@@ -49,11 +49,30 @@ async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
 }
 
 
-/** Switches the /stats tab the way a user does: "☰ View: …" (or, scrolled on a phone, the short row's ☰), then the drawer link for `tab`. */
+/** Switches the /stats tab the way a user does: the sidebar's (on a phone, the Menu drawer's) Stats panel, then the view's row. */
 async function pickTab(page: Page, tab: string) {
-  const mini = page.locator('.mini-menu');
-  await (await mini.isVisible() ? mini : page.locator('.section-row')).click();
-  await page.locator('dialog.tab-drawer a').evaluateAll((as, t) => (as as HTMLAnchorElement[]).find((a) => (new URL(a.href).searchParams.get('tab') ?? 'overview') === t)!.click(), tab);
+  const phone = await page.locator('nav.phone-bar').isVisible();
+  if (phone) await page.locator('button.phone-menu').click();
+  const scope = phone ? page.locator('dialog.nav-drawer') : page.locator('nav.site-sidebar');
+  const panel = scope.locator('.nav-panel[data-panel="stats"]');
+  if (!(await panel.isVisible())) await scope.locator('button.nav-drill').click();
+  await panel.locator('a.nav-row').evaluateAll((as, t) => (as as HTMLAnchorElement[]).find((a) => (new URL(a.href).searchParams.get('tab') ?? 'overview') === t)!.click(), tab);
+}
+
+/** Opens the nav's main panel the way a user would (the sidebar, or on a phone the Menu drawer) and returns it. */
+async function openNavMain(page: Page) {
+  const phone = await page.locator('nav.phone-bar').isVisible();
+  if (phone) await page.locator('button.phone-menu').click();
+  const scope = phone ? page.locator('dialog.nav-drawer') : page.locator('nav.site-sidebar');
+  const main = scope.locator('.nav-panel[data-panel="main"]');
+  await expect(main).toBeVisible();
+  return main;
+}
+
+async function closeNavDrawer(page: Page) {
+  if (!(await page.locator('nav.phone-bar').isVisible())) return;
+  await page.keyboard.press('Escape');
+  await expect(page.locator('dialog.nav-drawer')).toBeHidden();
 }
 
 interface Seed {
@@ -966,8 +985,8 @@ export const STATES: State[] = [
       // The home link and hint live on the cover only.
       await expect(page.getByRole('link', { name: 'Bean Tracker' })).toHaveCount(1);
       await expect(page.getByText('Swipe or tap to continue')).toHaveCount(1);
-      await expect(page.locator('.bottom-tabs')).toBeHidden();
-      await expect(page.locator('nav.site-nav')).toHaveCount(0);
+      await expect(page.locator('nav.phone-bar')).toHaveCount(0);
+      await expect(page.locator('nav.site-sidebar')).toHaveCount(0);
       // Keyword-colored names and signed deltas take the slide's text color on a tone.
       await page.locator('.recap-reel > section.slide .context').first().evaluate((c) => {
         c.insertAdjacentHTML('beforeend', '<span class="coffee-name" id="probe-name" style="color:rgb(255,0,0)">x</span><span class="ink-better" id="probe-delta">+0.3</span>');
@@ -2490,9 +2509,9 @@ export const STATES: State[] = [
       await expect(page.getByRole('spinbutton', { name: 'Ca' })).toHaveValue('40');
       await page.getByRole('button', { name: 'Precision', exact: true }).click();
       await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('40');
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/stats"]')?.click());
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-sidebar a[href^="/stats"]')?.click());
       await expect(page).toHaveURL(/\/stats/);
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/water"]')?.click());
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-sidebar a[href="/water"]')?.click());
       await expect(page).toHaveURL(/tip=precision/);
       await expect(page.getByRole('button', { name: 'Precision', exact: true })).toHaveAttribute('aria-pressed', 'true');
     }
@@ -2664,9 +2683,9 @@ export const STATES: State[] = [
       await page.getByLabel('Kettle').selectOption('palatti-enso');
       await page.getByLabel('Recipe').selectOption('holy-water');
       await expect(page).toHaveURL(/recipe=holy-water/);
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/stats"]')?.click());
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-sidebar a[href^="/stats"]')?.click());
       await expect(page).toHaveURL(/\/stats/);
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/water"]')?.click());
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-sidebar a[href="/water"]')?.click());
       await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
       await expect(page.getByLabel('Kettle')).toHaveValue('palatti-enso');
       await expect(page.getByLabel('Water (mL)')).toHaveValue('880');
@@ -2709,7 +2728,7 @@ export const STATES: State[] = [
       await expect(page.getByText('Enter 100-2000mL.')).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Lotus drops for 900mL' })).toBeVisible();
       expect((await results.boundingBox())!.height).toBe(before);
-      await page.evaluate(() => (document.querySelector('nav.site-nav a[href="/water"]') as HTMLElement | null)?.click());
+      await page.evaluate(() => (document.querySelector('nav.site-sidebar a[href="/water"]') as HTMLElement | null)?.click());
       await expect(page).toHaveURL(/recipe=substance&ml=900/); // a bare visit restores the remembered state
       await expect(page.getByLabel('Recipe')).toHaveValue('substance');
       await expect(box).toHaveValue('900');
@@ -4716,20 +4735,15 @@ export const STATES: State[] = [
     ];
   })(),
   {
-    // On /recipes the Recipes nav item is current, after Stats, Gear and Water (desktop nav, phone More panel).
+    // On /recipes the Recipes nav item is current, after Stats, Gear and Water (sidebar, phone drawer).
     name: 'recipes-nav', viewports: 'two',
     path: () => '/recipes',
     act: async (page) => {
-      if (isPhone(page)) {
-        await page.getByRole('button', { name: 'More' }).click();
-        await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
-        expect((await page.locator('.bottom-tabs-more-panel > a').allTextContents()).slice(0, 3).map((n) => n.trim())).toEqual(['Gear', 'Water', 'Recipes']);
-      } else {
-        const links = page.locator('.nav-links > a');
-        await expect(links.filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
-        const names = await links.allTextContents();
-        expect(names.map((n) => n.trim()).slice(names.indexOf('Stats'), names.indexOf('Stats') + 4)).toEqual(['Stats', 'Gear', 'Water', 'Recipes']);
-      }
+      const main = await openNavMain(page);
+      await expect(main.getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
+      const names = (await main.locator('.nav-row').allTextContents()).map((n) => n.trim());
+      expect(names.slice(names.indexOf('Stats'), names.indexOf('Stats') + 4)).toEqual(['Stats', 'Gear', 'Water', 'Recipes']);
+      await closeNavDrawer(page);
     }
   },
   {
@@ -4737,12 +4751,8 @@ export const STATES: State[] = [
     name: 'recipes-nav-slug', viewports: 'two',
     path: () => '/recipes/seed-equal-pours',
     act: async (page) => {
-      if (isPhone(page)) {
-        await page.getByRole('button', { name: 'More' }).click();
-        await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
-      } else {
-        await expect(page.locator('.nav-links > a').filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
-      }
+      await expect((await openNavMain(page)).getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
+      await closeNavDrawer(page);
     }
   },
   // Clock times (footer, Account) show in the display zone: "browser time" renders UTC on a first visit (no tz cookie), then
@@ -5048,26 +5058,21 @@ export const STATES: State[] = [
     }
   },
   {
-    // Desktop: the nav link; phone: the More panel. Each lands on /account.
+    // Desktop: the sidebar footer link; phone: the bar's Account slot. Each lands on /account.
     name: 'account-nav', viewports: 'two',
     path: () => '/coffees',
     act: async (page) => {
-      if (isPhone(page)) {
-        await page.getByRole('button', { name: 'More' }).click();
-        await page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Account' }).click();
-      } else {
-        await page.locator('.nav-links').getByRole('link', { name: 'Account' }).click();
-      }
+      await (isPhone(page) ? page.locator('nav.phone-bar') : page.locator('nav.site-sidebar')).getByRole('link', { name: 'Account' }).click();
       await expect(page).toHaveURL(/\/account$/);
     }
   },
   {
-    // One page width site-wide: the nav links and main share left/right edges on every page, at 1280 and 1920.
+    // One page width site-wide: the content column and main share left/right edges on every page, at 1280 and 1920.
     name: 'page-width-consistent', path: () => '/coffees',
     act: async (page) => {
       const edges = () => page.evaluate(() => {
         const r = (e: Element | null) => { const b = e!.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.right)]; };
-        return { nav: r(document.querySelector('nav.site-nav .nav-links')), main: r(document.querySelector('main.container')), footer: r(document.querySelector('.site-footer')) };
+        return { nav: r(document.querySelector('.site-content')), main: r(document.querySelector('main.container')), footer: r(document.querySelector('.site-footer')) };
       });
       const size = page.viewportSize()!;
       for (const width of size.width >= 1280 ? [size.width, 1920] : [size.width]) {
@@ -6511,8 +6516,9 @@ export const STATES: State[] = [
       const box = (await panel.boundingBox())!;
       const vw = page.viewportSize()!.width;
       if (vw > 640) {
-        expect(box.x, 'side bar hugs the left edge').toBeLessThanOrEqual(1);
-        expect(box.y, 'side bar starts below the site header').toBeGreaterThanOrEqual((await page.locator('nav.site-nav').boundingBox())!.height - 1);
+        const sideW = (await page.locator('nav.site-sidebar').boundingBox())!.width;
+        await expect.poll(async () => (await panel.boundingBox())!.x, 'side bar starts at the site sidebar edge, after its slide').toBeGreaterThanOrEqual(sideW - 1);
+        expect(box.y, 'side bar starts at the top').toBeLessThanOrEqual(1);
         expect(box.width).toBeLessThanOrEqual(420);
         const after = (await stage.boundingBox())!;
         expect(after.y, 'the game is not pushed down').toBe(before.y);
@@ -8225,7 +8231,7 @@ export const STATES: State[] = [
     path: () => '/stats',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      const lift = () => page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
+      const lift = () => page.evaluate(() => { const t = document.querySelector('.phone-bar'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
       const foot = page.locator('section.recent .top-foot').first();
       const gap = () => foot.getByRole('button').last().evaluate((el) => innerHeight - el.getBoundingClientRect().bottom);
       const click = async (name: string) => { await foot.evaluate((el) => el.scrollIntoView({ block: 'center' })); const b = (await foot.getByRole('button', { name }).boundingBox())!; await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2); };
@@ -10707,7 +10713,7 @@ export const STATES: State[] = [
       // URL changes (bottomInView awaits the navigation): a click while that scroll is pending lands on whatever
       // the page jumps to, so wait for the landing before the next action.
       const landed = (name: string | RegExp) => expect.poll(() => pair.getByRole('button', { name }).evaluate((el) => {
-        const t = document.querySelector('.bottom-tabs'), lift = t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0;
+        const t = document.querySelector('.phone-bar'), lift = t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0;
         return Math.abs(innerHeight - el.getBoundingClientRect().bottom - lift - (document.querySelector('.back-to-top') ? 64 : 0));
       })).toBeLessThanOrEqual(2);
       await pair.getByRole('button', { name: /^Show all \d+$/ }).click();
@@ -13203,14 +13209,14 @@ export const STATES: State[] = [
   { name: 'skip-name-insights-records', viewports: 'two', path: () => '/stats?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
   { name: 'skip-name-insights-milestones', viewports: 'two', path: () => '/stats?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
   // ---- Peer review B (2026-10-19) ----
-  // M2: the top navbar's first link lines up with the page content's left edge (the tab bar replaces it at <= 640px).
+  // M2: the sidebar sits left of the page content with no overlap (the phone bar replaces it at <= 640px).
   ...['/stats?tab=habits'].map((path): State => ({
     name: `nav-aligned${path.replace(/[^a-z]+/g, '-')}`, path: () => path,
     act: async (page) => {
       if (page.viewportSize()!.width <= 640) return;
-      const nav = (await page.locator('nav.site-nav .nav-links a').first().boundingBox())!.x;
-      const main = await page.locator('main.container').evaluate((el) => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft));
-      expect(Math.abs(nav - main), 'nav link left vs content left').toBeLessThanOrEqual(1);
+      const side = (await page.locator('nav.site-sidebar').boundingBox())!;
+      const main = await page.locator('main.container').evaluate((el) => el.getBoundingClientRect().left);
+      expect(main, 'content starts right of the sidebar').toBeGreaterThanOrEqual(side.x + side.width - 1);
     }
   })),
   // M1: each tab's own controls sit in the sticky filter bar and stay pinned inside it while scrolling.
@@ -13263,7 +13269,7 @@ export const STATES: State[] = [
   { name: 'insights-records-show-more-scroll', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      const lift = () => page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
+      const lift = () => page.evaluate(() => { const t = document.querySelector('.phone-bar'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
       const gap = () => foot.getByRole('button').last().evaluate((el) => innerHeight - el.getBoundingClientRect().bottom); // the last button in the footer
       const foot = page.locator('#records-top-brews ~ .top-foot');
       await foot.scrollIntoViewIfNeeded();
@@ -13288,7 +13294,7 @@ export const STATES: State[] = [
       await expect(btn).toHaveCount(0);
       await page.evaluate(() => scrollTo(0, innerHeight * 2));
       await expect(btn).toBeVisible();
-      const [b, vp, tabs] = await Promise.all([btn.boundingBox(), page.evaluate(() => [innerWidth, innerHeight]), page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().top : null; })]);
+      const [b, vp, tabs] = await Promise.all([btn.boundingBox(), page.evaluate(() => [innerWidth, innerHeight]), page.evaluate(() => { const t = document.querySelector('.phone-bar'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().top : null; })]);
       expect(b!.width).toBeGreaterThanOrEqual(44);
       expect(b!.height).toBeGreaterThanOrEqual(44);
       expect(vp[0] - (b!.x + b!.width), 'right gap').toBeLessThanOrEqual(24);
@@ -14244,4 +14250,171 @@ test('nav-progress-slow-tab', { tag: ['@stats', '@two'] }, async ({ page }) => {
   expect((await bar.boundingBox())!.height).toBe(3);
   await expect(bar).toBeHidden({ timeout: 5000 });
   await expect(page.locator('.section-row')).toHaveText('View: Records');
+});
+
+// The one drill-in site nav (#207): a sidebar on desktop, a bottom bar plus the same panel as a drawer on phones.
+const ROW_LABELS = ['Coffees', 'On Deck', 'Subscriptions', 'Stats', 'Gear', 'Water', 'Recipes'];
+const SIDEBAR = 'nav.site-sidebar';
+const rect = (l: Locator) => l.evaluate((el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+
+test('nav-desktop-expanded', { tag: ['@nav', '@two'] }, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/coffees');
+  const side = page.locator(SIDEBAR);
+  await expect(side).toBeVisible();
+  await expect(side).not.toHaveAttribute('data-collapsed', /.*/);
+  const main = side.locator('.nav-panel[data-panel="main"]');
+  expect((await main.locator('.nav-row').allTextContents()).map((t) => t.trim())).toEqual(ROW_LABELS);
+  await expect(main.getByRole('link', { name: 'Coffees' })).toHaveAttribute('aria-current', 'page');
+  await expect(main.locator('[aria-current]')).toHaveCount(1);
+  for (const n of ['Account', 'Sign out', 'Alerts', 'Dark mode']) await expect(side.locator('.nav-foot').getByText(n).first()).toBeVisible();
+  await expect(page.locator('nav.phone-bar')).toBeHidden();
+  await checkLayout(page);
+});
+
+test('nav-drill-from-coffees', { tag: ['@nav', '@two'] }, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/coffees');
+  const side = page.locator(SIDEBAR), url = page.url();
+  const stats = side.locator('.nav-panel[data-panel="stats"]'), main = side.locator('.nav-panel[data-panel="main"]');
+  await side.locator('button.nav-drill').click();
+  expect(page.url(), 'drilling does not navigate').toBe(url);
+  await expect(stats).toBeVisible();
+  await expect(side.locator('button.nav-drill')).toHaveAttribute('aria-expanded', 'true');
+  await expect.poll(async () => Math.abs((await rect(stats)).x - (await rect(side)).x), 'the panel starts at the sidebar edge').toBeLessThan(1); // after the slide
+  expect(await stats.locator('a.nav-row').count()).toBeGreaterThan(0);
+  await stats.getByRole('link', { name: 'Overview' }).click();
+  await expect(page).toHaveURL(/\/stats(\?|$)/);
+  await expect(stats).toBeVisible();
+  const statsUrl = page.url();
+  await side.locator('button.nav-back').click();
+  await expect(main).toBeVisible();
+  await expect(stats).toBeHidden();
+  expect(page.url(), 'back does not navigate').toBe(statsUrl);
+  // A query-only change inside /stats keeps the panel as it is (main, after "Main menu").
+  await side.locator('a.nav-row[href*="tab=habits"]').evaluate((a) => (a as HTMLElement).click());
+  await expect(page).toHaveURL(/tab=habits/);
+  await expect(main).toBeVisible();
+  await expect(stats).toBeHidden();
+});
+
+test('nav-collapse', { tag: ['@nav', '@two'] }, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/stats?tab=habits');
+  const side = page.locator(SIDEBAR);
+  await expect(side.locator('.nav-panel[data-panel="stats"]')).toBeVisible();
+  const wide = (await rect(side)).w;
+  await side.getByRole('button', { name: 'Collapse sidebar' }).click();
+  await expect(side).toHaveAttribute('data-collapsed', '');
+  await expect.poll(async () => (await rect(side)).w).toBeLessThan(wide / 2);
+  await expect(side.locator('.nav-panel[data-panel="main"]')).toBeVisible();
+  await expect(side.locator('.nav-panel[data-panel="stats"]')).toBeHidden();
+  await expect(side.locator('button.nav-drill')).toHaveClass(/contains-current/);
+  await reloadReady(page);
+  await expect(side).toHaveAttribute('data-collapsed', '');
+  await side.getByRole('button', { name: 'Expand sidebar' }).click();
+  await expect(side.locator('.nav-panel[data-panel="stats"]')).toBeVisible();
+  await side.getByRole('button', { name: 'Collapse sidebar' }).click();
+  await side.locator('button.nav-drill').click();
+  await expect(side).not.toHaveAttribute('data-collapsed', /.*/);
+  await expect(side.locator('.nav-panel[data-panel="stats"]')).toBeVisible();
+  await page.context().clearCookies({ name: 'nav' });
+});
+
+for (const [name, size, cookie] of [['cookie-1280', { width: 1280, height: 800 }, 'collapsed'], ['auto-768', { width: 768, height: 800 }, null]] as const) {
+  test(`nav-no-shift-${name}`, { tag: ['@nav', '@two'] }, async ({ browser }, info) => {
+    const base = info.project.use.baseURL!;
+    const probe = (p: Page) => p.evaluate(() => {
+      const r = document.querySelector('nav.site-sidebar .nav-row')!.getBoundingClientRect();
+      return { w: document.querySelector('nav.site-sidebar')!.getBoundingClientRect().width, row: [r.x, r.y, r.width, r.height] };
+    });
+    const ctx = await browser.newContext({ javaScriptEnabled: false, viewport: size, baseURL: base, storageState: '.ui-test/admin.json' });
+    if (cookie) await ctx.addCookies([{ name: 'nav', value: cookie, url: base }]);
+    let raw;
+    try {
+      const p = await ctx.newPage();
+      await p.goto('/coffees');
+      raw = await probe(p);
+    } finally { await ctx.close(); }
+    const ctx2 = await browser.newContext({ viewport: size, baseURL: base, storageState: '.ui-test/admin.json' });
+    try {
+      if (cookie) await ctx2.addCookies([{ name: 'nav', value: cookie, url: base }]);
+      const p = await ctx2.newPage();
+      await gotoReady(p, '/coffees');
+      const hydrated = await probe(p);
+      expect(hydrated.w).toBeCloseTo(raw.w, 0);
+      hydrated.row.forEach((v, i) => expect(v, `first row box [${i}]`).toBeCloseTo(raw.row[i], 0));
+      if (!cookie) expect(raw.w, 'collapsed by the media query').toBeLessThan(100);
+    } finally { await ctx2.close(); }
+  });
+}
+
+test('nav-phone-bar', { tag: ['@nav', '@two'] }, async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 909 });
+  await gotoReady(page, '/stats?tab=habits');
+  const bar = page.locator('nav.phone-bar');
+  await expect(bar).toBeVisible();
+  await expect(page.locator(SIDEBAR)).toBeHidden();
+  expect((await bar.locator('> *').allTextContents()).map((t) => t.trim())).toEqual(['Coffees', 'On Deck', 'Stats', 'Account', 'Menu']);
+  const stats = bar.getByRole('link', { name: 'Stats' });
+  await expect(stats).toHaveAttribute('href', '/stats');
+  await expect(stats).toHaveAttribute('aria-current', 'page');
+  const drawer = page.locator('dialog.nav-drawer');
+  await bar.locator('button.phone-menu').click();
+  await expect(drawer).toBeVisible();
+  await expect(drawer.locator('.nav-panel[data-panel="stats"]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(drawer).toBeHidden();
+  await gotoReady(page, '/coffees');
+  await bar.locator('button.phone-menu').click();
+  await expect(drawer.locator('.nav-panel[data-panel="main"]')).toBeVisible();
+  await expect(drawer.locator('.nav-panel[data-panel="stats"]')).toBeHidden();
+  await drawer.getByRole('link', { name: 'Gear' }).click();
+  await expect(page).toHaveURL(/\/gear/);
+  await expect(drawer).toBeHidden();
+  await checkLayout(page);
+});
+
+test('nav-phone-landscape', { tag: ['@nav', '@two'] }, async ({ page }) => {
+  await page.setViewportSize({ width: 1003, height: 333 });
+  await gotoReady(page, '/stats?tab=habits');
+  await expect(page.locator(SIDEBAR)).toBeHidden();
+  await expect(page.locator('nav.phone-bar')).toBeVisible();
+  await page.locator('button.phone-menu').click();
+  const last = page.locator('dialog.nav-drawer .nav-panel[data-panel="stats"] a.nav-row').last();
+  await last.scrollIntoViewIfNeeded();
+  const b = (await last.boundingBox())!;
+  expect(b.y + b.height, 'the last view is reachable above the footer').toBeLessThanOrEqual(333);
+  expect(b.y).toBeGreaterThanOrEqual(0);
+});
+
+test.describe('nav signed out', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  for (const width of [480, 1280]) {
+    test(`nav-signed-out-${width}`, { tag: ['@nav', '@two'] }, async ({ page }) => {
+      await page.setViewportSize({ width, height: width === 480 ? 909 : 800 });
+      await gotoReady(page, '/coffees');
+      let link;
+      if (width === 480) {
+        const bar = page.locator('nav.phone-bar');
+        expect((await bar.locator('> *').allTextContents()).map((t) => t.trim())).toEqual(['Coffees', 'On Deck', 'Stats', 'Sign in', 'Menu']);
+        link = bar.getByRole('link', { name: 'Sign in' });
+        await bar.locator('button.phone-menu').click();
+      } else link = page.locator(SIDEBAR).getByRole('link', { name: 'Sign in' });
+      const scope = width === 480 ? page.locator('dialog.nav-drawer') : page.locator(SIDEBAR);
+      await expect(scope.getByText('Sign out')).toHaveCount(0);
+      await expect(scope.getByText('Alerts')).toHaveCount(0);
+      if (width === 480) await page.keyboard.press('Escape');
+      // The click handler rewrites href to carry this page; stop the navigation to read it.
+      await link.evaluate((a) => a.addEventListener('click', (e) => e.preventDefault(), { once: true }));
+      await link.click();
+      await expect(link).toHaveAttribute('href', /^\/login\?redirectTo=%2Fcoffees/);
+    });
+  }
+});
+
+test('nav-recap-no-chrome', { tag: ['@nav', '@two'] }, async ({ page }) => {
+  await gotoReady(page, `/recaps/${recapYear()}?preview=1`);
+  await expect(page.locator(SIDEBAR)).toHaveCount(0);
+  await expect(page.locator('nav.phone-bar')).toHaveCount(0);
 });

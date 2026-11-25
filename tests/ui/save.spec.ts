@@ -514,8 +514,8 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
       }
       expect(await banner.evaluate((el) => getComputedStyle(el).position)).toBe('static');
       expect(await banner.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('0px');
-      const nav = page.locator('nav.site-nav');
-      if (await nav.isVisible()) expect((await nav.boundingBox())!.y, 'above the nav').toBeGreaterThanOrEqual(b.y + b.height - 0.5);
+      const nav = page.locator('nav.site-sidebar');
+      if (await nav.isVisible()) expect(b.x, 'the banner sits right of the sidebar').toBeGreaterThanOrEqual((await nav.boundingBox())!.width - 0.5);
       const tone = await page.locator('.recap-banner').evaluate((el) => el.style.getPropertyValue('--bg'));
       expect(tone).toMatch(/^var\(--t-[a-z]+\)$/);
       await checkLayout(page);

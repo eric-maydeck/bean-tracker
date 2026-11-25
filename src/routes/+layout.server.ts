@@ -8,6 +8,7 @@ import { resolveDisplayZone } from '#lib/displayZone.ts';
 import { localToday } from '#lib/server/localToday.ts';
 import { ensureRecapAlerts, recapReadyYear } from '#lib/server/recaps/store.ts';
 import { coverTone } from '#lib/server/recaps/select.ts';
+import { hasRecaps } from '#lib/server/recaps/recap.ts';
 import { version } from '../../package.json';
 
 export const load: LayoutServerLoad = ({ locals, url, cookies }) => {
@@ -32,5 +33,8 @@ export const load: LayoutServerLoad = ({ locals, url, cookies }) => {
   const recapReady = recapReadyYear(db, localToday(), locals.isAdmin);
   return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts, coloredNames, site: siteFor(url.host),
     recapReady, brewingZone: brewingZone(),
-    displayZone: resolveDisplayZone({ signedIn: locals.isAdmin, setting: getDisplayZone(db), cookie: cookies.get('tz') ?? null }), dateFormat: locals.isAdmin ? getDateFormat(db) : DEFAULT_DATE_FORMAT, recapTone: recapReady ? coverTone(recapReady) : null };
+    displayZone: resolveDisplayZone({ signedIn: locals.isAdmin, setting: getDisplayZone(db), cookie: cookies.get('tz') ?? null }), dateFormat: locals.isAdmin ? getDateFormat(db) : DEFAULT_DATE_FORMAT, recapTone: recapReady ? coverTone(recapReady) : null,
+    // The sidebar's remembered collapse (cookie, so the first render has the right width); null = CSS decides by width.
+    nav: ((v): 'collapsed' | 'expanded' | null => (v === 'collapsed' || v === 'expanded' ? v : null))(cookies.get('nav')),
+    recapsTab: hasRecaps(db, localToday(), locals.isAdmin) };
 };

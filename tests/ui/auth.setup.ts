@@ -17,7 +17,7 @@ setup('sign in returns to the page you were on', { tag: '@setup' }, async ({ pag
   const coffee = await page.locator('a[href^="/coffees/"]').first().getAttribute('href');
   await gotoReady(page, coffee!);
   await page.evaluate(() => history.replaceState(history.state, '', `${location.pathname}?from=test`));
-  await page.locator('.site-nav').getByRole('link', { name: 'Sign in' }).click();
+  await page.locator('nav.site-sidebar').getByRole('link', { name: 'Sign in' }).click();
   await page.locator('#password').fill('test');
   await page.locator('#password').press('Enter');
   await page.waitForURL((url) => url.pathname + url.search === `${coffee}?from=test`);
