@@ -169,9 +169,11 @@ async function expectEditAligned(page: Page) {
 function buttonBoxes(scope: Locator) {
   return scope.evaluate((el) => {
     const o = el.getBoundingClientRect();
+    const pinned = [...el.querySelectorAll('.actions-cell')].some((c) => getComputedStyle(c).position === 'sticky');
+    const x0 = pinned ? el.closest('.table-scroll')!.getBoundingClientRect().left : o.left; // a pinned column keeps its place in the scroll box while the row scrolls under it
     return [...el.querySelectorAll('.sub-actions .button')].map((b) => {
       const r = b.getBoundingClientRect();
-      return [r.left - o.left, r.top - o.top, r.width, r.height].map(Math.round);
+      return [r.left - x0, r.top - o.top, r.width, r.height].map(Math.round);
     });
   });
 }
@@ -13984,6 +13986,24 @@ for (const name of ['pick-wheel', 'pick-d20']) {
       expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the game').toBeGreaterThan((await page.locator('.game').boundingBox())!.x + 370);
     });
   }
+}
+
+// The Subscriptions edit table scrolls sideways below its natural width: Pause/Resume and Delete stay pinned to the right edge (the 1440 window with the sidebar expanded is the owner's case).
+for (const width of [1440, 1500, 1700]) {
+  test(`subscriptions-edit-pinned-actions-${width} @subscriptions`, async ({ page }, info) => {
+    test.skip(info.project.name !== 'w1280', 'desktop only');
+    await page.context().addCookies([{ name: 'nav', value: 'expanded', url: info.project.use.baseURL! }]);
+    await page.setViewportSize({ width, height: 800 });
+    await gotoReady(page, '/subscriptions?view=list');
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    const box = (await page.locator('.sub-scroll').boundingBox())!;
+    for (const d of await page.locator('tbody tr .sub-actions .button:last-child').all()) {
+      const b = (await d.boundingBox())!;
+      expect(b.x, 'Delete inside the scroll box').toBeGreaterThanOrEqual(box.x);
+      expect(b.x + b.width, 'Delete inside the scroll box').toBeLessThanOrEqual(box.x + box.width);
+      expect(b.x + b.width, 'Delete inside the viewport').toBeLessThanOrEqual(width);
+    }
+  });
 }
 
 // A non-UTC browser zone: "browser time" renders UTC on the first visit (server), then Tokyo after mount, and stays Tokyo
