@@ -3867,7 +3867,7 @@ export const STATES: State[] = [
     name: 'account',
     path: () => '/account',
     act: async (page) => {
-      await expect(page.getByText('Flow data for 24 of 24 brews')).toBeVisible();
+      await expect(page.getByText('Flow data for 25 of 25 brews')).toBeVisible();
       await expect(page.getByRole('link', { name: 'Open recipes' })).toHaveAttribute('href', '/recipes');
       // Brew now lists: no mutation here (every viewport shares one DB); add/remove are covered in page.server.test.ts.
       const rows = page.locator('.bn-list').first().locator('li');
@@ -3922,8 +3922,8 @@ export const STATES: State[] = [
             expect(await svg.getAttribute('aria-label')).toBeTruthy();
             await expect(li.locator('[data-button-row]').first()).toBeVisible();
           }
-          // The only small structures are the recipe's 4sy (matched) and the dismissed bbf: neither counts as "other".
-          await expect(page.getByText(/other structures? with fewer than/)).toHaveCount(0);
+          // The only small structures are the recipe's 4sy (matched) and the dismissed bbf: neither counts as "other". The seed's espresso weight curve adds one small structure.
+          await expect(page.getByText(/^1 other structure with fewer than/)).toHaveCount(1);
           await expect(page.getByRole('link', { name: 'Hidden (1)' })).toHaveAttribute('href', '?view=hidden');
           // Card: one-liner, then a steps grid (time | text, one row per pour), then temperature · notes.
           const card = panel(page, 'Your recipes').locator('li.item').filter({ hasText: 'Seed equal pours' });
@@ -3939,7 +3939,7 @@ export const STATES: State[] = [
           await expect(page.locator('.cell-tip:popover-open')).toContainText('Water low');
           await expect(page.locator('.cell-tip:popover-open')).toContainText('Start this pour when the water is low');
           await page.mouse.click(1, 1);
-          await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 27 with notes only')).toBeVisible(); // 24 + the 3 Brew now brews tagged seedlow
+          await expect(page.getByText('Read from 25 brews with flow data · 0 low confidence · 27 with notes only')).toBeVisible(); // 25 (the seed espresso curve) + the 3 Brew now brews tagged seedlow
         }
       },
       {
