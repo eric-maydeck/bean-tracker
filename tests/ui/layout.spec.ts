@@ -1718,12 +1718,14 @@ export const STATES: State[] = [
       if (process.env.UI_SHOTS === 'all') await page.screenshot({ path: `.ui-test/screenshots/detail-status-${test.info().project.name}.png` });
       await checkLayout(page);
     } },
-  // Admin: the whole action row (Back, status buttons, Import ... Share) is one line from 1003px (phone landscape) up, with the
-  // status buttons icon-sized below 1126px and Clone-width from there (where the full row first fits with the normal gap).
+  // Admin: the whole action row (Back, status buttons, Import ... Share) is one line from a 969px row (phone landscape, 1003px
+  // wide, has all of it; a window's row is narrower by the 64px collapsed or 248px expanded sidebar), with the status buttons
+  // icon-sized below a 1093px row and Clone-width from there (where the full row first fits with the normal gap).
   { name: 'coffee-detail-actions-one-line', viewports: 'two', path: (s: Seed) => `/coffees/${s.slugs.frozen}`,
     act: async (page: Page) => {
-      for (const [width, wide] of [[1003, false], [1125, false], [1126, true], [1280, true]] as const) {
-        await page.setViewportSize({ width, height: 800 });
+      await page.emulateMedia({ reducedMotion: 'reduce' }); // the sidebar changes width at 1100px: measure after it, not during its slide
+      for (const [width, height, wide] of [[1003, 333, false], [1100, 800, false], [1280, 800, false], [1400, 800, true]] as const) {
+        await page.setViewportSize({ width, height });
         await frames(page);
         const m = await page.evaluate(() => {
           const kids = [...document.querySelectorAll<HTMLElement>('.detail-actions > :not(.detail-right), .detail-right > *')].map((c) => c.getBoundingClientRect());
