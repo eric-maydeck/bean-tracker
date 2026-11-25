@@ -102,9 +102,14 @@ export function formatVariety(value: string): string {
 export const varietyGroup = (token: string): string =>
   token.toLowerCase() === 'gesha 1931' ? 'Gesha' : token;
 
-export const varietyGroups = (variety: string | null | undefined): string[] => [
-  ...new Set((variety ?? '').split(',').map((t) => t.trim()).filter(Boolean).map(varietyGroup))
-];
+// ponytail: unbounded, fine at the current handful of distinct variety strings; cap it if they ever grow.
+const varietyCache = new Map<string, string[]>();
+export const varietyGroups = (variety: string | null | undefined): string[] => {
+  const k = variety ?? '';
+  let g = varietyCache.get(k);
+  if (!g) varietyCache.set(k, g = [...new Set(k.split(',').map((t) => t.trim()).filter(Boolean).map(varietyGroup))]);
+  return g;
+};
 
 export const formatRegion = (value: string): string => value.trim().replace(/\s+[-\u2013]\s+/g, ', ');
 
