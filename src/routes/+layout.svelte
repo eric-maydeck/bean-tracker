@@ -7,6 +7,7 @@
   import type { AlertRow } from '#lib/types.ts';
   import AiNote from '#lib/components/AiNote.svelte';
   import RecapBanner from '#lib/components/RecapBanner.svelte';
+  import NavProgress from '#lib/components/NavProgress.svelte';
   import Toast from '#lib/components/Toast.svelte';
   import { showToast } from '#lib/toast.svelte.ts';
   import Icon, { type IconName } from '#lib/components/Icon.svelte';
@@ -142,6 +143,7 @@
   }
 </script>
 
+<NavProgress />
 {#if data.recapReady && !recapPage}<RecapBanner year={data.recapReady} tone={data.recapTone!} />{/if}
 {#if !recapPage}
 <nav class="site-nav">

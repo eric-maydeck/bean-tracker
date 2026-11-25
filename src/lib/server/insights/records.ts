@@ -243,12 +243,29 @@ const ratioIn = (b: BrewFact) => (b.dose && b.waterG ? `${g(b.dose)} to ${g(b.wa
 // A holder's link to its board row's place: Leaderboards under the rank, Lowest first for the least ones.
 const boardHref = (board: Board, rank: 'rating' | 'grams', low = false) =>
   `/stats?tab=leaderboards&rank=${rank}${low ? `&low=${board}` : ''}&chart=leaderboard-${board}#leaderboard-${board}`;
-const lastDate = (board: Board, c: RecCtx, key: string) =>
-  boardBrews(board, c.brews).filter((b) => BREW_KEY[board](b) === key).map((b) => b.localDate).sort().pop()!;
+// Each record def runs per window, and many defs share a RecCtx (see recordsTab's ctx): what they all
+// recompute (boards, last dates, speeds) is computed once per ctx. Weak, so a ctx's results go with it.
+const memos = new WeakMap<RecCtx, Map<string, unknown>>();
+const memo = <T>(c: RecCtx, key: string, f: () => T): T => {
+  const m = memos.get(c) ?? memos.set(c, new Map()).get(c)!;
+  if (!m.has(key)) m.set(key, f());
+  return m.get(key) as T;
+};
+const boardOf = (c: RecCtx, b: Board, rank: 'rating' | 'grams', avg: Avg, like = true) =>
+  memo(c, `lb|${b}|${rank}|${avg}|${like}`, () => leaderboard(c.brews, c.bags, { start: null, end: c.today }, b, rank, c.ratings, avg, like));
+const lastDate = (b: Board, c: RecCtx, key: string) =>
+  memo(c, `last|${b}`, () => {
+    const m = new Map<string | null, string>();
+    for (const x of boardBrews(b, c.brews)) {
+      const k = BREW_KEY[b](x);
+      if (x.localDate > (m.get(k) ?? '')) m.set(k, x.localDate);
+    }
+    return m;
+  }).get(key)!;
 // `by`: the Score the groups rank by. The favorite/least variety and producer records pass `min3` (the raw mean with small
 // groups left out): exactly the linked board's default order, so a holder is that board's first row (or Lowest first's).
 const least = (board: Board, href?: string, by: Avg = 'adjusted') => (c: RecCtx): Candidate[] => {
-  const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg);
+  const lb = (avg: Avg) => boardOf(c, board, 'rating', avg);
   const raw = lb('raw'), key = BREW_KEY[board];
   // ratedGroups' `overall`: every keyed bag in one group.
   const avg = ratedGroups(c.brews.filter((b) => b.localDate <= c.today), (b) => (key(b) === null ? null : ''), c.ratings, 'raw')[0]?.mean ?? NaN;
@@ -264,7 +281,7 @@ const least = (board: Board, href?: string, by: Avg = 'adjusted') => (c: RecCtx)
     }));
 };
 // Grind speed bands (score vs the grinder's average, bag-mean value, solid bands only); one row is the average itself. Holder date = the band's latest brew.
-const speeds = (c: RecCtx): Candidate[] => {
+const speeds = (c: RecCtx): Candidate[] => memo(c, 'speeds', () => {
   const rows = c.brews.filter((b) => countsForRating(b, c.ratings) && b.rating! > 0);
   const band = labFn('rpm');
   const solid = speedTab(rows, () => null).speeds.filter((s) => s.solid && s.delta !== null);
@@ -272,10 +289,10 @@ const speeds = (c: RecCtx): Candidate[] => {
     value: s.delta!, mean: s.delta!,
     holder: { label: s.label, href: '/stats?tab=gear#gear-speeds', date: rows.filter((b) => band(b)?.label === s.label).map((b) => b.localDate).sort().pop()! }
   }));
-};
+});
 // Most or fewest grams brewed per board group (groups with ≥ minBags bags); a lone group decides nothing.
 const byGrams = (board: Board, minBags: 1 | 2, href: string) => (c: RecCtx): Candidate[] => {
-  const rows = leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'grams', c.ratings, 'raw', false).filter((r) => r.bags >= minBags);
+  const rows = boardOf(c, board, 'grams', 'raw', false).filter((r) => r.bags >= minBags);
   return rows.length < 2 ? [] : rows.map((r) => ({
     value: r.value, detail: plural(r.bags, 'bag'), holder: { label: r.label, href, date: lastDate(board, c, r.key) }
   }));
@@ -436,7 +453,12 @@ const bagsIn = (bags: readonly BagFact[], w: Period | null) => (w ? bags.filter(
 export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagFact[], c: RecordsCtx): RecordsTab {
   const all: Period = { start: null, end: c.today };
   const brews = allBrews, raw = c.unscored ?? allBrews, bags = allBags;
+  const ctxs = new Map<string, RecCtx>();
   const ctx = (w: Period | null, def?: RecordDef): RecCtx => {
+    const id = `${w ? `${w.start}..${w.end}` : 'n'}|${def?.dialIn ? 'd' : def && WHOLE_RECORDS.has(def.key) ? 'w' : 'b'}${def?.extremes ? 'e' : ''}${def?.bought ? 'm' : ''}`;
+    return ctxs.get(id) ?? ctxs.set(id, makeCtx(w, def)).get(id)!;
+  };
+  const makeCtx = (w: Period | null, def?: RecordDef): RecCtx => {
     const inWin = (b: BrewFact) => inPeriod(b.localDate, w!) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer);
     return {
       brews: w ? (def?.dialIn ? raw : def && WHOLE_RECORDS.has(def.key) ? c.whole ?? brews : brews).filter(inWin) : [],
@@ -447,7 +469,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   // Taste ties go to the holder whose roaster you rate higher (its mean over the record's brews), then a–z.
   // Bag holders carry their roaster as sub; day holders have none and fall through to a–z.
   const tasteTie = (x: RecCtx) => {
-    const m = new Map(leaderboard(x.brews, x.bags, all, 'roasters', 'rating', c.ratings, 'raw').map((r) => [r.key, r.value]));
+    const m = memo(x, 'tasteRoasters', () => new Map(boardOf(x, 'roasters', 'rating', 'raw').map((r) => [r.key, r.value])));
     const r = (h: Holder) => (h.sub ? m.get(h.sub) : undefined) ?? -Infinity;
     return (a: Holder, b: Holder) => r(b) - r(a) || a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
   };

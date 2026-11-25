@@ -43,6 +43,12 @@ describe('handle: origin check', () => {
     expect(await r.json()).toEqual({ type: 'error', error: { message: 'Sign in again to upload' } });
   });
 
+  it('reports app time in Server-Timing', async () => {
+    const url = new URL('http://localhost/stats');
+    const res = await handle({ event: { request: new Request(url), url, cookies: { get: () => undefined }, locals: {} }, resolve: async () => new Response('ok') } as never);
+    expect(res.headers.get('server-timing')).toMatch(/^app;dur=\d+\.\d$/);
+  });
+
   it('sets the security headers on resolved and refused responses', async () => {
     for (const r of [await run('/stats').res, await run('/api/shots/upload').res]) {
       expect(r.headers.get('strict-transport-security')).toBe('max-age=31536000');

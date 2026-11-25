@@ -9179,6 +9179,8 @@ export const STATES: State[] = [
       await drawer.getByRole('link', { name: 'Records', exact: true }).click();
       await expect(drawer).toBeHidden();
       await expect(row).toHaveText('View: Records');
+      // The row switches on tap (#206); the URL follows once the data arrives.
+      await expect(page).toHaveURL(/[?&]tab=records(&|$)/);
       const u = new URL(page.url());
       expect([u.searchParams.get('tab'), u.searchParams.get('range')]).toEqual(['records', 'all']);
       const pager = page.locator('nav.tab-pager');
@@ -9187,6 +9189,7 @@ export const STATES: State[] = [
       await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
       await pager.locator('.next').click();
       await expect(row).toHaveText('View: Milestones');
+      await expect(page).toHaveURL(/[?&]tab=milestones(&|$)/);
       await expect.poll(() => page.evaluate(() => scrollY), 'Next opens the new tab at its top').toBe(0);
       await expect(pager.locator('.prev')).toContainText('Records');
       await gotoReady(page, '/stats?range=all');
@@ -14227,3 +14230,18 @@ for (const tab of ['overview', 'records', 'water', 'leaderboards', 'habits', 'co
     } finally { await ctx.close(); }
   });
 }
+
+// A slow tab switch (#206): the progress bar appears after a beat, the tapped tab reads active at once, nothing shifts, and the bar goes on arrival.
+test('nav-progress-slow-tab', { tag: ['@stats', '@two'] }, async ({ page }) => {
+  await gotoReady(page, '/stats?range=all&tab=habits');
+  await page.route('**/stats/__data.json*tab=records*', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
+  const h1 = page.locator('h1').first(), bar = page.locator('.nav-progress');
+  const before = await h1.boundingBox();
+  await pickTab(page, 'records');
+  await expect(bar).toBeVisible();
+  await expect(page.locator('.section-row')).toHaveText('View: Records'); // before the data arrives
+  expect(await h1.boundingBox(), 'the title does not move').toEqual(before);
+  expect((await bar.boundingBox())!.height).toBe(3);
+  await expect(bar).toBeHidden({ timeout: 5000 });
+  await expect(page.locator('.section-row')).toHaveText('View: Records');
+});
