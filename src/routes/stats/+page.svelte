@@ -20,7 +20,7 @@
   import { plural } from '#lib/linkPreview.ts';
   import { formatDays, hour12 } from '#lib/hours.ts';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, TABS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, TAB_LABEL, statsTabHref, TABS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '#lib/insightsUrl.ts';
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
@@ -267,12 +267,7 @@
 
   // The Recaps group appears only while there is a recap to open.
   const groups = $derived(TAB_GROUPS.filter((g) => data.recapsTab || s.tab === 'recaps' || g.label !== 'Recaps'));
-  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', onhand: 'On hand', spend: 'Spend', sweetspots: 'Sweet spots', brewing: 'Brewing', pours: 'Pours', water: 'Water', gear: 'Gear', recaps: 'Recaps' };
-  // A section link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
-  function tabHref(tab: Tab) {
-    const qs = insightsParams({ ...explicit, tab }).toString();
-    return qs ? `?${qs}` : '/stats';
-  }
+  const tabHref = (tab: Tab) => statsTabHref(explicit, tab);
   // The sections drawer, and Previous / Next at the end of every tab, in drawer order.
   let drawer = $state<HTMLDialogElement>();
   const flatTabs = $derived(groups.flatMap((g) => g.tabs));

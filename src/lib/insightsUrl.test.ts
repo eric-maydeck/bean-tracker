@@ -3,10 +3,24 @@ import {
   lowFirst,
   parseInsightsUrl, insightsParams, boardAvg, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
   BREW_FILTERS_ON, activeBrewFilters, wholeNote,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView, statsTabHref
 } from './insightsUrl';
 import type { Filter } from '#lib/coffeeFilters.ts';
 import { compareFits } from '#lib/server/insights/time.ts';
+
+describe('statsTabHref', () => {
+  it('keeps tab=overview explicit (insightsParams writes any given tab)', () => {
+    expect(statsTabHref({}, 'overview')).toBe('/stats?tab=overview');
+  });
+  it('keeps explicit params and sets the tab', () => {
+    const h = statsTabHref({ range: '1w' }, 'habits');
+    expect(h).toContain('tab=habits');
+    expect(h).toContain('range=1w');
+  });
+  it('?tab=overview parses to overview', () => {
+    expect(parseInsightsUrl(new URLSearchParams('tab=overview'), [2026]).tab).toBe('overview');
+  });
+});
 
 const YEARS = [2026];
 const parse = (q: string) => parseInsightsUrl(new URLSearchParams(q), YEARS);
