@@ -44,6 +44,9 @@ async function expectDenseCardFits(card: Locator, what: string, grows = false) {
 // Pick puts the card beside the game only where its container is wide enough (PickForMe's 1226px container query), so a window's width alone doesn't say: the sidebar takes some.
 const besideGame = (page: import('@playwright/test').Page) => page.locator('.stage-box').evaluate((e) => e.clientWidth >= 1226);
 
+// A click in the page's corner: the desktop sidebar sits above a menu's click-away layer (it stays usable), so "outside" is just right of it.
+const clickBesideSidebar = async (page: import('@playwright/test').Page) => page.mouse.click(((await page.locator('nav.site-sidebar').boundingBox())?.width ?? 0) + 2, 2);
+
 async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
   const b = (await page.locator('.out-row').boundingBox())!;
   const vh = page.viewportSize()!.height;
@@ -12472,7 +12475,7 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await expect(ed).toHaveCount(0);
       await page.getByRole('button', { name: '+ Filter' }).click();
-      await page.mouse.click(2, 2);
+      await clickBesideSidebar(page);
       await expect(ed).toHaveCount(0);
       expect(page.url()).toBe(url);
       await page.getByRole('button', { name: '+ Filter' }).click();
@@ -12503,7 +12506,7 @@ export const STATES: State[] = [
       await expect(list).toBeVisible();
       await ed.getByRole('button', { name: 'Origin', exact: true }).click();
       await ed.locator('.filter-values input').first().check();
-      await page.mouse.click(2, 2);
+      await clickBesideSidebar(page);
       await expect(list).toBeVisible();
       await ed.getByRole('button', { name: 'Origin', exact: true }).click();
       await ed.locator('.filter-values input').first().check();
