@@ -22,7 +22,7 @@ import { linkBeanConquerorBean, unlinkBeanConquerorBean, getLinkableCoffees, Bea
 import { editBrewList, getBrewDoses, getBrewRatios } from '#lib/server/brewNow/prefs.ts';
 import { linkMarks } from '#lib/server/brewNow/outcome.ts';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '#lib/server/beanConquerorJson.ts';
-import { importWarnings, waterWarnings } from '#lib/server/importWarnings.ts';
+import { acceptWaterWarning, importWarnings, unacceptWaterWarning, waterWarnings } from '#lib/server/importWarnings.ts';
 import { queueReadings } from '#lib/server/pourReadings.ts';
 import { discoverGroups, listRecipes } from '#lib/server/recipes.ts';
 import { uploadStatus, UPLOAD_USERNAME } from '#lib/server/visualizerUpload.ts';
@@ -115,6 +115,21 @@ export const actions: Actions = {
       return fail(400, { error: 'Missing bean id' });
     }
     dismissBeanConquerorBean(getDb(), id);
+    return { success: true as const };
+  },
+  acceptWaterWarning: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const id = (await request.formData()).get('id');
+    if (typeof id !== 'string' || !id) return fail(400, { error: 'Missing water id' });
+    acceptWaterWarning(getDb(), id);
+    return { success: true as const };
+  },
+  // Undo of an accepted water warning.
+  unacceptWaterWarning: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const id = (await request.formData()).get('id');
+    if (typeof id !== 'string' || !id) return fail(400, { error: 'Missing water id' });
+    unacceptWaterWarning(getDb(), id);
     return { success: true as const };
   },
   // Undo of a dismissal.

@@ -207,14 +207,20 @@
   </p>
 
   {#if data.warnings.length || data.waterWarnings.length}
+    {@const open = data.waterWarnings.filter((w) => !w.accepted)}
+    {@const accepted = data.waterWarnings.filter((w) => w.accepted)}
     <details class="warnings">
-      <summary>Data warnings ({data.warnings.length + data.waterWarnings.length})</summary>
+      <summary>Data warnings ({data.warnings.length + open.length})</summary>
       <p class="text-muted">Brews and waters worth fixing in BQ before re-importing. Nothing here blocks or changes an import.</p>
       <ul class="warn-list">
-        {#each data.waterWarnings as w, i (i)}
+        {#each open as w (w.id)}
           <li class="warn-row">
             <strong>{w.water}</strong>
             <div class="warn-what">{w.reason}</div>
+            <form method="POST" action="?/acceptWaterWarning" use:enhance>
+              <input type="hidden" name="id" value={w.id} />
+              <button class="button button-secondary" type="submit">Accept</button>
+            </form>
           </li>
         {/each}
         {#each data.warnings as w, i (i)}
@@ -225,6 +231,23 @@
           </li>
         {/each}
       </ul>
+      {#if accepted.length}
+        <details class="accepted">
+          <summary>Accepted ({accepted.length})</summary>
+          <ul class="warn-list">
+            {#each accepted as w (w.id)}
+              <li class="warn-row">
+                <strong>{w.water}</strong>
+                <div class="text-muted">{w.reason}</div>
+                <form method="POST" action="?/unacceptWaterWarning" use:enhance>
+                  <input type="hidden" name="id" value={w.id} />
+                  <button class="button button-secondary" type="submit">Undo</button>
+                </form>
+              </li>
+            {/each}
+          </ul>
+        </details>
+      {/if}
     </details>
   {/if}
 
@@ -362,7 +385,7 @@
     .acct { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 var(--space-4); align-items: start; }
   }
   .warnings { margin: var(--space-3) 0; }
-  .warnings summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+  .warnings summary, .accepted summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
   .warn-list { list-style: none; padding: 0; margin: 0; }
   .warn-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); overflow-wrap: anywhere; }
   .warn-row:last-child { border-bottom: 0; }
