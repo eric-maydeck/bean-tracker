@@ -29,16 +29,16 @@
     if (await ondelete()) step = 'idle';
   }
 
-  // Focus the panel's Close button when it opens, and the opener when it closes; start below the site header.
+  // Focus the panel's Close button when it opens, and the opener when it closes; start beside the site sidebar.
   let toggleEl: HTMLButtonElement | undefined = $state();
   let closeEl: HTMLButtonElement | undefined = $state();
-  let top = $state(0);
+  let left = $state(0);
   let wasOpen = false;
   let byOutside = false;
   let panelEl: HTMLElement | undefined = $state();
   let phone = $state(false); // the phone overlay is a modal: aria-modal and Tab kept inside; the desktop side bar is not
-  // The side bar (desktop) starts under the site header, which scrolls away with the page; a phone's modal is centred.
-  const measure = () => (phone = window.innerWidth <= 640, top = window.innerWidth > 640 ? Math.max(0, document.querySelector('nav.site-nav')?.getBoundingClientRect().bottom ?? 0) : 0);
+  // The side bar (desktop) starts right of the site sidebar; a phone's modal is centred.
+  const measure = () => (phone = window.innerWidth <= 640, left = window.innerWidth > 640 ? (document.querySelector('nav.site-sidebar')?.getBoundingClientRect().right ?? 0) : 0);
   // It slides out as it slid in; no motion on a phone or with reduced motion.
   const slide = () => ({ x: -416, duration: matchMedia('(min-width: 641px) and (prefers-reduced-motion: no-preference)').matches ? 200 : 0 });
   $effect(() => {
@@ -47,8 +47,12 @@
       measure();
       addEventListener('scroll', measure, { passive: true });
       addEventListener('resize', measure);
+      // The site sidebar collapsing or expanding moves this bar's left edge.
+      const side = document.querySelector('nav.site-sidebar');
+      const ro = side && new ResizeObserver(measure);
+      if (side) ro!.observe(side);
       tick().then(() => closeEl?.focus());
-      return () => (removeEventListener('scroll', measure), removeEventListener('resize', measure));
+      return () => (removeEventListener('scroll', measure), removeEventListener('resize', measure), ro?.disconnect());
     } else if (wasOpen) {
       wasOpen = false;
       if (byOutside) byOutside = false; // a click outside leaves focus on what was clicked
@@ -126,7 +130,7 @@
 
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (Escape is handled on the window) -->
-  <div class="modal-backdrop rules-backdrop" style:top="{top}px" onclick={(e) => e.target === e.currentTarget && window.innerWidth <= 640 && ontoggle(false)}>
+  <div class="modal-backdrop rules-backdrop" style:left="{left}px" onclick={(e) => e.target === e.currentTarget && window.innerWidth <= 640 && ontoggle(false)}>
     <section class="modal rules-panel" role="dialog" aria-modal={phone ? 'true' : undefined} aria-label="Rules" bind:this={panelEl} in:fly={slide()} out:fly={slide()}>
       <header class="bar">
         <h3>Rules</h3>

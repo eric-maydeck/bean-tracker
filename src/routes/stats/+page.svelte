@@ -20,7 +20,7 @@
   import { plural } from '#lib/linkPreview.ts';
   import { formatDays, hour12 } from '#lib/hours.ts';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, TABS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, TAB_LABEL, statsTabHref, TABS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '#lib/insightsUrl.ts';
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
@@ -125,7 +125,6 @@
   let rangeDialog: HTMLDialogElement | undefined = $state();
 
   let barHeight = $state(0);
-  let sectionH = $state(0); // the pinned "View: …" row above the bar (desktop)
 
   // The server computes every tile from the URL, so a toggle is a navigation.
   function choose(change: InsightsUrlState) {
@@ -267,14 +266,8 @@
 
   // The Recaps group appears only while there is a recap to open.
   const groups = $derived(TAB_GROUPS.filter((g) => data.recapsTab || s.tab === 'recaps' || g.label !== 'Recaps'));
-  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', onhand: 'On hand', spend: 'Spend', sweetspots: 'Sweet spots', brewing: 'Brewing', pours: 'Pours', water: 'Water', gear: 'Gear', recaps: 'Recaps' };
-  // A section link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
-  function tabHref(tab: Tab) {
-    const qs = insightsParams({ ...explicit, tab }).toString();
-    return qs ? `?${qs}` : '/stats';
-  }
-  // The sections drawer, and Previous / Next at the end of every tab, in drawer order.
-  let drawer = $state<HTMLDialogElement>();
+  const tabHref = (tab: Tab) => statsTabHref(explicit, tab);
+  // Previous / Next at the end of every tab, in menu order.
   const flatTabs = $derived(groups.flatMap((g) => g.tabs));
   const tabIdx = $derived(flatTabs.indexOf(s.tab));
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
@@ -591,7 +584,7 @@
 
 
 <svelte:head>
-  <title>Bean Tracker - Stats</title>
+  <title>{TAB_LABEL[shownTab]} · Stats - Bean Tracker</title>
 </svelte:head>
 <PreviewMeta
   preview={insightsPreview({
@@ -603,34 +596,18 @@
   })}
 />
 
-<!-- Every view, grouped, for the sections drawer. The links navigate like choose({ tab }): replace the entry, keep the scroll and focus. -->
-{#snippet railGroups()}
-  {#each groups as g (g.label)}
-    <div class="rail-group" role="group" aria-label={g.label}>
-      <span class="rail-caption" aria-hidden="true">{g.label}</span>
-      {#each g.tabs as t (t)}
-        <a
-          href={tabHref(t)}
-          aria-current={shownTab === t ? 'page' : undefined}
-          data-sveltekit-replacestate
-          data-sveltekit-reset="false">{TAB_LABEL[t]}</a
-        >
-      {/each}
-    </div>
-  {/each}
-{/snippet}
 <div class="rail-main">
-<CollapsibleBar desktopPinned={sectionH + barHeight}>
+<CollapsibleBar desktopPinned={barHeight}>
 {#snippet children()}
 <div class="toolbar">
-  <h1>Stats</h1>
+  <div class="title-group">
+    <h1>Stats</h1>
+    <div class="page-subtitle">{TAB_LABEL[shownTab]}</div>
+  </div>
   <button class="button button-secondary reset" type="button" onclick={reset}>Reset</button>
   <ShareButton />
 </div>
-<!-- The current view, right under the title (it navigates Stats, not a filter); it opens the sections drawer. -->
-<div class="section-bar" bind:offsetHeight={sectionH}><button type="button" class="section-row" aria-haspopup="dialog" onclick={() => drawer?.showModal()}><Icon name="list" /><span>View: {TAB_LABEL[shownTab]}</span></button></div>
-
-<div class="insights-controls filter-bar" style:--section-h="{sectionH}px" bind:offsetHeight={barHeight}>
+<div class="insights-controls filter-bar" bind:offsetHeight={barHeight}>
   <label class="form-field group-field" style={cell('period')}>
     <span>Period</span>
     <select class="ctl-select" aria-label="Period" value={custom('range') ? 'custom' : s.range} onchange={(e) => pickRange(e.currentTarget.value)}>
@@ -822,17 +799,8 @@
 </div>
 <JumpNav links={jump} label={s.tab === 'leaderboards' ? 'Jump to a board' : undefined} />
 {/snippet}
-{#snippet summary()}<button type="button" class="mini-menu" aria-haspopup="dialog" aria-label="Stats sections" onclick={() => drawer?.showModal()}><Icon name="list" /></button>{TAB_LABEL[s.tab]}{' · '}{periodText}{#if badgeCount}{' · '}{badgeCount} {badgeCount === 1 ? 'filter' : 'filters'}{/if}{/snippet}
+{#snippet summary()}{TAB_LABEL[s.tab]}{' · '}{periodText}{#if badgeCount}{' · '}{badgeCount} {badgeCount === 1 ? 'filter' : 'filters'}{/if}{/snippet}
 </CollapsibleBar>
-<!-- The sections drawer, from the "View: …" row or the pinned ☰. A tab link, the backdrop or Esc closes it. -->
-<dialog bind:this={drawer} class="tab-drawer" aria-label="Stats sections"
-  onclick={(e) => { if (e.target === drawer || (e.target as Element).closest('a')) drawer!.close(); }}>
-  <div class="drawer-head">
-    <span>Stats</span>
-    <button type="button" class="button button-ghost drawer-close" aria-label="Close" onclick={() => drawer!.close()}><Icon name="x" /></button>
-  </div>
-  <nav class="rail-links">{@render railGroups()}</nav>
-</dialog>
 <span id="ratings-help-current" hidden>{plainText(RATINGS_HELP.current)}</span>
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
 <span id="dial-help-dialed" hidden>{DIAL_HELP.dialed}</span>
@@ -1019,7 +987,7 @@
 </div>
 
 <style>
-  /* The content's width breakpoints are container queries on `insights` (viewport width - 2rem main padding). */
+  /* The content's width breakpoints are container queries on `insights` (the content column: the viewport minus the sidebar, minus 2rem main padding). */
   .rail-main {
     container: insights / inline-size;
   }
@@ -1051,183 +1019,16 @@
     margin-left: auto;
     align-items: flex-end;
   }
-  /* The drawer's section links. */
-  .rail-links {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    font-size: 0.95rem;
+  .title-group {
+    min-width: 0;
   }
-  .rail-group {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .rail-caption {
-    padding: 0 var(--space-3) var(--space-1);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-  }
-  .rail-links a {
-    display: flex;
-    align-items: center;
-    min-height: 2.25rem;
-    padding: 0 var(--space-3);
-    border-left: 3px solid transparent;
-    border-radius: 0 var(--radius) var(--radius) 0;
-    color: var(--color-text);
-    text-decoration: none;
-    white-space: nowrap;
-  }
-  .rail-links a[aria-current='page'] {
-    border-left-color: var(--color-accent);
-    background: color-mix(in oklab, var(--color-accent) 14%, transparent);
+  /* The current view, under the title: nothing else on the page says which one this is. */
+  .page-subtitle {
+    margin-top: 2px;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    line-height: 1.3;
     color: var(--color-accent);
-    font-weight: 600;
-  }
-  .rail-links a:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: -2px;
-  }
-  /* Touch screens: 44px targets (ui-rules 4). */
-  @media (pointer: coarse) {
-    .rail-links a {
-      min-height: 44px;
-    }
-  }
-  @media (hover: hover) {
-    .rail-links a:not([aria-current='page']):hover {
-      background: color-mix(in oklab, var(--color-accent) 7%, transparent);
-    }
-  }
-  /* The drawer: slides in from the left over a dimmed page. */
-  .tab-drawer {
-    inset: 0 auto 0 0;
-    width: min(16rem, 85vw);
-    max-width: none;
-    height: 100dvh;
-    max-height: none;
-    margin: 0;
-    padding: 0 var(--space-2) var(--space-4) 0;
-    overflow-y: auto;
-    border: 0;
-    border-right: 1px solid var(--color-border);
-    background: var(--color-bg);
-    color: var(--color-text);
-    translate: -100% 0;
-    transition: translate 0.2s ease, display 0.2s allow-discrete, overlay 0.2s allow-discrete;
-  }
-  .tab-drawer[open] {
-    translate: 0 0;
-  }
-  @starting-style {
-    .tab-drawer[open] {
-      translate: -100% 0;
-    }
-  }
-  .tab-drawer::backdrop {
-    background: rgb(0 0 0 / 0.4);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .tab-drawer {
-      transition: none;
-    }
-  }
-  .drawer-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-2) 0 var(--space-2) var(--space-3);
-    font-weight: 600;
-  }
-  .drawer-close {
-    min-width: 44px;
-    min-height: 44px;
-    padding: 0;
-  }
-  .drawer-close :global(.icon) {
-    width: 1.5rem;
-    height: 1.5rem;
-  }
-  /* "☰ View: Consumption" just under the title: the toolbar is as tall as Reset, so the row pulls up into it
-     (~12px under "Stats"'s ink). Desktop: it pins at the top while scrolling, with the filter bar right under it
-     (the bar's top = this row's height). The full-width strip covers the page scrolling under it; the button inside
-     is only as wide as its text (empty space beside it isn't clickable). Left edge flush with the title. */
-  .section-bar {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    margin: calc(-1 * (var(--space-4) + var(--space-1))) 0 var(--space-3);
-    padding-block: var(--space-1);
-    background: var(--color-bg);
-  }
-  .insights-controls.filter-bar {
-    top: var(--section-h, 0px);
-  }
-  .section-row {
-    display: flex;
-    width: fit-content;
-    align-items: center;
-    gap: var(--space-2);
-    padding: 0 var(--space-3) 0 0;
-    border: 0;
-    border-radius: var(--radius);
-    background: none;
-    color: var(--color-accent);
-    font: inherit;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  /* Phones (and landscape): scrolls away; the pinned short row has its own ☰. */
-  @media (max-width: 640px), (max-height: 450px) {
-    .section-bar {
-      position: static;
-      padding-block: 0;
-    }
-  }
-  /* Phones: a 44px tap target, its extra height pulled up into the toolbar too. */
-  @media (max-width: 640px) {
-    .section-bar {
-      margin: -1.75rem 0 var(--space-3);
-    }
-    .section-row {
-      min-height: 44px;
-      padding-right: 0; /* its top edge reaches Reset's row: stay clear of Reset at 390 */
-    }
-  }
-  .section-row :global(.icon),
-  .mini-menu :global(.icon) {
-    width: 1.5rem;
-    height: 1.5rem;
-  }
-  @media (hover: hover) {
-    .section-row:hover span {
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
-  }
-  .section-row:focus-visible,
-  .mini-menu:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-  }
-  /* The ☰ leads the pinned short row too, so the drawer is a tap away anywhere on a long tab. */
-  .mini-menu {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    margin: 0 var(--space-1) 0 calc(-1 * var(--space-2));
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--color-accent);
-    vertical-align: middle;
-    cursor: pointer;
   }
   /* Phones: the bar scrolls with the page (CollapsibleBar pins a short row instead). */
   @media (max-width: 640px), (max-height: 450px) {

@@ -16,9 +16,9 @@ export function tipPlace(a: Box, tip: { w: number; h: number }, view: { w: numbe
   // Neither side fits (a phone in landscape under its sticky bar): overlap the anchor rather than leave the band.
   return { x, y: Math.max(view.top, Math.min(side, view.bottom - tip.h)) };
 }
-// The visible band: below whatever is pinned at the top (pinnedBottom), above a fixed .bottom-tabs bar that is shown.
+// The visible band: below whatever is pinned at the top (pinnedBottom), above a fixed .phone-bar that is shown.
 export function viewBand() {
-  const tabs = document.querySelector('.bottom-tabs')?.getBoundingClientRect();
+  const tabs = document.querySelector('.phone-bar')?.getBoundingClientRect();
   return {
     w: document.documentElement.clientWidth,
     top: pinnedBottom(),

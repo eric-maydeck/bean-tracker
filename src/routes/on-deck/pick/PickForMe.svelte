@@ -83,7 +83,7 @@
   const wheelMax = $derived(narrow ? 460 : Math.round(Math.max(320, Math.min(460, vh - stageTop - outH - 4))));
   const measure = () => {
     if (!stageEl || !outEl) return;
-    vh = innerHeight; narrow = stageEl.parentElement!.clientWidth < 1226; /* the stacked layout (see the container query below) */ stageTop = stageEl.getBoundingClientRect().top + scrollY;
+    vh = innerHeight; narrow = stageEl.parentElement!.clientWidth < 976; /* the stacked layout (see the container query below) */ stageTop = stageEl.getBoundingClientRect().top + scrollY;
     outH = outEl.offsetHeight + (parseFloat(getComputedStyle(stageEl).rowGap) || 0); measured = true;
   };
   $effect(() => { game; ready; tick().then(measure); });
@@ -603,10 +603,10 @@
   @keyframes fade-in { from { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { .fx i { display: none; } .fx.fail { animation: none; } }
   /* the same layout for both games: the card beside the game (with a real gutter) only where it gets the room for its horizontal form next
-     to the 620px game; narrower, it goes under the game (PickCard's own container query picks the horizontal or vertical form) */
+     to the game (976px of container); narrower, it goes under the game (PickCard's own container query picks the horizontal or vertical form) */
   .stage-box { container-type: inline-size; margin-bottom: var(--space-3); }
-  @container (min-width: 1226px) { /* 520 game + 32 gutter + 674 (the card: 640px of content, padding and border): beside always means horizontal; the game column takes up to 620. 1280 less a 15px scrollbar still gets it */
-    .stage { max-width: none; grid-template-columns: minmax(520px, 620px) minmax(674px, 1fr); }
+  @container (min-width: 976px) { /* 370 game + 16 gutter + 590 (the card: 294 thumbnail, 16 gap and 214 of detail in a 540px container, plus padding and border): beside always means horizontal; the game column takes up to 620. A 1280 window with the sidebar open (about 985px) gets it */
+    .stage { max-width: none; gap: 1.25rem var(--space-4); grid-template-columns: minmax(370px, 620px) minmax(590px, 1fr); }
     .game, .out-row { grid-column: 1; }
     .game { grid-row: 1; }
     .out-row { grid-row: 2; }
@@ -625,7 +625,7 @@
   .game-row { margin-bottom: var(--space-2); }
   /* the callout look (a tinted panel); the button sits right of the text and wraps below it on a narrow screen */
   .shared-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: 0; padding: 0 0 0 var(--space-3); min-width: 0; border: 1px solid var(--color-warm); border-radius: var(--radius); background: color-mix(in srgb, var(--color-warm) 12%, transparent); }
-  .shared-note.plain { padding: var(--space-2) var(--space-3); min-height: 36px; }
+  .shared-note.plain { padding: 0 var(--space-3); box-sizing: border-box; min-height: 36px; display: flex; align-items: center; } /* 36px like the Game row: the note adds no height to it */
   .shared-note .button { margin: 0; padding: 0 0.75rem; min-height: 36px; }
   @media (max-width: 640px) { .shared-note { flex: 1 1 100%; padding: 0 0 0 var(--space-3); } .shared-note .button { min-height: 44px; } }
   .rules-dialog { max-width: min(32rem, 100% - 2rem); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: inherit; padding: var(--space-4); }

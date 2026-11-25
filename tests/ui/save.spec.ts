@@ -514,13 +514,14 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
       }
       expect(await banner.evaluate((el) => getComputedStyle(el).position)).toBe('static');
       expect(await banner.evaluate((el) => getComputedStyle(el).borderRadius)).toBe('0px');
-      const nav = page.locator('nav.site-nav');
-      if (await nav.isVisible()) expect((await nav.boundingBox())!.y, 'above the nav').toBeGreaterThanOrEqual(b.y + b.height - 0.5);
+      const nav = page.locator('nav.site-sidebar');
+      if (await nav.isVisible()) expect(b.x, 'the banner sits right of the sidebar').toBeGreaterThanOrEqual((await nav.boundingBox())!.width - 0.5);
       const tone = await page.locator('.recap-banner').evaluate((el) => el.style.getPropertyValue('--bg'));
       expect(tone).toMatch(/^var\(--t-[a-z]+\)$/);
       await checkLayout(page);
     }
     // The same notice is in the bell's inbox (a link to the recap) and counts as unread; banner and alert are independent.
+    await page.setViewportSize({ width: 1280, height: 800 }); // the bell sits in the sidebar; phone has it only in the drawer
     const bell = page.getByRole('button', { name: /^Alerts/ }).first();
     await expect(bell).toHaveAccessibleName(/unread/);
     const inbox = async () => { await bell.click(); return page.locator('.alert-list-item').filter({ hasText: `Your ${Y} recap is ready` }); };
@@ -532,8 +533,7 @@ test('recap banner: geometry, dismiss records it', { tag: '@recaps' }, async ({ 
     await link.click();
     await expect(page).toHaveURL(new RegExp(`/recaps/${Y}$`));
     await expect(page.locator('.alert-list'), 'following the link closes the inbox').toHaveCount(0);
-    await page.goBack();
-    await waitReady(page);
+    await gotoReady(page, '/coffees'); // not goBack: its restore raced waitReady on CI
     await page.getByRole('button', { name: 'Dismiss' }).first().click(); // the banner's
     await expect(banner).toHaveCount(0);
     item = await inbox();
@@ -939,7 +939,7 @@ test('pick: the selected profile is remembered', { tag: '@on-deck' }, async ({ p
   await panel.getByRole('button', { name: 'Close', exact: true }).click(); // the header Close keeps the selection
   await expect(panel).toBeHidden();
   await page.evaluate(() => { (window as unknown as { __s: string[] }).__s = []; navigator.share = async (d) => { (window as unknown as { __s: string[] }).__s.push(d!.url!); }; });
-  await page.getByRole('button', { name: 'Share', exact: true }).click();
+  await page.getByRole('button', { name: 'Share', exact: true }).first().click(); // the page's; the last spin's card has its own beside the game
   expect(await page.evaluate(() => (window as unknown as { __s: string[] }).__s.at(-1)), 'Close keeps the profile in the link').toMatch(/profile=Shared\+Rules$/);
   await reloadReady(page);
   await opener.click();

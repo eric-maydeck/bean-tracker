@@ -406,7 +406,7 @@
 </div>
 
 {#if view === 'list'}
-<div class="table-scroll">
+<div class="table-scroll sub-scroll">
   <table class="data-table" class:editing={canEdit}>
     <thead>
       <tr>
@@ -882,6 +882,12 @@
   .actions-cell {
     width: 15rem;
     min-width: 15rem;
+  }
+  /* The edit table scrolls sideways below its natural width: Actions (Pause, Delete) stay pinned to the right edge,
+     like the Coffees list's (by the scroll box's width, not the window's: the sidebar takes 64 or 248px of it). */
+  .sub-scroll { container-type: inline-size; }
+  @container (min-width: 641px) and (max-width: 1210px) {
+    .data-table.editing .actions-cell { position: sticky; right: 0; z-index: 1; background: var(--color-bg); box-shadow: inset 1px 0 var(--color-border); }
   }
   /* Inputs fill their cells down to a usable minimum, so the table fits a
      desktop window; .table-scroll only catches phones. */

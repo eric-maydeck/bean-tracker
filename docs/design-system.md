@@ -37,6 +37,7 @@ cited file, not by copying it elsewhere.
 
 ## Layout and patterns
 
+- Navigation: one drill-in site nav (`src/lib/nav.ts` model, `SiteNav.svelte`). Desktop: a left sidebar that collapses to an icon rail (the choice is the `nav` cookie, so the server renders the right width). Phone: a bottom bar plus the same panel as a drawer; Account shows in both the bar and the drawer (owner decision). Stats drills into its own views panel (`← Main menu` to return). The current page wears variant B's accent rail: 3px accent bar, accent label, `-fill` icon, tinted fill, `aria-current="page"`; Stats shows a quieter "contains current" state. A Stats page has no nav of its own: its `.page-subtitle` (Lora, accent) under the h1 names the view.
 - Width: `--container-max` 1416px on `.container` and the nav (`src/app.css`).
 - Card: `.card` is surface, 1px border, `--radius`, `--shadow`, `--space-4` padding. Lists use `.grid` (`repeat(auto-fill, minmax(260px, 1fr))`, gap `--space-4`). Example: `src/routes/coffees/+page.svelte`.
 - Stat tile: `.stat-item` is a square (`aspect-ratio: 1`) card; compact rows drop the ratio. `.stat-grid` is `auto-fill, minmax(140px, 1fr)` (`src/app.css`).

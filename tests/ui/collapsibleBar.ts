@@ -99,7 +99,7 @@ export async function expectPullTab(page: Page) {
     const overlay = document.querySelector('.cbar.overlay')!, pull = document.querySelector('.cbar-pull')!;
     const [o, p] = [overlay.getBoundingClientRect(), pull.getBoundingClientRect()];
     const vw = document.documentElement.clientWidth;
-    const tabs = document.querySelector('.bottom-tabs')?.getBoundingClientRect();
+    const tabs = document.querySelector('.phone-bar')?.getBoundingClientRect();
     const bottom = tabs && tabs.height ? tabs.top : innerHeight;
     if (Math.abs(p.top - o.bottom) > 1) out.push(`top ${p.top} vs overlay bottom ${o.bottom}`);
     if (Math.abs(p.right - (vw - 16)) > 1) out.push(`right ${p.right} vs ${vw - 16}`);
@@ -150,9 +150,7 @@ export async function cbarAct(page: Page, filters = 0) {
     await expect(page.getByRole('button', { name: 'Show controls' })).toHaveCount(0);
     await scrollPastBar(page);
     const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
-    const [row, bar] = [await box('.section-bar'), await box('.filter-bar')];
-    expect(Math.abs(row.y), '"View: …" row pinned at the top').toBeLessThanOrEqual(1);
-    expect(Math.abs(bar.y - (row.y + row.height)), 'controls pinned right under it').toBeLessThanOrEqual(1);
+    expect(Math.abs((await box('.filter-bar')).y), 'controls pinned at the top').toBeLessThanOrEqual(1);
     const [t, p] = [await box('.toolbar'), await box('.period-row')];
     expect(t.y + t.height, 'heading scrolled away').toBeLessThan(0);
     expect(p.y + p.height, 'period row scrolled away').toBeLessThan(0);
@@ -165,7 +163,7 @@ export async function cbarAct(page: Page, filters = 0) {
   await scrollPastBar(page);
   await expectShortRow(page);
   const [view, period, summary] = await Promise.all([
-    page.locator('.section-row').evaluate((b) => b.textContent!.trim().replace(/^View: /, '')),
+    page.locator('.page-subtitle').innerText(),
     page.locator('.insights-period').first().innerText(),
     page.locator('.cbar-summary').innerText()
   ]);

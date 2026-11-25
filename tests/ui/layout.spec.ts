@@ -1,4 +1,4 @@
-import { expect, request, type Page, type Locator, type Route } from '@playwright/test';
+import { expect, request, type Browser, type Page, type Locator, type Route, type TestInfo } from '@playwright/test';
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
@@ -41,6 +41,12 @@ async function expectDenseCardFits(card: Locator, what: string, grows = false) {
   expect(m.slack, `${what}: the last row ends at least 4px above the buttons`).toBeGreaterThanOrEqual(4);
 }
 
+// Pick puts the card beside the game only where its container is wide enough (PickForMe's 976px container query), so a window's width alone doesn't say: the sidebar takes some.
+const besideGame = (page: import('@playwright/test').Page) => page.locator('.stage-box').evaluate((e) => e.clientWidth >= 976);
+
+// A click in the page's corner: the desktop sidebar sits above a menu's click-away layer (it stays usable), so "outside" is just right of it.
+const clickBesideSidebar = async (page: import('@playwright/test').Page) => page.mouse.click(((await page.locator('nav.site-sidebar').boundingBox())?.width ?? 0) + 2, 2);
+
 async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
   const b = (await page.locator('.out-row').boundingBox())!;
   const vh = page.viewportSize()!.height;
@@ -49,11 +55,30 @@ async function expectOutRowOnScreen(page: import('@playwright/test').Page) {
 }
 
 
-/** Switches the /stats tab the way a user does: "☰ View: …" (or, scrolled on a phone, the short row's ☰), then the drawer link for `tab`. */
+/** Switches the /stats tab the way a user does: the sidebar's (on a phone, the Menu drawer's) Stats panel, then the view's row. */
 async function pickTab(page: Page, tab: string) {
-  const mini = page.locator('.mini-menu');
-  await (await mini.isVisible() ? mini : page.locator('.section-row')).click();
-  await page.locator('dialog.tab-drawer a').evaluateAll((as, t) => (as as HTMLAnchorElement[]).find((a) => (new URL(a.href).searchParams.get('tab') ?? 'overview') === t)!.click(), tab);
+  const phone = await page.locator('nav.phone-bar').isVisible();
+  if (phone) await page.locator('button.phone-menu').click();
+  const scope = phone ? page.locator('dialog.nav-drawer') : page.locator('nav.site-sidebar');
+  const panel = scope.locator('.nav-panel[data-panel="stats"]');
+  if (!(await panel.isVisible())) await scope.locator('button.nav-drill').click();
+  await panel.locator('a.nav-row').evaluateAll((as, t) => (as as HTMLAnchorElement[]).find((a) => (new URL(a.href).searchParams.get('tab') ?? 'overview') === t)!.click(), tab);
+}
+
+/** Opens the nav's main panel the way a user would (the sidebar, or on a phone the Menu drawer) and returns it. */
+async function openNavMain(page: Page) {
+  const phone = await page.locator('nav.phone-bar').isVisible();
+  if (phone) await page.locator('button.phone-menu').click();
+  const scope = phone ? page.locator('dialog.nav-drawer') : page.locator('nav.site-sidebar');
+  const main = scope.locator('.nav-panel[data-panel="main"]');
+  await expect(main).toBeVisible();
+  return main;
+}
+
+async function closeNavDrawer(page: Page) {
+  if (!(await page.locator('nav.phone-bar').isVisible())) return;
+  await page.keyboard.press('Escape');
+  await expect(page.locator('dialog.nav-drawer')).toBeHidden();
 }
 
 interface Seed {
@@ -144,9 +169,11 @@ async function expectEditAligned(page: Page) {
 function buttonBoxes(scope: Locator) {
   return scope.evaluate((el) => {
     const o = el.getBoundingClientRect();
+    const pinned = [...el.querySelectorAll('.actions-cell')].some((c) => getComputedStyle(c).position === 'sticky');
+    const x0 = pinned ? el.closest('.table-scroll')!.getBoundingClientRect().left : o.left; // a pinned column keeps its place in the scroll box while the row scrolls under it
     return [...el.querySelectorAll('.sub-actions .button')].map((b) => {
       const r = b.getBoundingClientRect();
-      return [r.left - o.left, r.top - o.top, r.width, r.height].map(Math.round);
+      return [r.left - x0, r.top - o.top, r.width, r.height].map(Math.round);
     });
   });
 }
@@ -966,8 +993,8 @@ export const STATES: State[] = [
       // The home link and hint live on the cover only.
       await expect(page.getByRole('link', { name: 'Bean Tracker' })).toHaveCount(1);
       await expect(page.getByText('Swipe or tap to continue')).toHaveCount(1);
-      await expect(page.locator('.bottom-tabs')).toBeHidden();
-      await expect(page.locator('nav.site-nav')).toHaveCount(0);
+      await expect(page.locator('nav.phone-bar')).toHaveCount(0);
+      await expect(page.locator('nav.site-sidebar')).toHaveCount(0);
       // Keyword-colored names and signed deltas take the slide's text color on a tone.
       await page.locator('.recap-reel > section.slide .context').first().evaluate((c) => {
         c.insertAdjacentHTML('beforeend', '<span class="coffee-name" id="probe-name" style="color:rgb(255,0,0)">x</span><span class="ink-better" id="probe-delta">+0.3</span>');
@@ -1255,7 +1282,11 @@ export const STATES: State[] = [
       await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
       await expect(page.locator('.recap-tile .badge')).toHaveText(['Preview']);
       await expectNoMidWord(page, '.recap-tile b', '.recap-tile b .fit', LONG_NAMES);
-      await expect(page.locator('dialog.tab-drawer a').last()).toHaveText('Recaps');
+      const phone = await page.locator('nav.phone-bar').isVisible();
+      if (phone) await page.locator('button.phone-menu').click();
+      const scope = phone ? 'dialog.nav-drawer' : 'nav.site-sidebar'; // the menu lists Recaps last
+      await expect(page.locator(`${scope} .nav-panel[data-panel="stats"] a.nav-row`).last()).toHaveText('Recaps');
+      await closeNavDrawer(page);
     } },
   // The Period picks the years: one year, and a range with none (an empty line naming it, not a blank panel).
   { name: 'insights-recaps-period', path: () => `/stats?tab=recaps&range=${recapYear() - 1}`,
@@ -1692,12 +1723,14 @@ export const STATES: State[] = [
       if (process.env.UI_SHOTS === 'all') await page.screenshot({ path: `.ui-test/screenshots/detail-status-${test.info().project.name}.png` });
       await checkLayout(page);
     } },
-  // Admin: the whole action row (Back, status buttons, Import ... Share) is one line from 1003px (phone landscape) up, with the
-  // status buttons icon-sized below 1126px and Clone-width from there (where the full row first fits with the normal gap).
+  // Admin: the whole action row (Back, status buttons, Import ... Share) is one line from a 969px row (phone landscape, 1003px
+  // wide, has all of it; a window's row is narrower by the 64px collapsed or 248px expanded sidebar), with the status buttons
+  // icon-sized below a 1093px row and Clone-width from there (where the full row first fits with the normal gap).
   { name: 'coffee-detail-actions-one-line', viewports: 'two', path: (s: Seed) => `/coffees/${s.slugs.frozen}`,
     act: async (page: Page) => {
-      for (const [width, wide] of [[1003, false], [1125, false], [1126, true], [1280, true]] as const) {
-        await page.setViewportSize({ width, height: 800 });
+      await page.emulateMedia({ reducedMotion: 'reduce' }); // the sidebar changes width at 1100px: measure after it, not during its slide
+      for (const [width, height, wide] of [[1003, 333, false], [1100, 800, false], [1280, 800, false], [1400, 800, true]] as const) {
+        await page.setViewportSize({ width, height });
         await frames(page);
         const m = await page.evaluate(() => {
           const kids = [...document.querySelectorAll<HTMLElement>('.detail-actions > :not(.detail-right), .detail-right > *')].map((c) => c.getBoundingClientRect());
@@ -2490,9 +2523,9 @@ export const STATES: State[] = [
       await expect(page.getByRole('spinbutton', { name: 'Ca' })).toHaveValue('40');
       await page.getByRole('button', { name: 'Precision', exact: true }).click();
       await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('40');
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/stats"]')?.click());
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-sidebar a[href^="/stats"]')?.click());
       await expect(page).toHaveURL(/\/stats/);
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/water"]')?.click());
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-sidebar a[href="/water"]')?.click());
       await expect(page).toHaveURL(/tip=precision/);
       await expect(page.getByRole('button', { name: 'Precision', exact: true })).toHaveAttribute('aria-pressed', 'true');
     }
@@ -2664,9 +2697,9 @@ export const STATES: State[] = [
       await page.getByLabel('Kettle').selectOption('palatti-enso');
       await page.getByLabel('Recipe').selectOption('holy-water');
       await expect(page).toHaveURL(/recipe=holy-water/);
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/stats"]')?.click());
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-sidebar a[href^="/stats"]')?.click());
       await expect(page).toHaveURL(/\/stats/);
-      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/water"]')?.click());
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-sidebar a[href="/water"]')?.click());
       await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
       await expect(page.getByLabel('Kettle')).toHaveValue('palatti-enso');
       await expect(page.getByLabel('Water (mL)')).toHaveValue('880');
@@ -2709,7 +2742,7 @@ export const STATES: State[] = [
       await expect(page.getByText('Enter 100-2000mL.')).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Lotus drops for 900mL' })).toBeVisible();
       expect((await results.boundingBox())!.height).toBe(before);
-      await page.evaluate(() => (document.querySelector('nav.site-nav a[href="/water"]') as HTMLElement | null)?.click());
+      await page.evaluate(() => (document.querySelector('nav.site-sidebar a[href="/water"]') as HTMLElement | null)?.click());
       await expect(page).toHaveURL(/recipe=substance&ml=900/); // a bare visit restores the remembered state
       await expect(page.getByLabel('Recipe')).toHaveValue('substance');
       await expect(box).toHaveValue('900');
@@ -3402,10 +3435,11 @@ export const STATES: State[] = [
       await expect(page.getByText("⚠ doesn't look like Sey's site")).toBeVisible();
       await expectClearlyBelow(sey.locator('input[name="subscription_url"]'), page.getByText("⚠ doesn't look like Sey's site"));
       await expect(sey.locator('.pending-chip .text-tip')).toHaveAttribute('aria-label', 'Pending: Pending changes · Edited');
-      // Desktop: the edit table fits, no sideways scroll (user, 2026-10-08).
+      // Desktop: the edit table fits, no sideways scroll (user, 2026-10-08). Its 1198px needs a window of 1480px or more now
+      // (the 248px sidebar and 32px of padding); narrower, it scrolls inside its box like the phone's.
       const size = page.viewportSize();
       if (size && size.width >= 1280) {
-        for (const width of [1280, 1440]) {
+        for (const width of [1500, 1700]) {
           await page.setViewportSize({ width, height: size.height });
           const overflow = await page.evaluate(() => {
             const t = document.querySelector('.table-scroll')!;
@@ -3530,11 +3564,13 @@ export const STATES: State[] = [
       await expect(row.locator('input[name="amount_per_bag_g"]')).toHaveValue('125');
       const size = page.viewportSize();
       if (size && size.width >= 1280) {
+        await page.setViewportSize({ width: 1500, height: size.height }); // the edit table's 1198px plus the sidebar
         const overflow = await page.evaluate(() => {
           const t = document.querySelector('.table-scroll')!;
           return t.scrollWidth - t.clientWidth;
         });
         expect(overflow).toBe(0);
+        await page.setViewportSize(size);
       }
       expect(posts).toEqual([]);
     }
@@ -4716,20 +4752,15 @@ export const STATES: State[] = [
     ];
   })(),
   {
-    // On /recipes the Recipes nav item is current, after Stats, Gear and Water (desktop nav, phone More panel).
+    // On /recipes the Recipes nav item is current, after Stats, Gear and Water (sidebar, phone drawer).
     name: 'recipes-nav', viewports: 'two',
     path: () => '/recipes',
     act: async (page) => {
-      if (isPhone(page)) {
-        await page.getByRole('button', { name: 'More' }).click();
-        await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
-        expect((await page.locator('.bottom-tabs-more-panel > a').allTextContents()).slice(0, 3).map((n) => n.trim())).toEqual(['Gear', 'Water', 'Recipes']);
-      } else {
-        const links = page.locator('.nav-links > a');
-        await expect(links.filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
-        const names = await links.allTextContents();
-        expect(names.map((n) => n.trim()).slice(names.indexOf('Stats'), names.indexOf('Stats') + 4)).toEqual(['Stats', 'Gear', 'Water', 'Recipes']);
-      }
+      const main = await openNavMain(page);
+      await expect(main.getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
+      const names = (await main.locator('.nav-row').allTextContents()).map((n) => n.trim());
+      expect(names.slice(names.indexOf('Stats'), names.indexOf('Stats') + 4)).toEqual(['Stats', 'Gear', 'Water', 'Recipes']);
+      await closeNavDrawer(page);
     }
   },
   {
@@ -4737,12 +4768,8 @@ export const STATES: State[] = [
     name: 'recipes-nav-slug', viewports: 'two',
     path: () => '/recipes/seed-equal-pours',
     act: async (page) => {
-      if (isPhone(page)) {
-        await page.getByRole('button', { name: 'More' }).click();
-        await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
-      } else {
-        await expect(page.locator('.nav-links > a').filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
-      }
+      await expect((await openNavMain(page)).getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
+      await closeNavDrawer(page);
     }
   },
   // Clock times (footer, Account) show in the display zone: "browser time" renders UTC on a first visit (no tz cookie), then
@@ -5048,26 +5075,21 @@ export const STATES: State[] = [
     }
   },
   {
-    // Desktop: the nav link; phone: the More panel. Each lands on /account.
+    // Desktop: the sidebar footer link; phone: the bar's Account slot. Each lands on /account.
     name: 'account-nav', viewports: 'two',
     path: () => '/coffees',
     act: async (page) => {
-      if (isPhone(page)) {
-        await page.getByRole('button', { name: 'More' }).click();
-        await page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Account' }).click();
-      } else {
-        await page.locator('.nav-links').getByRole('link', { name: 'Account' }).click();
-      }
+      await (isPhone(page) ? page.locator('nav.phone-bar') : page.locator('nav.site-sidebar')).getByRole('link', { name: 'Account' }).click();
       await expect(page).toHaveURL(/\/account$/);
     }
   },
   {
-    // One page width site-wide: the nav links and main share left/right edges on every page, at 1280 and 1920.
+    // One page width site-wide: the content column and main share left/right edges on every page, at 1280 and 1920.
     name: 'page-width-consistent', path: () => '/coffees',
     act: async (page) => {
       const edges = () => page.evaluate(() => {
         const r = (e: Element | null) => { const b = e!.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.right)]; };
-        return { nav: r(document.querySelector('nav.site-nav .nav-links')), main: r(document.querySelector('main.container')), footer: r(document.querySelector('.site-footer')) };
+        return { nav: r(document.querySelector('.site-content')), main: r(document.querySelector('main.container')), footer: r(document.querySelector('.site-footer')) };
       });
       const size = page.viewportSize()!;
       for (const width of size.width >= 1280 ? [size.width, 1920] : [size.width]) {
@@ -6109,9 +6131,12 @@ export const STATES: State[] = [
       // A Best item stays on one line (its "(n brews)" never splits); wide screens fit all of a row's items on one line.
       const lines = await items.locator('.best > span').evaluateAll((es) => es.map((e) => e.getClientRects().length));
       expect(lines.every((n) => n === 1), 'a Best item wraps inside itself').toBe(true);
-      if ((page.viewportSize()?.width ?? 0) >= 1280) {
+      const wideSize = page.viewportSize()!;
+      if (wideSize.width >= 1280) { // the page is the window less the sidebar: "wide" is 1560 now
+        await page.setViewportSize({ width: 1560, height: wideSize.height });
         const tops = await items.locator('.best').evaluateAll((bs) => bs.map((b) => new Set([...b.querySelectorAll(':scope > span')].map((e) => Math.round(e.getBoundingClientRect().top))).size));
-        expect(tops.every((n) => n === 1), 'Best items on one line at 1280').toBe(true);
+        expect(tops.every((n) => n === 1), 'Best items on one line at 1560').toBe(true);
+        await page.setViewportSize(wideSize);
       }
       await expect(page.locator('nav.board-jump')).toBeVisible();
       expect(await page.locator('main .bar.small-sample-mark').count()).toBeGreaterThan(0);
@@ -6445,7 +6470,7 @@ export const STATES: State[] = [
       expect((await page.locator('.wheel').boundingBox())!.width).toBeLessThanOrEqual(561);
       if ((page.viewportSize()?.width ?? 0) > 640) {
         const [w, r] = [(await page.locator('.wheel').boundingBox())!, (await page.locator('.result').boundingBox())!];
-        if ((page.viewportSize()?.width ?? 0) >= 1280) expect(r.x, 'wide desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
+        if (await besideGame(page)) expect(r.x, 'wide desktop: the card sits right of the wheel').toBeGreaterThan(w.x + w.width);
         else expect(r.y, 'narrower desktop: the card sits under the game').toBeGreaterThan(w.y + w.height - 1);
       } else await expect(page.locator('.result')).toBeHidden(); // phone: no placeholder, results show in the overlay
       await expectGroupsLabelled(page);
@@ -6454,7 +6479,7 @@ export const STATES: State[] = [
       const [gb, rb] = [(await page.getByRole('group', { name: 'Game' }).getByRole('button', { name: 'Wheel' }).boundingBox())!, (await rules.boundingBox())!];
       expect(Math.abs(gb.y - rb.y), 'Rules on the Game row').toBeLessThanOrEqual(3);
       expect(Math.abs(gb.height - rb.height), 'same height').toBeLessThanOrEqual(3);
-      if ((page.viewportSize()?.width ?? 0) > 640) await expectOutRowOnScreen(page); // no scrolling to reach it
+      if ((page.viewportSize()?.width ?? 0) > 640 && await besideGame(page)) await expectOutRowOnScreen(page); // no scrolling to reach it
       await rules.click();
       await expect(page.getByRole('group', { name: 'Pool' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Reset to defaults' })).toBeVisible();
@@ -6511,8 +6536,9 @@ export const STATES: State[] = [
       const box = (await panel.boundingBox())!;
       const vw = page.viewportSize()!.width;
       if (vw > 640) {
-        expect(box.x, 'side bar hugs the left edge').toBeLessThanOrEqual(1);
-        expect(box.y, 'side bar starts below the site header').toBeGreaterThanOrEqual((await page.locator('nav.site-nav').boundingBox())!.height - 1);
+        const sideW = (await page.locator('nav.site-sidebar').boundingBox())!.width;
+        await expect.poll(async () => (await panel.boundingBox())!.x, 'side bar starts at the site sidebar edge, after its slide').toBeGreaterThanOrEqual(sideW - 1);
+        expect(box.y, 'side bar starts at the top').toBeLessThanOrEqual(1);
         expect(box.width).toBeLessThanOrEqual(420);
         const after = (await stage.boundingBox())!;
         expect(after.y, 'the game is not pushed down').toBe(before.y);
@@ -6603,7 +6629,7 @@ export const STATES: State[] = [
       const [hb, sb] = [(await hint.boundingBox())!, (await page.locator('.d20 .stage').boundingBox())!];
       expect(hb.y >= sb.y && hb.y + hb.height <= sb.y + sb.height, 'the note is inside the tray').toBe(true);
       await expect(page.getByRole('button', { name: 'Roll', exact: true })).toBeDisabled();
-      if ((page.viewportSize()?.width ?? 0) >= 1280) await expectOutRowOnScreen(page);
+      if (await besideGame(page)) await expectOutRowOnScreen(page);
       await page.getByLabel('Number someone rolled').fill('7');
       await page.getByRole('button', { name: 'Show', exact: true }).click();
       await expect(page.locator('.pick-modal .rolled b')).toHaveText('7');
@@ -6643,18 +6669,18 @@ export const STATES: State[] = [
       await expect(page.locator('.side .last h3'), 'the inline card has its heading and the rolled number').toHaveText('Your last roll · 7');
       const [hb, cb0, gr] = [(await page.locator('.side .last h3').boundingBox())!, (await page.locator('.result').boundingBox())!, (await page.locator('.game-row').boundingBox())!];
       expect(hb.y + hb.height - 1, 'heading above the card').toBeLessThanOrEqual(cb0.y);
-      if ((page.viewportSize()?.width ?? 0) >= 1280) {
+      if (await besideGame(page)) {
         expect(hb.y, 'beside the game: the heading sits in the Game row band, not off the page').toBeGreaterThanOrEqual(gr.y - 2);
         const rb = (await page.getByRole('button', { name: 'Rules', exact: true }).boundingBox())!;
         expect(hb.x >= rb.x + rb.width || hb.y >= rb.y + rb.height || hb.x + hb.width <= rb.x || hb.y + hb.height <= rb.y, 'the heading does not overlap the Rules button').toBe(true);
       }
       if ((page.viewportSize()?.width ?? 0) > 900) {
         expect(t2.x, 'two board columns').toBeGreaterThan(t1.x + t1.width - 1);
-        await expectOutRowOnScreen(page);
-        expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the D20').toBeGreaterThan((await page.locator('.d20 .stage').boundingBox())!.x + (await page.locator('.d20 .stage').boundingBox())!.width);
-        expect(Math.abs((await page.locator('.result').boundingBox())!.y - (await page.locator('.d20 .stage').boundingBox())!.y), 'card top level with the tray top (the heading does not push it)').toBeLessThanOrEqual(2);
+        if (await besideGame(page)) await expectOutRowOnScreen(page);
+        if (await besideGame(page)) expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the D20').toBeGreaterThan((await page.locator('.d20 .stage').boundingBox())!.x + (await page.locator('.d20 .stage').boundingBox())!.width);
+        if (await besideGame(page)) expect(Math.abs((await page.locator('.result').boundingBox())!.y - (await page.locator('.d20 .stage').boundingBox())!.y), 'card top level with the tray top (the heading does not push it)').toBeLessThanOrEqual(2);
         // The card is as tall as the D20 tray (an image card; one without is as tall as its content).
-        if (await page.locator('.result img').count()) expect(Math.abs((await page.locator('.result').boundingBox())!.height - (await page.locator('.d20 .stage').boundingBox())!.height), 'card as tall as the tray').toBeLessThanOrEqual(2);
+        if (await besideGame(page) && await page.locator('.result img').count()) expect(Math.abs((await page.locator('.result').boundingBox())!.height - (await page.locator('.d20 .stage').boundingBox())!.height), 'card as tall as the tray').toBeLessThanOrEqual(2);
       } else {
         expect(Math.abs(t2.x - t1.x), 'one column').toBeLessThanOrEqual(1); // stacked: one table, 1 to 20
         expect(t2.y, 'second half under the first').toBeGreaterThan(t1.y + t1.height - 1);
@@ -6668,7 +6694,7 @@ export const STATES: State[] = [
         expect(ob.y, 'Out for today below the card on a phone').toBeGreaterThanOrEqual(cb.y + cb.height - 1);
         expect(await page.evaluate(() => !!(document.querySelector('.side')!.compareDocumentPosition(document.querySelector('.out-row')!) & Node.DOCUMENT_POSITION_FOLLOWING)), 'DOM order = visual order: the card, then Out for today').toBe(true);
       }
-      if ((page.viewportSize()?.width ?? 0) >= 1280) { // #136: the desktop pop-up with an image (the seed's one, wherever the board puts it)
+      if (await besideGame(page)) { // #136: the desktop pop-up with an image (the seed's one, wherever the board puts it)
         const n = await page.locator('table.board tr').filter({ hasText: 'Rwanda Gitega Natural' }).locator('td.n').first().textContent();
         await page.getByLabel('Number someone rolled').fill(n!);
         await page.getByRole('button', { name: 'Show', exact: true }).click();
@@ -6741,14 +6767,17 @@ export const STATES: State[] = [
       if ((page.viewportSize()?.width ?? 0) <= 640) return;
       await expect(page.locator('.side .last h3'), 'the wheel result has its heading').toContainText('Your last spin');
       const card = page.locator('.result');
-      if ((page.viewportSize()?.width ?? 0) >= 1280) expect(Math.abs((await card.boundingBox())!.y - (await page.locator('.game').boundingBox())!.y), 'card top level with the game top').toBeLessThanOrEqual(2);
+      if (await besideGame(page)) expect(Math.abs((await card.boundingBox())!.y - (await page.locator('.game').boundingBox())!.y), 'card top level with the game top').toBeLessThanOrEqual(2);
       await expect(card.locator('.pick-card')).toBeVisible();
       expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(735);
       await expect(card.getByRole('button', { name: 'Close' })).toHaveCount(0);
       const img = card.locator('img');
       if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(327); expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(1); }
       const bs = await Promise.all(['Brew', 'Discard', 'Open coffee'].map((n) => card.getByRole('button', { name: n, exact: true }).boundingBox()));
-      for (const b of bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
+      // One row of three; in a 540-640px card (beside the game in a narrow column) Brew and Discard share a row and Open coffee spans the one below.
+      const two = bs[2]!.y - bs[0]!.y > 1;
+      for (const b of two ? bs.slice(0, 2) : bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
+      if (two) expect(Math.abs(bs[2]!.height - bs[0]!.height)).toBeLessThanOrEqual(1);
       // Horizontal card as tall as the D20 tray (360px): the square thumbnail left, the detail and the buttons right, nothing spilling out.
       const cardBox = (await card.boundingBox())!;
       expect(bs[0]!.y + bs[0]!.height, 'buttons inside the card').toBeLessThanOrEqual(cardBox.y + cardBox.height - 16);
@@ -6758,11 +6787,11 @@ export const STATES: State[] = [
         expect(await card.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the detail fits its height').toBe(true);
         await expectDenseCardFits(card, 'inline card');
       }
-      await expectOutRowOnScreen(page);
+      if (await besideGame(page)) await expectOutRowOnScreen(page);
       // The /coffees card's rows: roaster, origin, roast level, cost.
       await expect(card.getByText(/\/g|Cost unknown/)).toBeVisible();
       // Every desktop width: the card beside the game or under it, never squeezed (no sideways scroll, no clipped button text, as tall as its thumbnail when horizontal).
-      for (const width of [800, 960, 1100, 1240, 1250, 1263, 1280, 1416]) {
+      for (const width of [800, 960, 1100, 1280, 1416, 1500, 1540, 1600]) {
         await page.setViewportSize({ width, height: 900 });
         await expect(card.getByRole('button', { name: 'Open coffee', exact: true })).toBeVisible();
         const m = await page.evaluate(() => ({
@@ -6771,15 +6800,15 @@ export const STATES: State[] = [
           cardW: document.querySelector('.result')!.getBoundingClientRect().width,
           thumb: document.querySelector('.result .card-thumb')?.getBoundingClientRect().height ?? 0,
           cardH: document.querySelector('.result')!.getBoundingClientRect().height,
-          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid' || (document.querySelector('.pick-card')!.classList.contains('noimg') && document.querySelector('.result')!.getBoundingClientRect().width >= 674),
+          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid' || (document.querySelector('.pick-card')!.classList.contains('noimg') && document.querySelector('.result')!.getBoundingClientRect().width >= 590),
           beside: document.querySelector('.result')!.getBoundingClientRect().left >= document.querySelector('.game')!.getBoundingClientRect().right,
           outAfterCard: document.querySelector('.out-row')!.getBoundingClientRect().top >= document.querySelector('.result')!.getBoundingClientRect().bottom - 1
         }));
         expect(m.scroll, `no sideways scroll at ${width}`).toBeLessThanOrEqual(0);
         expect(m.clipped, `no clipped button text at ${width}`).toBe(0);
         expect(m.cardW, `card not squeezed at ${width}`).toBeGreaterThan(400);
-        if (width >= 1263) expect(m.beside, `the card sits beside the game at ${width} (1280 with a 15px scrollbar is still beside)`).toBe(true);
-        else expect(m.beside, `the card sits under the game at ${width}`).toBe(false);
+        if (width >= 1280) expect(m.beside, `the card sits beside the game at ${width} (the 248px sidebar, 32px of padding and a 15px scrollbar leave the 976px it needs)`).toBe(true);
+        else if (width < 1100) expect(m.beside, `the card sits under the game at ${width}`).toBe(false); // 1100 with the 64px bar still leaves 989
         if (!m.beside) expect(m.outAfterCard, `stacked: Out for today after the card, as in the DOM (tab order = visual order) at ${width}`).toBe(true);
         if (m.beside) expect(m.horizontal, `beside the game means the horizontal card at ${width}`).toBe(true);
         if (!m.beside) expect(m.thumb, `thumbnail within the card at ${width}`).toBeLessThanOrEqual(m.horizontal ? 327 : 281);
@@ -6798,7 +6827,7 @@ export const STATES: State[] = [
       const modal = page.getByRole('dialog', { name: 'Pick result' });
       await expect(modal).toBeVisible();
       // Horizontal card where the layout is wide, vertical on a phone; its detail fits (no clipping), and Tab stays inside the pop-up.
-      const wide = (page.viewportSize()?.width ?? 0) >= 1280;
+      const wide = await besideGame(page);
       const img = await modal.locator('.card-thumb').count(); // a coffee without a picture is content-height, not a grid
       expect(await modal.locator('.pick-card').evaluate((e) => e.classList.contains('wide')), wide ? 'horizontal pop-up card' : 'vertical pop-up card').toBe(wide);
       if (wide && img) expect(await modal.locator('.pick-card').evaluate((e) => getComputedStyle(e).display), 'the horizontal card is a grid').toBe('grid');
@@ -7011,7 +7040,8 @@ export const STATES: State[] = [
       expect(Math.abs(r1.y - r0.y - dy), 'Reset today moves only by the note row').toBeLessThanOrEqual(2);
       if (dy) expect(Math.abs(dy - (note.height + 8)), 'the push is the note and its gap').toBeLessThanOrEqual(8);
       expect([r1.x, r1.width, r1.height], 'Reset today keeps its size and column').toEqual([r0.x, r0.width, r0.height]);
-      expect([t1.x, t1.y - dy, t1.width, t1.height].map(Math.round), 'the switch keeps its size and place').toEqual([t0.x, t0.y, t0.width, t0.height].map(Math.round));
+      expect([t1.x, t1.width, t1.height].map(Math.round), 'the switch keeps its size and column').toEqual([t0.x, t0.width, t0.height].map(Math.round));
+      expect(Math.abs(t1.y - dy - t0.y), 'the switch keeps its place').toBeLessThanOrEqual(1); // sub-pixel row rounding
       // Rules: no categories, decaf or profiles; custom sort names; Reset to defaults stays.
       await page.getByRole('button', { name: 'Rules', exact: true }).click();
       const panel = page.getByRole('dialog', { name: 'Rules' });
@@ -8225,7 +8255,7 @@ export const STATES: State[] = [
     path: () => '/stats',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      const lift = () => page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
+      const lift = () => page.evaluate(() => { const t = document.querySelector('.phone-bar'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
       const foot = page.locator('section.recent .top-foot').first();
       const gap = () => foot.getByRole('button').last().evaluate((el) => innerHeight - el.getBoundingClientRect().bottom);
       const click = async (name: string) => { await foot.evaluate((el) => el.scrollIntoView({ block: 'center' })); const b = (await foot.getByRole('button', { name }).boundingBox())!; await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2); };
@@ -9163,23 +9193,17 @@ export const STATES: State[] = [
       await page.evaluate(() => document.getElementById('frac')!.remove());
     }
   },
-  // Sections: "☰ View: X" under the title opens the drawer; a link switches the tab, keeps the other params, marks
-  // itself current and closes the drawer. Previous / Next end every tab in drawer order. Scrolled, desktop keeps the
-  // row pinned with the controls right under it; a phone's short row leads with a ☰ that opens the same drawer.
+  // Sections: the site nav's Stats panel switches the tab (keeping the other params) and the subtitle names it at once;
+  // Previous / Next end every tab in menu order. Scrolled, desktop pins only the controls (the title scrolls away).
   {
     name: 'insights-sections',
     path: () => '/stats?range=all&tab=habits',
     act: async (page) => {
-      const row = page.locator('.section-row'), drawer = page.locator('dialog.tab-drawer');
-      await expect(row).toHaveText('View: Habits');
-      await row.click();
-      await expect(drawer).toBeVisible();
-      await expect(drawer.locator('[aria-current="page"]')).toHaveText('Habits');
-      await expect(drawer.getByRole('group', { name: 'Lab' }).getByRole('link')).toHaveText(['Sweet spots', 'Brewing', 'Pours', 'Water', 'Gear']);
-      await drawer.getByRole('link', { name: 'Records', exact: true }).click();
-      await expect(drawer).toBeHidden();
-      await expect(row).toHaveText('View: Records');
-      // The row switches on tap (#206); the URL follows once the data arrives.
+      const sub = page.locator('.page-subtitle');
+      await expect(sub).toHaveText('Habits');
+      await pickTab(page, 'records');
+      await expect(sub).toHaveText('Records');
+      // The subtitle switches on tap (#206); the URL follows once the data arrives.
       await expect(page).toHaveURL(/[?&]tab=records(&|$)/);
       const u = new URL(page.url());
       expect([u.searchParams.get('tab'), u.searchParams.get('range')]).toEqual(['records', 'all']);
@@ -9188,23 +9212,17 @@ export const STATES: State[] = [
       await pager.locator('.next').scrollIntoViewIfNeeded();
       await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
       await pager.locator('.next').click();
-      await expect(row).toHaveText('View: Milestones');
+      await expect(sub).toHaveText('Milestones');
       await expect(page).toHaveURL(/[?&]tab=milestones(&|$)/);
       await expect.poll(() => page.evaluate(() => scrollY), 'Next opens the new tab at its top').toBe(0);
       await expect(pager.locator('.prev')).toContainText('Records');
       await gotoReady(page, '/stats?range=all');
       await expect(pager.locator('.prev')).toHaveCount(0);
-      await scrollPastBar(page);
-      if (isPhone(page)) await page.locator('.mini-menu').click();
-      else {
-        const [r, bar] = [(await page.locator('.section-bar').boundingBox())!, (await page.locator('.filter-bar').boundingBox())!];
-        expect(Math.abs(r.y), 'row pinned at the top').toBeLessThanOrEqual(1);
-        expect(Math.abs(bar.y - (r.y + r.height)), 'controls right under it').toBeLessThanOrEqual(1);
-        await row.click();
+      await expect(sub).toHaveText('Overview');
+      if (!isPhone(page)) {
+        await scrollPastBar(page);
+        expect(Math.abs((await page.locator('.filter-bar').boundingBox())!.y), 'controls pinned at the top').toBeLessThanOrEqual(1);
       }
-      await expect(drawer).toBeVisible();
-      await page.keyboard.press('Escape');
-      await expect(drawer).toBeHidden();
     }
   },
   // A feed shorter than the full side ruler caps it to the feed: it never sticks out below (M10). A window
@@ -10707,7 +10725,7 @@ export const STATES: State[] = [
       // URL changes (bottomInView awaits the navigation): a click while that scroll is pending lands on whatever
       // the page jumps to, so wait for the landing before the next action.
       const landed = (name: string | RegExp) => expect.poll(() => pair.getByRole('button', { name }).evaluate((el) => {
-        const t = document.querySelector('.bottom-tabs'), lift = t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0;
+        const t = document.querySelector('.phone-bar'), lift = t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0;
         return Math.abs(innerHeight - el.getBoundingClientRect().bottom - lift - (document.querySelector('.back-to-top') ? 64 : 0));
       })).toBeLessThanOrEqual(2);
       await pair.getByRole('button', { name: /^Show all \d+$/ }).click();
@@ -12466,7 +12484,7 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await expect(ed).toHaveCount(0);
       await page.getByRole('button', { name: '+ Filter' }).click();
-      await page.mouse.click(2, 2);
+      await clickBesideSidebar(page);
       await expect(ed).toHaveCount(0);
       expect(page.url()).toBe(url);
       await page.getByRole('button', { name: '+ Filter' }).click();
@@ -12497,7 +12515,7 @@ export const STATES: State[] = [
       await expect(list).toBeVisible();
       await ed.getByRole('button', { name: 'Origin', exact: true }).click();
       await ed.locator('.filter-values input').first().check();
-      await page.mouse.click(2, 2);
+      await clickBesideSidebar(page);
       await expect(list).toBeVisible();
       await ed.getByRole('button', { name: 'Origin', exact: true }).click();
       await ed.locator('.filter-values input').first().check();
@@ -13203,14 +13221,14 @@ export const STATES: State[] = [
   { name: 'skip-name-insights-records', viewports: 'two', path: () => '/stats?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
   { name: 'skip-name-insights-milestones', viewports: 'two', path: () => '/stats?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
   // ---- Peer review B (2026-10-19) ----
-  // M2: the top navbar's first link lines up with the page content's left edge (the tab bar replaces it at <= 640px).
+  // M2: the sidebar sits left of the page content with no overlap (the phone bar replaces it at <= 640px).
   ...['/stats?tab=habits'].map((path): State => ({
     name: `nav-aligned${path.replace(/[^a-z]+/g, '-')}`, path: () => path,
     act: async (page) => {
       if (page.viewportSize()!.width <= 640) return;
-      const nav = (await page.locator('nav.site-nav .nav-links a').first().boundingBox())!.x;
-      const main = await page.locator('main.container').evaluate((el) => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft));
-      expect(Math.abs(nav - main), 'nav link left vs content left').toBeLessThanOrEqual(1);
+      const side = (await page.locator('nav.site-sidebar').boundingBox())!;
+      const main = await page.locator('main.container').evaluate((el) => el.getBoundingClientRect().left);
+      expect(main, 'content starts right of the sidebar').toBeGreaterThanOrEqual(side.x + side.width - 1);
     }
   })),
   // M1: each tab's own controls sit in the sticky filter bar and stay pinned inside it while scrolling.
@@ -13263,7 +13281,7 @@ export const STATES: State[] = [
   { name: 'insights-records-show-more-scroll', path: () => '/stats?tab=records&range=all',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      const lift = () => page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
+      const lift = () => page.evaluate(() => { const t = document.querySelector('.phone-bar'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
       const gap = () => foot.getByRole('button').last().evaluate((el) => innerHeight - el.getBoundingClientRect().bottom); // the last button in the footer
       const foot = page.locator('#records-top-brews ~ .top-foot');
       await foot.scrollIntoViewIfNeeded();
@@ -13288,7 +13306,7 @@ export const STATES: State[] = [
       await expect(btn).toHaveCount(0);
       await page.evaluate(() => scrollTo(0, innerHeight * 2));
       await expect(btn).toBeVisible();
-      const [b, vp, tabs] = await Promise.all([btn.boundingBox(), page.evaluate(() => [innerWidth, innerHeight]), page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().top : null; })]);
+      const [b, vp, tabs] = await Promise.all([btn.boundingBox(), page.evaluate(() => [innerWidth, innerHeight]), page.evaluate(() => { const t = document.querySelector('.phone-bar'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().top : null; })]);
       expect(b!.width).toBeGreaterThanOrEqual(44);
       expect(b!.height).toBeGreaterThanOrEqual(44);
       expect(vp[0] - (b!.x + b!.width), 'right gap').toBeLessThanOrEqual(24);
@@ -13511,7 +13529,7 @@ export const STATES: State[] = [
       await scrollPastBar(page);
       const barH = () => page.locator('.timeline').evaluate((el) => parseFloat(el.style.getPropertyValue('--bar-h')));
       if (!isPhone(page)) {
-        const b = (await page.locator('.filter-bar').boundingBox())!; // the "View: …" row and the controls
+        const b = (await page.locator('.filter-bar').boundingBox())!; // the controls
         expect(Math.abs((await barH()) - (b.y + b.height))).toBeLessThanOrEqual(1);
         return;
       }
@@ -13950,6 +13968,74 @@ for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   });
 }
 
+// The beside-the-game layout needs a 976px container: a 1280 and a 1440 window with the sidebar expanded (the owner's case) both get it, with Out for today on screen.
+for (const name of ['pick-wheel', 'pick-d20']) {
+  for (const width of [1280, 1440]) {
+    test(`${name}-${width}-expanded @on-deck`, async ({ page }, info) => {
+      test.skip(info.project.name !== 'w1280', 'desktop only');
+      await page.context().addCookies([{ name: 'nav', value: 'expanded', url: info.project.use.baseURL! }]);
+      await page.setViewportSize({ width, height: 800 });
+      const state = STATES.find((s) => s.name === name)!;
+      const s = seed();
+      await stubPickApi(page);
+      await gotoReady(page, state.path(s));
+      expect(await besideGame(page), 'the card beside the game').toBe(true);
+      await state.act!(page, s);
+      await checkLayout(page);
+      await expectOutRowOnScreen(page);
+      expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the game').toBeGreaterThan((await page.locator('.game').boundingBox())!.x + 370);
+    });
+  }
+}
+
+// The Subscriptions edit table scrolls sideways below its natural width: Pause/Resume and Delete stay pinned to the right edge (the 1440 window with the sidebar expanded is the owner's case).
+for (const width of [1440, 1500, 1700]) {
+  test(`subscriptions-edit-pinned-actions-${width} @subscriptions`, async ({ page }, info) => {
+    test.skip(info.project.name !== 'w1280', 'desktop only');
+    await page.context().addCookies([{ name: 'nav', value: 'expanded', url: info.project.use.baseURL! }]);
+    await page.setViewportSize({ width, height: 800 });
+    await gotoReady(page, '/subscriptions?view=list');
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    const box = (await page.locator('.sub-scroll').boundingBox())!;
+    for (const d of await page.locator('tbody tr .sub-actions .button:last-child').all()) {
+      const b = (await d.boundingBox())!;
+      expect(b.x, 'Delete inside the scroll box').toBeGreaterThanOrEqual(box.x);
+      expect(b.x + b.width, 'Delete inside the scroll box').toBeLessThanOrEqual(box.x + box.width);
+      expect(b.x + b.width, 'Delete inside the viewport').toBeLessThanOrEqual(width);
+    }
+  });
+}
+
+for (const width of [1280, 1440]) {
+  test(`pick-spun-${width}-expanded @on-deck`, async ({ page }, info) => {
+    test.skip(info.project.name !== 'w1280', 'desktop only');
+    await page.context().addCookies([{ name: 'nav', value: 'expanded', url: info.project.use.baseURL! }]);
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stubPickApi(page);
+    await gotoReady(page, '/on-deck?view=pick');
+    await page.getByRole('button', { name: 'Spin', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Pick result' }).getByRole('button', { name: 'Close' })).toBeVisible();
+    await dismissPickOverlay(page);
+    await expect(page.locator('.result .pick-card')).toBeVisible();
+    await page.locator('.result .pick-card').evaluate((el) => { // most seed coffees have no picture: give the card one the way the template does
+      if (el.querySelector('img')) return;
+      el.classList.remove('noimg');
+      const img = document.createElement('img'); img.className = 'card-thumb ' + [...el.classList].find((c) => c.startsWith('svelte-')); img.alt = '';
+      img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="%23885"/></svg>';
+      el.prepend(img);
+    });
+    await expect(page.locator('.result img').first()).toBeVisible();
+    // With a picture (the 360px card): beside the game, as tall as the tray, its detail inside, Out for today and the Game row inside their columns.
+    const [card, game, out] = await Promise.all(['.result', '.game', '.out-row'].map((q) => page.locator(q).boundingBox().then((b) => b!)));
+    expect(card.x, 'the card beside the game').toBeGreaterThan(game.x + game.width);
+    expect(Math.abs(card.height - 360), 'card as tall as the tray').toBeLessThanOrEqual(2);
+    expect(out.y + out.height, 'Out for today on screen').toBeLessThanOrEqual(800);
+    expect(await page.locator('.result .card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the detail fits its height').toBe(true);
+    expect(await page.locator('.game').evaluate((e) => [...e.querySelectorAll('*')].filter((c) => c.getBoundingClientRect().right > e.getBoundingClientRect().right + 1).length), 'nothing in the game column overflows it').toBe(0);
+  });
+}
+
 // A non-UTC browser zone: "browser time" renders UTC on the first visit (server), then Tokyo after mount, and stays Tokyo
 // across a client-side navigation (no UTC flash from a Stamp created later).
 test.describe('browser in Tokyo', () => {
@@ -14039,7 +14125,7 @@ test.describe('signed out', () => {
     await expect(rules).toBeHidden();
     expect(await page.evaluate(() => localStorage.getItem('pick.rules.last')), 'nothing saved over the visitor\'s own rules').toBeNull();
     await expect(note, 'the note stays (still the shared link)').toContainText('Shared Rules');
-    if ((page.viewportSize()?.width ?? 0) >= 1280) await expectOutRowOnScreen(page); // the note adds no height beside the game
+    if (await besideGame(page)) await expectOutRowOnScreen(page); // the note adds no height beside the game
     await checkLayout(page);
     // A link to another profile followed in the app plays that profile's rules.
     await page.evaluate(() => { const a = document.createElement('a'); a.id = 'to-other'; a.href = '/on-deck?view=pick&game=d20&profile=Other+Rules'; a.textContent = 'other'; document.body.prepend(a); });
@@ -14231,7 +14317,7 @@ for (const tab of ['overview', 'records', 'water', 'leaderboards', 'habits', 'co
   });
 }
 
-// A slow tab switch (#206): the progress bar appears after a beat, the tapped tab reads active at once, nothing shifts, and the bar goes on arrival.
+// A slow tab switch (#206): the progress bar appears after a beat, the subtitle names the tapped view at once, nothing shifts, and the bar goes on arrival.
 test('nav-progress-slow-tab', { tag: ['@stats', '@two'] }, async ({ page }) => {
   await gotoReady(page, '/stats?range=all&tab=habits');
   await page.route('**/stats/__data.json*tab=records*', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
@@ -14239,9 +14325,290 @@ test('nav-progress-slow-tab', { tag: ['@stats', '@two'] }, async ({ page }) => {
   const before = await h1.boundingBox();
   await pickTab(page, 'records');
   await expect(bar).toBeVisible();
-  await expect(page.locator('.section-row')).toHaveText('View: Records'); // before the data arrives
-  expect(await h1.boundingBox(), 'the title does not move').toEqual(before);
+  await expect(page.locator('.page-subtitle')).toHaveText('Records'); // before the data arrives
+  const after = (await h1.boundingBox())!; // the box's width follows the subtitle's, so compare where it sits
+  expect([after.x, after.y, after.height], 'the title does not move').toEqual([before!.x, before!.y, before!.height]);
   expect((await bar.boundingBox())!.height).toBe(3);
   await expect(bar).toBeHidden({ timeout: 5000 });
-  await expect(page.locator('.section-row')).toHaveText('View: Records');
+  await expect(page.locator('.page-subtitle')).toHaveText('Records');
+});
+
+// The Stats view subtitle (#207): under the h1, follows the view, leaves the title and Share where they were.
+const SHARE_LEFT: Record<number, number> = { 1280: 1160.33, 480: 360.33 }; // pinned from the page before the subtitle
+test('stats-view-subtitle', { tag: ['@stats', '@two'] }, async ({ page }) => {
+  const w = page.viewportSize()!.width;
+  await gotoReady(page, '/coffees');
+  const coffeesH1 = (await page.locator('h1').first().boundingBox())!;
+  await gotoReady(page, '/stats?tab=leaderboards');
+  const sub = page.locator('.page-subtitle');
+  await expect(sub).toHaveText('Leaderboards');
+  expect(await page.title()).toMatch(/^Leaderboards · Stats/);
+  const h1 = (await page.locator('h1').first().boundingBox())!;
+  expect([h1.x, h1.y], "the title sits where /coffees's does").toEqual([coffeesH1.x, coffeesH1.y]);
+  const s = (await sub.boundingBox())!;
+  expect(s.y, 'subtitle directly under the h1').toBeGreaterThanOrEqual(h1.y + h1.height - 1);
+  expect(s.x).toBe(h1.x);
+  const share = (await page.locator('.toolbar').getByRole('button', { name: 'Share' }).boundingBox())!;
+  expect(Math.abs(share.x - SHARE_LEFT[w]), 'Share keeps its left edge').toBeLessThanOrEqual(1);
+  await gotoReady(page, '/stats?range=all'); // no tab in the URL
+  await expect(sub).toHaveText('Overview');
+  expect(await page.title()).toMatch(/^Overview · Stats/);
+  await page.route('**/stats/__data.json*tab=records*', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
+  await pickTab(page, 'records');
+  await expect(sub).toHaveText('Records'); // before the data arrives
+});
+
+// @nav states set their own viewport, so they run once (at w1280) instead of at every project.
+const navTest = (name: string, fn: (fixtures: { page: Page; browser: Browser }, info: TestInfo) => Promise<void>) =>
+  test(name, { tag: '@nav' }, async ({ page, browser }, info) => {
+    test.skip(info.project.name !== 'w1280', 'sets its own viewport: runs once');
+    await fn({ page, browser }, info);
+  });
+
+// The one drill-in site nav (#207): a sidebar on desktop, a bottom bar plus the same panel as a drawer on phones.
+const ROW_LABELS = ['Coffees', 'On Deck', 'Subscriptions', 'Stats', 'Gear', 'Water', 'Recipes'];
+const SIDEBAR = 'nav.site-sidebar';
+const rect = (l: Locator) => l.evaluate((el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
+
+navTest('nav-desktop-expanded', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/coffees');
+  const side = page.locator(SIDEBAR);
+  await expect(side).toBeVisible();
+  await expect(side).not.toHaveAttribute('data-collapsed', /.*/);
+  const main = side.locator('.nav-panel[data-panel="main"]');
+  expect((await main.locator('.nav-row').allTextContents()).map((t) => t.trim())).toEqual(ROW_LABELS);
+  await expect(main.getByRole('link', { name: 'Coffees' })).toHaveAttribute('aria-current', 'page');
+  await expect(main.locator('[aria-current]')).toHaveCount(1);
+  for (const n of ['Account', 'Sign out', 'Alerts', 'Dark mode']) await expect(side.locator('.nav-foot').getByText(n).first()).toBeVisible();
+  await expect(page.locator('nav.phone-bar')).toBeHidden();
+  await checkLayout(page);
+});
+
+navTest('nav-drill-from-coffees', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/coffees');
+  const side = page.locator(SIDEBAR), url = page.url();
+  const stats = side.locator('.nav-panel[data-panel="stats"]'), main = side.locator('.nav-panel[data-panel="main"]');
+  await side.locator('button.nav-drill').click();
+  expect(page.url(), 'drilling does not navigate').toBe(url);
+  await expect(stats).toBeVisible();
+  await expect(side.locator('button.nav-drill')).toHaveAttribute('aria-expanded', 'true');
+  await expect.poll(async () => Math.abs((await rect(stats)).x - (await rect(side)).x), 'the panel starts at the sidebar edge').toBeLessThan(1); // after the slide
+  expect(await stats.locator('a.nav-row').count()).toBeGreaterThan(0);
+  expect((await stats.locator('.group').allTextContents()).map((t) => t.trim()).slice(0, 4)).toEqual(['Summary', 'Habits', 'Highlights', 'Lab']);
+  for (const v of ['Sweet spots', 'Brewing', 'Pours', 'Water', 'Gear']) await expect(stats.getByRole('link', { name: v, exact: true })).toHaveCount(1);
+  await stats.getByRole('link', { name: 'Overview' }).click();
+  await expect(page).toHaveURL(/\/stats(\?|$)/);
+  await expect(stats).toBeVisible();
+  const statsUrl = page.url();
+  await side.locator('button.nav-back').click();
+  await expect(main).toBeVisible();
+  await expect(stats).toBeHidden();
+  expect(page.url(), 'back does not navigate').toBe(statsUrl);
+  // A query-only change inside /stats keeps the panel as it is (main, after "Main menu").
+  await side.locator('a.nav-row[href*="tab=habits"]').evaluate((a) => (a as HTMLElement).click());
+  await expect(page).toHaveURL(/tab=habits/);
+  await expect(main).toBeVisible();
+  await expect(stats).toBeHidden();
+});
+
+navTest('nav-collapse', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/stats?tab=habits');
+  const side = page.locator(SIDEBAR);
+  await expect(side.locator('.nav-panel[data-panel="stats"]')).toBeVisible();
+  const wide = (await rect(side)).w;
+  await side.getByRole('button', { name: 'Collapse sidebar' }).click();
+  await expect(side).toHaveAttribute('data-collapsed', '');
+  await expect.poll(async () => (await rect(side)).w).toBeLessThan(wide / 2);
+  await expect(side.locator('.nav-panel[data-panel="main"]')).toBeVisible();
+  await expect(side.locator('.nav-panel[data-panel="stats"]')).toBeHidden();
+  await expect(side.locator('button.nav-drill')).toHaveClass(/contains-current/);
+  await reloadReady(page);
+  await expect(side).toHaveAttribute('data-collapsed', '');
+  await side.getByRole('button', { name: 'Expand sidebar' }).click();
+  await expect(side.locator('.nav-panel[data-panel="stats"]')).toBeVisible();
+  await side.getByRole('button', { name: 'Collapse sidebar' }).click();
+  await side.locator('button.nav-drill').click();
+  await expect(side).not.toHaveAttribute('data-collapsed', /.*/);
+  await expect(side.locator('.nav-panel[data-panel="stats"]')).toBeVisible();
+});
+
+for (const [name, size, cookie] of [['cookie-1280', { width: 1280, height: 800 }, 'collapsed'], ['auto-768', { width: 768, height: 800 }, null]] as const) {
+  navTest(`nav-no-shift-${name}`, async ({ browser }, info) => {
+    const base = info.project.use.baseURL!;
+    const probe = (p: Page) => p.evaluate(() => {
+      const r = document.querySelector('nav.site-sidebar .nav-row')!.getBoundingClientRect();
+      return { w: document.querySelector('nav.site-sidebar')!.getBoundingClientRect().width, row: [r.x, r.y, r.width, r.height] };
+    });
+    const ctx = await browser.newContext({ javaScriptEnabled: false, viewport: size, baseURL: base, storageState: '.ui-test/admin.json' });
+    if (cookie) await ctx.addCookies([{ name: 'nav', value: cookie, url: base }]);
+    let raw;
+    try {
+      const p = await ctx.newPage();
+      await p.goto('/coffees');
+      raw = await probe(p);
+    } finally { await ctx.close(); }
+    const ctx2 = await browser.newContext({ viewport: size, baseURL: base, storageState: '.ui-test/admin.json' });
+    try {
+      if (cookie) await ctx2.addCookies([{ name: 'nav', value: cookie, url: base }]);
+      const p = await ctx2.newPage();
+      await gotoReady(p, '/coffees');
+      const hydrated = await probe(p);
+      expect(hydrated.w).toBeCloseTo(raw.w, 0);
+      hydrated.row.forEach((v, i) => expect(v, `first row box [${i}]`).toBeCloseTo(raw.row[i], 0));
+      if (!cookie) expect(raw.w, 'collapsed by the media query').toBeLessThan(100);
+    } finally { await ctx2.close(); }
+  });
+}
+
+navTest('nav-phone-bar', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 909 });
+  await gotoReady(page, '/stats?tab=habits');
+  const bar = page.locator('nav.phone-bar');
+  await expect(bar).toBeVisible();
+  await expect(page.locator(SIDEBAR)).toBeHidden();
+  const barH = await page.evaluate(() => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;height:var(--bar-h)'; document.body.append(d); const h = d.getBoundingClientRect().height; d.remove(); return h; });
+  expect(Math.abs((await bar.boundingBox())!.height - barH), '--bar-h is the bar height, border included').toBeLessThanOrEqual(0.5);
+  expect((await bar.locator('> *').allTextContents()).map((t) => t.trim())).toEqual(['Coffees', 'On Deck', 'Stats', 'Account', 'Menu']);
+  const stats = bar.getByRole('link', { name: 'Stats' });
+  await expect(stats).toHaveAttribute('href', '/stats');
+  await expect(stats).toHaveAttribute('aria-current', 'page');
+  const drawer = page.locator('dialog.nav-drawer');
+  await bar.locator('button.phone-menu').click();
+  await expect(drawer).toBeVisible();
+  await expect(drawer.locator('.nav-panel[data-panel="stats"]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(drawer).toBeHidden();
+  await gotoReady(page, '/coffees');
+  await bar.locator('button.phone-menu').click();
+  await expect(drawer.locator('.nav-panel[data-panel="main"]')).toBeVisible();
+  await expect(drawer.locator('.nav-panel[data-panel="stats"]')).toBeHidden();
+  await drawer.getByRole('link', { name: 'Gear' }).click();
+  await expect(page).toHaveURL(/\/gear/);
+  await expect(drawer).toBeHidden();
+  await checkLayout(page);
+});
+
+navTest('nav-phone-landscape', async ({ page }) => {
+  await page.setViewportSize({ width: 1003, height: 333 });
+  await gotoReady(page, '/stats?tab=habits');
+  await expect(page.locator(SIDEBAR)).toBeHidden();
+  await expect(page.locator('nav.phone-bar')).toBeVisible();
+  await page.locator('button.phone-menu').click();
+  const last = page.locator('dialog.nav-drawer .nav-panel[data-panel="stats"] a.nav-row').last();
+  await last.scrollIntoViewIfNeeded();
+  const b = (await last.boundingBox())!;
+  expect(b.y + b.height, 'the last view is reachable above the footer').toBeLessThanOrEqual(333);
+  expect(b.y).toBeGreaterThanOrEqual(0);
+});
+
+test.describe('nav signed out', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  for (const width of [480, 1280]) {
+    navTest(`nav-signed-out-${width}`, async ({ page }) => {
+      await page.setViewportSize({ width, height: width === 480 ? 909 : 800 });
+      await gotoReady(page, '/coffees');
+      let link;
+      if (width === 480) {
+        const bar = page.locator('nav.phone-bar');
+        expect((await bar.locator('> *').allTextContents()).map((t) => t.trim())).toEqual(['Coffees', 'On Deck', 'Stats', 'Sign in', 'Menu']);
+        link = bar.getByRole('link', { name: 'Sign in' });
+        await bar.locator('button.phone-menu').click();
+      } else link = page.locator(SIDEBAR).getByRole('link', { name: 'Sign in' });
+      const scope = width === 480 ? page.locator('dialog.nav-drawer') : page.locator(SIDEBAR);
+      await expect(scope.getByText('Sign out')).toHaveCount(0);
+      await expect(scope.getByText('Alerts')).toHaveCount(0);
+      if (width === 480) await page.keyboard.press('Escape');
+      // The click handler rewrites href to carry this page; stop the navigation to read it.
+      await link.evaluate((a) => a.addEventListener('click', (e) => e.preventDefault(), { once: true }));
+      await link.click();
+      await expect(link).toHaveAttribute('href', /^\/login\?redirectTo=%2Fcoffees/);
+    });
+  }
+});
+
+navTest('nav-recap-no-chrome', async ({ page }) => {
+  await gotoReady(page, `/recaps/${recapYear()}?preview=1`);
+  await expect(page.locator(SIDEBAR)).toHaveCount(0);
+  await expect(page.locator('nav.phone-bar')).toHaveCount(0);
+});
+
+// The drawer never lingers over another page: Sign out (the redirect lands on the same path) and browser back both close it.
+navTest('nav-drawer-closes', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 909 });
+  const drawer = page.locator('dialog.nav-drawer'), menu = page.locator('button.phone-menu');
+  await gotoReady(page, '/coffees');
+  await page.route('**/login?/logout', (route) => route.fulfill({ json: { type: 'redirect', status: 303, location: '/coffees' } })); // never really signs out
+  await menu.click();
+  await expect(drawer).toBeVisible();
+  await drawer.getByRole('button', { name: 'Sign out' }).click();
+  await expect(drawer).toBeHidden();
+  await page.locator('nav.phone-bar').getByRole('link', { name: 'On Deck' }).click();
+  await expect(page).toHaveURL(/\/on-deck/);
+  await menu.click();
+  await expect(drawer).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/coffees/);
+  await expect(drawer).toBeHidden();
+});
+
+// The sidebar is pinned: it fills the viewport height and stays put while the page scrolls, on a long page and a short one, expanded and collapsed.
+navTest('nav-sidebar-pinned', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const side = page.locator(SIDEBAR);
+  const expectPinned = async (what: string) => {
+    const b = await page.evaluate(() => { const r = document.querySelector('nav.site-sidebar')!.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, ih: innerHeight }; });
+    expect(Math.abs(b.top), `${what}: top`).toBeLessThanOrEqual(1);
+    expect(Math.abs(b.bottom - b.ih), `${what}: bottom at the viewport bottom`).toBeLessThanOrEqual(1);
+  };
+  for (const url of ['/stats?tab=sweetspots', '/gear']) {
+    await gotoReady(page, url);
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    if (url.startsWith('/stats')) expect(await page.evaluate(() => scrollY), 'the page scrolled').toBeGreaterThan(300);
+    await expectPinned(`${url} expanded`);
+    await side.getByRole('button', { name: 'Collapse sidebar' }).click();
+    await expectPinned(`${url} collapsed`);
+    await page.evaluate(() => scrollTo(0, 0));
+    await side.getByRole('button', { name: 'Expand sidebar' }).click();
+  }
+});
+
+// Picking a view on /stats keeps the page's shallow-URL toggles and replaces the history entry (like Previous / Next).
+navTest('nav-view-pick-keeps-toggles', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/stats?tab=spend&range=12m&compare=1');
+  await page.locator('section.chart-panel:has(#spend-chart)').getByRole('group', { name: 'Show' }).getByRole('button', { name: '$ per g', exact: true }).click();
+  await expect(page).toHaveURL(/spendView=ppg/);
+  const len = await page.evaluate(() => history.length);
+  await pickTab(page, 'habits');
+  await expect(page).toHaveURL(/tab=habits/);
+  await expect(page).toHaveURL(/spendView=ppg/);
+  expect(await page.evaluate(() => history.length), 'a view pick on /stats replaces the entry').toBe(len);
+});
+
+// Arriving on /stats by any navigation shows the Stats panel (the main panel was showing, nothing drilled by hand).
+navTest('nav-drills-on-arrival', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/coffees');
+  const side = page.locator(SIDEBAR);
+  await expect(side.locator('.nav-panel[data-panel="main"]')).toBeVisible();
+  await page.evaluate(() => { const a = document.createElement('a'); a.href = '/stats?tab=habits'; a.id = 'probe-link'; document.querySelector('main')!.prepend(a); a.click(); });
+  await expect(page).toHaveURL(/\/stats\?tab=habits/);
+  const stats = side.locator('.nav-panel[data-panel="stats"]');
+  await expect(stats).toBeVisible();
+  await expect.poll(async () => Math.abs((await rect(stats)).x - (await rect(side)).x)).toBeLessThan(1);
+  expect(await stats.locator('a.nav-row').count()).toBeGreaterThan(0);
+});
+
+// The phone bar's Stats tab, tapped while already on /stats, stays on the current view (a bare /stats would swap in the remembered one).
+navTest('nav-phone-bar-stats-stays', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 909 });
+  await gotoReady(page, '/stats?tab=habits');
+  await page.evaluate(() => localStorage.removeItem('bean-tracker-insights-view-state'));
+  await page.locator('nav.phone-bar').getByRole('link', { name: 'Stats' }).click();
+  await page.waitForTimeout(300);
+  expect(page.url()).toContain('tab=habits');
+  await expect(page.locator('nav.phone-bar').getByRole('link', { name: 'Stats' })).toHaveAttribute('aria-current', 'page');
 });
