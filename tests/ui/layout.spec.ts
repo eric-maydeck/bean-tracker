@@ -13225,7 +13225,7 @@ export const STATES: State[] = [
   ...['/stats?tab=habits'].map((path): State => ({
     name: `nav-aligned${path.replace(/[^a-z]+/g, '-')}`, path: () => path,
     act: async (page) => {
-      if (page.viewportSize()!.width <= 640) return;
+      if (!(await page.locator('nav.site-sidebar').isVisible())) return; // phone bar instead
       const side = (await page.locator('nav.site-sidebar').boundingBox())!;
       const main = await page.locator('main.container').evaluate((el) => el.getBoundingClientRect().left);
       expect(main, 'content starts right of the sidebar').toBeGreaterThanOrEqual(side.x + side.width - 1);
@@ -13948,6 +13948,8 @@ const tabTag = (st: State) => {
 const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   test(state.name, { tag: [routeTag(state), ...tabTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
+    // The milestones ruler walk scrolls the whole feed in 250px steps: at 333px tall that is over 30s under CI load.
+    if (state.name === 'insights-milestones') test.slow();
     const s = seed();
     if (state.name.startsWith('pick-')) await stubPickApi(page); // before the page loads: Pick saves its state on load
     await gotoReady(page, state.path(s));

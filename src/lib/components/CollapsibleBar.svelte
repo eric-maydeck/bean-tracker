@@ -186,7 +186,7 @@
       box-sizing: border-box;
       display: flex;
       flex-direction: column;
-      max-height: calc(100dvh - 44px); /* room for the pull tab below it */
+      max-height: calc(100dvh - var(--bar-h) - 44px); /* the phone bar (--bar-h, safe area included), the pull tab */
       padding-inline: var(--space-4);
       margin-bottom: 0;
     }
@@ -198,11 +198,6 @@
     .cbar.overlay > .cbar-scroll {
       overflow-y: auto;
       min-height: 0;
-    }
-  }
-  @media (max-width: 640px) {
-    .cbar.overlay {
-      max-height: calc(100dvh - var(--bar-h) - 44px); /* the phone bar (--bar-h, safe area included), the pull tab */
     }
   }
   /* Back to top (35) stays tappable while the bar is expanded, but behind the overlay and its pull tab where they meet. */
