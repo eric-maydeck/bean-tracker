@@ -39,5 +39,8 @@ export const handle: Handle = async ({ event, resolve }) => {
       return secured(Response.json({ type: 'error', error: { message: 'Sign in again to upload' } }, { status: 413 }));
     return secured(new Response('Request body too large', { status: 413 }));
   }
-  return secured(await resolve(event, { transformPageChunk: ({ html }) => signPreviewUrls(html) }));
+  const t0 = performance.now();
+  const res = secured(await resolve(event, { transformPageChunk: ({ html }) => signPreviewUrls(html) }));
+  res.headers.set('Server-Timing', `app;dur=${(performance.now() - t0).toFixed(1)}`);
+  return res;
 };
