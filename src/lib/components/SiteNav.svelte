@@ -303,6 +303,7 @@
   @media (max-width: 640px), (max-height: 450px) {
     .site-sidebar { display: none; }
     .nav-row { min-height: 44px; }
+    .icon-btn { width: 44px; height: 44px; }
     .phone-bar {
       display: flex; position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; box-sizing: border-box;
       background: var(--color-surface); border-top: 1px solid var(--color-border); padding-bottom: env(safe-area-inset-bottom, 0px);
