@@ -455,7 +455,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   const brews = allBrews, raw = c.unscored ?? allBrews, bags = allBags;
   const ctxs = new Map<string, RecCtx>();
   const ctx = (w: Period | null, def?: RecordDef): RecCtx => {
-    const id = `${w === c.period ? 'p' : w === c.prev ? 'v' : w ? 'a' : 'n'}|${def?.dialIn ? 'd' : def && WHOLE_RECORDS.has(def.key) ? 'w' : 'b'}${def?.extremes ? 'e' : ''}${def?.bought ? 'm' : ''}`;
+    const id = `${w ? `${w.start}..${w.end}` : 'n'}|${def?.dialIn ? 'd' : def && WHOLE_RECORDS.has(def.key) ? 'w' : 'b'}${def?.extremes ? 'e' : ''}${def?.bought ? 'm' : ''}`;
     return ctxs.get(id) ?? ctxs.set(id, makeCtx(w, def)).get(id)!;
   };
   const makeCtx = (w: Period | null, def?: RecordDef): RecCtx => {
