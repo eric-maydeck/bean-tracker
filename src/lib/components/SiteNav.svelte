@@ -266,10 +266,10 @@
   /* clip, not hidden: focus() must never scroll the sliding track. */
   .clip { flex: 1; min-height: 0; overflow: var(--clip, clip); position: relative; }
   /* Absolute so the panels get a definite height and scroll on their own above the footer. */
-  .track { display: flex; position: absolute; top: 0; bottom: 0; left: 0; width: 200%; }
+  .track { display: flex; position: absolute; top: 0; bottom: 0; left: 0; width: 200%; pointer-events: none; } /* collapsed, the clip is off and the 200% track overhangs the page: only the panels take clicks */
   .track.anim { transition: transform 0.24s cubic-bezier(0.2, 0, 0, 1); }
   .track.drilled { transform: translateX(var(--drill-x)); }
-  .nav-panel { width: 50%; flex: none; box-sizing: border-box; padding: 4px 8px; overflow-y: var(--panel-oy, auto); display: flex; flex-direction: column; gap: 2px; }
+  .nav-panel { pointer-events: auto; width: 50%; flex: none; box-sizing: border-box; padding: 4px 8px; overflow-y: var(--panel-oy, auto); display: flex; flex-direction: column; gap: 2px; }
   .anim .nav-panel { transition: visibility 0.24s; }
   .panel-stats { visibility: hidden; }
   .drilled .panel-main { visibility: var(--main-vis); }
