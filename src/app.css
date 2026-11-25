@@ -981,7 +981,7 @@ table.data-table.coffees-list .actions-cell {
 table.data-table.coffees-list tbody tr:hover > .actions-cell {
   background: linear-gradient(color-mix(in srgb, var(--color-accent) 8%, transparent) 0 0), var(--color-bg);
 }
-@media (max-width: 1240px) {
+@container (max-width: 1208px) { /* the scroll box, not the window: the sidebar takes 64 or 248px of it */
   table.data-table.coffees-list .actions-cell {
     box-shadow: inset 1px 0 var(--color-border);
   }

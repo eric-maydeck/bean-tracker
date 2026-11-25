@@ -3430,10 +3430,11 @@ export const STATES: State[] = [
       await expect(page.getByText("⚠ doesn't look like Sey's site")).toBeVisible();
       await expectClearlyBelow(sey.locator('input[name="subscription_url"]'), page.getByText("⚠ doesn't look like Sey's site"));
       await expect(sey.locator('.pending-chip .text-tip')).toHaveAttribute('aria-label', 'Pending: Pending changes · Edited');
-      // Desktop: the edit table fits, no sideways scroll (user, 2026-10-08).
+      // Desktop: the edit table fits, no sideways scroll (user, 2026-10-08). Its 1198px needs a window of 1480px or more now
+      // (the 248px sidebar and 32px of padding); narrower, it scrolls inside its box like the phone's.
       const size = page.viewportSize();
       if (size && size.width >= 1280) {
-        for (const width of [1280, 1440]) {
+        for (const width of [1500, 1700]) {
           await page.setViewportSize({ width, height: size.height });
           const overflow = await page.evaluate(() => {
             const t = document.querySelector('.table-scroll')!;
@@ -3558,11 +3559,13 @@ export const STATES: State[] = [
       await expect(row.locator('input[name="amount_per_bag_g"]')).toHaveValue('125');
       const size = page.viewportSize();
       if (size && size.width >= 1280) {
+        await page.setViewportSize({ width: 1500, height: size.height }); // the edit table's 1198px plus the sidebar
         const overflow = await page.evaluate(() => {
           const t = document.querySelector('.table-scroll')!;
           return t.scrollWidth - t.clientWidth;
         });
         expect(overflow).toBe(0);
+        await page.setViewportSize(size);
       }
       expect(posts).toEqual([]);
     }
