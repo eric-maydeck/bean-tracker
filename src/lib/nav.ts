@@ -1,7 +1,8 @@
-import type { IconName } from '#lib/components/Icon.svelte';
+// Plain tsc can't read types from .svelte files; svelte-check still checks these names against Icon's.
+type NavIcon = 'coffee' | 'list-checks' | 'arrows-clockwise' | 'chart-bar' | 'gear' | 'drop' | 'book-open';
 import { TAB_GROUPS, type Tab } from '#lib/insightsUrl.ts';
 
-export type NavRow = { href: string; label: string; icon: IconName; children?: 'stats' };
+export type NavRow = { href: string; label: string; icon: NavIcon; children?: 'stats' };
 
 export const MAIN_ROWS: readonly NavRow[] = [
   { href: '/coffees', label: 'Coffees', icon: 'coffee' },
@@ -33,4 +34,4 @@ export function statsViewHref(tab: Tab, saved: string | null): string {
   return `/stats?${p}`;
 }
 
-export const icon = (row: NavRow, current: boolean): IconName => (current ? (`${row.icon}-fill` as IconName) : row.icon);
+export const icon = (row: NavRow, current: boolean): NavIcon | `${NavIcon}-fill` => (current ? `${row.icon}-fill` : row.icon);
