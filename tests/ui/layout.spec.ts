@@ -1,4 +1,4 @@
-import { expect, request, type Page, type Locator, type Route } from '@playwright/test';
+import { expect, request, type Browser, type Page, type Locator, type Route, type TestInfo } from '@playwright/test';
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
@@ -1274,8 +1274,11 @@ export const STATES: State[] = [
       await expectRecapTiles(page, [String(recapYear()), String(recapYear() - 1)]);
       await expect(page.locator('.recap-tile .badge')).toHaveText(['Preview']);
       await expectNoMidWord(page, '.recap-tile b', '.recap-tile b .fit', LONG_NAMES);
-      const scope = (await page.locator('nav.phone-bar').isVisible()) ? 'dialog.nav-drawer' : 'nav.site-sidebar'; // the menu lists Recaps last
+      const phone = await page.locator('nav.phone-bar').isVisible();
+      if (phone) await page.locator('button.phone-menu').click();
+      const scope = phone ? 'dialog.nav-drawer' : 'nav.site-sidebar'; // the menu lists Recaps last
       await expect(page.locator(`${scope} .nav-panel[data-panel="stats"] a.nav-row`).last()).toHaveText('Recaps');
+      await closeNavDrawer(page);
     } },
   // The Period picks the years: one year, and a range with none (an empty line naming it, not a blank panel).
   { name: 'insights-recaps-period', path: () => `/stats?tab=recaps&range=${recapYear() - 1}`,
@@ -14267,12 +14270,19 @@ test('stats-view-subtitle', { tag: ['@stats', '@two'] }, async ({ page }) => {
   await expect(sub).toHaveText('Records'); // before the data arrives
 });
 
+// @nav states set their own viewport, so they run once (at w1280) instead of at every project.
+const navTest = (name: string, fn: (fixtures: { page: Page; browser: Browser }, info: TestInfo) => Promise<void>) =>
+  test(name, { tag: '@nav' }, async ({ page, browser }, info) => {
+    test.skip(info.project.name !== 'w1280', 'sets its own viewport: runs once');
+    await fn({ page, browser }, info);
+  });
+
 // The one drill-in site nav (#207): a sidebar on desktop, a bottom bar plus the same panel as a drawer on phones.
 const ROW_LABELS = ['Coffees', 'On Deck', 'Subscriptions', 'Stats', 'Gear', 'Water', 'Recipes'];
 const SIDEBAR = 'nav.site-sidebar';
 const rect = (l: Locator) => l.evaluate((el) => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; });
 
-test('nav-desktop-expanded', { tag: ['@nav', '@two'] }, async ({ page }) => {
+navTest('nav-desktop-expanded', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await gotoReady(page, '/coffees');
   const side = page.locator(SIDEBAR);
@@ -14287,7 +14297,7 @@ test('nav-desktop-expanded', { tag: ['@nav', '@two'] }, async ({ page }) => {
   await checkLayout(page);
 });
 
-test('nav-drill-from-coffees', { tag: ['@nav', '@two'] }, async ({ page }) => {
+navTest('nav-drill-from-coffees', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await gotoReady(page, '/coffees');
   const side = page.locator(SIDEBAR), url = page.url();
@@ -14298,6 +14308,8 @@ test('nav-drill-from-coffees', { tag: ['@nav', '@two'] }, async ({ page }) => {
   await expect(side.locator('button.nav-drill')).toHaveAttribute('aria-expanded', 'true');
   await expect.poll(async () => Math.abs((await rect(stats)).x - (await rect(side)).x), 'the panel starts at the sidebar edge').toBeLessThan(1); // after the slide
   expect(await stats.locator('a.nav-row').count()).toBeGreaterThan(0);
+  expect((await stats.locator('.group').allTextContents()).map((t) => t.trim()).slice(0, 4)).toEqual(['Summary', 'Habits', 'Highlights', 'Lab']);
+  for (const v of ['Sweet spots', 'Brewing', 'Pours', 'Water', 'Gear']) await expect(stats.getByRole('link', { name: v, exact: true })).toHaveCount(1);
   await stats.getByRole('link', { name: 'Overview' }).click();
   await expect(page).toHaveURL(/\/stats(\?|$)/);
   await expect(stats).toBeVisible();
@@ -14313,7 +14325,7 @@ test('nav-drill-from-coffees', { tag: ['@nav', '@two'] }, async ({ page }) => {
   await expect(stats).toBeHidden();
 });
 
-test('nav-collapse', { tag: ['@nav', '@two'] }, async ({ page }) => {
+navTest('nav-collapse', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await gotoReady(page, '/stats?tab=habits');
   const side = page.locator(SIDEBAR);
@@ -14333,11 +14345,10 @@ test('nav-collapse', { tag: ['@nav', '@two'] }, async ({ page }) => {
   await side.locator('button.nav-drill').click();
   await expect(side).not.toHaveAttribute('data-collapsed', /.*/);
   await expect(side.locator('.nav-panel[data-panel="stats"]')).toBeVisible();
-  await page.context().clearCookies({ name: 'nav' });
 });
 
 for (const [name, size, cookie] of [['cookie-1280', { width: 1280, height: 800 }, 'collapsed'], ['auto-768', { width: 768, height: 800 }, null]] as const) {
-  test(`nav-no-shift-${name}`, { tag: ['@nav', '@two'] }, async ({ browser }, info) => {
+  navTest(`nav-no-shift-${name}`, async ({ browser }, info) => {
     const base = info.project.use.baseURL!;
     const probe = (p: Page) => p.evaluate(() => {
       const r = document.querySelector('nav.site-sidebar .nav-row')!.getBoundingClientRect();
@@ -14364,12 +14375,14 @@ for (const [name, size, cookie] of [['cookie-1280', { width: 1280, height: 800 }
   });
 }
 
-test('nav-phone-bar', { tag: ['@nav', '@two'] }, async ({ page }) => {
+navTest('nav-phone-bar', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 909 });
   await gotoReady(page, '/stats?tab=habits');
   const bar = page.locator('nav.phone-bar');
   await expect(bar).toBeVisible();
   await expect(page.locator(SIDEBAR)).toBeHidden();
+  const barH = await page.evaluate(() => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;height:var(--bar-h)'; document.body.append(d); const h = d.getBoundingClientRect().height; d.remove(); return h; });
+  expect(Math.abs((await bar.boundingBox())!.height - barH), '--bar-h is the bar height, border included').toBeLessThanOrEqual(0.5);
   expect((await bar.locator('> *').allTextContents()).map((t) => t.trim())).toEqual(['Coffees', 'On Deck', 'Stats', 'Account', 'Menu']);
   const stats = bar.getByRole('link', { name: 'Stats' });
   await expect(stats).toHaveAttribute('href', '/stats');
@@ -14390,7 +14403,7 @@ test('nav-phone-bar', { tag: ['@nav', '@two'] }, async ({ page }) => {
   await checkLayout(page);
 });
 
-test('nav-phone-landscape', { tag: ['@nav', '@two'] }, async ({ page }) => {
+navTest('nav-phone-landscape', async ({ page }) => {
   await page.setViewportSize({ width: 1003, height: 333 });
   await gotoReady(page, '/stats?tab=habits');
   await expect(page.locator(SIDEBAR)).toBeHidden();
@@ -14406,7 +14419,7 @@ test('nav-phone-landscape', { tag: ['@nav', '@two'] }, async ({ page }) => {
 test.describe('nav signed out', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
   for (const width of [480, 1280]) {
-    test(`nav-signed-out-${width}`, { tag: ['@nav', '@two'] }, async ({ page }) => {
+    navTest(`nav-signed-out-${width}`, async ({ page }) => {
       await page.setViewportSize({ width, height: width === 480 ? 909 : 800 });
       await gotoReady(page, '/coffees');
       let link;
@@ -14428,14 +14441,14 @@ test.describe('nav signed out', () => {
   }
 });
 
-test('nav-recap-no-chrome', { tag: ['@nav', '@two'] }, async ({ page }) => {
+navTest('nav-recap-no-chrome', async ({ page }) => {
   await gotoReady(page, `/recaps/${recapYear()}?preview=1`);
   await expect(page.locator(SIDEBAR)).toHaveCount(0);
   await expect(page.locator('nav.phone-bar')).toHaveCount(0);
 });
 
 // The drawer never lingers over another page: Sign out (the redirect lands on the same path) and browser back both close it.
-test('nav-drawer-closes', { tag: ['@nav', '@two'] }, async ({ page }) => {
+navTest('nav-drawer-closes', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 909 });
   const drawer = page.locator('dialog.nav-drawer'), menu = page.locator('button.phone-menu');
   await gotoReady(page, '/coffees');
@@ -14454,7 +14467,7 @@ test('nav-drawer-closes', { tag: ['@nav', '@two'] }, async ({ page }) => {
 });
 
 // The sidebar is pinned: it fills the viewport height and stays put while the page scrolls, on a long page and a short one, expanded and collapsed.
-test('nav-sidebar-pinned', { tag: ['@nav', '@two'] }, async ({ page }) => {
+navTest('nav-sidebar-pinned', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const side = page.locator(SIDEBAR);
   const expectPinned = async (what: string) => {
@@ -14472,5 +14485,42 @@ test('nav-sidebar-pinned', { tag: ['@nav', '@two'] }, async ({ page }) => {
     await page.evaluate(() => scrollTo(0, 0));
     await side.getByRole('button', { name: 'Expand sidebar' }).click();
   }
-  await page.context().clearCookies({ name: 'nav' });
+});
+
+// Picking a view on /stats keeps the page's shallow-URL toggles and replaces the history entry (like Previous / Next).
+navTest('nav-view-pick-keeps-toggles', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/stats?tab=spend&range=12m&compare=1');
+  await page.locator('section.chart-panel:has(#spend-chart)').getByRole('group', { name: 'Show' }).getByRole('button', { name: '$ per g', exact: true }).click();
+  await expect(page).toHaveURL(/spendView=ppg/);
+  const len = await page.evaluate(() => history.length);
+  await pickTab(page, 'habits');
+  await expect(page).toHaveURL(/tab=habits/);
+  await expect(page).toHaveURL(/spendView=ppg/);
+  expect(await page.evaluate(() => history.length), 'a view pick on /stats replaces the entry').toBe(len);
+});
+
+// Arriving on /stats by any navigation shows the Stats panel (the main panel was showing, nothing drilled by hand).
+navTest('nav-drills-on-arrival', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoReady(page, '/coffees');
+  const side = page.locator(SIDEBAR);
+  await expect(side.locator('.nav-panel[data-panel="main"]')).toBeVisible();
+  await page.evaluate(() => { const a = document.createElement('a'); a.href = '/stats?tab=habits'; a.id = 'probe-link'; document.querySelector('main')!.prepend(a); a.click(); });
+  await expect(page).toHaveURL(/\/stats\?tab=habits/);
+  const stats = side.locator('.nav-panel[data-panel="stats"]');
+  await expect(stats).toBeVisible();
+  await expect.poll(async () => Math.abs((await rect(stats)).x - (await rect(side)).x)).toBeLessThan(1);
+  expect(await stats.locator('a.nav-row').count()).toBeGreaterThan(0);
+});
+
+// The phone bar's Stats tab, tapped while already on /stats, stays on the current view (a bare /stats would swap in the remembered one).
+navTest('nav-phone-bar-stats-stays', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 909 });
+  await gotoReady(page, '/stats?tab=habits');
+  await page.evaluate(() => localStorage.removeItem('bean-tracker-insights-view-state'));
+  await page.locator('nav.phone-bar').getByRole('link', { name: 'Stats' }).click();
+  await page.waitForTimeout(300);
+  expect(page.url()).toContain('tab=habits');
+  await expect(page.locator('nav.phone-bar').getByRole('link', { name: 'Stats' })).toHaveAttribute('aria-current', 'page');
 });

@@ -37,11 +37,21 @@
 
   function viewClick(e: MouseEvent & { currentTarget: HTMLAnchorElement }, t: Tab) {
     nav();
-    if (onStats) return;
+    if (onStats) { // the page's own toggles live in the URL (shallow updates): carry them, like Previous / Next
+      const p = new URLSearchParams(location.search);
+      p.set('tab', t);
+      p.delete('chart');
+      e.currentTarget.href = `/stats?${p}`;
+      return;
+    }
     try { // off /stats the link restores the remembered filters; read at click time (the signInHere pattern)
       const saved = loadInsightsState(localStorage.getItem(INSIGHTS_STORAGE_KEY), Date.now());
       if (saved) e.currentTarget.href = statsViewHref(t, withoutDeepLinks(saved));
     } catch { /* storage unavailable: the plain link */ }
+  }
+  // Already on /stats, the bar's Stats tab stays where it is: a bare /stats would swap in the remembered state.
+  function statsBarClick(e: MouseEvent & { currentTarget: HTMLAnchorElement }) {
+    if (location.pathname === '/stats') e.currentTarget.href = location.pathname + location.search;
   }
   function signInHere(event: MouseEvent & { currentTarget: HTMLAnchorElement }) {
     nav();
@@ -56,7 +66,7 @@
   const rootOf = (el: Element) => el.closest('.nav-shell')!;
   async function drill(e: MouseEvent & { currentTarget: HTMLElement }) { // drills only, never navigates
     const root = rootOf(e.currentTarget);
-    if (collapsed) setPref('expanded');
+    if (collapsed && root.classList.contains('site-sidebar')) setPref('expanded'); // the phone drawer never touches the cookie
     drilled = true;
     await tick();
     root.querySelector<HTMLElement>('.nav-back')?.focus({ preventScroll: true });
@@ -114,7 +124,7 @@
     {:else}
       <button class="icon-btn" type="button" onclick={() => setPref(collapsed ? 'expanded' : 'collapsed')}
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} data-tip={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-        <Icon name={collapsed ? 'caret-right' : 'caret-left'} />
+        <span class="caret-l"><Icon name="caret-left" /></span><span class="caret-r"><Icon name="caret-right" /></span>
       </button>
     {/if}
   </div>
@@ -126,7 +136,7 @@
           {@const on = here(row)}
           {#if row.children}
             <button type="button" class="nav-row nav-drill" class:contains-current={on} data-tip={row.label}
-              aria-expanded={drilled} onclick={drill}>
+              aria-expanded={drilled && (drawer || !collapsed)} onclick={drill}>
               <Icon name={icon(row, on)} /><span class="lbl">{row.label}</span><span class="chev"><Icon name="caret-right" /></span>
             </button>
           {:else}
@@ -143,6 +153,7 @@
           <div class="group">{g.label}</div>
           {#each g.tabs as t (t)}
             <a class="nav-row sub" class:on={shownTab === t} href={viewHref(t)} aria-current={shownTab === t ? 'page' : undefined}
+              data-sveltekit-replacestate={onStats ? '' : undefined} data-sveltekit-reset={onStats ? 'false' : undefined}
               onclick={(e) => viewClick(e, t)}><span class="lbl">{TAB_LABEL[t]}</span></a>
           {/each}
         {/each}
@@ -163,7 +174,7 @@
         <span class="bellwrap"><Icon name="bell" />{#if unread > 0}<span class="unread">{unread}</span>{/if}</span><span class="lbl">Alerts</span>
       </button>
     {:else}
-      <a class="nav-row" href="/login" data-tip="Sign in" aria-current={onLogin ? 'page' : undefined} onclick={signInHere}><Icon name="sign-in" /><span class="lbl">Sign in</span></a>
+      <a class="nav-row" class:on={onLogin} href="/login" data-tip="Sign in" aria-current={onLogin ? 'page' : undefined} onclick={signInHere}><Icon name="sign-in" /><span class="lbl">Sign in</span></a>
     {/if}
     <button class="nav-row" type="button" onclick={onTheme} data-tip={theme === 'light' ? 'Dark mode' : 'Light mode'}
       aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
@@ -181,14 +192,14 @@
   {#each PHONE_BAR as href (href)}
     {@const row = MAIN_ROWS.find((r) => r.href === href)!}
     {@const on = here(row)}
-    <a {href} class:on aria-current={on ? 'page' : undefined}><Icon name={icon(row, on)} /><span>{row.label}</span></a>
+    <a {href} class:on aria-current={on ? 'page' : undefined} onclick={href === '/stats' ? statsBarClick : undefined}><Icon name={icon(row, on)} /><span>{row.label}</span></a>
   {/each}
   {#if isAdmin}
     <a href="/account" class:on={onAccount} aria-current={onAccount ? 'page' : undefined}>
       <Icon name={onAccount ? 'user-circle-fill' : 'user-circle'} /><span>Account</span>
     </a>
   {:else}
-    <a href="/login" aria-current={onLogin ? 'page' : undefined} onclick={signInHere}><Icon name="sign-in" /><span>Sign in</span></a>
+    <a href="/login" class:on={onLogin} aria-current={onLogin ? 'page' : undefined} onclick={signInHere}><Icon name="sign-in" /><span>Sign in</span></a>
   {/if}
   <button class="phone-menu" class:on={drawerOpen} type="button" aria-haspopup="dialog" aria-expanded={drawerOpen} onclick={openDrawer}>
     <Icon name="list" /><span>Menu</span>
@@ -218,12 +229,12 @@
   /* Collapsed: a cookie says so, or no cookie and a mid-width window (641-1100px). The main icons only. */
   .site-sidebar[data-collapsed] {
     --nav-w: 64px; --lbl-w: 0px; --lbl-flex: 0 0 0; --row-gap: 0px; --row-jc: center; --row-pad: 0px; --hide: none;
-    --drill-x: 0%; --main-vis: visible; --stats-vis: hidden; --clip: visible; --panel-oy: visible; --tip: block;
+    --drill-x: 0%; --main-vis: visible; --stats-vis: hidden; --clip: visible; --panel-oy: visible; --tip: block; --caret-l: none; --caret-r: inline-flex;
   }
   @media (min-width: 641px) and (max-width: 1100px) {
     .site-sidebar:not([data-expanded]) {
       --nav-w: 64px; --lbl-w: 0px; --lbl-flex: 0 0 0; --row-gap: 0px; --row-jc: center; --row-pad: 0px; --hide: none;
-      --drill-x: 0%; --main-vis: visible; --stats-vis: hidden; --clip: visible; --panel-oy: visible; --tip: block;
+      --drill-x: 0%; --main-vis: visible; --stats-vis: hidden; --clip: visible; --panel-oy: visible; --tip: block; --caret-l: none; --caret-r: inline-flex;
     }
   }
 
@@ -236,6 +247,8 @@
     box-shadow: var(--shadow-hover); font-size: 0.8rem; font-weight: 500; white-space: nowrap; pointer-events: none;
   }
   .icon-btn { position: relative; }
+  .caret-l { display: var(--caret-l, inline-flex); }
+  .caret-r { display: var(--caret-r, none); }
   @media (hover: hover) { .nav-row[data-tip]:hover::after, .icon-btn[data-tip]:hover::after { display: var(--tip, none); } }
   .nav-row[data-tip]:focus-visible::after, .icon-btn[data-tip]:focus-visible::after { display: var(--tip, none); }
 
@@ -295,9 +308,9 @@
       background: var(--color-surface); border-top: 1px solid var(--color-border); padding-bottom: env(safe-area-inset-bottom, 0px);
     }
     .phone-bar > * {
-      flex: 1 1 0; min-width: 0; min-height: 60px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      flex: 1 1 0; min-width: 0; height: 60px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
       position: relative; border: 0; background: none; color: var(--color-text-muted); font: inherit; font-size: 0.7rem; font-weight: 500;
-      text-decoration: none; cursor: pointer; padding: 6px 2px 12px;
+      text-decoration: none; cursor: pointer; padding: 6px 2px 10px;
     }
     .phone-bar :global(.icon) { width: 24px; height: 24px; }
     .phone-bar > .on { color: var(--color-accent); font-weight: 600; }
@@ -319,7 +332,7 @@
     .drawer-panel .nav-row.on::before { left: -8px; }
   }
   @media (max-height: 450px) { /* landscape phone: slimmer bar */
-    .phone-bar > * { min-height: 44px; flex-direction: row; gap: 6px; padding: 4px 2px; }
+    .phone-bar > * { height: 44px; flex-direction: row; gap: 6px; padding: 4px 2px; }
     .phone-bar :global(.icon) { width: 20px; height: 20px; }
     .phone-bar > .on::after { display: none; }
     .phone-bar > .on { box-shadow: inset 0 -2px var(--color-accent); }
