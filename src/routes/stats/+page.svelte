@@ -25,7 +25,7 @@
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
-  import { page } from '$app/state';
+  import { navigating, page } from '$app/state';
   import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import KindsBar from './KindsBar.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -170,6 +170,8 @@
   // A tab keeps the scroll you left it at. Tab links keep the scroll (reset=false), so a shorter tab in between clamped it and
   // coming back landed higher ("scrolled up a little"); every tab switch, link or choose(), routes through here.
   const tabOf = (u: URL | undefined) => u?.searchParams.get('tab') ?? 'overview';
+  // The tapped tab reads as active while its data loads.
+  const shownTab = $derived(navigating.to?.url.pathname === '/stats' ? tabOf(navigating.to.url) : s.tab);
   const scrollOf = new Map<string, number>();
   let pagerNav = false;
   beforeNavigate(({ from, to, shallow, type }) => {
@@ -608,7 +610,7 @@
       {#each g.tabs as t (t)}
         <a
           href={tabHref(t)}
-          aria-current={s.tab === t ? 'page' : undefined}
+          aria-current={shownTab === t ? 'page' : undefined}
           data-sveltekit-replacestate
           data-sveltekit-reset="false">{TAB_LABEL[t]}</a
         >
@@ -625,7 +627,7 @@
   <ShareButton />
 </div>
 <!-- The current view, right under the title (it navigates Stats, not a filter); it opens the sections drawer. -->
-<div class="section-bar" bind:offsetHeight={sectionH}><button type="button" class="section-row" aria-haspopup="dialog" onclick={() => drawer?.showModal()}><Icon name="list" /><span>View: {TAB_LABEL[s.tab]}</span></button></div>
+<div class="section-bar" bind:offsetHeight={sectionH}><button type="button" class="section-row" aria-haspopup="dialog" onclick={() => drawer?.showModal()}><Icon name="list" /><span>View: {TAB_LABEL[shownTab as Tab]}</span></button></div>
 
 <div class="insights-controls filter-bar" style:--section-h="{sectionH}px" bind:offsetHeight={barHeight}>
   <label class="form-field group-field" style={cell('period')}>

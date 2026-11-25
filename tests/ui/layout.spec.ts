@@ -14227,3 +14227,18 @@ for (const tab of ['overview', 'records', 'water', 'leaderboards', 'habits', 'co
     } finally { await ctx.close(); }
   });
 }
+
+// A slow tab switch (#206): the progress bar appears after a beat, the tapped tab reads active at once, nothing shifts, and the bar goes on arrival.
+test('nav-progress-slow-tab', { tag: ['@stats', '@two'] }, async ({ page }) => {
+  await gotoReady(page, '/stats?range=all&tab=habits');
+  await page.route('**/stats/__data.json*tab=records*', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
+  const h1 = page.locator('h1').first(), bar = page.locator('.nav-progress');
+  const before = await h1.boundingBox();
+  await pickTab(page, 'records');
+  await expect(bar).toBeVisible();
+  await expect(page.locator('.section-row')).toHaveText('View: Records'); // before the data arrives
+  expect(await h1.boundingBox(), 'the title does not move').toEqual(before);
+  expect((await bar.boundingBox())!.height).toBe(3);
+  await expect(bar).toBeHidden({ timeout: 5000 });
+  await expect(page.locator('.section-row')).toHaveText('View: Records');
+});
