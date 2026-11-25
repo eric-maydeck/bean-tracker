@@ -171,6 +171,10 @@
     const margin = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; // matches --space-4: 1rem
     const overflow = el.getBoundingClientRect().right - (window.innerWidth - margin);
     if (overflow > 0) el.style.left = `-${overflow}px`;
+    // Never past the content column's left edge: the desktop sidebar sits there.
+    const minLeft = (document.querySelector('main')?.getBoundingClientRect().left ?? 0) + margin;
+    const short = minLeft - el.getBoundingClientRect().left;
+    if (short > 0) { const left = parseFloat(getComputedStyle(el).left) + short; el.style.right = 'auto'; el.style.left = `${left}px`; }
   }
 
   // The editor is mounted fresh each time it opens (see the `pick(start)`
