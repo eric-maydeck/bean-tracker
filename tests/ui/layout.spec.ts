@@ -14006,6 +14006,35 @@ for (const width of [1440, 1500, 1700]) {
   });
 }
 
+for (const width of [1280, 1440]) {
+  test(`pick-spun-${width}-expanded @on-deck`, async ({ page }, info) => {
+    test.skip(info.project.name !== 'w1280', 'desktop only');
+    await page.context().addCookies([{ name: 'nav', value: 'expanded', url: info.project.use.baseURL! }]);
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await stubPickApi(page);
+    await gotoReady(page, '/on-deck?view=pick');
+    await page.getByRole('button', { name: 'Spin', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Pick result' }).getByRole('button', { name: 'Close' })).toBeVisible();
+    await dismissPickOverlay(page);
+    await expect(page.locator('.result .pick-card')).toBeVisible();
+    await page.locator('.result .pick-card').evaluate((el) => { // the seed has no pictures: give the card one the way the template does
+      el.classList.remove('noimg');
+      const img = document.createElement('img'); img.className = 'card-thumb ' + [...el.classList].find((c) => c.startsWith('svelte-')); img.alt = '';
+      img.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="%23885"/></svg>';
+      el.prepend(img);
+    });
+    await expect(page.locator('.result img')).toBeVisible();
+    // With a picture (the 360px card): beside the game, as tall as the tray, its detail inside, Out for today and the Game row inside their columns.
+    const [card, game, out] = await Promise.all(['.result', '.game', '.out-row'].map((q) => page.locator(q).boundingBox().then((b) => b!)));
+    expect(card.x, 'the card beside the game').toBeGreaterThan(game.x + game.width);
+    expect(Math.abs(card.height - 360), 'card as tall as the tray').toBeLessThanOrEqual(2);
+    expect(out.y + out.height, 'Out for today on screen').toBeLessThanOrEqual(800);
+    expect(await page.locator('.result .card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the detail fits its height').toBe(true);
+    expect(await page.locator('.game').evaluate((e) => [...e.querySelectorAll('*')].filter((c) => c.getBoundingClientRect().right > e.getBoundingClientRect().right + 1).length), 'nothing in the game column overflows it').toBe(0);
+  });
+}
+
 // A non-UTC browser zone: "browser time" renders UTC on the first visit (server), then Tokyo after mount, and stays Tokyo
 // across a client-side navigation (no UTC flash from a Stamp created later).
 test.describe('browser in Tokyo', () => {
