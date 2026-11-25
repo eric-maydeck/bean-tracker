@@ -41,8 +41,8 @@ async function expectDenseCardFits(card: Locator, what: string, grows = false) {
   expect(m.slack, `${what}: the last row ends at least 4px above the buttons`).toBeGreaterThanOrEqual(4);
 }
 
-// Pick puts the card beside the game only where its container is wide enough (PickForMe's 1226px container query), so a window's width alone doesn't say: the sidebar takes some.
-const besideGame = (page: import('@playwright/test').Page) => page.locator('.stage-box').evaluate((e) => e.clientWidth >= 1226);
+// Pick puts the card beside the game only where its container is wide enough (PickForMe's 976px container query), so a window's width alone doesn't say: the sidebar takes some.
+const besideGame = (page: import('@playwright/test').Page) => page.locator('.stage-box').evaluate((e) => e.clientWidth >= 976);
 
 // A click in the page's corner: the desktop sidebar sits above a menu's click-away layer (it stays usable), so "outside" is just right of it.
 const clickBesideSidebar = async (page: import('@playwright/test').Page) => page.mouse.click(((await page.locator('nav.site-sidebar').boundingBox())?.width ?? 0) + 2, 2);
@@ -6772,7 +6772,10 @@ export const STATES: State[] = [
       const img = card.locator('img');
       if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(327); expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(1); }
       const bs = await Promise.all(['Brew', 'Discard', 'Open coffee'].map((n) => card.getByRole('button', { name: n, exact: true }).boundingBox()));
-      for (const b of bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
+      // One row of three; in a 540-640px card (beside the game in a narrow column) Brew and Discard share a row and Open coffee spans the one below.
+      const two = bs[2]!.y - bs[0]!.y > 1;
+      for (const b of two ? bs.slice(0, 2) : bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
+      if (two) expect(Math.abs(bs[2]!.height - bs[0]!.height)).toBeLessThanOrEqual(1);
       // Horizontal card as tall as the D20 tray (360px): the square thumbnail left, the detail and the buttons right, nothing spilling out.
       const cardBox = (await card.boundingBox())!;
       expect(bs[0]!.y + bs[0]!.height, 'buttons inside the card').toBeLessThanOrEqual(cardBox.y + cardBox.height - 16);
@@ -6795,15 +6798,15 @@ export const STATES: State[] = [
           cardW: document.querySelector('.result')!.getBoundingClientRect().width,
           thumb: document.querySelector('.result .card-thumb')?.getBoundingClientRect().height ?? 0,
           cardH: document.querySelector('.result')!.getBoundingClientRect().height,
-          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid' || (document.querySelector('.pick-card')!.classList.contains('noimg') && document.querySelector('.result')!.getBoundingClientRect().width >= 674),
+          horizontal: getComputedStyle(document.querySelector('.pick-card')!).display === 'grid' || (document.querySelector('.pick-card')!.classList.contains('noimg') && document.querySelector('.result')!.getBoundingClientRect().width >= 590),
           beside: document.querySelector('.result')!.getBoundingClientRect().left >= document.querySelector('.game')!.getBoundingClientRect().right,
           outAfterCard: document.querySelector('.out-row')!.getBoundingClientRect().top >= document.querySelector('.result')!.getBoundingClientRect().bottom - 1
         }));
         expect(m.scroll, `no sideways scroll at ${width}`).toBeLessThanOrEqual(0);
         expect(m.clipped, `no clipped button text at ${width}`).toBe(0);
         expect(m.cardW, `card not squeezed at ${width}`).toBeGreaterThan(400);
-        if (width >= 1540) expect(m.beside, `the card sits beside the game at ${width} (the 248px sidebar, 32px of padding and a 15px scrollbar leave the 1226px it needs)`).toBe(true);
-        else expect(m.beside, `the card sits under the game at ${width}`).toBe(false);
+        if (width >= 1280) expect(m.beside, `the card sits beside the game at ${width} (the 248px sidebar, 32px of padding and a 15px scrollbar leave the 976px it needs)`).toBe(true);
+        else if (width < 1100) expect(m.beside, `the card sits under the game at ${width}`).toBe(false); // 1100 with the 64px bar still leaves 989
         if (!m.beside) expect(m.outAfterCard, `stacked: Out for today after the card, as in the DOM (tab order = visual order) at ${width}`).toBe(true);
         if (m.beside) expect(m.horizontal, `beside the game means the horizontal card at ${width}`).toBe(true);
         if (!m.beside) expect(m.thumb, `thumbnail within the card at ${width}`).toBeLessThanOrEqual(m.horizontal ? 327 : 281);
@@ -7035,7 +7038,8 @@ export const STATES: State[] = [
       expect(Math.abs(r1.y - r0.y - dy), 'Reset today moves only by the note row').toBeLessThanOrEqual(2);
       if (dy) expect(Math.abs(dy - (note.height + 8)), 'the push is the note and its gap').toBeLessThanOrEqual(8);
       expect([r1.x, r1.width, r1.height], 'Reset today keeps its size and column').toEqual([r0.x, r0.width, r0.height]);
-      expect([t1.x, t1.y - dy, t1.width, t1.height].map(Math.round), 'the switch keeps its size and place').toEqual([t0.x, t0.y, t0.width, t0.height].map(Math.round));
+      expect([t1.x, t1.width, t1.height].map(Math.round), 'the switch keeps its size and column').toEqual([t0.x, t0.width, t0.height].map(Math.round));
+      expect(Math.abs(t1.y - dy - t0.y), 'the switch keeps its place').toBeLessThanOrEqual(1); // sub-pixel row rounding
       // Rules: no categories, decaf or profiles; custom sort names; Reset to defaults stays.
       await page.getByRole('button', { name: 'Rules', exact: true }).click();
       const panel = page.getByRole('dialog', { name: 'Rules' });
@@ -13962,19 +13966,24 @@ for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   });
 }
 
-// The beside-the-game layout needs a 1226px container, so a 1280 window with the sidebar never gets it: these two states run again in a window that does.
+// The beside-the-game layout needs a 976px container: a 1280 and a 1440 window with the sidebar expanded (the owner's case) both get it, with Out for today on screen.
 for (const name of ['pick-wheel', 'pick-d20']) {
-  test(`${name}-wide-window @on-deck`, async ({ page }, info) => {
-    test.skip(info.project.name !== 'w1280', 'desktop only');
-    await page.setViewportSize({ width: 1600, height: 800 });
-    const state = STATES.find((s) => s.name === name)!;
-    const s = seed();
-    await stubPickApi(page);
-    await gotoReady(page, state.path(s));
-    expect(await besideGame(page), 'the card beside the game').toBe(true);
-    await state.act!(page, s);
-    await checkLayout(page);
-  });
+  for (const width of [1280, 1440]) {
+    test(`${name}-${width}-expanded @on-deck`, async ({ page }, info) => {
+      test.skip(info.project.name !== 'w1280', 'desktop only');
+      await page.context().addCookies([{ name: 'nav', value: 'expanded', url: info.project.use.baseURL! }]);
+      await page.setViewportSize({ width, height: 800 });
+      const state = STATES.find((s) => s.name === name)!;
+      const s = seed();
+      await stubPickApi(page);
+      await gotoReady(page, state.path(s));
+      expect(await besideGame(page), 'the card beside the game').toBe(true);
+      await state.act!(page, s);
+      await checkLayout(page);
+      await expectOutRowOnScreen(page);
+      expect((await page.locator('.result').boundingBox())!.x, 'the card sits right of the game').toBeGreaterThan((await page.locator('.game').boundingBox())!.x + 370);
+    });
+  }
 }
 
 // A non-UTC browser zone: "browser time" renders UTC on the first visit (server), then Tokyo after mount, and stays Tokyo
