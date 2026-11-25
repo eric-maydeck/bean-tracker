@@ -1,3 +1,29 @@
+# [2.10.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.9.0...v2.10.0) (2026-11-25)
+
+
+### Bug Fixes
+
+* close the nav drawer on sign out and page change, restore sign in current marker ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([ebab6f4](https://github.com/eric-maydeck/bean-tracker/commit/ebab6f4ad01d3754a6e9f71161a12fb849c1b860))
+* coffee detail status buttons size by the row's width, not the window's ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([8e3aa52](https://github.com/eric-maydeck/bean-tracker/commit/8e3aa52fc51ccbce96cf08397533f74fd8a4c929))
+* coffees list pins actions by its box width, edit table tested where it fits ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([697057f](https://github.com/eric-maydeck/bean-tracker/commit/697057f8b30541ea15a80b439119393053d3d618))
+* collapsed sidebar's overhanging track no longer swallows clicks on the page ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([40ab2a5](https://github.com/eric-maydeck/bean-tracker/commit/40ab2a5572aefb436194e5a87dbdc365867d9311))
+* drawer close button is a 44px tap target on phones ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([d1c0d52](https://github.com/eric-maydeck/bean-tracker/commit/d1c0d52aa927a9edbbb8323180361f5038e86de0))
+* filter editor stays right of the sidebar when it opens leftwards ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([7c0a4bf](https://github.com/eric-maydeck/bean-tracker/commit/7c0a4bf13357b4824aaa80e7652fe6cb12e7b387))
+* landscape pull tab clears the phone bar; sidebar tests fit phones ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([308a93f](https://github.com/eric-maydeck/bean-tracker/commit/308a93f13257ac703bb67c5b23b87fd57344a204))
+* nav icon type without importing from a svelte file ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([50d86db](https://github.com/eric-maydeck/bean-tracker/commit/50d86dbec02d45a27959408e265577e91004dd95))
+* nav view picks keep stats toggles, drill state and bar tap, caret via css ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([b9c2f21](https://github.com/eric-maydeck/bean-tracker/commit/b9c2f21dfea803a11e157106fae09780521b6743))
+* pick result card fits beside the game in a 1000px column ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([99f3f17](https://github.com/eric-maydeck/bean-tracker/commit/99f3f17f29a27ae05cc83fbadcac5b89e2cdfc0f))
+* pick tests follow the beside layout's container width, note keeps row height ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([ec10636](https://github.com/eric-maydeck/bean-tracker/commit/ec10636365d167774f934a070042a3d8f7e3b211))
+* records captions reserve three lines on 3-up cards in a mid-width grid ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([0e281b2](https://github.com/eric-maydeck/bean-tracker/commit/0e281b287ede32b5f7eed541cacaa1c12a9f2cd9))
+* subscriptions edit table pins its actions column when it scrolls sideways ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([c0cbbbc](https://github.com/eric-maydeck/bean-tracker/commit/c0cbbbca6935de82a71ba0fa0efe3eb8c3a6efab))
+
+
+### Features
+
+* nav model and shared stats view links ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([d20bf54](https://github.com/eric-maydeck/bean-tracker/commit/d20bf5447f4b689f5323d7ca80380eee599bda5a))
+* one drill-in site nav for desktop and phone ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([ed38a01](https://github.com/eric-maydeck/bean-tracker/commit/ed38a01cec14591dd80baa4fc24b9d1ee0eae109))
+* stats view subtitle; retire the stats-only drawer ([#207](https://github.com/eric-maydeck/bean-tracker/issues/207)) ([46d350d](https://github.com/eric-maydeck/bean-tracker/commit/46d350d6d9e7bb6f844af2af64c6dfff0e23b1b8))
+
 # [2.9.0](https://github.com/eric-maydeck/bean-tracker/compare/v2.8.0...v2.9.0) (2026-11-25)
 
 
