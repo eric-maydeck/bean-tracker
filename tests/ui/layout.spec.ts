@@ -5741,13 +5741,13 @@ export const STATES: State[] = [
         await expect(tip).toHaveCount(0);
       };
       await check(page.locator('[data-board="caffeine"] .time-chart canvas'));
-      await page.goto('/stats?tab=onhand&range=all');
+      await gotoReady(page, '/stats?tab=onhand&range=all');
       await check(page.locator('section.chart-panel:has(#onhand-runway-at-your-pace) canvas'));
       // A bar chart with a trend line over it (Brewed over time): same.
-      await page.goto('/stats?tab=consumption&range=all');
+      await gotoReady(page, '/stats?tab=consumption&range=all');
       await check(page.locator('section.chart-panel:has(#consumption-chart-brewed) canvas'));
       // A bar-only chart (Brews by hour): a bar's whole column opens its tip.
-      await page.goto('/stats?tab=habits&range=all');
+      await gotoReady(page, '/stats?tab=habits&range=all');
       await check(page.locator('section.chart-panel:has(#habits-hour) canvas'));
     }
   },
@@ -5777,7 +5777,7 @@ export const STATES: State[] = [
         for (const g of [0.85, 0.7, 0.55, 0.4]) for (let f = 0.9; f > 0.1; f -= 0.1) pts.push([b.x + b.width * f, b.y + b.height * g]);
         for (const [x, y] of pts) {
           await page.mouse.move(x, y);
-          if (await tip.waitFor({ timeout: 100 }).then(() => true, () => false)) break;
+          if (await tipOpen(page, tip)) break;
         }
         await expect(tip).toBeVisible();
         const a = (await panel.locator('.tip-anchor').boundingBox())!;
@@ -5805,7 +5805,7 @@ export const STATES: State[] = [
         let at: readonly [number, number] | null = null;
         for (const pt of await chartPoints(canvas)) {
           await page.mouse.move(pt[0], pt[1]);
-          if (await tip.waitFor({ timeout: 60 }).then(() => true, () => false) && (await tip.getByRole('link', { name: /See coffees/ }).count())) { at = pt; break; }
+          if (await tipOpen(page, tip) && (await tip.getByRole('link', { name: /See coffees/ }).count())) { at = pt; break; }
         }
         expect(at, `${panelId}: a mark whose tip has a link`).not.toBeNull();
         await expect(tip.getByRole('link', { name: /See coffees/ })).toHaveAttribute('href', /\/coffees\?status=backlog/);
@@ -5832,7 +5832,7 @@ export const STATES: State[] = [
       for (const pt of await chartPoints(ageCanvas)) {
         await page.mouse.move(pt[0], pt[1]);
         // A mark's tip may have no link (check() below skips those too): don't wait on one.
-        if (await tip.waitFor({ timeout: 60 }).then(() => true, () => false) && (await tip.getByRole('link', { name: /See coffees/ }).count())) {
+        if (await tipOpen(page, tip) && (await tip.getByRole('link', { name: /See coffees/ }).count())) {
           const href = await tip.getByRole('link', { name: /See coffees/ }).getAttribute('href', { timeout: 500 }).catch(() => null); // the tip can close under the pointer
           seen.add(decodeURIComponent(href ?? '').replace(/\+/g, ' ').match(/rest_state=([^&]*)/)?.[1] ?? '');
         }
@@ -8826,6 +8826,7 @@ export const STATES: State[] = [
     act: async (page) => {
       // Show all and the expand toggle are view-only: no data request, and the other tiles' charts are not rebuilt (a rebuilt
       // chart re-runs its animation, which rewrites data-dashed-segments; the marker below is cleared first).
+      await page.emulateMedia({ reducedMotion: 'reduce' }); // Show all's smooth scroll (bottomInView) can swallow the Expand click
       const charts = page.locator('.board:not([data-board=caffeine]) canvas'); // caffeine's is always on
       await expect(charts).toHaveCount(2);
       await expect.poll(() => charts.evaluateAll((cs) => cs.every((c) => c.hasAttribute('data-dashed-segments')))).toBe(true);
@@ -9264,7 +9265,9 @@ export const STATES: State[] = [
       // Scrolled to the feed's very end, the ruler is still wholly on screen (M10).
       await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
       await settle();
-      const rb = (await ruler.boundingBox())!, vh = page.viewportSize()!.height;
+      // vh: the bottom of the visible band, above the phone bar where it shows (landscape phones: the side ruler's last
+      // tick sat under it, and the Jump click above retried for 30s until a scroll uncovered it).
+      const rb = (await ruler.boundingBox())!, vh = await page.evaluate(() => document.querySelector('.phone-bar')?.getBoundingClientRect().top || innerHeight);
       expect(rb.y).toBeGreaterThanOrEqual(0);
       expect(rb.y + rb.height).toBeLessThanOrEqual(vh);
       // The thumb is small and fixed-size, whatever the period (M8).
@@ -9304,7 +9307,7 @@ export const STATES: State[] = [
             y0 = y1;
             const b = ruler.getBoundingClientRect();
             // What the height was computed from, so a failure says which input moved.
-            if (b.y + b.height > 0) out.push({ y: b.y, h: b.height, why: `inline ${ruler.style.height || 'none'}, innerHeight ${innerHeight}, --bar-h ${document.querySelector<HTMLElement>('.timeline')!.style.getPropertyValue('--bar-h')}, scrollY ${scrollY}` });
+            if (b.y + b.height > 0) out.push({ y: b.y, h: b.height, why: `inline ${ruler.style.height || 'none'}, innerHeight ${innerHeight}, --top-h ${document.querySelector<HTMLElement>('.timeline')!.style.getPropertyValue('--top-h')}, scrollY ${scrollY}` });
           }
           return out;
         });
@@ -9356,7 +9359,7 @@ export const STATES: State[] = [
       await settle();
       const pb = (await panel.boundingBox())!;
       // 2: the bar's height is fractional at some widths (its label line), so the scroll lands a sub-pixel off.
-      expect(Math.abs(pb.y + pb.height - vh), 'panel bottom at the screen bottom').toBeLessThanOrEqual(2);
+      expect(Math.abs(pb.y + pb.height - vh), 'panel bottom at the band bottom').toBeLessThanOrEqual(2);
       const tEnd = (await track.boundingBox())!; // the side ruler may have slid up a few px with the feed's end
       expect(Math.abs(await off(tEnd.height > tEnd.width ? { x: 0, y: tEnd.y + tEnd.height } : { x: tEnd.x + tEnd.width, y: 0 })),
         'thumb at the ruler end').toBeLessThanOrEqual(2);
@@ -9365,7 +9368,7 @@ export const STATES: State[] = [
       await settle();
       const head = await page.evaluate(() => {
         const r = document.querySelector('nav.ruler')!.getBoundingClientRect();
-        const top = r.width > r.height ? r.bottom : parseFloat(getComputedStyle(document.querySelector('.timeline')!).getPropertyValue('--bar-h'));
+        const top = r.width > r.height ? r.bottom : parseFloat(getComputedStyle(document.querySelector('.timeline')!).getPropertyValue('--top-h'));
         return document.querySelector('.feed .month')!.getBoundingClientRect().top - top;
       });
       expect(Math.abs(head), 'first month header under the bars').toBeLessThanOrEqual(2);
@@ -13527,7 +13530,7 @@ export const STATES: State[] = [
   { name: 'insights-cbar-milestones-bar-h', path: () => '/stats?tab=milestones&range=all',
     act: async (page) => {
       await scrollPastBar(page);
-      const barH = () => page.locator('.timeline').evaluate((el) => parseFloat(el.style.getPropertyValue('--bar-h')));
+      const barH = () => page.locator('.timeline').evaluate((el) => parseFloat(el.style.getPropertyValue('--top-h')));
       if (!isPhone(page)) {
         const b = (await page.locator('.filter-bar').boundingBox())!; // the controls
         expect(Math.abs((await barH()) - (b.y + b.height))).toBeLessThanOrEqual(1);
@@ -13688,6 +13691,13 @@ async function chartPoints(canvas: Locator, settle = true) {
   const grid: [number, number][] = [];
   for (const fy of [0.75, 0.5, 0.25]) for (let fx = 0.1; fx < 1; fx += 0.1) grid.push([b.width * fx, b.height * fy]);
   return [...marks, ...grid].map(([x, y]) => [b.x + x, b.y + y] as const).filter(([, y]) => y > 60 && y < vh - 4);
+}
+// Whether the tip is open for the point the pointer just reached. Chart.js handles pointer events on the next frame, so a
+// short waitFor can miss a slow open and then credit that tip to the next, off-mark point while it lingers (a sticky tip
+// closes 100ms after the pointer leaves); two frames let this point's own event land first.
+async function tipOpen(page: Page, tip: Locator) {
+  await frames(page);
+  return tip.isVisible();
 }
 // Taps (or clicks) a Chart.js canvas on its marks until its tip opens; returns where.
 async function tapChart(page: Page, canvas: Locator) {
@@ -13948,8 +13958,6 @@ const tabTag = (st: State) => {
 const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES.filter((_, i) => i % PARTS === PART - 1)) {
   test(state.name, { tag: [routeTag(state), ...tabTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
-    // The milestones ruler walk scrolls the whole feed in 250px steps: at 333px tall that is over 30s under CI load.
-    if (state.name === 'insights-milestones') test.slow();
     const s = seed();
     if (state.name.startsWith('pick-')) await stubPickApi(page); // before the page loads: Pick saves its state on load
     await gotoReady(page, state.path(s));
