@@ -573,7 +573,7 @@
   /* the pop-up has no tray height to match: the card is as tall as its content (the pop-up's padding below the buttons, as beside them)
      and the thumbnail runs from the card's top to the buttons' bottom */
   .pick-modal.horizontal :global(.pick-card.wide:not(.noimg)) { height: auto; }
-  .pick-modal.horizontal :global(.pick-card.wide .card-thumb) { aspect-ratio: auto; height: 100%; min-height: calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px); } /* never under square */
+  .pick-modal.horizontal :global(.pick-card.wide .card-thumb) { aspect-ratio: auto; height: 100%; min-height: calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px); contain: size; } /* never under square; contain: a portrait label never sets the height (the detail does) */
   .rolled { position: relative; margin: 0 0 var(--space-2); text-align: center; font-family: var(--font-display); font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
   .rolled b { display: block; font-size: 3.5rem; line-height: 1; letter-spacing: 0; color: var(--color-accent); }
   /* a crit: a dark panel (the same dark in both themes, like the D20 tray, so the colours keep their contrast) with its glow; a normal roll stays plain */
@@ -605,7 +605,7 @@
   /* the same layout for both games: the card beside the game (with a real gutter) only where it gets the room for its horizontal form next
      to the game (976px of container); narrower, it goes under the game (PickCard's own container query picks the horizontal or vertical form) */
   .stage-box { container-type: inline-size; margin-bottom: var(--space-3); }
-  @container (min-width: 976px) { /* 370 game + 16 gutter + 590 (the card: 294 thumbnail, 16 gap and 214 of detail in a 540px container, plus padding and border): beside always means horizontal; the game column takes up to 620. A 1280 window with the sidebar open (about 985px) gets it */
+  @container (min-width: 976px) { /* 370 game + 16 gutter + 590 (the card: a 160px thumbnail, 16 gap and 380 of detail in a 556px container, plus padding and border; PickCard narrows the thumbnail to keep the detail's 380): beside always means horizontal; the game column takes up to 620. A 1280 window with the sidebar open (about 985px) gets it */
     .stage { max-width: none; gap: 1.25rem var(--space-4); grid-template-columns: minmax(370px, 620px) minmax(590px, 1fr); }
     .game, .out-row { grid-column: 1; }
     .game { grid-row: 1; }

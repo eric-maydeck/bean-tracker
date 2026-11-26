@@ -165,24 +165,19 @@
   .buttons.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .buttons .back { grid-column: span 2; }  .buttons :global(.button) { margin: 0; padding: 0.35rem 0.25rem; min-height: 36px; font-size: 0.85rem; justify-content: center; white-space: nowrap; }
   @media (max-width: 640px) { .buttons :global(.button) { min-height: 44px; } }
-  /* The inline card on a desktop: as tall as the D20 tray (--pick-h), the thumbnail a square of that height (the same padding all round)
-     with the detail beside it. A card with an image keeps that height and spreads its groups; one without is as tall as its content.
-     Narrower than the thumbnail + 214px of detail (540px of container): the vertical card. */
+  /* The inline card on a desktop: as tall as the D20 tray (--pick-h), the thumbnail as tall as the card (the same padding all round)
+     with the detail beside it. The thumbnail is square where the detail keeps 380px (two columns of ~186px: a date range or a cost and
+     bag fit untruncated); narrower, it gives up width down to 160px, a portrait slot with the picture contained on its fill.
+     A card with an image keeps that height; one without is as tall as its content. Under 540px of container: the vertical card. */
   @container card (min-width: 540px) {
-    .pick-card.wide { width: 100%; display: grid; grid-template-columns: calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px) minmax(0, 1fr); gap: var(--space-4); }
-    .pick-card.wide:not(.noimg) { height: calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px); }
+    .pick-card.wide { --thumb: clamp(160px, 100cqi - var(--space-4) - 380px, calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px)); width: 100%; display: grid; grid-template-columns: var(--thumb) minmax(0, 1fr); gap: var(--space-4); }
+    .pick-card.wide:not(.noimg) { height: calc(var(--pick-h, 360px) - 2 * var(--space-4) - 2px); grid-template-rows: minmax(0, 1fr); } /* the row is the card's height: the detail shrinks, never pushes the buttons out */
     .pick-card.wide.noimg { display: block; }
-    .wide .card-thumb { margin: 0; }
+    .wide .card-thumb { margin: 0; aspect-ratio: auto; height: 100%; }
     .wide .card-body { margin: 0 0 var(--space-2); flex: 1; min-height: 0; overflow: hidden; }
     /* two columns (origin left, roast level right ...); one fixed gap between every row, the slack (a sparse coffee) goes above the buttons */
-    .wide .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; row-gap: var(--space-2); }
-    .wide .buttons { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* 214px of detail: two columns (an odd last button takes the row) */
-    .wide .buttons > :last-child:nth-child(odd) { grid-column: span 2; }
+    .wide .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; row-gap: 0.375rem; } /* 6px: the densest coffee (head, ten stats, tasting notes) fits the 360px card with its buttons on one row */
     .wide .name-row { min-height: 1.5rem; } /* a badge appearing never changes the height */
   }
-  @container card (min-width: 640px) { /* 300px of detail: every button on one row */
-    .wide .buttons:not(.four) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .wide .buttons:not(.four) > :last-child:nth-child(odd) { grid-column: auto; }
-    .wide .buttons.four:not(.pair) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  }
+  @container card (min-width: 640px) { .wide .buttons.four:not(.pair) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 </style>

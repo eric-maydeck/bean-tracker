@@ -52,6 +52,21 @@
   });
 
   let showAlerts = $state(false);
+  // The Alerts pop-up: its Close button takes focus, Tab stays inside, and focus goes back to the opener (Menu, on a phone) when it closes.
+  function modalFocus(node: HTMLElement) {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    node.querySelector<HTMLElement>('[data-close]')?.focus();
+    const onkey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const els = [...node.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+      const [first, last] = [els[0], els[els.length - 1]];
+      if (!node.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onkey);
+    return { destroy() { document.removeEventListener('keydown', onkey); if (opener?.isConnected) opener.focus(); } };
+  }
 
   const unreadAlertCount = $derived(data.alerts.filter((a: AlertRow) => a.read_at === null).length);
   // The recap story is full-screen: no site header, tab bar or footer.
@@ -148,8 +163,8 @@
 
 {#if showAlerts}
   <div class="modal-backdrop" onclick={() => (showAlerts = false)} role="presentation">
-    <div class="modal" onclick={(e) => e.stopPropagation()}>
-      <h2>Alerts</h2>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="alerts-title" tabindex="-1" use:modalFocus onclick={(e) => e.stopPropagation()}>
+      <h2 id="alerts-title">Alerts</h2>
       {#if data.alerts.length === 0}
         <p class="text-muted">No active alerts.</p>
       {:else}
@@ -172,7 +187,7 @@
           {/each}
         </ul>
       {/if}
-      <button class="button" type="button" onclick={() => (showAlerts = false)}>Close</button>
+      <button class="button" type="button" data-close onclick={() => (showAlerts = false)}>Close</button>
     </div>
   </div>
 {/if}

@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { MAIN_ROWS, isCurrent, panelFor, statsGroups, statsViewHref, icon } from './nav';
+import { MAIN_ROWS, isCurrent, panelFor, pendingStatsTab, statsGroups, statsTabOf, statsViewHref, icon } from './nav';
 
 describe('nav model', () => {
+  it('statsTabOf reads the view case-insensitively; none or unknown is Overview', () => {
+    expect(statsTabOf(new URL('http://x/stats?tab=Records'))).toBe('records');
+    expect(statsTabOf(new URL('http://x/stats'))).toBe('overview');
+    expect(statsTabOf(new URL('http://x/stats?tab=nope'))).toBe('overview');
+  });
+  it('pendingStatsTab is the view being navigated to, only on /stats', () => {
+    expect(pendingStatsTab(new URL('http://x/stats?tab=gear'))).toBe('gear');
+    expect(pendingStatsTab(new URL('http://x/coffees?tab=gear'))).toBeNull();
+    expect(pendingStatsTab(null)).toBeNull();
+  });
   it('panelFor opens the stats panel only on /stats', () => {
     expect(panelFor('/stats')).toBe('stats');
     expect(panelFor('/coffees')).toBe('main');
