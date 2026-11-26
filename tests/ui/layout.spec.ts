@@ -7102,7 +7102,8 @@ export const STATES: State[] = [
       const inline = page.locator('.result .pick-card');
       await expect(inline.locator('.card-thumb.tile')).toBeVisible();
       const [t, c] = [(await inline.locator('.card-thumb.tile').boundingBox())!, (await inline.boundingBox())!];
-      expect(Math.abs(t.width - t.height), 'the tile is square').toBeLessThanOrEqual(1);
+      // like a photo thumbnail (#216): the column narrows to leave the detail 380px, so the tile is square or taller, never wider
+      expect(t.height, 'the tile is square or taller').toBeGreaterThanOrEqual(t.width - 1);
       if (c.width >= 640) expect(Math.abs(t.height - c.height), 'beside: the tile is as tall as the card').toBeLessThanOrEqual(1);
     }
   },
