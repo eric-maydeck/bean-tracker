@@ -14548,7 +14548,6 @@ navTest('nav-recap-no-chrome', async ({ page }) => {
   await expect(page.locator('nav.phone-bar')).toHaveCount(0);
 });
 
-// The drawer never lingers over another page: Sign out (the redirect lands on the same path) and browser back both close it.
 // Alerts from the phone drawer (#215): the drawer closes, the pop-up's Close takes focus, and closing returns focus to Menu (Escape and Close alike).
 navTest('nav-alerts-focus', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 909 });
@@ -14569,6 +14568,7 @@ navTest('nav-alerts-focus', async ({ page }) => {
   }
 });
 
+// The drawer never lingers over another page: Sign out (the redirect lands on the same path) and browser back both close it.
 navTest('nav-drawer-closes', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 909 });
   const drawer = page.locator('dialog.nav-drawer'), menu = page.locator('button.phone-menu');
