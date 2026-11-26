@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 import { gearRedirect } from '#lib/gearUrl.ts';
 import { getGearDetails } from '#lib/server/gearDetails.ts';
 import { trophyCase, gearArchive, gearPanel } from '#lib/server/insights/trophies.ts';
-import { hasRecaps, recapTiles } from '#lib/server/recaps/recap.ts';
+import { recapTiles } from '#lib/server/recaps/recap.ts';
 import { getDb, getDateFormat, getHouseholdSize, getDefaultCaffeine, lastImportedAt } from '#lib/server/db.ts';
 import { loadFacts } from '#lib/server/insights/facts.ts';
 import {
@@ -56,9 +56,8 @@ export const load: PageServerLoad = ({ url, locals }) => {
   // The Caffeine filter with no `caffeine` param is the account's default (also for signed-out visitors: the data owner's pick).
   const defaultCaffeine = getDefaultCaffeine(db);
   const caffeine = s.caffeine ?? defaultCaffeine;
-  // The Recaps tab's rail entry shows while there is a recap; tab=recaps itself always renders (an empty state says why).
+  // The Recaps group's flag (recapsTab) comes from the root layout; tab=recaps itself always renders (an empty state says why).
   const isAdmin = !!locals?.isAdmin;
-  const recapsTab = hasRecaps(db, today, isAdmin);
   const lab = (LAB_TABS as readonly string[]).includes(s.tab) ? opts : null;
   const grinder = lab ? (lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? null : null;
   const period = periodBounds(s.range, today);
@@ -243,7 +242,6 @@ export const load: PageServerLoad = ({ url, locals }) => {
       }) : null,
     // The Your gear panel: the same all-time call as /gear, so it agrees with that page whatever the Period.
     gearPanel: s.tab === 'gear' ? gearPanel(trophyCase(everyBrew, gearArchive(db), today, { ratings: 'current', scored: onceDialed(everyBrew, dialIn) }, getGearDetails(db))) : null,
-    recapsTab,
     recaps: s.tab === 'recaps' ? recapTiles(db, today, isAdmin, period) : null,
     // The last-brews and finished-bags lists show every coffee and its rating, whatever the Caffeine filter says.
     recent: s.tab === 'overview' ? recent(ownBrews, cafBags, 50, { all: everyBrew, dialIn, day: (d) => formatDay(d, isAdmin ? getDateFormat(db) : DEFAULT_DATE_FORMAT), extra: (b, g) => recentExtra(db, b, g) }) : null,

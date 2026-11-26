@@ -11,6 +11,7 @@ import { loadFacts } from '#lib/server/insights/facts.ts';
 import { trophyCase, gearArchive } from '#lib/server/insights/trophies.ts';
 import { saveGearDetails } from '#lib/server/gearDetails.ts';
 import { load } from './+page.server';
+import { hasRecaps } from '#lib/server/recaps/recap.ts';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const run = (q = '') => load({ url: new URL(`http://localhost/stats${q}`) } as never) as any;
@@ -52,14 +53,15 @@ describe('/stats load', () => {
   });
 
   it('tab=recaps with no recap to show still loads (an empty state), and the tab flag is off', () => {
-    expect(run().recapsTab).toBe(false);
-    expect(run('?tab=recaps&range=all')).toMatchObject({ recapsTab: false, recaps: [], explicit: { tab: 'recaps' } });
+    expect(hasRecaps(getDb(), today, false)).toBe(false); // the root layout's recapsTab
+    expect(run('?tab=recaps&range=all')).toMatchObject({ recaps: [], explicit: { tab: 'recaps' } });
   });
 
   it('public tab=recaps: an open year shows; a Period that misses it is an empty list with the tab still on', () => {
     seed([['2020-05-01', 15]]);
-    expect(run('?tab=recaps&range=all')).toMatchObject({ recapsTab: true, recaps: [{ year: 2020, preview: false }] });
-    expect(run('?tab=recaps&range=2024-01-01..2024-02-01')).toMatchObject({ recapsTab: true, recaps: [] });
+    expect(hasRecaps(getDb(), today, false)).toBe(true);
+    expect(run('?tab=recaps&range=all')).toMatchObject({ recaps: [{ year: 2020, preview: false }] });
+    expect(run('?tab=recaps&range=2024-01-01..2024-02-01')).toMatchObject({ recaps: [] });
   });
 
   it('reads the URL and counts the period', () => {

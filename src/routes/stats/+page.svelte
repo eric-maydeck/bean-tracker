@@ -20,12 +20,13 @@
   import { plural } from '#lib/linkPreview.ts';
   import { formatDays, hour12 } from '#lib/hours.ts';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, TAB_LABEL, statsTabHref, TABS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_LABEL, statsTabHref, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '#lib/insightsUrl.ts';
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
   import PreviewMeta from '#lib/components/PreviewMeta.svelte';
   import { navigating, page } from '$app/state';
+  import { pendingStatsTab, statsGroups, statsTabOf } from '#lib/nav.ts';
   import HeadingAnchor from '#lib/components/HeadingAnchor.svelte';
   import KindsBar from './KindsBar.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -168,21 +169,18 @@
   }
   // A tab keeps the scroll you left it at. Tab links keep the scroll (reset=false), so a shorter tab in between clamped it and
   // coming back landed higher ("scrolled up a little"); every tab switch, link or choose(), routes through here.
-  const tabOf = (u: URL | undefined) => u?.searchParams.get('tab') ?? 'overview';
-  // The tapped tab reads as active while its data loads.
-  const pendingTab = $derived(navigating.to?.url.pathname === '/stats' ? tabOf(navigating.to.url) : null);
-  const shownTab = $derived(pendingTab && (TABS as readonly string[]).includes(pendingTab) ? (pendingTab as Tab) : s.tab);
+  const shownTab = $derived(pendingStatsTab(navigating.to?.url) ?? s.tab);
   const scrollOf = new Map<string, number>();
   let pagerNav = false;
   beforeNavigate(({ from, to, shallow, type }) => {
     if (shallow && type === 'goto') return;
-    if (from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url)) scrollOf.set(tabOf(from.url), scrollY);
+    if (from && to && from.url.pathname === to.url.pathname && statsTabOf(from.url) !== statsTabOf(to.url)) scrollOf.set(statsTabOf(from.url), scrollY);
   });
   afterNavigate(({ from, to, type, shallow }) => {
     if (shallow && type === 'goto') return;
     // (a back/forward step: SvelteKit restores the scroll itself)
     // (Previous / Next: the new tab starts at its top)
-    const back = type !== 'popstate' && !pagerNav && from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url) ? scrollOf.get(tabOf(to.url)) : undefined;
+    const back = type !== 'popstate' && !pagerNav && from && to && from.url.pathname === to.url.pathname && statsTabOf(from.url) !== statsTabOf(to.url) ? scrollOf.get(statsTabOf(to.url)) : undefined;
     // reset=false keeps focus on the pager link but also the old scroll, so Previous / Next scrolls to the top itself.
     if (pagerNav) void tick().then(() => scrollTo(0, 0));
     pagerNav = false;
@@ -264,8 +262,7 @@
     rangeDialog?.close();
   }
 
-  // The Recaps group appears only while there is a recap to open.
-  const groups = $derived(TAB_GROUPS.filter((g) => data.recapsTab || s.tab === 'recaps' || g.label !== 'Recaps'));
+  const groups = $derived(statsGroups(data.recapsTab || s.tab === 'recaps'));
   const tabHref = (tab: Tab) => statsTabHref(explicit, tab);
   // Previous / Next at the end of every tab, in menu order.
   const flatTabs = $derived(groups.flatMap((g) => g.tabs));

@@ -6772,10 +6772,11 @@ export const STATES: State[] = [
       expect((await card.boundingBox())!.width, 'card width').toBeLessThanOrEqual(735);
       await expect(card.getByRole('button', { name: 'Close' })).toHaveCount(0);
       const img = card.locator('img');
-      if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(327); expect(Math.abs(b.width - b.height)).toBeLessThanOrEqual(1); }
+      if (await img.count()) { const b = (await img.boundingBox())!; expect(b.width).toBeLessThanOrEqual(327); expect(b.width, 'a 160-327px thumbnail').toBeGreaterThanOrEqual(159); expect(b.height, 'never wider than tall (a portrait slot where the detail needs the width)').toBeGreaterThanOrEqual(b.width - 1); }
       const bs = await Promise.all(['Brew', 'Discard', 'Open coffee'].map((n) => card.getByRole('button', { name: n, exact: true }).boundingBox()));
-      // One row of three; in a 540-640px card (beside the game in a narrow column) Brew and Discard share a row and Open coffee spans the one below.
+      // One row of three (the horizontal card's thumbnail narrows so its detail keeps 380px, #216).
       const two = bs[2]!.y - bs[0]!.y > 1;
+      if (await img.count()) expect(two, 'the horizontal card keeps its buttons on one row').toBe(false);
       for (const b of two ? bs.slice(0, 2) : bs) { expect(Math.abs(b!.y - bs[0]!.y)).toBeLessThanOrEqual(1); expect(Math.abs(b!.width - bs[0]!.width)).toBeLessThanOrEqual(1); expect(Math.abs(b!.height - bs[0]!.height)).toBeLessThanOrEqual(1); }
       if (two) expect(Math.abs(bs[2]!.height - bs[0]!.height)).toBeLessThanOrEqual(1);
       // Horizontal card as tall as the D20 tray (360px): the square thumbnail left, the detail and the buttons right, nothing spilling out.
@@ -6783,7 +6784,7 @@ export const STATES: State[] = [
       expect(bs[0]!.y + bs[0]!.height, 'buttons inside the card').toBeLessThanOrEqual(cardBox.y + cardBox.height - 16);
       if (await img.count()) {
         expect(Math.abs(cardBox.height - 360), 'card as tall as the D20 tray').toBeLessThanOrEqual(2);
-        expect((await img.boundingBox())!.x + 327, 'content right of the thumbnail').toBeLessThan(bs[0]!.x + 1);
+        expect((await img.boundingBox())!.x + (await img.boundingBox())!.width, 'content right of the thumbnail').toBeLessThan(bs[0]!.x + 1);
         expect(await card.locator('.card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the detail fits its height').toBe(true);
         await expectDenseCardFits(card, 'inline card');
       }
@@ -14034,6 +14035,12 @@ for (const width of [1280, 1440]) {
     expect(Math.abs(card.height - 360), 'card as tall as the tray').toBeLessThanOrEqual(2);
     expect(out.y + out.height, 'Out for today on screen').toBeLessThanOrEqual(800);
     expect(await page.locator('.result .card-body').evaluate((e) => e.scrollHeight <= e.clientHeight + 1), 'the detail fits its height').toBe(true);
+    // The narrow beside card (#216): the buttons on one row inside the card, the densest detail fitting, two stat columns of at least 180px.
+    const bs = await Promise.all(['Brew', 'Open coffee'].map((n) => page.locator('.result').getByRole('button', { name: n, exact: true }).boundingBox().then((b) => b!)));
+    expect(Math.abs(bs[1].y - bs[0].y), 'Brew, Discard and Open coffee on one row').toBeLessThanOrEqual(1);
+    expect(bs[0].y + bs[0].height, 'buttons inside the card').toBeLessThanOrEqual(card.y + card.height - 16);
+    expect((await page.locator('.result .stat').first().boundingBox())!.width, 'stat columns wide enough for a date range').toBeGreaterThanOrEqual(180);
+    await expectDenseCardFits(page.locator('.result .pick-card'), 'narrow beside card');
     expect(await page.locator('.game').evaluate((e) => [...e.querySelectorAll('*')].filter((c) => c.getBoundingClientRect().right > e.getBoundingClientRect().right + 1).length), 'nothing in the game column overflows it').toBe(0);
   });
 }
@@ -14336,9 +14343,7 @@ test('nav-progress-slow-tab', { tag: ['@stats', '@two'] }, async ({ page }) => {
 });
 
 // The Stats view subtitle (#207): under the h1, follows the view, leaves the title and Share where they were.
-const SHARE_LEFT: Record<number, number> = { 1280: 1160.33, 480: 360.33 }; // pinned from the page before the subtitle
 test('stats-view-subtitle', { tag: ['@stats', '@two'] }, async ({ page }) => {
-  const w = page.viewportSize()!.width;
   await gotoReady(page, '/coffees');
   const coffeesH1 = (await page.locator('h1').first().boundingBox())!;
   await gotoReady(page, '/stats?tab=leaderboards');
@@ -14351,7 +14356,13 @@ test('stats-view-subtitle', { tag: ['@stats', '@two'] }, async ({ page }) => {
   expect(s.y, 'subtitle directly under the h1').toBeGreaterThanOrEqual(h1.y + h1.height - 1);
   expect(s.x).toBe(h1.x);
   const share = (await page.locator('.toolbar').getByRole('button', { name: 'Share' }).boundingBox())!;
-  expect(Math.abs(share.x - SHARE_LEFT[w]), 'Share keeps its left edge').toBeLessThanOrEqual(1);
+  // Share stays in the title row at the toolbar's right edge: the subtitle adds no row above it.
+  // Without the subtitle Share sits in the same place: the subtitle adds height under the h1 only.
+  await sub.evaluate((e) => (e.style.display = 'none'));
+  const bare = (await page.locator('.toolbar').getByRole('button', { name: 'Share' }).boundingBox())!;
+  await sub.evaluate((e) => (e.style.display = ''));
+  expect(Math.abs(share.x - bare.x), 'Share keeps its left edge').toBeLessThanOrEqual(1);
+  expect(share.y, 'Share level with the title, not pushed under the subtitle').toBeLessThan(s.y);
   await gotoReady(page, '/stats?range=all'); // no tab in the URL
   await expect(sub).toHaveText('Overview');
   expect(await page.title()).toMatch(/^Overview · Stats/);
@@ -14538,6 +14549,26 @@ navTest('nav-recap-no-chrome', async ({ page }) => {
 });
 
 // The drawer never lingers over another page: Sign out (the redirect lands on the same path) and browser back both close it.
+// Alerts from the phone drawer (#215): the drawer closes, the pop-up's Close takes focus, and closing returns focus to Menu (Escape and Close alike).
+navTest('nav-alerts-focus', async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 909 });
+  const drawer = page.locator('dialog.nav-drawer'), menu = page.locator('button.phone-menu');
+  const alerts = page.getByRole('dialog', { name: 'Alerts' });
+  await gotoReady(page, '/coffees');
+  for (const close of [() => page.keyboard.press('Escape'), () => alerts.getByRole('button', { name: 'Close' }).click()]) {
+    await menu.click();
+    await expect(drawer).toBeVisible();
+    await drawer.getByRole('button', { name: /^Alerts/ }).click();
+    await expect(drawer).toBeHidden();
+    await expect(alerts.getByRole('button', { name: 'Close' })).toBeFocused();
+    await page.keyboard.press('Tab'); // Tab stays inside the pop-up
+    expect(await alerts.evaluate((d) => d.contains(document.activeElement))).toBe(true);
+    await close();
+    await expect(alerts).toBeHidden();
+    await expect(menu).toBeFocused();
+  }
+});
+
 navTest('nav-drawer-closes', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 909 });
   const drawer = page.locator('dialog.nav-drawer'), menu = page.locator('button.phone-menu');

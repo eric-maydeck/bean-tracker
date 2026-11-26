@@ -3,8 +3,8 @@
   import { enhance } from '$app/forms';
   import { onMount, tick, untrack } from 'svelte';
   import Icon from '#lib/components/Icon.svelte';
-  import { MAIN_ROWS, PHONE_BAR, isCurrent, panelFor, statsGroups, statsViewHref, icon } from '#lib/nav.ts';
-  import { TAB_LABEL, TABS, statsTabHref, type Tab } from '#lib/insightsUrl.ts';
+  import { MAIN_ROWS, PHONE_BAR, isCurrent, panelFor, pendingStatsTab, statsGroups, statsTabOf, statsViewHref, icon } from '#lib/nav.ts';
+  import { TAB_LABEL, statsTabHref, type Tab } from '#lib/insightsUrl.ts';
   import { INSIGHTS_STORAGE_KEY, loadInsightsState, withoutDeepLinks } from '#lib/insightsMemory.ts';
 
   let { isAdmin, unread, theme, navPref, recapsTab, onTheme, onAlerts }: {
@@ -24,11 +24,7 @@
   let drilled = $state(panelFor(page.url.pathname) === 'stats');
   $effect(() => { drilled = panelFor(pathname) === 'stats'; });
 
-  const tabOf = (u: { searchParams: { get(k: string): string | null } }): string => u.searchParams.get('tab') ?? 'overview';
-  const valid = (t: string | null): t is Tab => !!t && (TABS as readonly string[]).includes(t);
-  // A tapped view reads current while its data loads (#206).
-  const pendingTab = $derived(navigating.to?.url.pathname === '/stats' ? tabOf(navigating.to.url) : null);
-  const shownTab = $derived(valid(pendingTab) ? pendingTab : onStats && valid(tabOf(page.url)) ? (tabOf(page.url) as Tab) : onStats ? 'overview' : null);
+  const shownTab = $derived(pendingStatsTab(navigating.to?.url) ?? (onStats ? statsTabOf(page.url) : null));
   const groups = $derived(statsGroups(recapsTab || shownTab === 'recaps'));
   const onLogin = $derived(pathname === '/login');
   const onAccount = $derived(isCurrent('/account', pathname));
@@ -169,7 +165,7 @@
       <form method="POST" action="/login?/logout" use:enhance onsubmit={nav}>
         <button class="nav-row" type="submit" data-tip="Sign out"><Icon name="sign-out" /><span class="lbl">Sign out</span></button>
       </form>
-      <button class="nav-row" type="button" data-tip="Alerts" onclick={() => { nav(); onAlerts(); }}
+      <button class="nav-row" type="button" data-tip="Alerts" onclick={() => { closeDrawer(true); setTimeout(onAlerts); }}
         aria-label={`Alerts${unread > 0 ? ` (${unread} unread)` : ''}`}>
         <span class="bellwrap"><Icon name="bell" />{#if unread > 0}<span class="unread">{unread}</span>{/if}</span><span class="lbl">Alerts</span>
       </button>
@@ -226,7 +222,8 @@
   }
   .site-sidebar { --nav-w: 248px; z-index: 45; position: sticky; top: 0; height: 100dvh; width: var(--nav-w); flex: none; }
   .site-sidebar.ready { transition: width 0.24s cubic-bezier(0.2, 0, 0, 1); }
-  /* Collapsed: a cookie says so, or no cookie and a mid-width window (641-1100px). The main icons only. */
+  /* Collapsed: a cookie says so, or no cookie and a mid-width window (641-1100px). The main icons only.
+     Keep in sync: the two blocks below set the same properties (CSS can't share one block between an attribute and a media query). */
   .site-sidebar[data-collapsed] {
     --nav-w: 64px; --lbl-w: 0px; --lbl-flex: 0 0 0; --row-gap: 0px; --row-jc: center; --row-pad: 0px; --hide: none;
     --drill-x: 0%; --main-vis: visible; --stats-vis: hidden; --clip: visible; --panel-oy: visible; --tip: block; --caret-l: none; --caret-r: inline-flex;
